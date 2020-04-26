@@ -87,11 +87,28 @@ std::string read_text_file(const fs::path& p)
 	return s;
 }
 
+std::string replace_all(
+	std::string s, const std::string& from, const std::string& to)
+{
+	for (;;)
+	{
+		const auto pos = s.find(from);
+		if (pos == std::string::npos)
+			break;
+
+		s.replace(pos, from.size(), to);
+	}
+
+	return s;
+}
+
 
 struct versions
 {
-	static const std::string visual_studio() { return "2019"; }
+	static const std::string vs_year() { return "2019"; }
+	static const std::string vs_version() { return "16"; }
 	static const std::string sevenzip() { return "19.00"; }
+	static const std::string zlib() { return "1.2.11"; }
 };
 
 struct paths
@@ -226,7 +243,7 @@ public:
 
 	static void copy_file_to_dir(const fs::path& file, const fs::path& dir)
 	{
-		debug("copying " + file.string() + " to " + dir.string());
+		info(file.string() + " -> " + dir.string());
 
 		check(file);
 		check(dir);
@@ -238,10 +255,7 @@ public:
 			bail_out("can't copy to " + dir.string() + ", not a directory");
 
 		if (!dry)
-		{
-			op::create_directories(dir);
 			do_copy_file_to_dir(file, dir);
-		}
 	}
 
 	static void run(const std::string& cmd, const fs::path& cwd={})
@@ -300,8 +314,9 @@ private:
 
 	static void do_copy_file_to_dir(const fs::path& f, const fs::path& d)
 	{
-		std::error_code ec;
+		create_directories(d);
 
+		std::error_code ec;
 		fs::copy_file(
 			f, d / f.filename(),
 			fs::copy_options::overwrite_existing, ec);
@@ -322,9 +337,14 @@ private:
 	static int do_run(const std::string& cmd, const fs::path& cwd)
 	{
 		if (cwd.empty())
+		{
 			return std::system(cmd.c_str());
+		}
 		else
+		{
+			create_directories(cwd);
 			return std::system(("cd \"" + cwd.string() + "\" && " + cmd).c_str());
+		}
 	}
 
 	static void check(const fs::path& p)
@@ -384,8 +404,9 @@ private:
 class downloader
 {
 public:
-	downloader(fs::path where, url u)
-		: where_(std::move(where)), url_(std::move(u)), file_(nullptr)
+	downloader(fs::path where, url u) :
+		where_(std::move(where)), url_(std::move(u)),
+		file_(nullptr), bailed_(false)
 	{
 		path_ = where_ / url_.file();
 	}
@@ -402,13 +423,26 @@ public:
 			return;
 		}
 
-		thread_ = std::thread([&]{ run(); });
+		thread_ = std::thread([&]
+		{
+			try
+			{
+				run();
+			}
+			catch(bailed)
+			{
+				bailed_ =true;
+			}
+		});
 	}
 
 	void join()
 	{
 		if (thread_.joinable())
 			thread_.join();
+
+		if (bailed_)
+			throw bailed();
 	}
 
 	fs::path file() const
@@ -422,6 +456,7 @@ private:
 	fs::path path_;
 	std::FILE* file_;
 	std::thread thread_;
+	bool bailed_;
 
 	void run()
 	{
@@ -445,7 +480,7 @@ private:
 		}
 		else
 		{
-			bail_out(url_.string() + "curl code: " + std::to_string(r));
+			bail_out(url_.string() + " curl: " + curl_easy_strerror(r));
 		}
 
 		curl_easy_cleanup(c);
@@ -524,14 +559,52 @@ void expand(const fs::path& file, const fs::path& where)
 	op::delete_directory(where);
 	op::create_directories(where);
 
-	op::run(
-		sevenz.string() + " "
-		"x "
-		"-bd "
-		"-bb0 "
-		"-o" + where.string() + " "
-		"\"" + file.string() + "\" " +
-		redir_nul());
+	if (file.string().ends_with(".tar.gz"))
+	{
+		op::run(
+			sevenz.string() + " x -so \"" + file.string() + "\" | " +
+			sevenz.string() + " x -spe -si -ttar -o\"" + where.string() + "\" " + redir_nul());
+	}
+	else
+	{
+		op::run(
+			sevenz.string() + " x -spe -bd -bb0 -o\"" + where.string() + "\" "
+			"\"" + file.string() + "\" " + redir_nul());
+	}
+}
+
+
+void cmake(const fs::path& build, const fs::path& prefix, const std::string& generator)
+{
+	std::string cmd = "cmake -G \"" + generator + "\"";
+
+	if (!prefix.empty())
+		cmd += " -DCMAKE_INSTALL_PREFIX=\"" + prefix.string() + "\"";
+
+	cmd += " ..",
+	op::run(cmd, build);
+}
+
+fs::path cmake_for_nmake(const fs::path& root, const fs::path& prefix={})
+{
+	const auto build = root / "build";
+	const std::string g = "NMake Makefiles";
+	cmake(build, prefix, g);
+	return build;
+}
+
+fs::path cmake_for_vs(const fs::path& root, const fs::path& prefix={})
+{
+	const auto build = root / "vsbuild";
+	const std::string g = "Visual Studio " + versions::vs_version() + " " + versions::vs_year();
+	cmake(build, prefix, g);
+	return build;
+}
+
+void nmake(const fs::path& dir)
+{
+	op::run("nmake", dir);
+	op::run("nmake install", dir);
 }
 
 
@@ -542,9 +615,10 @@ public:
 	{
 		info("7z");
 
-		const auto file = download("https://www.7-zip.org/a/7z1900-src.7z");
+		const auto nodots = replace_all(versions::sevenzip(), ".", "");
+		const auto file = download("https://www.7-zip.org/a/7z" + nodots + "-src.7z");
 
-		const auto dir = paths::build() / "7zip-19.00";
+		const auto dir = paths::build() / ("7zip-" + versions::sevenzip());
 		expand(file, dir);
 
 		const fs::path src = dir / "CPP" / "7zip" / "Bundles" / "Format7zF";
@@ -556,6 +630,26 @@ public:
 			src);
 
 		op::copy_file_to_dir(src / "x64/7z.dll", paths::install_dlls());
+	}
+};
+
+
+class zlib
+{
+public:
+	void run()
+	{
+		info("zlib");
+
+		const auto file = download("http://zlib.net/zlib-" + versions::zlib() + ".tar.gz");
+
+		const auto dir = paths::build() / ("zlib-" + versions::zlib());
+		expand(file, dir);
+
+		const auto build = cmake_for_nmake(dir, dir);
+		nmake(build);
+
+		op::copy_file_to_dir(build / "zconf.h", dir);
 	}
 };
 
@@ -573,7 +667,7 @@ fs::path find_vcvars()
 		const auto p =
 			paths::program_files_x86() /
 			"Microsoft Visual Studio" /
-			versions::visual_studio() /
+			versions::vs_year() /
 			edition / "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
 
 		if (fs::exists(p))
@@ -625,7 +719,9 @@ int run()
 	try
 	{
 		vcvars();
-		sevenz().run();
+
+		//sevenz().run();
+		zlib().run();
 
 		return 0;
 	}
