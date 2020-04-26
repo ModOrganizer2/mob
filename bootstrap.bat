@@ -1,0 +1,1 @@
+@msbuild vs/builder.sln -m -p:Configuration=Release -noLogo -clp:ErrorsOnly;Verbosity=minimal
