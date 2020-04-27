@@ -365,17 +365,21 @@ public:
 	}
 
 protected:
+	std::string dir_name() const
+	{
+		return "libbsarch-" + versions::libbsarch() + "-release-x64";
+	}
+
 	fs::path source_path() const override
 	{
-		return paths::build() / ("libbsarch-" + versions::libbsarch() + "-release-x64");
+		return paths::build() / dir_name();
 	}
 
 	void do_fetch() override
 	{
 		const auto file = run_tool<downloader>(
 			"https://github.com/ModOrganizer2/libbsarch/releases/download/" +
-			versions::libbsarch() + "/" +
-			"libbsarch-" + versions::libbsarch() + "-release-x64.7z");
+			versions::libbsarch() + "/" + dir_name() + ".7z");
 
 		run_tool<decompresser>(file, source_path());
 	}
@@ -385,6 +389,49 @@ protected:
 		op::copy_file_to_dir_if_better(
 			source_path() / "libbsarch.dll",
 			paths::install_dlls());
+	}
+};
+
+
+class libloot : public task
+{
+public:
+	libloot()
+		: task("libloot")
+	{
+	}
+
+protected:
+	std::string dir_name() const
+	{
+		// libloot-0.15.1-0-gf725dd7_0.15.1-win64.7z, yeah
+		return
+			"libloot-" +
+			versions::libloot() + "-" +
+			"0-" +
+			versions::libloot_hash() + "_" + versions::libloot() + "-" +
+			"win64";
+	}
+
+	fs::path source_path() const override
+	{
+		return paths::build() / dir_name();
+	}
+
+	void do_fetch() override
+	{
+		const auto file = run_tool<downloader>(
+			"https://github.com/loot/libloot/releases/download/" +
+			versions::libloot() + "/" + dir_name() + ".7z");
+
+		run_tool<decompresser>(file, source_path());
+	}
+
+	void do_build_and_install() override
+	{
+		op::copy_file_to_dir_if_better(
+			source_path() / "loot.dll",
+			paths::install_loot());
 	}
 };
 
@@ -440,6 +487,7 @@ int run(int argc, char** argv)
 		g_tasks.push_back(std::make_unique<fmt>());
 		g_tasks.push_back(std::make_unique<gtest>());
 		g_tasks.push_back(std::make_unique<libbsarch>());
+		g_tasks.push_back(std::make_unique<libloot>());
 
 		if (argc > 1)
 		{

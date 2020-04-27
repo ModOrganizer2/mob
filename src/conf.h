@@ -15,6 +15,8 @@ struct versions
 	static const std::string& fmt();
 	static const std::string& gtest();
 	static const std::string& libbsarch();
+	static const std::string& libloot();
+	static const std::string& libloot_hash();
 };
 
 struct paths
@@ -26,6 +28,7 @@ struct paths
 	static fs::path install();
 	static fs::path install_bin();
 	static fs::path install_dlls();
+	static fs::path install_loot();
 
 	static fs::path program_files_x86();
 	static fs::path temp_dir();

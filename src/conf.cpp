@@ -7,23 +7,20 @@ namespace builder
 
 static std::map<std::string, std::string> g_conf =
 {
-	{"vs",        "16"},
-	{"vs_year",   "2019"},
-	{"sevenzip",  "19.00"},
-	{"zlib",      "1.2.11"},
-	{"boost",     "1.72.0"},
-	{"boost_vs",  "14.2"},
-	{"python",    "3.8.1"},
-	{"fmt",       "6.1.2"},
-	{"gtest",     "master"},
-	{"libbsarch", "0.0.8"},
+	{"vs",           "16"},
+	{"vs_year",      "2019"},
+	{"sevenzip",     "19.00"},
+	{"zlib",         "1.2.11"},
+	{"boost",        "1.72.0"},
+	{"boost_vs",     "14.2"},
+	{"python",       "3.8.1"},
+	{"fmt",          "6.1.2"},
+	{"gtest",        "master"},
+	{"libbsarch",    "0.0.8"},
+	{"libloot",      "0.15.1"},
+	{"libloot_hash", "gf725dd7"},
 
 	{"prefix",   R"(C:\dev\projects\mobuild-out)"},
-	{"downloads", "downloads"},
-	{"build",     "build"},
-	{"install",   "install"},
-	{"bin",       "bin"},
-	{"dlls",      "dlls"},
 };
 
 const std::string& get_conf(const std::string& name)
@@ -84,23 +81,26 @@ fs::path find_in_root(const fs::path& file)
 
 
 
-const std::string& versions::vs()        { return get_conf("vs"); }
-const std::string& versions::vs_year()   { return get_conf("vs_year"); }
-const std::string& versions::sevenzip()  { return get_conf("sevenzip"); }
-const std::string& versions::zlib()      { return get_conf("zlib"); }
-const std::string& versions::boost()     { return get_conf("boost"); }
-const std::string& versions::boost_vs()  { return get_conf("boost_vs"); }
-const std::string& versions::python()    { return get_conf("python"); }
-const std::string& versions::fmt()       { return get_conf("fmt"); }
-const std::string& versions::gtest()     { return get_conf("gtest"); }
-const std::string& versions::libbsarch() { return get_conf("libbsarch"); }
+const std::string& versions::vs()           { return get_conf("vs"); }
+const std::string& versions::vs_year()      { return get_conf("vs_year"); }
+const std::string& versions::sevenzip()     { return get_conf("sevenzip"); }
+const std::string& versions::zlib()         { return get_conf("zlib"); }
+const std::string& versions::boost()        { return get_conf("boost"); }
+const std::string& versions::boost_vs()     { return get_conf("boost_vs"); }
+const std::string& versions::python()       { return get_conf("python"); }
+const std::string& versions::fmt()          { return get_conf("fmt"); }
+const std::string& versions::gtest()        { return get_conf("gtest"); }
+const std::string& versions::libbsarch()    { return get_conf("libbsarch"); }
+const std::string& versions::libloot()      { return get_conf("libloot"); }
+const std::string& versions::libloot_hash() { return get_conf("libloot_hash"); }
 
 fs::path paths::prefix()         { return get_conf("prefix"); }
-fs::path paths::cache()          { return prefix() / get_conf("downloads"); }
-fs::path paths::build()          { return prefix() / get_conf("build"); }
-fs::path paths::install()        { return prefix() / get_conf("install"); }
-fs::path paths::install_bin( )   { return install() / get_conf("bin"); }
-fs::path paths::install_dlls()   { return install_bin() / get_conf("dlls"); }
+fs::path paths::cache()          { return prefix() / "downloads"; }
+fs::path paths::build()          { return prefix() / "build"; }
+fs::path paths::install()        { return prefix() / "install"; }
+fs::path paths::install_bin( )   { return install() / "bin"; }
+fs::path paths::install_dlls()   { return install_bin() / "dlls"; }
+fs::path paths::install_loot()   { return install_bin() / "loot"; }
 
 fs::path paths::patches()
 {
