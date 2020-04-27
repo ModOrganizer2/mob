@@ -6,12 +6,25 @@ namespace builder
 void vcvars();
 fs::path find_sevenz();
 
-void expand(const fs::path& file, const fs::path& where);
+void decompress(const fs::path& file, const fs::path& where);
 
-void cmake(const fs::path& build, const fs::path& prefix, const std::string& generator);
-fs::path cmake_for_nmake(const fs::path& root, const fs::path& prefix={});
-fs::path cmake_for_vs(const fs::path& root, const fs::path& prefix={});
 
-void nmake(const fs::path& dir);
+class cmake_for_nmake
+{
+public:
+	static fs::path build_path();
+	fs::path run(const fs::path& root, const fs::path& prefix={});
+};
+
+class cmake_for_vs
+{
+public:
+	static fs::path build_path();
+	fs::path run(const fs::path& root, const fs::path& prefix={});
+};
+
+
+void nmake(const fs::path& dir, const std::string& args={});
+void nmake_install(const fs::path& dir, const std::string& args={});
 
 }	// namespace

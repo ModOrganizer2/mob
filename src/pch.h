@@ -52,6 +52,8 @@
 #include <fstream>
 #include <sstream>
 #include <mutex>
+#include <regex>
+#include <map>
 
 #include <Shlobj.h>
 #include <curl/curl.h>

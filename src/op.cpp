@@ -76,6 +76,7 @@ void op::copy_file_to_dir(const fs::path& file, const fs::path& dir)
 
 void op::run(const std::string& cmd, const fs::path& cwd)
 {
+	debug("> cd " + cwd.string());
 	debug("> " + cmd);
 
 	if (!conf::dry())
@@ -153,7 +154,7 @@ int op::do_run(const std::string& cmd, const fs::path& cwd)
 {
 	if (cwd.empty())
 	{
-		return std::system(cmd.c_str());
+		return std::system(("\"" + cmd + "\"").c_str());
 	}
 	else
 	{

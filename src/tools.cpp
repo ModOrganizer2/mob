@@ -34,11 +34,13 @@ fs::path find_vcvars()
 
 void vcvars()
 {
+	info("vcvars");
+
 	const fs::path tmp = paths::temp_file();
 
 	const std::string cmd =
 		"\"" + find_vcvars().string() + "\" amd64 " + redir_nul() + " && "
-		"set > " + tmp.string();
+		"set > \"" + tmp.string() + "\"";
 
 	op::run(cmd);
 
@@ -67,18 +69,17 @@ void vcvars()
 }
 
 
-void expand(const fs::path& file, const fs::path& where)
+void decompress(const fs::path& file, const fs::path& where)
 {
+	info("decompress " + file.string() + " into " + where.string());
+
 	if (fs::exists(where))
 	{
-		debug(
-			"not expanding " + file.string() + ", " +
-			where.string() + " already exists");
-
+		debug("directory " + where.string() + " already exists");
 		return;
 	}
 
-	const auto sevenz = find_sevenz();
+	const auto sevenz = "\"" + find_sevenz().string() + "\"";
 
 	op::delete_directory(where);
 	op::create_directories(where);
@@ -86,13 +87,13 @@ void expand(const fs::path& file, const fs::path& where)
 	if (file.string().ends_with(".tar.gz"))
 	{
 		op::run(
-			sevenz.string() + " x -so \"" + file.string() + "\" | " +
-			sevenz.string() + " x -spe -si -ttar -o\"" + where.string() + "\" " + redir_nul());
+			sevenz + " x -so \"" + file.string() + "\" | " +
+			sevenz + " x -spe -si -ttar -o\"" + where.string() + "\" " + redir_nul());
 	}
 	else
 	{
 		op::run(
-			sevenz.string() + " x -spe -bd -bb0 -o\"" + where.string() + "\" "
+			sevenz + " x -spe -bd -bb0 -o\"" + where.string() + "\" "
 			"\"" + file.string() + "\" " + redir_nul());
 	}
 }
@@ -105,30 +106,68 @@ void cmake(const fs::path& build, const fs::path& prefix, const std::string& gen
 	if (!prefix.empty())
 		cmd += " -DCMAKE_INSTALL_PREFIX=\"" + prefix.string() + "\"";
 
-	cmd += " ..",
-		op::run(cmd, build);
+	cmd += " ..";
+
+	op::run(cmd, build);
 }
 
-fs::path cmake_for_nmake(const fs::path& root, const fs::path& prefix)
+
+fs::path cmake_for_nmake::build_path()
 {
-	const auto build = root / "build";
+	return "build";
+}
+
+fs::path cmake_for_nmake::run(const fs::path& root, const fs::path& prefix)
+{
+	const auto build = root / build_path();
 	const std::string g = "NMake Makefiles";
 	cmake(build, prefix, g);
 	return build;
 }
 
-fs::path cmake_for_vs(const fs::path& root, const fs::path& prefix)
+
+fs::path cmake_for_vs::build_path()
 {
-	const auto build = root / "vsbuild";
-	const std::string g = "Visual Studio " + versions::vs_version() + " " + versions::vs_year();
+	return "vsbuild";
+}
+
+fs::path cmake_for_vs::run(const fs::path& root, const fs::path& prefix)
+{
+	const auto build = root / build_path();
+	const std::string g = "Visual Studio " + versions::vs() + " " + versions::vs_year();
 	cmake(build, prefix, g);
 	return build;
 }
 
-void nmake(const fs::path& dir)
+
+void do_nmake(
+	const fs::path& dir,
+	const std::string& what, const std::string& args)
 {
-	op::run("nmake", dir);
-	op::run("nmake install", dir);
+	std::ostringstream oss;
+
+	oss << "nmake";
+
+	if (conf::verbose())
+		oss << " /C /S";
+
+	if (!args.empty())
+		oss << " " << args;
+
+	if (!what.empty())
+		oss << " " << what;
+
+	op::run(oss.str(), dir);
+}
+
+void nmake(const fs::path& dir, const std::string& args)
+{
+	do_nmake(dir, "", args);
+}
+
+void nmake_install(const fs::path& dir, const std::string& args)
+{
+	do_nmake(dir, "install", args);
 }
 
 }	// namespace

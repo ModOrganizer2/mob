@@ -56,7 +56,7 @@ downloader::downloader(fs::path where, url u) :
 
 void downloader::start()
 {
-	debug("downloading " + url_.string());
+	debug("downloading " + url_.string() + " to " + path_.string());
 
 	op::create_directories(where_);
 
@@ -65,6 +65,9 @@ void downloader::start()
 		debug("download " + path_.string() + " already exists");
 		return;
 	}
+
+	if (conf::dry())
+		return;
 
 	thread_ = std::thread([&]
 		{
