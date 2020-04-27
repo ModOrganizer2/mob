@@ -8,22 +8,85 @@
 namespace builder
 {
 
+class task;
+std::vector<std::unique_ptr<task>> g_tasks;
+
+
 class task
 {
 public:
-	task(std::string name)
-		: name_(std::move(name))
+	task(const task&) = delete;
+	task& operator=(const task&) = delete;
+
+	virtual ~task()
 	{
+		try
+		{
+			join();
+		}
+		catch(bailed)
+		{
+			// ignore
+		}
 	}
 
-	virtual ~task() = default;
+	static void interrupt_all()
+	{
+		std::scoped_lock lock(interrupt_mutex_);
+		for (auto&& t : g_tasks)
+			t->interrupt();
+	}
+
 
 	void run()
 	{
 		info(name_);
-		fetch();
-		build();
-		install();
+
+		thread_ = std::thread([&]
+		{
+			try
+			{
+				if (interrupted_)
+					return;
+
+				fetch();
+
+				if (interrupted_)
+					return;
+
+				build();
+
+				if (interrupted_)
+					return;
+
+				install();
+			}
+			catch(bailed e)
+			{
+				bailed_ = e;
+				error(name_ + " bailed out, interrupting all tasks");
+				interrupt_all();
+			}
+		});
+	}
+
+	void interrupt()
+	{
+		std::scoped_lock lock(tool_mutex_);
+
+		interrupted_ = true;
+		if (tool_)
+			tool_->interrupt();
+	}
+
+	void join()
+	{
+		if (thread_.joinable())
+		{
+			thread_.join();
+			if (bailed_)
+				throw *bailed_;
+		}
 	}
 
 	void fetch()
@@ -42,13 +105,43 @@ public:
 	}
 
 protected:
-	virtual void do_fetch() = 0;
-	virtual void do_build() = 0;
+	task(std::string name)
+		: name_(std::move(name)), interrupted_(false)
+	{
+	}
+
+	virtual void do_fetch() {};
+	virtual void do_build() {};
 	virtual void do_install() {};
+
+	template <class Tool, class... Args>
+	auto run_tool(Args&&... args)
+	{
+		Tool* p = nullptr;
+
+		{
+			std::scoped_lock lock(tool_mutex_);
+			p = new Tool(std::forward<Args>(args)...);
+			tool_.reset(p);
+		}
+
+		p->run();
+		return p->result();
+	}
 
 private:
 	std::string name_;
+	std::thread thread_;
+	std::optional<bailed> bailed_;
+	std::atomic<bool> interrupted_;
+
+	std::unique_ptr<tool> tool_;
+	std::mutex tool_mutex_;
+
+	static std::mutex interrupt_mutex_;
 };
+
+std::mutex task::interrupt_mutex_;
 
 
 class sevenz : public task
@@ -63,20 +156,23 @@ protected:
 	void do_fetch() override
 	{
 		const auto nodots = replace_all(versions::sevenzip(), ".", "");
-		const auto file = download("https://www.7-zip.org/a/7z" + nodots + "-src.7z");
-		decompress(file, src_path());
+
+		const auto file = run_tool<downloader>(
+			"https://www.7-zip.org/a/7z" + nodots + "-src.7z");
+
+		run_tool<decompresser>(file, src_path());
 	}
 
 	void do_build()
 	{
-		const fs::path src =
+		/*const fs::path src =
 			src_path() / "CPP" / "7zip" / "Bundles" / "Format7zF";
 
-		nmake(src,
+		run_tool<nmake>(src,
 			"/NOLOGO CPU=x64 NEW_COMPILER=1 "
 			"MY_STATIC_LINK=1 NO_BUFFEROVERFLOWU=1");
 
-		op::copy_file_to_dir(src / "x64/7z.dll", paths::install_dlls());
+		op::copy_file_to_dir(src / "x64/7z.dll", paths::install_dlls());*/
 	}
 
 private:
@@ -98,19 +194,21 @@ public:
 protected:
 	void do_fetch()
 	{
-		const auto file = download("http://zlib.net/zlib-" + versions::zlib() + ".tar.gz");
-		decompress(file, src_path());
+		const auto file = run_tool<downloader>(
+			"http://zlib.net/zlib-" + versions::zlib() + ".tar.gz");
+
+		run_tool<decompresser>(file, src_path());
 	}
 
 	void do_build()
 	{
-		cmake_for_nmake().run(src_path(), "", src_path());
-		nmake(src_path() / cmake_for_nmake::build_path());
+		run_tool<cmake_for_nmake>(src_path(), "", src_path());
+		run_tool<nmake>(src_path() / cmake_for_nmake::build_path());
 	}
 
 	void do_install()
 	{
-		nmake_install(src_path() / cmake_for_nmake::build_path());
+		run_tool<nmake_install>(src_path() / cmake_for_nmake::build_path());
 		op::copy_file_to_dir(src_path() / cmake_for_nmake::build_path() / "zconf.h", src_path());
 	}
 
@@ -135,12 +233,11 @@ protected:
 	{
 		const auto underscores = replace_all(versions::boost(), ".", "_");
 
-		const auto file = download(
+		const auto file = run_tool<downloader>(
 			"https://github.com/ModOrganizer2/modorganizer-umbrella/"
 			"releases/download/1.1/boost_prebuilt_" + underscores + ".7z");
 
-		const auto dir = paths::build() / ("boost_" + underscores);
-		decompress(file, dir);
+		run_tool<decompresser>(file, src_path());
 	}
 
 	void do_build()
@@ -220,16 +317,16 @@ public:
 protected:
 	void do_fetch()
 	{
-		const auto file = download(
+		const auto file = run_tool<downloader>(
 			"https://github.com/fmtlib/fmt/releases/download/" +
 			versions::fmt() + "/fmt-" + versions::fmt() + ".zip");
 
-		decompress(file, src_path());
+		run_tool<decompresser>(file, src_path());
 	}
 
 	void do_build()
 	{
-		cmake_for_nmake().run(src_path(), "-DFMT_TEST=OFF -DFMT_DOC=OFF");
+		run_tool<cmake_for_nmake>(src_path(), "-DFMT_TEST=OFF -DFMT_DOC=OFF");
 		nmake(src_path() / cmake_for_nmake::build_path());
 	}
 
@@ -241,16 +338,63 @@ private:
 };
 
 
+template <class Tool, class... Args>
+class dummy : public task
+{
+public:
+	dummy(Args&&... args)
+		: task("dummy"), args_(std::forward<Args>(args)...)
+	{
+	}
+
+
+protected:
+	void do_fetch()
+	{
+		//run_tool<process_runner>("dummy process", "grep 1");
+		std::apply([&](auto&&... args){ run_tool<Tool>(args...); }, args_);
+		//run_tool<Tool>(
+	}
+
+private:
+	std::tuple<Args...> args_;
+};
+
+
+template <class Tool, class... Args>
+std::unique_ptr<dummy<Tool, Args...>> make_dummy(Args&&... args)
+{
+	using Dummy = dummy<Tool, Args...>;
+	return std::unique_ptr<Dummy>(new Dummy(std::forward<Args>(args)...));
+}
+
+
+BOOL WINAPI signal_handler(DWORD) noexcept
+{
+	info("caught sigint");
+	task::interrupt_all();
+	return TRUE;
+}
+
+
 int run()
 {
 	try
 	{
+		::SetConsoleCtrlHandler(signal_handler, TRUE);
+
 		vcvars();
 
-		//sevenz().run();
-		//zlib().run();
-		//boost().run();
-		fmt().run();
+		g_tasks.push_back(std::make_unique<sevenz>());
+		g_tasks.push_back(std::make_unique<zlib>());
+		g_tasks.push_back(std::make_unique<boost>());
+		g_tasks.push_back(std::make_unique<fmt>());
+
+		for (auto&& t : g_tasks)
+			t->run();
+
+		for (auto&& t : g_tasks)
+			t->join();
 
 		return 0;
 	}
@@ -267,6 +411,7 @@ int run()
 int main()
 {
 	int r = builder::run();
+	builder::dump_logs();
 	//std::cin.get();
 	return r;
 }

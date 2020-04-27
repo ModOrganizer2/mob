@@ -6,6 +6,100 @@
 namespace builder
 {
 
+process::process(handle_ptr h)
+	: handle_(std::move(h)), code_(0)
+{
+}
+
+process::process(process&& p) :
+	handle_(std::move(p.handle_)),
+	interrupt_(p.interrupt_.load()),
+	code_(p.code_)
+{
+}
+
+process& process::operator=(process&& p)
+{
+	handle_ = std::move(p.handle_);
+	interrupt_ = p.interrupt_.load();
+	code_ = p.code_;
+	return *this;
+}
+
+process::~process()
+{
+	join();
+}
+
+void process::interrupt()
+{
+	interrupt_ = true;
+}
+
+void process::join()
+{
+	if (!handle_)
+		return;
+
+	bool interrupted = false;
+
+	for (;;)
+	{
+		const auto r = WaitForSingleObject(handle_.get(), 100);
+
+		if (r == WAIT_OBJECT_0)
+		{
+			// done
+			GetExitCodeProcess(handle_.get(), &code_);
+			break;
+		}
+
+		if (r == WAIT_TIMEOUT)
+		{
+			if (interrupt_ && !interrupted)
+			{
+				const auto pid = GetProcessId(handle_.get());
+
+				if (pid == 0)
+				{
+					error("process id is 0, terminating instead");
+					::TerminateProcess(handle_.get(), 0xffff);
+					break;
+				}
+				else
+				{
+					debug("sending sigint to " + std::to_string(pid));
+					GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
+				}
+
+				interrupted = true;
+			}
+
+			continue;
+		}
+
+		const auto e = GetLastError();
+		handle_ = {};
+		bail_out("failed to wait on process", e);
+	}
+
+	handle_ = {};
+}
+
+int process::exit_code() const
+{
+	return static_cast<int>(code_);
+}
+
+void op::touch(const fs::path& p)
+{
+	debug("touching " + p.string());
+	check(p);
+
+	if (!conf::dry())
+		do_touch(p);
+}
+
 void op::create_directories(const fs::path& p)
 {
 	debug("creating directory " + p.string());
@@ -74,17 +168,22 @@ void op::copy_file_to_dir(const fs::path& file, const fs::path& dir)
 		do_copy_file_to_dir(file, dir);
 }
 
-void op::run(const std::string& cmd, const fs::path& cwd)
+process op::run(const std::string& cmd, const fs::path& cwd)
 {
-	debug("> cd " + cwd.string());
+	if (!cwd.empty())
+		debug("> cd " + cwd.string());
+
 	debug("> " + cmd);
 
-	if (!conf::dry())
-	{
-		const int r = do_run(cmd, cwd);
-		if (r != 0)
-			bail_out("command returned " + std::to_string(r));
-	}
+	if (conf::dry())
+		return {};
+
+	return do_run(cmd, cwd);
+}
+
+void op::do_touch(const fs::path& p)
+{
+	std::ofstream out(p);
 }
 
 void op::do_create_directories(const fs::path& p)
@@ -150,17 +249,38 @@ void op::do_remove_readonly(const fs::path& p)
 		bail_out("can't remove read-only flag on " + p.string(), ec);
 }
 
-int op::do_run(const std::string& cmd, const fs::path& cwd)
+process op::do_run(const std::string& what, const fs::path& cwd)
 {
-	if (cwd.empty())
-	{
-		return std::system(("\"" + cmd + "\"").c_str());
-	}
-	else
+	STARTUPINFOA si = { .cb=sizeof(si) };
+	PROCESS_INFORMATION pi = {};
+
+	const std::string cmd = env("COMSPEC");
+	const std::string args = "/C \"" + what + "\"";
+
+	const char* cwd_p = nullptr;
+	std::string cwd_s;
+
+	if (!cwd.empty())
 	{
 		create_directories(cwd);
-		return std::system(("cd \"" + cwd.string() + "\" && " + cmd).c_str());
+		cwd_s = cwd.string();
+		cwd_p = (cwd_s.empty() ? nullptr : cwd_s.c_str());
 	}
+
+	const auto r = ::CreateProcessA(
+		cmd.c_str(), const_cast<char*>(args.c_str()),
+		nullptr, nullptr, FALSE, CREATE_NEW_PROCESS_GROUP,
+		nullptr, cwd_p, &si, &pi);
+
+	if (!r)
+	{
+		const auto e = GetLastError();
+		bail_out("failed to start '" + cmd + "'", e);
+	}
+
+	::CloseHandle(pi.hThread);
+
+	return process(handle_ptr(pi.hProcess));
 }
 
 void op::check(const fs::path& p)

@@ -12,7 +12,7 @@ std::string redir_nul()
 	if (conf::verbose())
 		return {};
 	else
-		return "> NUL";
+		return " > NUL";
 }
 
 
@@ -47,14 +47,14 @@ std::string url::file() const
 }
 
 
-downloader::downloader(fs::path where, url u) :
-	where_(std::move(where)), url_(std::move(u)),
-	file_(nullptr), bailed_(false)
+curl_downloader::curl_downloader(fs::path where, url u) :
+	where_(std::move(where)), url_(std::move(u)), file_(nullptr),
+	interrupt_(false)
 {
 	path_ = where_ / url_.file();
 }
 
-void downloader::start()
+void curl_downloader::start()
 {
 	debug("downloading " + url_.string() + " to " + path_.string());
 
@@ -70,33 +70,38 @@ void downloader::start()
 		return;
 
 	thread_ = std::thread([&]
+	{
+		try
 		{
-			try
-			{
-				run();
-			}
-			catch(bailed)
-			{
-				bailed_ =true;
-			}
-		});
+			run();
+		}
+		catch(bailed e)
+		{
+			bailed_ = e;
+		}
+	});
 }
 
-void downloader::join()
+void curl_downloader::join()
 {
 	if (thread_.joinable())
 		thread_.join();
 
 	if (bailed_)
-		throw bailed();
+		throw *bailed_;
 }
 
-fs::path downloader::file() const
+void curl_downloader::interrupt()
+{
+	interrupt_ = true;
+}
+
+fs::path curl_downloader::file() const
 {
 	return path_;
 }
 
-void downloader::run()
+void curl_downloader::run()
 {
 	auto* c = curl_easy_init();
 
@@ -107,6 +112,17 @@ void downloader::run()
 
 
 	const auto r = curl_easy_perform(c);
+
+	if (interrupt_)
+	{
+		if (file_)
+		{
+			std::fclose(file_);
+			op::delete_file(path_);
+		}
+
+		return;
+	}
 
 	if (r == 0)
 	{
@@ -127,31 +143,27 @@ void downloader::run()
 		std::fclose(file_);
 }
 
-size_t downloader::on_write_static(
+size_t curl_downloader::on_write_static(
 	char* ptr, size_t size, size_t nmemb, void* user) noexcept
 {
-	auto* self = static_cast<downloader*>(user);
+	auto* self = static_cast<curl_downloader*>(user);
+
+	if (self->interrupt_)
+	{
+		debug("downloader: interrupting");
+		return (size * nmemb) + 1; // force failure
+	}
+
 	self->on_write(ptr, size * nmemb);
 	return size * nmemb;
 }
 
-void downloader::on_write(char* ptr, std::size_t n) noexcept
+void curl_downloader::on_write(char* ptr, std::size_t n) noexcept
 {
 	if (!file_)
 		file_ = _wfopen(path_.native().c_str(), L"wb");
 
 	std::fwrite(ptr, n, 1, file_);
-}
-
-
-fs::path download(const url& u)
-{
-	downloader d(paths::cache(), u);
-
-	d.start();
-	d.join();
-
-	return d.file();
 }
 
 }	// namespace

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "utility.h"
+
 namespace builder
 {
 
@@ -19,13 +21,14 @@ private:
 };
 
 
-class downloader
+class curl_downloader
 {
 public:
-	downloader(fs::path where, url u);
+	curl_downloader(fs::path where, url u);
 
 	void start();
 	void join();
+	void interrupt();
 
 	fs::path file() const;
 
@@ -35,7 +38,8 @@ private:
 	fs::path path_;
 	std::FILE* file_;
 	std::thread thread_;
-	bool bailed_;
+	std::atomic<bool> interrupt_;
+	std::optional<bailed> bailed_;
 
 	void run();
 
@@ -44,8 +48,5 @@ private:
 
 	void on_write(char* ptr, std::size_t n) noexcept;
 };
-
-
-fs::path download(const url& u);
 
 }	// namespace

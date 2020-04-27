@@ -54,6 +54,8 @@
 #include <mutex>
 #include <regex>
 #include <map>
+#include <optional>
+#include <atomic>
 
 #include <Shlobj.h>
 #include <curl/curl.h>
