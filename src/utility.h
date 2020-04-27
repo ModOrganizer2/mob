@@ -63,6 +63,12 @@ void error(Args&&... args)
 }
 
 template <class... Args>
+void warn(Args&&... args)
+{
+	out(level::warning, std::forward<Args>(args)...);
+}
+
+template <class... Args>
 void info(Args&&... args)
 {
 	out(level::info, std::forward<Args>(args)...);

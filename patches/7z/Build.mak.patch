@@ -1,0 +1,20 @@
+--- CPP/Build.mak	Thu Feb 21 07:50:31 2019
++++ CPP/Build.mak	Mon Apr 27 15:38:30 2020
+@@ -137,6 +137,8 @@
+
+ all: $(PROGPATH)
+
++$(OBJS_NEEDING_PCH): $O\StdAfx.obj
++
+ clean:
+ 	-del /Q $(PROGPATH) $O\*.exe $O\*.dll $O\*.obj $O\*.lib $O\*.exp $O\*.res $O\*.pch $O\*.asm
+
+@@ -146,7 +148,7 @@
+ 	if not exist "$O/asm" mkdir "$O/asm"
+
+ $(PROGPATH): $O $O/asm $(OBJS) $(DEF_FILE)
+-	link $(LFLAGS) -out:$(PROGPATH) $(OBJS) $(LIBS)
++	link $(LFLAGS) -out:$(PROGPATH) $O\StdAfx.obj $(OBJS) $(LIBS)
+
+ !IFNDEF NO_DEFAULT_RES
+ $O\resource.res: $(*B).rc

@@ -8,7 +8,9 @@ namespace builder
 class process
 {
 public:
-	process(handle_ptr h={});
+	process();
+	process(std::string cmd, handle_ptr h);
+
 	process(process&&);
 	process& operator=(process&&);
 	~process();
@@ -18,9 +20,12 @@ public:
 
 	void interrupt();
 	void join();
+
+	const std::string& cmd() const;
 	int exit_code() const;
 
 private:
+	std::string cmd_;
 	handle_ptr handle_;
 	std::atomic<bool> interrupt_;
 	DWORD code_;
@@ -35,7 +40,7 @@ public:
 	static void delete_directory(const fs::path& p);
 	static void delete_file(const fs::path& p);
 	static void remove_readonly(const fs::path& first);
-	static void copy_file_to_dir(const fs::path& file, const fs::path& dir);
+	static void copy_file_to_dir_if_better(const fs::path& file, const fs::path& dir);
 	static process run(const std::string& cmd, const fs::path& cwd={});
 
 private:

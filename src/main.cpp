@@ -54,17 +54,16 @@ public:
 				if (interrupted_)
 					return;
 
-				build();
-
-				if (interrupted_)
-					return;
-
-				install();
+				build_and_install();
 			}
 			catch(bailed e)
 			{
-				bailed_ = e;
 				error(name_ + " bailed out, interrupting all tasks");
+				interrupt_all();
+			}
+			catch(std::exception& e)
+			{
+				error(name_ + " uncaught exception: " + e.what());
 				interrupt_all();
 			}
 		});
@@ -82,26 +81,18 @@ public:
 	void join()
 	{
 		if (thread_.joinable())
-		{
 			thread_.join();
-			if (bailed_)
-				throw *bailed_;
-		}
 	}
 
 	void fetch()
 	{
 		do_fetch();
+		run_tool<patcher>(paths::patches() / name_, source_path());
 	}
 
-	void build()
+	void build_and_install()
 	{
-		do_build();
-	}
-
-	void install()
-	{
-		do_install();
+		do_build_and_install();
 	}
 
 protected:
@@ -111,8 +102,8 @@ protected:
 	}
 
 	virtual void do_fetch() {};
-	virtual void do_build() {};
-	virtual void do_install() {};
+	virtual void do_build_and_install() {};
+	virtual fs::path source_path() const = 0;
 
 	template <class Tool, class... Args>
 	auto run_tool(Args&&... args)
@@ -132,7 +123,6 @@ protected:
 private:
 	std::string name_;
 	std::thread thread_;
-	std::optional<bailed> bailed_;
 	std::atomic<bool> interrupted_;
 
 	std::unique_ptr<tool> tool_;
@@ -153,6 +143,11 @@ public:
 	}
 
 protected:
+	fs::path source_path() const override
+	{
+		return paths::build() / ("7zip-" + versions::sevenzip());
+	}
+
 	void do_fetch() override
 	{
 		const auto nodots = replace_all(versions::sevenzip(), ".", "");
@@ -160,25 +155,19 @@ protected:
 		const auto file = run_tool<downloader>(
 			"https://www.7-zip.org/a/7z" + nodots + "-src.7z");
 
-		run_tool<decompresser>(file, src_path());
+		run_tool<decompresser>(file, source_path());
 	}
 
-	void do_build()
+	void do_build_and_install() override
 	{
-		/*const fs::path src =
-			src_path() / "CPP" / "7zip" / "Bundles" / "Format7zF";
+		const fs::path src =
+			source_path() / "CPP" / "7zip" / "Bundles" / "Format7zF";
 
 		run_tool<nmake>(src,
 			"/NOLOGO CPU=x64 NEW_COMPILER=1 "
 			"MY_STATIC_LINK=1 NO_BUFFEROVERFLOWU=1");
 
-		op::copy_file_to_dir(src / "x64/7z.dll", paths::install_dlls());*/
-	}
-
-private:
-	fs::path src_path() const
-	{
-		return paths::build() / ("7zip-" + versions::sevenzip());
+		op::copy_file_to_dir_if_better(src / "x64/7z.dll", paths::install_dlls());
 	}
 };
 
@@ -192,30 +181,27 @@ public:
 	}
 
 protected:
-	void do_fetch()
+	fs::path source_path() const override
+	{
+		return paths::build() / ("zlib-" + versions::zlib());
+	}
+
+	void do_fetch() override
 	{
 		const auto file = run_tool<downloader>(
 			"http://zlib.net/zlib-" + versions::zlib() + ".tar.gz");
 
-		run_tool<decompresser>(file, src_path());
+		run_tool<decompresser>(file, source_path());
 	}
 
-	void do_build()
+	void do_build_and_install() override
 	{
-		run_tool<cmake_for_nmake>(src_path(), "", src_path());
-		run_tool<nmake>(src_path() / cmake_for_nmake::build_path());
-	}
+		run_tool<cmake_for_nmake>(source_path(), "", source_path());
+		run_tool<nmake_install>(source_path() / cmake_for_nmake::build_path());
 
-	void do_install()
-	{
-		run_tool<nmake_install>(src_path() / cmake_for_nmake::build_path());
-		op::copy_file_to_dir(src_path() / cmake_for_nmake::build_path() / "zconf.h", src_path());
-	}
-
-private:
-	fs::path src_path()
-	{
-		return paths::build() / ("zlib-" + versions::zlib());
+		op::copy_file_to_dir_if_better(
+			source_path() / cmake_for_nmake::build_path() / "zconf.h",
+			source_path());
 	}
 };
 
@@ -229,7 +215,13 @@ public:
 	}
 
 protected:
-	void do_fetch()
+	fs::path source_path() const override
+	{
+		const auto underscores = replace_all(versions::boost(), ".", "_");
+		return paths::build() / ("boost_" + underscores);
+	}
+
+	void do_fetch() override
 	{
 		const auto underscores = replace_all(versions::boost(), ".", "_");
 
@@ -237,25 +229,20 @@ protected:
 			"https://github.com/ModOrganizer2/modorganizer-umbrella/"
 			"releases/download/1.1/boost_prebuilt_" + underscores + ".7z");
 
-		run_tool<decompresser>(file, src_path());
+		run_tool<decompresser>(file, source_path());
 	}
 
-	void do_build()
+	void do_build_and_install() override
 	{
-		op::copy_file_to_dir(lib_path() / python_dll(), paths::install_bin());
+		op::copy_file_to_dir_if_better(
+			lib_path() / python_dll(), paths::install_bin());
 	}
 
 private:
-	fs::path src_path() const
-	{
-		const auto underscores = replace_all(versions::boost(), ".", "_");
-		return paths::build() / ("boost_" + underscores);
-	}
-
 	fs::path lib_path() const
 	{
 		const std::string lib = "lib64-msvc-" + versions::boost_vs();
-		return src_path() / lib / "lib";
+		return source_path() / lib / "lib";
 	}
 
 	std::string python_dll() const
@@ -315,25 +302,24 @@ public:
 	}
 
 protected:
-	void do_fetch()
+	fs::path source_path() const override
+	{
+		return paths::build() / ("fmt-" + versions::fmt());
+	}
+
+	void do_fetch() override
 	{
 		const auto file = run_tool<downloader>(
 			"https://github.com/fmtlib/fmt/releases/download/" +
 			versions::fmt() + "/fmt-" + versions::fmt() + ".zip");
 
-		run_tool<decompresser>(file, src_path());
+		run_tool<decompresser>(file, source_path());
 	}
 
-	void do_build()
+	void do_build_and_install() override
 	{
-		run_tool<cmake_for_nmake>(src_path(), "-DFMT_TEST=OFF -DFMT_DOC=OFF");
-		nmake(src_path() / cmake_for_nmake::build_path());
-	}
-
-private:
-	fs::path src_path()
-	{
-		return paths::build() / ("fmt-" + versions::fmt());
+		run_tool<cmake_for_nmake>(source_path(), "-DFMT_TEST=OFF -DFMT_DOC=OFF");
+		nmake(source_path() / cmake_for_nmake::build_path());
 	}
 };
 
@@ -349,11 +335,9 @@ public:
 
 
 protected:
-	void do_fetch()
+	void do_fetch() override
 	{
-		//run_tool<process_runner>("dummy process", "grep 1");
 		std::apply([&](auto&&... args){ run_tool<Tool>(args...); }, args_);
-		//run_tool<Tool>(
 	}
 
 private:

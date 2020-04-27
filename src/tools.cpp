@@ -68,14 +68,18 @@ void vcvars()
 	}
 }
 
+
 process do_cmake(
 	const fs::path& build, const fs::path& prefix,
 	const std::string& args, const std::string& generator)
 {
-	std::string cmd = "cmake -G \"" + generator + "\"";
+	std::string cmd = "cmake -G \"" + generator + "\" -DCMAKE_INSTALL_MESSAGE=NEVER";
 
 	if (!prefix.empty())
 		cmd += " -DCMAKE_INSTALL_PREFIX=\"" + prefix.string() + "\"";
+
+	if (!conf::verbose())
+		cmd += " --log-level=WARNING";
 
 	if (!args.empty())
 		cmd += " " + args;
@@ -90,10 +94,9 @@ process do_nmake(
 	const std::string& what, const std::string& args)
 {
 	std::ostringstream oss;
+	oss << "\"" << third_party::jom().string() << "\"";
 
-	oss << "nmake";
-
-	if (conf::verbose())
+	if (!conf::verbose())
 		oss << " /C /S";
 
 	if (!args.empty())
@@ -144,7 +147,7 @@ process_runner::process_runner(std::string name, std::string cmd, fs::path cwd)
 
 void process_runner::do_run()
 {
-	set(op::run(cmd_, cwd_));
+	execute_and_join(op::run(cmd_, cwd_));
 }
 
 void process_runner::do_interrupt()
@@ -152,13 +155,26 @@ void process_runner::do_interrupt()
 	process_.interrupt();
 }
 
-void process_runner::set(process p)
+int process_runner::execute_and_join(process p, bool check_exit_code)
 {
 	process_ = std::move(p);
+	join(check_exit_code);
+	return process_.exit_code();
+}
+
+void process_runner::join(bool check_exit_code)
+{
 	process_.join();
 
-	if (process_.exit_code() != 0)
-		bail_out("command returned " + std::to_string(p.exit_code()));
+	if (check_exit_code)
+	{
+		if (process_.exit_code() != 0)
+		{
+			bail_out(
+				process_.cmd() + " returned " +
+				std::to_string(process_.exit_code()));
+		}
+	}
 }
 
 
@@ -192,8 +208,6 @@ decompresser::decompresser(fs::path file, fs::path where) :
 
 void decompresser::do_run()
 {
-	info("decompress " + file_.string() + " into " + where_.string());
-
 	if (fs::exists(interrupt_file()))
 	{
 		debug("found interrupt file " + interrupt_file().string());
@@ -205,7 +219,11 @@ void decompresser::do_run()
 		return;
 	}
 
-	const auto sevenz = "\"" + find_sevenz().string() + "\"";
+	info("decompress " + file_.string() + " into " + where_.string());
+
+	op::touch(interrupt_file());
+
+	const auto sevenz = "\"" + third_party::sevenz().string() + "\"";
 
 	//op::delete_directory(where_);
 	op::create_directories(where_);
@@ -225,17 +243,76 @@ void decompresser::do_run()
 			"\"" + file_.string() + "\" " + redir_nul());
 	}
 
-	set(std::move(p));
+	execute_and_join(std::move(p));
 
-	if (interrupted())
-		op::touch(interrupt_file());
-	else
+	if (!interrupted())
 		op::delete_file(interrupt_file());
 }
 
 fs::path decompresser::interrupt_file() const
 {
 	return where_ / "_builder_interrupted";
+}
+
+
+patcher::patcher(fs::path patch_dir, fs::path output_dir) :
+	process_runner("patcher"),
+	patches_(std::move(patch_dir)), output_(std::move(output_dir))
+{
+}
+
+void patcher::do_run()
+{
+	if (!fs::exists(patches_))
+		return;
+
+	std::ostringstream oss;
+
+	oss
+		<< "\"" << third_party::patch().string() << "\" "
+		<< "--read-only=ignore "
+		<< "--strip=0 "
+		<< "--directory=\"" << output_.string() << "\" ";
+
+	if (!conf::verbose())
+		oss << "--quiet ";
+
+	const std::string base = oss.str();
+
+	for (auto e : fs::directory_iterator(patches_))
+	{
+		if (!e.is_regular_file())
+			continue;
+
+		const auto p = e.path();
+		if (p.extension() != ".patch")
+		{
+			warn(
+				"file without .patch extension " + p.string() + " "
+				"in patches directory " + patches_.string());
+
+			continue;
+		}
+
+		const std::string input = "--input=\"" + p.string() + "\"";
+		const std::string check = base + " --dry-run --force --reverse " + input;
+		const std::string apply = base + " --forward --batch " + input;
+
+		{
+			// check
+			if (execute_and_join(op::run(check), false) == 0)
+			{
+				debug("patch " + p.string() + " already applied");
+				continue;
+			}
+		}
+
+		{
+			// apply
+			info("applying patch " + p.string());
+			execute_and_join(op::run(apply));
+		}
+	}
 }
 
 
@@ -254,7 +331,7 @@ void cmake_for_nmake::do_run()
 {
 	const auto build = root_ / build_path();
 	const std::string g = "NMake Makefiles";
-	set(do_cmake(build, prefix_, args_, g));
+	execute_and_join(do_cmake(build, prefix_, args_, g));
 }
 
 
@@ -273,7 +350,7 @@ void cmake_for_vs::do_run()
 {
 	const auto build = root_ / build_path();
 	const std::string g = "Visual Studio " + versions::vs() + " " + versions::vs_year();
-	set(do_cmake(build, prefix_, args_, g));
+	execute_and_join(do_cmake(build, prefix_, args_, g));
 }
 
 
@@ -284,7 +361,7 @@ nmake::nmake(fs::path dir, std::string args)
 
 void nmake::do_run()
 {
-	set(do_nmake(dir_, "", args_));
+	execute_and_join(do_nmake(dir_, "", args_));
 }
 
 nmake_install::nmake_install(fs::path dir, std::string args) :
@@ -295,7 +372,7 @@ nmake_install::nmake_install(fs::path dir, std::string args) :
 
 void nmake_install::do_run()
 {
-	set(do_nmake(dir_, "install", args_));
+	execute_and_join(do_nmake(dir_, "install", args_));
 }
 
 }	// namespace

@@ -6,12 +6,18 @@
 namespace builder
 {
 
-process::process(handle_ptr h)
-	: handle_(std::move(h)), code_(0)
+process::process()
+	: code_(0)
+{
+}
+
+process::process(std::string cmd, handle_ptr h)
+	: cmd_(std::move(cmd)), handle_(std::move(h)), code_(0)
 {
 }
 
 process::process(process&& p) :
+	cmd_(std::move(p.cmd_)),
 	handle_(std::move(p.handle_)),
 	interrupt_(p.interrupt_.load()),
 	code_(p.code_)
@@ -20,6 +26,7 @@ process::process(process&& p) :
 
 process& process::operator=(process&& p)
 {
+	cmd_ = std::move(p.cmd_);
 	handle_ = std::move(p.handle_);
 	interrupt_ = p.interrupt_.load();
 	code_ = p.code_;
@@ -84,6 +91,11 @@ void process::join()
 	}
 
 	handle_ = {};
+}
+
+const std::string& process::cmd() const
+{
+	return cmd_;
 }
 
 int process::exit_code() const
@@ -151,10 +163,70 @@ void op::remove_readonly(const fs::path& first)
 	}
 }
 
-void op::copy_file_to_dir(const fs::path& file, const fs::path& dir)
+bool is_source_better(const fs::path& src, const fs::path& dest)
 {
-	info(file.string() + " -> " + dir.string());
+	if (!fs::exists(dest))
+	{
+		debug("target " + dest.string() + " doesn't exist; copying");
+		return true;
+	}
 
+	std::error_code ec;
+
+	const auto src_size = fs::file_size(src, ec);
+	if (ec)
+	{
+		warn("failed to get size of " + src.string() + "; forcing copy");
+		return true;
+	}
+
+	const auto dest_size = fs::file_size(dest, ec);
+	if (ec)
+	{
+		warn("failed to get size of " + dest.string() + "; forcing copy");
+		return true;
+	}
+
+	if (src_size != dest_size)
+	{
+		debug(
+			"src " + src.string() + " is " + std::to_string(src_size) + "), "
+			"dest " + dest.string() + " is " + std::to_string(dest_size) + "); "
+			"sizes different, copying");
+
+		return true;
+	}
+
+
+	const auto src_time = fs::last_write_time(src, ec);
+	if (ec)
+	{
+		warn("failed to get time of " + src.string() + "; forcing copy");
+		return true;
+	}
+
+	const auto dest_time = fs::last_write_time(dest, ec);
+	if (ec)
+	{
+		warn("failed to get time of " + dest.string() + "; forcing copy");
+		return true;
+	}
+
+	if (src_time > dest_time)
+	{
+		debug(
+			"src " + src.string() + " is newer than " + dest.string() + "; "
+			"copying");
+
+		return true;
+	}
+
+	// same size, same date
+	return false;
+}
+
+void op::copy_file_to_dir_if_better(const fs::path& file, const fs::path& dir)
+{
 	check(file);
 	check(dir);
 
@@ -164,8 +236,18 @@ void op::copy_file_to_dir(const fs::path& file, const fs::path& dir)
 	if (fs::exists(dir) && !fs::is_directory(dir))
 		bail_out("can't copy to " + dir.string() + ", not a directory");
 
-	if (!conf::dry())
-		do_copy_file_to_dir(file, dir);
+	const auto target = dir / file.filename();
+	if (is_source_better(file, target))
+	{
+		info(file.string() + " -> " + dir.string());
+
+		if (!conf::dry())
+			do_copy_file_to_dir(file, dir);
+	}
+	else
+	{
+		debug("(skipped) " + file.string() + " -> " + dir.string());
+	}
 }
 
 process op::run(const std::string& cmd, const fs::path& cwd)
@@ -280,7 +362,7 @@ process op::do_run(const std::string& what, const fs::path& cwd)
 
 	::CloseHandle(pi.hThread);
 
-	return process(handle_ptr(pi.hProcess));
+	return process(what, handle_ptr(pi.hProcess));
 }
 
 void op::check(const fs::path& p)

@@ -19,6 +19,7 @@ struct paths
 {
 	static fs::path prefix();
 	static fs::path cache();
+	static fs::path patches();
 	static fs::path build();
 	static fs::path install();
 	static fs::path install_bin();
@@ -28,6 +29,13 @@ struct paths
 	static fs::path temp_dir();
 
 	static fs::path temp_file();
+};
+
+struct third_party
+{
+	static fs::path sevenz();
+	static fs::path jom();
+	static fs::path patch();
 };
 
 struct conf

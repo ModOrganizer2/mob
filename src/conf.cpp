@@ -34,6 +34,54 @@ const std::string& get_conf(const std::string& name)
 }
 
 
+fs::path find_root()
+{
+	debug("looking for root directory");
+
+	fs::path p = fs::absolute("third-party");
+	debug("checking " + p.string());
+
+	if (!fs::exists(p))
+	{
+		p = fs::absolute("../third-party");
+		debug("checking " + p.string());
+
+		if (!fs::exists(p))
+		{
+			p = fs::absolute("../../third-party");
+			debug("checking " + p.string());
+
+			if (!fs::exists(p))
+			{
+				p = fs::absolute("../../../third-party");
+				debug("checking " + p.string());
+
+				if (!fs::exists(p))
+					bail_out("root directory not found");
+			}
+		}
+	}
+
+	p = p.parent_path();
+
+	debug("found root directory at " + p.string());
+	return p;
+}
+
+fs::path find_in_root(const fs::path& file)
+{
+	static fs::path root = find_root();
+
+	fs::path p = root / file;
+	if (!fs::exists(p))
+		bail_out(p.string() + " not found");
+
+	debug("found " + p.string());
+	return p;
+}
+
+
+
 const std::string& versions::vs()       { return get_conf("vs"); }
 const std::string& versions::vs_year()  { return get_conf("vs_year"); }
 const std::string& versions::sevenzip() { return get_conf("sevenzip"); }
@@ -49,6 +97,12 @@ fs::path paths::build()          { return prefix() / get_conf("build"); }
 fs::path paths::install()        { return prefix() / get_conf("install"); }
 fs::path paths::install_bin( )   { return install() / get_conf("bin"); }
 fs::path paths::install_dlls()   { return install_bin() / get_conf("dlls"); }
+
+fs::path paths::patches()
+{
+	static fs::path p = find_in_root("patches");
+	return p;
+}
 
 
 fs::path paths::program_files_x86()
@@ -117,41 +171,34 @@ fs::path paths::temp_file()
 }
 
 
+
+fs::path third_party::sevenz()
+{
+	static fs::path path = find_in_root("third-party/bin/7z.exe");
+	return path;
+}
+
+fs::path third_party::jom()
+{
+	static fs::path path = find_in_root("third-party/bin/jom.exe");
+	return path;
+}
+
+fs::path third_party::patch()
+{
+	static fs::path path = find_in_root("third-party/bin/patch.exe");
+	return path;
+}
+
+
 bool conf::verbose()
 {
-	return true;
+	return false;
 }
 
 bool conf::dry()
 {
 	return false;
-}
-
-
-fs::path find_sevenz()
-{
-	static fs::path path = []
-	{
-		const fs::path sevenz = "7z.exe";
-		const fs::path third_party = "third-party/bin";
-
-		fs::path final;
-
-		if (fs::path p=third_party / sevenz; fs::exists(p))
-			final = fs::absolute(p);
-		else if(p = ".." / third_party / sevenz; fs::exists(p))
-			final = fs::absolute(p);
-		else if (p = "../../.." / third_party / sevenz; fs::exists(p))
-			final = fs::absolute(p);
-
-		if (final.empty())
-			bail_out("7z.exe not found");
-
-		debug("found " + final.string());
-		return final;
-	}();
-
-	return path;
 }
 
 }	// namespace

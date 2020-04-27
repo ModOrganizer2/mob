@@ -7,7 +7,7 @@ namespace builder
 {
 
 void vcvars();
-fs::path find_sevenz();
+
 
 class tool
 {
@@ -51,13 +51,14 @@ class process_runner : public tool
 {
 public:
 	process_runner(std::string name, std::string cmd, fs::path cwd={});
+	void join(bool check_exit_code=true);
 
 protected:
 	process_runner(std::string name);
 
 	void do_run() override;
 	void do_interrupt() override;
-	void set(process p);
+	int execute_and_join(process p, bool check_exit_code=true);
 
 private:
 	std::string cmd_;
@@ -79,6 +80,20 @@ private:
 	fs::path where_;
 
 	fs::path interrupt_file() const;
+};
+
+
+class patcher : public process_runner
+{
+public:
+	patcher(fs::path patch_dir, fs::path output_dir);
+
+protected:
+	void do_run() override;
+
+private:
+	fs::path patches_;
+	fs::path output_;
 };
 
 
