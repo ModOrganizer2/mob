@@ -56,5 +56,11 @@
 #include <Shlobj.h>
 #include <curl/curl.h>
 
-
 #pragma warning(pop)
+
+namespace builder
+{
+
+namespace fs = std::filesystem;
+
+}	// namespace

@@ -12,9 +12,39 @@
     <ClCompile Include="..\src\pch.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\conf.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\net.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tools.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\utility.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\op.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\net.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\conf.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\tools.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\op.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
