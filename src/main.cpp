@@ -345,13 +345,46 @@ protected:
 
 	void do_fetch() override
 	{
-		run_tool<git_clone>("google", "googletest", "master", source_path());
+		run_tool<git_clone>("google", "googletest", versions::gtest(), source_path());
 	}
 
 	void do_build_and_install() override
 	{
 		run_tool<cmake_for_nmake>(source_path());
 		run_tool<nmake>(source_path() / cmake_for_nmake::build_path());
+	}
+};
+
+
+class libbsarch : public task
+{
+public:
+	libbsarch()
+		: task("libbsarch")
+	{
+	}
+
+protected:
+	fs::path source_path() const override
+	{
+		return paths::build() / ("libbsarch-" + versions::libbsarch() + "-release-x64");
+	}
+
+	void do_fetch() override
+	{
+		const auto file = run_tool<downloader>(
+			"https://github.com/ModOrganizer2/libbsarch/releases/download/" +
+			versions::libbsarch() + "/" +
+			"libbsarch-" + versions::libbsarch() + "-release-x64.7z");
+
+		run_tool<decompresser>(file, source_path());
+	}
+
+	void do_build_and_install() override
+	{
+		op::copy_file_to_dir_if_better(
+			source_path() / "libbsarch.dll",
+			paths::install_dlls());
 	}
 };
 
@@ -406,6 +439,7 @@ int run(int argc, char** argv)
 		g_tasks.push_back(std::make_unique<boost>());
 		g_tasks.push_back(std::make_unique<fmt>());
 		g_tasks.push_back(std::make_unique<gtest>());
+		g_tasks.push_back(std::make_unique<libbsarch>());
 
 		if (argc > 1)
 		{
@@ -420,6 +454,11 @@ int run(int argc, char** argv)
 			}
 
 			std::cerr << std::string("task ") + argv[1] + " not found\n";
+			std::cerr << "valid tasks:\n";
+
+			for (auto&& t : g_tasks)
+				std::cerr << " - " << t->name() << "\n";
+
 			return 1;
 		}
 

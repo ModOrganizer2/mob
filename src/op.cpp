@@ -135,6 +135,9 @@ void op::delete_directory(const fs::path& p)
 
 void op::delete_file(const fs::path& p)
 {
+	if (!fs::exists(p))
+		return;
+
 	debug("deleting file " + p.string());
 	check(p);
 
@@ -230,11 +233,14 @@ void op::copy_file_to_dir_if_better(const fs::path& file, const fs::path& dir)
 	check(file);
 	check(dir);
 
-	if (!fs::exists(file) || !fs::is_regular_file(file))
-		bail_out("can't copy " + file.string() + ", not a file");
+	if (!conf::dry())
+	{
+		if (!fs::exists(file) || !fs::is_regular_file(file))
+			bail_out("can't copy " + file.string() + ", not a file");
 
-	if (fs::exists(dir) && !fs::is_directory(dir))
-		bail_out("can't copy to " + dir.string() + ", not a directory");
+		if (fs::exists(dir) && !fs::is_directory(dir))
+			bail_out("can't copy to " + dir.string() + ", not a directory");
+	}
 
 	const auto target = dir / file.filename();
 	if (is_source_better(file, target))
