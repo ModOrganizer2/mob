@@ -67,6 +67,27 @@ private:
 };
 
 
+class git_clone : public process_runner
+{
+public:
+	git_clone(
+		std::string author, std::string repo, std::string b, fs::path where);
+
+protected:
+	void do_run() override;
+
+private:
+	std::string author_;
+	std::string repo_;
+	std::string branch_;
+	fs::path where_;
+
+	void clone();
+	void pull();
+	url repo_url() const;
+};
+
+
 class decompresser : public process_runner
 {
 public:
@@ -100,7 +121,7 @@ private:
 class cmake_for_nmake : public process_runner
 {
 public:
-	cmake_for_nmake(fs::path root, std::string args, fs::path prefix={});
+	cmake_for_nmake(fs::path root, std::string args={}, fs::path prefix={});
 	static fs::path build_path();
 
 protected:
@@ -116,7 +137,7 @@ private:
 class cmake_for_vs : public process_runner
 {
 public:
-	cmake_for_vs(fs::path root, std::string args, fs::path prefix={});
+	cmake_for_vs(fs::path root, std::string args={}, fs::path prefix={});
 	static fs::path build_path();
 
 protected:

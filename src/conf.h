@@ -36,6 +36,8 @@ struct third_party
 	static fs::path sevenz();
 	static fs::path jom();
 	static fs::path patch();
+	static fs::path git();
+	static fs::path cmake();
 };
 
 struct conf

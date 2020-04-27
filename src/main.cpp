@@ -38,6 +38,11 @@ public:
 	}
 
 
+	const std::string& name() const
+	{
+		return name_;
+	}
+
 	void run()
 	{
 		info(name_);
@@ -319,7 +324,34 @@ protected:
 	void do_build_and_install() override
 	{
 		run_tool<cmake_for_nmake>(source_path(), "-DFMT_TEST=OFF -DFMT_DOC=OFF");
-		nmake(source_path() / cmake_for_nmake::build_path());
+		run_tool<nmake>(source_path() / cmake_for_nmake::build_path());
+	}
+};
+
+
+class gtest : public task
+{
+public:
+	gtest()
+		: task("gtest")
+	{
+	}
+
+protected:
+	fs::path source_path() const override
+	{
+		return paths::build() / "googletest";
+	}
+
+	void do_fetch() override
+	{
+		run_tool<git_clone>("google", "googletest", "master", source_path());
+	}
+
+	void do_build_and_install() override
+	{
+		run_tool<cmake_for_nmake>(source_path());
+		run_tool<nmake>(source_path() / cmake_for_nmake::build_path());
 	}
 };
 
@@ -361,7 +393,7 @@ BOOL WINAPI signal_handler(DWORD) noexcept
 }
 
 
-int run()
+int run(int argc, char** argv)
 {
 	try
 	{
@@ -373,6 +405,24 @@ int run()
 		g_tasks.push_back(std::make_unique<zlib>());
 		g_tasks.push_back(std::make_unique<boost>());
 		g_tasks.push_back(std::make_unique<fmt>());
+		g_tasks.push_back(std::make_unique<gtest>());
+
+		if (argc > 1)
+		{
+			for (auto&& t : g_tasks)
+			{
+				if (t->name() == argv[1])
+				{
+					t->run();
+					t->join();
+					return 0;
+				}
+			}
+
+			std::cerr << std::string("task ") + argv[1] + " not found\n";
+			return 1;
+		}
+
 
 		for (auto&& t : g_tasks)
 			t->run();
@@ -392,9 +442,9 @@ int run()
 } // namespace
 
 
-int main()
+int main(int argc, char** argv)
 {
-	int r = builder::run();
+	int r = builder::run(argc, argv);
 	builder::dump_logs();
 	//std::cin.get();
 	return r;

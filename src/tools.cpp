@@ -62,7 +62,7 @@ void vcvars()
 		const std::string name = line.substr(0, sep);
 		const std::string value = line.substr(sep + 1);
 
-		debug("setting env " + name);
+		//debug("setting env " + name);
 		SetEnvironmentVariableA(name.c_str(), nullptr);
 		SetEnvironmentVariableA(name.c_str(), value.c_str());
 	}
@@ -73,7 +73,9 @@ process do_cmake(
 	const fs::path& build, const fs::path& prefix,
 	const std::string& args, const std::string& generator)
 {
-	std::string cmd = "cmake -G \"" + generator + "\" -DCMAKE_INSTALL_MESSAGE=NEVER";
+	std::string cmd = "\"" + third_party::cmake().string() + "\"";
+
+	cmd += " -G \"" + generator + "\" -DCMAKE_INSTALL_MESSAGE=NEVER";
 
 	if (!prefix.empty())
 		cmd += " -DCMAKE_INSTALL_PREFIX=\"" + prefix.string() + "\"";
@@ -166,7 +168,7 @@ void process_runner::join(bool check_exit_code)
 {
 	process_.join();
 
-	if (check_exit_code)
+	if (check_exit_code && !interrupted())
 	{
 		if (process_.exit_code() != 0)
 		{
@@ -197,6 +199,61 @@ void downloader::do_run()
 void downloader::do_interrupt()
 {
 	dl_.interrupt();
+}
+
+
+git_clone::git_clone(std::string a, std::string r, std::string b, fs::path w) :
+	process_runner("git_clone"),
+	author_(std::move(a)),
+	repo_(std::move(r)),
+	branch_(std::move(b)),
+	where_(std::move(w))
+{
+}
+
+void git_clone::do_run()
+{
+	const fs::path dot_git = where_ / ".git";
+
+	if (!fs::exists(dot_git))
+		clone();
+	else
+		pull();
+}
+
+void git_clone::clone()
+{
+	std::ostringstream oss;
+
+	oss
+		<< "\"" + third_party::git().string() + "\""
+		<< " clone"
+		<< " --recurse-submodules"
+		<< " --depth 1"
+		<< " --branch \"" + branch_ + "\" "
+		<< " \"" + repo_url().string() + "\" "
+		<< " \"" + where_.string() + "\"";
+
+	execute_and_join(op::run(oss.str()));
+}
+
+void git_clone::pull()
+{
+	std::ostringstream oss;
+
+	oss
+		<< "\"" + third_party::git().string() + "\""
+		<< " pull"
+		<< " --recurse-submodules"
+		<< " \"" + repo_url().string() + "\" "
+		<< " \"" << branch_ << "\"";
+
+	execute_and_join(op::run(oss.str(), where_));
+}
+
+url git_clone::repo_url() const
+{
+	return "https://github.com/" + author_ + "/" + repo_ + ".git";
 }
 
 

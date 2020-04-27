@@ -190,10 +190,20 @@ fs::path third_party::patch()
 	return path;
 }
 
+fs::path third_party::git()
+{
+	return "git";
+}
+
+fs::path third_party::cmake()
+{
+	return "cmake";
+}
+
 
 bool conf::verbose()
 {
-	return false;
+	return true;
 }
 
 bool conf::dry()
