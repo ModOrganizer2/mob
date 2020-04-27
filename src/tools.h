@@ -13,14 +13,14 @@ class cmake_for_nmake
 {
 public:
 	static fs::path build_path();
-	fs::path run(const fs::path& root, const fs::path& prefix={});
+	fs::path run(const fs::path& root, const std::string& args, const fs::path& prefix={});
 };
 
 class cmake_for_vs
 {
 public:
 	static fs::path build_path();
-	fs::path run(const fs::path& root, const fs::path& prefix={});
+	fs::path run(const fs::path& root, const std::string& args, const fs::path& prefix={});
 };
 
 

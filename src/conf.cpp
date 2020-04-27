@@ -14,6 +14,7 @@ static std::map<std::string, std::string> g_conf =
 	{"boost",    "1.72.0"},
 	{"boost_vs", "14.2"},
 	{"python",   "3.8.1"},
+	{"fmt",      "6.1.2"},
 
 	{"prefix",   R"(C:\dev\projects\mobuild-out)"},
 	{"downloads", "downloads"},
@@ -40,6 +41,7 @@ const std::string& versions::zlib()     { return get_conf("zlib"); }
 const std::string& versions::boost()    { return get_conf("boost"); }
 const std::string& versions::boost_vs() { return get_conf("boost_vs"); }
 const std::string& versions::python()   { return get_conf("python"); }
+const std::string& versions::fmt()      { return get_conf("fmt"); }
 
 fs::path paths::prefix()         { return get_conf("prefix"); }
 fs::path paths::cache()          { return prefix() / get_conf("downloads"); }

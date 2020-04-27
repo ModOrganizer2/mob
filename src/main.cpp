@@ -104,7 +104,7 @@ protected:
 
 	void do_build()
 	{
-		cmake_for_nmake().run(src_path(), src_path());
+		cmake_for_nmake().run(src_path(), "", src_path());
 		nmake(src_path() / cmake_for_nmake::build_path());
 	}
 
@@ -209,15 +209,48 @@ private:
 };
 
 
+class fmt : public task
+{
+public:
+	fmt()
+		: task("fmt")
+	{
+	}
+
+protected:
+	void do_fetch()
+	{
+		const auto file = download(
+			"https://github.com/fmtlib/fmt/releases/download/" +
+			versions::fmt() + "/fmt-" + versions::fmt() + ".zip");
+
+		decompress(file, src_path());
+	}
+
+	void do_build()
+	{
+		cmake_for_nmake().run(src_path(), "-DFMT_TEST=OFF -DFMT_DOC=OFF");
+		nmake(src_path() / cmake_for_nmake::build_path());
+	}
+
+private:
+	fs::path src_path()
+	{
+		return paths::build() / ("fmt-" + versions::fmt());
+	}
+};
+
+
 int run()
 {
 	try
 	{
 		vcvars();
 
-		sevenz().run();
-		zlib().run();
-		boost().run();
+		//sevenz().run();
+		//zlib().run();
+		//boost().run();
+		fmt().run();
 
 		return 0;
 	}

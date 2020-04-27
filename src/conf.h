@@ -12,6 +12,7 @@ struct versions
 	static const std::string& boost();
 	static const std::string& boost_vs();
 	static const std::string& python();
+	static const std::string& fmt();
 };
 
 struct paths

@@ -99,12 +99,17 @@ void decompress(const fs::path& file, const fs::path& where)
 }
 
 
-void cmake(const fs::path& build, const fs::path& prefix, const std::string& generator)
+void cmake(
+	const fs::path& build, const fs::path& prefix,
+	const std::string& args, const std::string& generator)
 {
 	std::string cmd = "cmake -G \"" + generator + "\"";
 
 	if (!prefix.empty())
 		cmd += " -DCMAKE_INSTALL_PREFIX=\"" + prefix.string() + "\"";
+
+	if (!args.empty())
+		cmd += " " + args;
 
 	cmd += " ..";
 
@@ -117,11 +122,12 @@ fs::path cmake_for_nmake::build_path()
 	return "build";
 }
 
-fs::path cmake_for_nmake::run(const fs::path& root, const fs::path& prefix)
+fs::path cmake_for_nmake::run(
+	const fs::path& root, const std::string& args, const fs::path& prefix)
 {
 	const auto build = root / build_path();
 	const std::string g = "NMake Makefiles";
-	cmake(build, prefix, g);
+	cmake(build, prefix, args, g);
 	return build;
 }
 
@@ -131,11 +137,12 @@ fs::path cmake_for_vs::build_path()
 	return "vsbuild";
 }
 
-fs::path cmake_for_vs::run(const fs::path& root, const fs::path& prefix)
+fs::path cmake_for_vs::run(
+	const fs::path& root, const std::string& args, const fs::path& prefix)
 {
 	const auto build = root / build_path();
 	const std::string g = "Visual Studio " + versions::vs() + " " + versions::vs_year();
-	cmake(build, prefix, g);
+	cmake(build, prefix, args, g);
 	return build;
 }
 
