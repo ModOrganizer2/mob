@@ -36,7 +36,7 @@ const std::string& url::string() const
 	return s_;
 }
 
-std::string url::file() const
+std::string url::filename() const
 {
 	const auto pos = s_.find_last_of("/");
 
@@ -52,16 +52,10 @@ curl_downloader::curl_downloader()
 {
 }
 
-fs::path curl_downloader::path_for_url(const fs::path& where, const url& u)
+void curl_downloader::start(const url& u, const fs::path& path)
 {
-	return where / u.file();
-}
-
-void curl_downloader::start(const fs::path& where, const url& u)
-{
-	where_ = where;
 	url_ = u;
-	path_ = path_for_url(where, u);
+	path_ = path;
 	ok_ = false;
 
 	debug("downloading " + url_.string() + " to " + path_.string());
@@ -86,11 +80,6 @@ void curl_downloader::interrupt()
 bool curl_downloader::ok() const
 {
 	return ok_;
-}
-
-fs::path curl_downloader::file() const
-{
-	return path_;
 }
 
 void curl_downloader::run()
@@ -152,7 +141,7 @@ void curl_downloader::on_write(char* ptr, std::size_t n) noexcept
 {
 	if (!file_)
 	{
-		op::create_directories(where_);
+		op::create_directories(path_.parent_path());
 		file_ .reset(_wfopen(path_.native().c_str(), L"wb"));
 	}
 

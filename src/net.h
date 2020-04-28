@@ -14,7 +14,7 @@ public:
 	const char* c_str() const;
 	const std::string& string() const;
 
-	std::string file() const;
+	std::string filename() const;
 
 private:
 	std::string s_;
@@ -26,17 +26,12 @@ class curl_downloader
 public:
 	curl_downloader();
 
-	void start(const fs::path& where, const url& u);
+	void start(const url& u, const fs::path& file);
 	void join();
 	void interrupt();
-
 	bool ok() const;
-	fs::path file() const;
-
-	static fs::path path_for_url(const fs::path& where, const url& u);
 
 private:
-	fs::path where_;
 	url url_;
 	fs::path path_;
 	file_ptr file_;

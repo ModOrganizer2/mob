@@ -187,7 +187,7 @@ void downloader::do_run()
 	// check if one the urls has already been downloaded
 	for (auto&& u : urls_)
 	{
-		const auto file = curl_downloader::path_for_url(paths::cache(), u);
+		const auto file = path_for_url(u);
 		if (fs::exists(file))
 		{
 			file_ = file;
@@ -199,12 +199,14 @@ void downloader::do_run()
 	// try them in order
 	for (auto&& u : urls_)
 	{
-		dl_.start(paths::cache(), std::move(u));
+		const fs::path file = path_for_url(u);
+
+		dl_.start(u, file);
 		dl_.join();
 
 		if (dl_.ok())
 		{
-			file_ = dl_.file();
+			file_ = file;
 			return;
 		}
 	}
@@ -216,6 +218,30 @@ void downloader::do_run()
 void downloader::do_interrupt()
 {
 	dl_.interrupt();
+}
+
+fs::path downloader::path_for_url(const url& u) const
+{
+	std::string filename;
+
+	std::string url_string = u.string();
+
+	if (url_string.find("sourceforge.net") != std::string::npos)
+	{
+		// sf downloads end with /download, strip it to get the filename
+		const std::string strip = "/download";
+
+		if (url_string.ends_with(strip))
+			url_string = url_string.substr(0, url_string.size() - strip.size());
+
+		filename = url(url_string).filename();
+	}
+	else
+	{
+		filename = u.filename();
+	}
+
+	return paths::cache() / filename;
 }
 
 

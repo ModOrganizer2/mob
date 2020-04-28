@@ -47,6 +47,8 @@ private:
 	curl_downloader dl_;
 	fs::path file_;
 	std::vector<url> urls_;
+
+	fs::path path_for_url(const url& u) const;
 };
 
 

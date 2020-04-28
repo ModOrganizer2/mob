@@ -703,6 +703,31 @@ private:
 };
 
 
+class bzip2 : public task
+{
+public:
+	bzip2()
+		: task("bzip2")
+	{
+	}
+
+protected:
+	fs::path source_path() const override
+	{
+		return paths::build() / ("bzip2-" + versions::bzip2());
+	}
+
+	void do_fetch() override
+	{
+		const auto file = run_tool<downloader>(
+			"https://sourceforge.net/projects/bzip2/files/"
+			"bzip2-" + versions::bzip2() + ".tar.gz/download")->file();
+
+		run_tool<decompresser>(file, source_path());
+	}
+};
+
+
 class python : public task
 {
 public:
@@ -801,7 +826,8 @@ int run(int argc, char** argv)
 		//g_tasks.push_back(std::make_unique<libloot>());
 		//g_tasks.push_back(std::make_unique<python>());
 		//g_tasks.push_back(std::make_unique<libffi>());
-		g_tasks.push_back(std::make_unique<openssl>());
+		//g_tasks.push_back(std::make_unique<openssl>());
+		g_tasks.push_back(std::make_unique<bzip2>());
 
 		if (argc > 1)
 		{

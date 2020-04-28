@@ -20,6 +20,7 @@ static std::map<std::string, std::string> g_conf =
 	{"libloot",      "0.15.1"},
 	{"libloot_hash", "gf725dd7"},
 	{"openssl",      "1.1.1d"},
+	{"bzip2",        "1.0.6"},
 
 	{"prefix",   R"(C:\dev\projects\mobuild-out)"},
 };
@@ -95,6 +96,7 @@ const std::string& versions::libbsarch()    { return get_conf("libbsarch"); }
 const std::string& versions::libloot()      { return get_conf("libloot"); }
 const std::string& versions::libloot_hash() { return get_conf("libloot_hash"); }
 const std::string& versions::openssl()      { return get_conf("openssl"); }
+const std::string& versions::bzip2()		{ return get_conf("bzip2"); }
 
 bool prebuilt::boost() { return false; }
 
