@@ -91,25 +91,6 @@ process do_cmake(
 	return op::run(cmd, build);
 }
 
-process do_nmake(
-	const fs::path& dir,
-	const std::string& what, const std::string& args)
-{
-	std::ostringstream oss;
-	oss << "\"" << third_party::jom().string() << "\"";
-
-	if (!conf::verbose())
-		oss << " /C /S";
-
-	if (!args.empty())
-		oss << " " << args;
-
-	if (!what.empty())
-		oss << " " << what;
-
-	return op::run(oss.str(), dir);
-}
-
 
 tool::tool(std::string name)
 	: name_(std::move(name)), interrupted_(false)
@@ -179,21 +160,57 @@ void process_runner::join(bool check_exit_code)
 	}
 }
 
+int process_runner::exit_code() const
+{
+	return process_.exit_code();
+}
+
 
 downloader::downloader(url u)
-	: tool("downloader"), dl_(paths::cache(), std::move(u))
+	: tool("downloader")
+{
+	urls_.push_back(std::move(u));
+}
+
+downloader::downloader(std::vector<url> urls)
+	: tool("downloader"), urls_(std::move(urls))
 {
 }
 
-fs::path downloader::result() const
+fs::path downloader::file() const
 {
-	return dl_.file();
+	return file_;
 }
 
 void downloader::do_run()
 {
-	dl_.start();
-	dl_.join();
+	// check if one the urls has already been downloaded
+	for (auto&& u : urls_)
+	{
+		const auto file = curl_downloader::path_for_url(paths::cache(), u);
+		if (fs::exists(file))
+		{
+			file_ = file;
+			debug("download " + file_.string() + " already exists");
+			return;
+		}
+	}
+
+	// try them in order
+	for (auto&& u : urls_)
+	{
+		dl_.start(paths::cache(), std::move(u));
+		dl_.join();
+
+		if (dl_.ok())
+		{
+			file_ = dl_.file();
+			return;
+		}
+	}
+
+	// all failed
+	bail_out("all urls failed");
 }
 
 void downloader::do_interrupt()
@@ -282,25 +299,44 @@ void decompresser::do_run()
 
 	const auto sevenz = "\"" + third_party::sevenz().string() + "\"";
 
-	//op::delete_directory(where_);
 	op::create_directories(where_);
+	directory_deleter delete_output(where_);
 
 	process p;
+
+	// the -spe from 7z is supposed to figure out if there's a folder in the
+	// archive with the same name as the target and extract its content to
+	// avoid duplicating the folder
+	//
+	// however, it fails miserably if there are files along with that folder,
+	// which is the case for openssl:
+	//
+	//  openssl-1.1.1d.tar/
+	//   +- openssl-1.1.1d/
+	//   +- pax_global_header
+	//
+	// that pax_global_header makes 7z fail with "unspecified error"
+	//
+	// so the handling of a duplicate directory is done manually in
+	// check_duplicate_directory() below
 
 	if (file_.string().ends_with(".tar.gz"))
 	{
 		p = op::run(
 			sevenz + " x -so \"" + file_.string() + "\" | " +
-			sevenz + " x -aoa -spe -si -ttar -o\"" + where_.string() + "\" " + redir_nul());
+			sevenz + " x -aoa -si -ttar -o\"" + where_.string() + "\" " + redir_nul());
 	}
 	else
 	{
 		p = op::run(
-			sevenz + " x -aoa -spe -bd -bb0 -o\"" + where_.string() + "\" "
+			sevenz + " x -aoa -bd -bb0 -o\"" + where_.string() + "\" "
 			"\"" + file_.string() + "\" " + redir_nul());
 	}
 
 	execute_and_join(std::move(p));
+	check_duplicate_directory();
+
+	delete_output.cancel();
 
 	if (!interrupted())
 		op::delete_file(interrupt_file());
@@ -308,7 +344,58 @@ void decompresser::do_run()
 
 fs::path decompresser::interrupt_file() const
 {
-	return where_ / "_builder_interrupted";
+	return where_ / "_mob_interrupted";
+}
+
+void decompresser::check_duplicate_directory()
+{
+	const auto dir_name = where_.filename().string();
+
+	// check for a folder with the same name
+	if (!fs::exists(where_ / dir_name))
+		return;
+
+	// the archive contained a directory with the same name as the output
+	// directory
+
+	// delete anything other than this directory; some archives have
+	// useless files along with it
+	for (auto e : fs::directory_iterator(where_))
+	{
+		// but don't delete the directory itself
+		if (e.path().filename() == dir_name)
+			continue;
+
+		// or the interrupt file
+		if (e.path().filename() == interrupt_file().filename())
+			continue;
+
+		if (!fs::is_regular_file(e.path()))
+		{
+			// don't know what to do with archives that have the
+			// same directory _and_ other directories
+			bail_out(
+				"check_duplicate_directory: " + e.path().string() + " is "
+				"yet another directory");
+		}
+
+		op::delete_file(e.path());
+	}
+
+	// now there should only be two things in this directory: another
+	// directory with the same name and the interrupt file
+
+	// give it a temp name in case there's yet another directory with the
+	// same name in it
+	const auto temp_dir_name = where_ / ("_mob_" + dir_name );
+	op::rename(where_ / dir_name, where_ / temp_dir_name);
+
+	// move the content of the directory up
+	for (auto e : fs::directory_iterator(where_ / temp_dir_name))
+		op::move_to_directory(e.path(), where_);
+
+	// delete the old directory, which should be empty now
+	op::delete_directory(where_ / temp_dir_name);
 }
 
 
@@ -411,25 +498,36 @@ void cmake_for_vs::do_run()
 }
 
 
-nmake::nmake(fs::path dir, std::string args)
-	: process_runner("nmake"), dir_(std::move(dir)), args_(std::move(args))
+jom::jom(fs::path dir, std::string target, std::string args, flags f) :
+	process_runner("jom " + target),
+	dir_(std::move(dir)), target_(std::move(target)),
+	args_(std::move(args)), flags_(f)
 {
 }
 
-void nmake::do_run()
+void jom::do_run()
 {
-	execute_and_join(do_nmake(dir_, "", args_));
-}
+	std::ostringstream oss;
+	oss << "\"" << third_party::jom().string() << "\"";
 
-nmake_install::nmake_install(fs::path dir, std::string args) :
-	process_runner("nmake_install"),
-	dir_(std::move(dir)), args_(std::move(args))
-{
-}
+	if (!conf::verbose())
+		oss << " /C /S";
 
-void nmake_install::do_run()
-{
-	execute_and_join(do_nmake(dir_, "install", args_));
+	oss << " /K ";
+
+	if (flags_ & single_job)
+		oss << " /J 1";
+
+	if (!args_.empty())
+		oss << " " << args_;
+
+	if (!target_.empty())
+		oss << " " << target_;
+
+	oss << redir_nul();
+
+	const bool check_exit_code = !(flags_ & accept_failure);
+	execute_and_join(op::run(oss.str(), dir_), check_exit_code);
 }
 
 }	// namespace

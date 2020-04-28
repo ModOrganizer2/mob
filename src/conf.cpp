@@ -11,7 +11,7 @@ static std::map<std::string, std::string> g_conf =
 	{"vs_year",      "2019"},
 	{"sevenzip",     "19.00"},
 	{"zlib",         "1.2.11"},
-	{"boost",        "1.72.0"},
+	{"boost",        "1.72.0-b1-rc1"},
 	{"boost_vs",     "14.2"},
 	{"python",       "3.8.1"},
 	{"fmt",          "6.1.2"},
@@ -19,6 +19,7 @@ static std::map<std::string, std::string> g_conf =
 	{"libbsarch",    "0.0.8"},
 	{"libloot",      "0.15.1"},
 	{"libloot_hash", "gf725dd7"},
+	{"openssl",      "1.1.1d"},
 
 	{"prefix",   R"(C:\dev\projects\mobuild-out)"},
 };
@@ -93,6 +94,9 @@ const std::string& versions::gtest()        { return get_conf("gtest"); }
 const std::string& versions::libbsarch()    { return get_conf("libbsarch"); }
 const std::string& versions::libloot()      { return get_conf("libloot"); }
 const std::string& versions::libloot_hash() { return get_conf("libloot_hash"); }
+const std::string& versions::openssl()      { return get_conf("openssl"); }
+
+bool prebuilt::boost() { return false; }
 
 fs::path paths::prefix()         { return get_conf("prefix"); }
 fs::path paths::cache()          { return prefix() / "downloads"; }
@@ -101,6 +105,7 @@ fs::path paths::install()        { return prefix() / "install"; }
 fs::path paths::install_bin( )   { return install() / "bin"; }
 fs::path paths::install_dlls()   { return install_bin() / "dlls"; }
 fs::path paths::install_loot()   { return install_bin() / "loot"; }
+fs::path paths::install_pdbs()   { return install_bin() / "pdbs"; }
 
 fs::path paths::patches()
 {
@@ -175,23 +180,26 @@ fs::path paths::temp_file()
 }
 
 
+fs::path find_third_party_directory()
+{
+	static fs::path path = find_in_root("third-party");
+	return path;
+}
+
 
 fs::path third_party::sevenz()
 {
-	static fs::path path = find_in_root("third-party/bin/7z.exe");
-	return path;
+	return "7z";
 }
 
 fs::path third_party::jom()
 {
-	static fs::path path = find_in_root("third-party/bin/jom.exe");
-	return path;
+	return "jom";
 }
 
 fs::path third_party::patch()
 {
-	static fs::path path = find_in_root("third-party/bin/patch.exe");
-	return path;
+	return "patch";
 }
 
 fs::path third_party::git()
@@ -204,10 +212,15 @@ fs::path third_party::cmake()
 	return "cmake";
 }
 
+fs::path third_party::perl()
+{
+	return "perl";
+}
+
 
 bool conf::verbose()
 {
-	return true;
+	return false;
 }
 
 bool conf::dry()

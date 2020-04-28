@@ -24,22 +24,25 @@ private:
 class curl_downloader
 {
 public:
-	curl_downloader(fs::path where, url u);
+	curl_downloader();
 
-	void start();
+	void start(const fs::path& where, const url& u);
 	void join();
 	void interrupt();
 
+	bool ok() const;
 	fs::path file() const;
+
+	static fs::path path_for_url(const fs::path& where, const url& u);
 
 private:
 	fs::path where_;
 	url url_;
 	fs::path path_;
-	std::FILE* file_;
+	file_ptr file_;
 	std::thread thread_;
 	std::atomic<bool> interrupt_;
-	std::optional<bailed> bailed_;
+	bool ok_;
 
 	void run();
 

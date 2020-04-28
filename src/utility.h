@@ -21,20 +21,64 @@ private:
 };
 
 
-struct handle_deleter
+struct handle_closer
 {
 	using pointer = HANDLE;
 
 	void operator()(HANDLE h)
 	{
-		if (h != INVALID_HANDLE_VALUE) {
+		if (h != INVALID_HANDLE_VALUE)
 			::CloseHandle(h);
-		}
 	}
 };
 
-using handle_ptr = std::unique_ptr<HANDLE, handle_deleter>;
+using handle_ptr = std::unique_ptr<HANDLE, handle_closer>;
 
+
+struct file_closer
+{
+	void operator()(std::FILE* f)
+	{
+		if (f)
+			std::fclose(f);
+	}
+};
+
+using file_ptr = std::unique_ptr<FILE, file_closer>;
+
+
+class file_deleter
+{
+public:
+	file_deleter(fs::path p);
+	file_deleter(const file_deleter&) = delete;
+	file_deleter& operator=(const file_deleter&) = delete;
+	~file_deleter();
+
+	void delete_now();
+	void cancel();
+
+private:
+	fs::path p_;
+	bool delete_;
+};
+
+
+class directory_deleter
+{
+public:
+	directory_deleter(fs::path p);
+	directory_deleter(const directory_deleter&) = delete;
+	directory_deleter& operator=(const directory_deleter&) = delete;
+	~directory_deleter();
+
+	void delete_now();
+	void cancel();
+
+private:
+	fs::path p_;
+	bool delete_;
+};
 
 
 enum class level
@@ -82,6 +126,8 @@ void debug(Args&&... args)
 
 
 std::string env(const std::string& name);
+void env(const std::string& name, const std::string& value);
+void prepend_to_path(const fs::path& dir);
 
 std::string redir_nul();
 

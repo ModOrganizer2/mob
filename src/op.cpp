@@ -228,6 +228,40 @@ bool is_source_better(const fs::path& src, const fs::path& dest)
 	return false;
 }
 
+void op::rename(const fs::path& src, const fs::path& dest)
+{
+	check(src);
+	check(dest);
+
+	if (fs::exists(dest))
+	{
+		bail_out(
+			"can't rename " + src.string() + " to " + dest.string() + ", "
+			"already exists");
+	}
+
+	debug("renaming " + src.string() + " to " + dest.string());
+	do_rename(src, dest);
+}
+
+void op::move_to_directory(const fs::path& src, const fs::path& dest_dir)
+{
+	check(src);
+	check(dest_dir);
+
+	const auto target = dest_dir / src.filename();
+
+	if (fs::exists(target))
+	{
+		bail_out(
+			"can't move " + src.string() + " to " + dest_dir.string() + ", " +
+			src.filename().string() + " already exists");
+	}
+
+	debug("moving " + src.string() + " to " + target.string());
+	do_rename(src, target);
+}
+
 void op::copy_file_to_dir_if_better(const fs::path& file, const fs::path& dir)
 {
 	check(file);
@@ -245,7 +279,7 @@ void op::copy_file_to_dir_if_better(const fs::path& file, const fs::path& dir)
 	const auto target = dir / file.filename();
 	if (is_source_better(file, target))
 	{
-		info(file.string() + " -> " + dir.string());
+		debug(file.string() + " -> " + dir.string());
 
 		if (!conf::dry())
 			do_copy_file_to_dir(file, dir);
@@ -271,7 +305,11 @@ process op::run(const std::string& cmd, const fs::path& cwd)
 
 void op::do_touch(const fs::path& p)
 {
+	create_directories(p.parent_path());
+
 	std::ofstream out(p);
+	if (!out)
+		bail_out("failed to touch " + p.string());
 }
 
 void op::do_create_directories(const fs::path& p)
@@ -335,6 +373,15 @@ void op::do_remove_readonly(const fs::path& p)
 
 	if (ec)
 		bail_out("can't remove read-only flag on " + p.string(), ec);
+}
+
+void op::do_rename(const fs::path& src, const fs::path& dest)
+{
+	std::error_code ec;
+	fs::rename(src, dest, ec);
+
+	if (ec)
+		bail_out("can't rename " + src.string() + " to " + dest.string(), ec);
 }
 
 process op::do_run(const std::string& what, const fs::path& cwd)

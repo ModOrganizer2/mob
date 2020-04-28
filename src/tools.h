@@ -16,7 +16,6 @@ public:
 
 	void run();
 	void interrupt();
-	void result() {}
 
 protected:
 	tool(std::string name);
@@ -36,7 +35,9 @@ class downloader : public tool
 {
 public:
 	downloader(url u);
-	fs::path result() const;
+	downloader(std::vector<url> urls);
+
+	fs::path file() const;
 
 protected:
 	void do_run() override;
@@ -44,6 +45,8 @@ protected:
 
 private:
 	curl_downloader dl_;
+	fs::path file_;
+	std::vector<url> urls_;
 };
 
 
@@ -51,7 +54,9 @@ class process_runner : public tool
 {
 public:
 	process_runner(std::string name, std::string cmd, fs::path cwd={});
+
 	void join(bool check_exit_code=true);
+	int exit_code() const;
 
 protected:
 	process_runner(std::string name);
@@ -101,6 +106,7 @@ private:
 	fs::path where_;
 
 	fs::path interrupt_file() const;
+	void check_duplicate_directory();
 };
 
 
@@ -150,31 +156,28 @@ private:
 };
 
 
-class nmake : public process_runner
+class jom : public process_runner
 {
 public:
-	nmake(fs::path dir, std::string args={});
+	enum flags
+	{
+		default_flags  = 0x00,
+		single_job     = 0x01,
+		accept_failure = 0x02
+	};
+
+	jom(
+		fs::path dir, std::string target, std::string args,
+		flags f=default_flags);
 
 protected:
 	void do_run() override;
 
 private:
 	fs::path dir_;
+	std::string target_;
 	std::string args_;
-};
-
-
-class nmake_install : public process_runner
-{
-public:
-	nmake_install(fs::path dir, std::string args={});
-
-protected:
-	void do_run() override;
-
-private:
-	fs::path dir_;
-	std::string args_;
+	flags flags_;
 };
 
 }	// namespace

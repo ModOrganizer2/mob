@@ -17,6 +17,12 @@ struct versions
 	static const std::string& libbsarch();
 	static const std::string& libloot();
 	static const std::string& libloot_hash();
+	static const std::string& openssl();
+};
+
+struct prebuilt
+{
+	static bool boost();
 };
 
 struct paths
@@ -28,6 +34,7 @@ struct paths
 	static fs::path install();
 	static fs::path install_bin();
 	static fs::path install_dlls();
+	static fs::path install_pdbs();
 	static fs::path install_loot();
 
 	static fs::path program_files_x86();
@@ -43,7 +50,10 @@ struct third_party
 	static fs::path patch();
 	static fs::path git();
 	static fs::path cmake();
+	static fs::path perl();
 };
+
+fs::path find_third_party_directory();
 
 struct conf
 {

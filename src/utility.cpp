@@ -121,7 +121,23 @@ std::string env(const std::string& name)
 		name.c_str(), buffer.get(), static_cast<DWORD>(buffer_size));
 
 	return buffer.get();
+}
 
+void env(const std::string& name, const std::string& value)
+{
+	::SetEnvironmentVariableA(name.c_str(), value.c_str());
+}
+
+
+void prepend_to_path(const fs::path& dir)
+{
+	if (!fs::exists(dir))
+		bail_out("can't add " + dir.string() + " to path, doesn't exist");
+
+	if (!fs::is_directory(dir))
+		bail_out("can't add " + dir.string() + " to path, not a directory");
+
+	env("PATH", dir.string() + ";" + env("PATH"));
 }
 
 std::string read_text_file(const fs::path& p)
@@ -155,6 +171,52 @@ std::string replace_all(
 	}
 
 	return s;
+}
+
+
+file_deleter::file_deleter(fs::path p)
+	: p_(std::move(p)), delete_(true)
+{
+}
+
+file_deleter::~file_deleter()
+{
+	if (delete_)
+		delete_now();
+}
+
+void file_deleter::delete_now()
+{
+	if (fs::exists(p_))
+		op::delete_file(p_);
+}
+
+void file_deleter::cancel()
+{
+	delete_ = false;
+}
+
+
+directory_deleter::directory_deleter(fs::path p)
+	: p_(std::move(p)), delete_(true)
+{
+}
+
+directory_deleter::~directory_deleter()
+{
+	if (delete_)
+		delete_now();
+}
+
+void directory_deleter::delete_now()
+{
+	if (fs::exists(p_))
+		op::delete_directory(p_);
+}
+
+void directory_deleter::cancel()
+{
+	delete_ = false;
 }
 
 }	// namespace
