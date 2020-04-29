@@ -182,4 +182,22 @@ private:
 	flags flags_;
 };
 
+
+class msbuild : public process_runner
+{
+public:
+	msbuild(
+		fs::path sln,
+		std::vector<std::string> projects,
+		std::vector<std::string> params);
+
+protected:
+	void do_run() override;
+
+private:
+	fs::path sln_;
+	std::vector<std::string> projects_;
+	std::vector<std::string> params_;
+};
+
 }	// namespace

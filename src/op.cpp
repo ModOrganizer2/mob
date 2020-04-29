@@ -267,26 +267,43 @@ void op::copy_file_to_dir_if_better(const fs::path& file, const fs::path& dir)
 	check(file);
 	check(dir);
 
-	if (!conf::dry())
+	if (file.filename().string().find("*") == std::string::npos)
 	{
-		if (!fs::exists(file) || !fs::is_regular_file(file))
-			bail_out("can't copy " + file.string() + ", not a file");
-
-		if (fs::exists(dir) && !fs::is_directory(dir))
-			bail_out("can't copy to " + dir.string() + ", not a directory");
-	}
-
-	const auto target = dir / file.filename();
-	if (is_source_better(file, target))
-	{
-		debug(file.string() + " -> " + dir.string());
-
 		if (!conf::dry())
-			do_copy_file_to_dir(file, dir);
+		{
+			if (!fs::exists(file) || !fs::is_regular_file(file))
+				bail_out("can't copy " + file.string() + ", not a file");
+
+			if (fs::exists(dir) && !fs::is_directory(dir))
+				bail_out("can't copy to " + dir.string() + ", not a directory");
+		}
+
+		const auto target = dir / file.filename();
+		if (is_source_better(file, target))
+		{
+			debug(file.string() + " -> " + dir.string());
+
+			if (!conf::dry())
+				do_copy_file_to_dir(file, dir);
+		}
+		else
+		{
+			debug("(skipped) " + file.string() + " -> " + dir.string());
+		}
 	}
 	else
 	{
-		debug("(skipped) " + file.string() + " -> " + dir.string());
+		// wildcard
+		const auto file_parent = file.parent_path();
+		const auto wildcard = file.filename().string();
+
+		for (auto&& e : fs::directory_iterator(file_parent))
+		{
+			const auto name = e.path().filename().string();
+
+			if (PathMatchSpecA(name.c_str(), wildcard.c_str()))
+				copy_file_to_dir_if_better(e.path(), dir);
+		}
 	}
 }
 

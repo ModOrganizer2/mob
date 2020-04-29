@@ -136,4 +136,6 @@ std::string read_text_file(const fs::path& p);
 std::string replace_all(
 	std::string s, const std::string& from, const std::string& to);
 
+std::string join(const std::vector<std::string>& v, const std::string& sep);
+
 }	// namespace

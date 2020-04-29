@@ -173,6 +173,21 @@ std::string replace_all(
 	return s;
 }
 
+std::string join(const std::vector<std::string>& v, const std::string& sep)
+{
+	std::string s;
+
+	for (auto&& e : v)
+	{
+		if (!s.empty())
+			s += sep;
+
+		s += e;
+	}
+
+	return s;
+}
+
 
 file_deleter::file_deleter(fs::path p)
 	: p_(std::move(p)), delete_(true)

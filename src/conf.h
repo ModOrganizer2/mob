@@ -3,10 +3,35 @@
 namespace builder
 {
 
+struct conf
+{
+	static bool verbose();
+	static bool dry();
+};
+
+struct third_party
+{
+	static fs::path sevenz();
+	static fs::path jom();
+	static fs::path patch();
+	static fs::path git();
+	static fs::path cmake();
+	static fs::path perl();
+	static fs::path devenv();
+	static fs::path msbuild();
+};
+
+struct prebuilt
+{
+	static bool boost();
+};
+
 struct versions
 {
 	static const std::string& vs();
 	static const std::string& vs_year();
+	static const std::string& vs_toolset();
+	static const std::string& sdk();
 	static const std::string& sevenzip();
 	static const std::string& zlib();
 	static const std::string& boost();
@@ -21,21 +46,19 @@ struct versions
 	static const std::string& bzip2();
 };
 
-struct prebuilt
-{
-	static bool boost();
-};
-
 struct paths
 {
 	static fs::path prefix();
 	static fs::path cache();
 	static fs::path patches();
 	static fs::path build();
+
 	static fs::path install();
 	static fs::path install_bin();
-	static fs::path install_dlls();
+	static fs::path install_libs();
 	static fs::path install_pdbs();
+
+	static fs::path install_dlls();
 	static fs::path install_loot();
 
 	static fs::path program_files_x86();
@@ -44,22 +67,6 @@ struct paths
 	static fs::path temp_file();
 };
 
-struct third_party
-{
-	static fs::path sevenz();
-	static fs::path jom();
-	static fs::path patch();
-	static fs::path git();
-	static fs::path cmake();
-	static fs::path perl();
-};
-
 fs::path find_third_party_directory();
-
-struct conf
-{
-	static bool verbose();
-	static bool dry();
-};
 
 }	// namespace

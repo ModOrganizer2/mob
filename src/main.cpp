@@ -52,6 +52,9 @@ public:
 		return name_;
 	}
 
+	virtual fs::path get_source_path() const = 0;
+
+
 	void run()
 	{
 		info(name_);
@@ -100,7 +103,7 @@ public:
 	void fetch()
 	{
 		do_fetch();
-		run_tool<patcher>(paths::patches() / name_, source_path());
+		run_tool<patcher>(paths::patches() / name_, get_source_path());
 	}
 
 	void build_and_install()
@@ -122,7 +125,6 @@ protected:
 
 	virtual void do_fetch() {};
 	virtual void do_build_and_install() {};
-	virtual fs::path source_path() const = 0;
 
 	template <class Tool, class... Args>
 	std::unique_ptr<Tool> run_tool(Args&&... args)
@@ -160,20 +162,33 @@ private:
 std::mutex task::interrupt_mutex_;
 
 
-class sevenz : public task
+template <class Task>
+class basic_task : public task
+{
+public:
+	using task::task;
+
+	fs::path get_source_path() const override
+	{
+		return Task::source_path();
+	}
+};
+
+
+class sevenz : public basic_task<sevenz>
 {
 public:
 	sevenz()
-		: task("7z")
+		: basic_task("7z")
 	{
 	}
 
-protected:
-	fs::path source_path() const override
+	static fs::path source_path()
 	{
 		return paths::build() / ("7zip-" + versions::sevenzip());
 	}
 
+protected:
 	void do_fetch() override
 	{
 		const auto nodots = replace_all(versions::sevenzip(), ".", "");
@@ -198,20 +213,20 @@ protected:
 };
 
 
-class zlib : public task
+class zlib : public basic_task<zlib>
 {
 public:
 	zlib()
-		: task("zlib")
+		: basic_task("zlib")
 	{
 	}
 
-protected:
-	fs::path source_path() const override
+	static fs::path source_path()
 	{
 		return paths::build() / ("zlib-" + versions::zlib());
 	}
 
+protected:
 	void do_fetch() override
 	{
 		const auto file = run_tool<downloader>(
@@ -232,21 +247,21 @@ protected:
 };
 
 
-class boost : public task
+class boost : public basic_task<boost>
 {
 public:
 	boost()
-		: task("boost")
+		: basic_task("boost")
 	{
 	}
 
-protected:
-	fs::path source_path() const override
+	static fs::path source_path()
 	{
 		const auto underscores = replace_all(versions::boost(), ".", "_");
 		return paths::build() / ("boost_" + underscores);
 	}
 
+protected:
 	void do_fetch() override
 	{
 		if (prebuilt::boost())
@@ -395,20 +410,20 @@ private:
 };
 
 
-class fmt : public task
+class fmt : public basic_task<fmt>
 {
 public:
 	fmt()
-		: task("fmt")
+		: basic_task("fmt")
 	{
 	}
 
-protected:
-	fs::path source_path() const override
+	static fs::path source_path()
 	{
 		return paths::build() / ("fmt-" + versions::fmt());
 	}
 
+protected:
 	void do_fetch() override
 	{
 		const auto file = run_tool<downloader>(
@@ -426,20 +441,20 @@ protected:
 };
 
 
-class gtest : public task
+class gtest : public basic_task<gtest>
 {
 public:
 	gtest()
-		: task("gtest")
+		: basic_task("gtest")
 	{
 	}
 
-protected:
-	fs::path source_path() const override
+	static fs::path source_path()
 	{
 		return paths::build() / "googletest";
 	}
 
+protected:
 	void do_fetch() override
 	{
 		run_tool<git_clone>("google", "googletest", versions::gtest(), source_path());
@@ -453,23 +468,23 @@ protected:
 };
 
 
-class libbsarch : public task
+class libbsarch : public basic_task<libbsarch>
 {
 public:
 	libbsarch()
-		: task("libbsarch")
+		: basic_task("libbsarch")
 	{
+	}
+
+	static fs::path source_path()
+	{
+		return paths::build() / dir_name();
 	}
 
 protected:
-	std::string dir_name() const
+	static std::string dir_name()
 	{
 		return "libbsarch-" + versions::libbsarch() + "-release-x64";
-	}
-
-	fs::path source_path() const override
-	{
-		return paths::build() / dir_name();
 	}
 
 	void do_fetch() override
@@ -490,16 +505,21 @@ protected:
 };
 
 
-class libloot : public task
+class libloot : public basic_task<libloot>
 {
 public:
 	libloot()
-		: task("libloot")
+		: basic_task("libloot")
 	{
 	}
 
+	static fs::path source_path()
+	{
+		return paths::build() / dir_name();
+	}
+
 protected:
-	std::string dir_name() const
+	static std::string dir_name()
 	{
 		// libloot-0.15.1-0-gf725dd7_0.15.1-win64.7z, yeah
 		return
@@ -508,11 +528,6 @@ protected:
 			"0-" +
 			versions::libloot_hash() + "_" + versions::libloot() + "-" +
 			"win64";
-	}
-
-	fs::path source_path() const override
-	{
-		return paths::build() / dir_name();
 	}
 
 	void do_fetch() override
@@ -533,20 +548,30 @@ protected:
 };
 
 
-class libffi : public task
+class libffi : public basic_task<libffi>
 {
 public:
 	libffi()
-		: task("libffi")
+		: basic_task("libffi")
 	{
 	}
 
-protected:
-	fs::path source_path() const override
+	static fs::path source_path()
 	{
 		return paths::build() / "libffi";
 	}
 
+	static fs::path include_path()
+	{
+		return source_path() / "amd64" / "include";
+	}
+
+	static fs::path lib_path()
+	{
+		return source_path() / "amd64";
+	}
+
+protected:
 	void do_fetch() override
 	{
 		run_tool<git_clone>(
@@ -556,20 +581,25 @@ protected:
 };
 
 
-class openssl : public task
+class openssl : public basic_task<openssl>
 {
 public:
 	openssl()
-		: task("openssl")
+		: basic_task("openssl")
 	{
 	}
 
-protected:
-	fs::path source_path() const override
+	static fs::path source_path()
 	{
 		return paths::build() / ("openssl-" + versions::openssl());
 	}
 
+	static fs::path include_path()
+	{
+		return source_path() / "include";
+	}
+
+protected:
 	fs::path build_path() const
 	{
 		return source_path() / "build";
@@ -627,6 +657,10 @@ private:
 
 	void copy_files()
 	{
+		op::copy_file_to_dir_if_better(
+			source_path() / "ms" / "applink.c",
+			include_path());
+
 		copy_dlls_to(paths::install_bin());
 		copy_dlls_to(paths::install_dlls());
 		copy_pdbs_to(paths::install_pdbs());
@@ -703,20 +737,20 @@ private:
 };
 
 
-class bzip2 : public task
+class bzip2 : public basic_task<bzip2>
 {
 public:
 	bzip2()
-		: task("bzip2")
+		: basic_task("bzip2")
 	{
 	}
 
-protected:
-	fs::path source_path() const override
+	static fs::path source_path()
 	{
 		return paths::build() / ("bzip2-" + versions::bzip2());
 	}
 
+protected:
 	void do_fetch() override
 	{
 		const auto file = run_tool<downloader>(
@@ -728,55 +762,141 @@ protected:
 };
 
 
-class python : public task
+class python : public basic_task<python>
 {
 public:
 	python()
-		: task("python")
+		: basic_task("python")
 	{
+	}
+
+	static fs::path source_path()
+	{
+		return paths::build() / ("python-" + versions::python());
 	}
 
 protected:
-	std::string dir_name() const
-	{
-		// libloot-0.15.1-0-gf725dd7_0.15.1-win64.7z, yeah
-		return
-			"libloot-" +
-			versions::libloot() + "-" +
-			"0-" +
-			versions::libloot_hash() + "_" + versions::libloot() + "-" +
-			"win64";
-	}
-
-	fs::path source_path() const override
-	{
-		return paths::build() / dir_name();
-	}
-
 	void do_fetch() override
 	{
-		const auto file = run_tool<downloader>(
-			"https://github.com/loot/libloot/releases/download/" +
-			versions::libloot() + "/" + dir_name() + ".7z")->file();
+		const auto file = run_tool<git_clone>(
+			"python", "cpython", "v" + versions::python(),
+			source_path());
 
-		run_tool<decompresser>(file, source_path());
+		if (fs::exists(source_path() / "PCBuild" / "UpgradeLog.htm"))
+			debug("project already upgraded");
+		else
+			upgrade_project();
 	}
 
 	void do_build_and_install() override
 	{
+		run_tool<msbuild>(
+			solution_file(),
+			std::vector<std::string>
+			{
+				"python", "pythonw", "python3dll", "select", "pyexpat",
+				"unicodedata", "_queue", "_bz2", "_ssl"
+			},
+			std::vector<std::string>
+			{
+				"bz2Dir=" + bzip2::source_path().string(),
+				"zlibDir=" + zlib::source_path().string(),
+				"opensslIncludeDir=" + openssl::include_path().string(),
+				"opensslOutDir=" + openssl::source_path().string(),
+				"libffiIncludeDir=" + libffi::include_path().string(),
+				"libffiOutDir=" + libffi::lib_path().string()
+			});
+
+		if (fs::exists(build_path() / "_mob_packaged"))
+		{
+			debug("python already packaged");
+		}
+		else
+		{
+			run_tool<process_runner>(
+				"package python",
+				"\"" + (source_path() / "python.bat").string() + "\""
+				" \"PC/layout\""
+				" --source=\"" + source_path().string() + "\""
+				" --build=\"" + build_path().string() + "\""
+				" --temp=\"" + (build_path() / "pythoncore_temp").string() + "\""
+				" --copy=\"" + (build_path() / "pythoncore").string() + "\""
+				" --preset-embed",
+				source_path());
+
+			op::touch(build_path() / "_mob_packaged");
+		}
+
 		op::copy_file_to_dir_if_better(
-			source_path() / "loot.dll",
-			paths::install_loot());
+			source_path() / "PC" / "pyconfig.h",
+			source_path() / "Include");
+
+		op::copy_file_to_dir_if_better(
+			build_path() / "*.lib",
+			paths::install_libs());
+
+		op::copy_file_to_dir_if_better(
+			build_path() / "libffi*.dll",
+			paths::install_bin());
+
+		op::copy_file_to_dir_if_better(
+			build_path() / ("python" + version_for_dll() + ".dll"),
+			paths::install_bin());
+
+		op::copy_file_to_dir_if_better(
+			build_path() / ("python" + version_for_dll() + ".pdb"),
+			paths::install_pdbs());
+	}
+
+private:
+	void upgrade_project()
+	{
+		run_tool<process_runner>(
+			"upgrade project",
+			"\"" + third_party::devenv().string() + "\" "
+			"\"" + solution_file().string() + "\" "
+			"/upgrade" + redir_nul());
+	}
+
+	fs::path solution_file() const
+	{
+		return source_path() / "PCBuild" / "pcbuild.sln";
+	}
+
+	fs::path build_path() const
+	{
+		return source_path() / "PCBuild" / "amd64";
+	}
+
+	std::smatch parse_version() const
+	{
+		// 3.8.1
+		// .1 is optional
+		std::regex re(R"((\d+)\.(\d+)(?:\.(\d+))?)");
+		std::smatch m;
+
+		if (!std::regex_match(versions::python(), m, re))
+			bail_out("bad python version '" + versions::python() + "'");
+
+		return m;
+	}
+
+	std::string version_for_dll() const
+	{
+		std::smatch m = parse_version();
+
+		// 38
+		return m[1].str() + m[2].str();
 	}
 };
 
 
 template <class Tool, class... Args>
-class dummy : public task
+class dummy : public basic_task<dummy<Tool, Args...>>
 {
 public:
 	dummy(Args&&... args)
-		: task("dummy"), args_(std::forward<Args>(args)...)
+		: basic_task("dummy"), args_(std::forward<Args>(args)...)
 	{
 	}
 
@@ -824,10 +944,10 @@ int run(int argc, char** argv)
 		//g_tasks.push_back(std::make_unique<gtest>());
 		//g_tasks.push_back(std::make_unique<libbsarch>());
 		//g_tasks.push_back(std::make_unique<libloot>());
-		//g_tasks.push_back(std::make_unique<python>());
-		//g_tasks.push_back(std::make_unique<libffi>());
 		//g_tasks.push_back(std::make_unique<openssl>());
-		g_tasks.push_back(std::make_unique<bzip2>());
+		g_tasks.push_back(std::make_unique<python>());
+		//g_tasks.push_back(std::make_unique<libffi>());
+		//g_tasks.push_back(std::make_unique<bzip2>());
 
 		if (argc > 1)
 		{

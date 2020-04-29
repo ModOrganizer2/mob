@@ -1,5 +1,14 @@
 --- CPP/Build.mak	Thu Feb 21 07:50:31 2019
-+++ CPP/Build.mak	Mon Apr 27 15:38:30 2020
++++ CPP/Build.mak	Tue Apr 28 21:24:54 2020
+@@ -16,7 +16,7 @@
+
+
+ !IF "$(PLATFORM)" == "x64"
+-MY_ML = ml64 -Dx64 -WX
++MY_ML = ml64 -Dx64 -WX -nologo
+ !ELSEIF "$(PLATFORM)" == "arm"
+ MY_ML = armasm -WX
+ !ELSE
 @@ -137,6 +137,8 @@
 
  all: $(PROGPATH)

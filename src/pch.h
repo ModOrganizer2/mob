@@ -58,6 +58,7 @@
 #include <atomic>
 
 #include <Shlobj.h>
+#include <shlwapi.h>
 #include <curl/curl.h>
 
 #pragma warning(pop)

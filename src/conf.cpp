@@ -5,36 +5,6 @@
 namespace builder
 {
 
-static std::map<std::string, std::string> g_conf =
-{
-	{"vs",           "16"},
-	{"vs_year",      "2019"},
-	{"sevenzip",     "19.00"},
-	{"zlib",         "1.2.11"},
-	{"boost",        "1.72.0-b1-rc1"},
-	{"boost_vs",     "14.2"},
-	{"python",       "3.8.1"},
-	{"fmt",          "6.1.2"},
-	{"gtest",        "master"},
-	{"libbsarch",    "0.0.8"},
-	{"libloot",      "0.15.1"},
-	{"libloot_hash", "gf725dd7"},
-	{"openssl",      "1.1.1d"},
-	{"bzip2",        "1.0.6"},
-
-	{"prefix",   R"(C:\dev\projects\mobuild-out)"},
-};
-
-const std::string& get_conf(const std::string& name)
-{
-	auto itor = g_conf.find(name);
-	if (itor == g_conf.end())
-		bail_out("conf '" + name + "' doesn't exist");
-
-	return itor->second;
-}
-
-
 fs::path find_root()
 {
 	debug("looking for root directory");
@@ -82,9 +52,63 @@ fs::path find_in_root(const fs::path& file)
 }
 
 
+fs::path find_third_party_directory()
+{
+	static fs::path path = find_in_root("third-party");
+	return path;
+}
+
+
+static std::map<std::string, std::string> g_conf =
+{
+	{"vs",           "16"},
+	{"vs_year",      "2019"},
+	{"vs_toolset",   "v142"},
+	{"sdk",          "10.0.18362.0"},
+	{"sevenzip",     "19.00"},
+	{"zlib",         "1.2.11"},
+	{"boost",        "1.72.0-b1-rc1"},
+	{"boost_vs",     "14.2"},
+	{"python",       "3.8.1"},
+	{"fmt",          "6.1.2"},
+	{"gtest",        "master"},
+	{"libbsarch",    "0.0.8"},
+	{"libloot",      "0.15.1"},
+	{"libloot_hash", "gf725dd7"},
+	{"openssl",      "1.1.1d"},
+	{"bzip2",        "1.0.6"},
+
+	{"prefix",   R"(C:\dev\projects\mobuild-out)"},
+};
+
+const std::string& get_conf(const std::string& name)
+{
+	auto itor = g_conf.find(name);
+	if (itor == g_conf.end())
+		bail_out("conf '" + name + "' doesn't exist");
+
+	return itor->second;
+}
+
+
+bool conf::verbose() { return true; }
+bool conf::dry()     { return false; }
+
+fs::path third_party::sevenz()  { return "7z"; }
+fs::path third_party::jom()     { return "jom"; }
+fs::path third_party::patch()   { return "patch"; }
+fs::path third_party::git()     { return "git"; }
+fs::path third_party::cmake()   { return "cmake"; }
+fs::path third_party::perl()    { return "perl"; }
+fs::path third_party::devenv()  { return "devenv"; }
+fs::path third_party::msbuild() { return "msbuild"; }
+
+bool prebuilt::boost() { return false; }
 
 const std::string& versions::vs()           { return get_conf("vs"); }
 const std::string& versions::vs_year()      { return get_conf("vs_year"); }
+const std::string& versions::vs_toolset()   { return get_conf("vs_toolset"); }
+const std::string& versions::sdk()          { return get_conf("sdk"); }
 const std::string& versions::sevenzip()     { return get_conf("sevenzip"); }
 const std::string& versions::zlib()         { return get_conf("zlib"); }
 const std::string& versions::boost()        { return get_conf("boost"); }
@@ -98,16 +122,17 @@ const std::string& versions::libloot_hash() { return get_conf("libloot_hash"); }
 const std::string& versions::openssl()      { return get_conf("openssl"); }
 const std::string& versions::bzip2()		{ return get_conf("bzip2"); }
 
-bool prebuilt::boost() { return false; }
-
 fs::path paths::prefix()         { return get_conf("prefix"); }
 fs::path paths::cache()          { return prefix() / "downloads"; }
 fs::path paths::build()          { return prefix() / "build"; }
 fs::path paths::install()        { return prefix() / "install"; }
-fs::path paths::install_bin( )   { return install() / "bin"; }
+fs::path paths::install_bin()    { return install() / "bin"; }
+fs::path paths::install_libs()   { return install() / "libs"; }
+fs::path paths::install_pdbs()   { return install() / "pdbs"; }
 fs::path paths::install_dlls()   { return install_bin() / "dlls"; }
 fs::path paths::install_loot()   { return install_bin() / "loot"; }
-fs::path paths::install_pdbs()   { return install_bin() / "pdbs"; }
+
+
 
 fs::path paths::patches()
 {
@@ -179,55 +204,6 @@ fs::path paths::temp_file()
 	}
 
 	return dir / name;
-}
-
-
-fs::path find_third_party_directory()
-{
-	static fs::path path = find_in_root("third-party");
-	return path;
-}
-
-
-fs::path third_party::sevenz()
-{
-	return "7z";
-}
-
-fs::path third_party::jom()
-{
-	return "jom";
-}
-
-fs::path third_party::patch()
-{
-	return "patch";
-}
-
-fs::path third_party::git()
-{
-	return "git";
-}
-
-fs::path third_party::cmake()
-{
-	return "cmake";
-}
-
-fs::path third_party::perl()
-{
-	return "perl";
-}
-
-
-bool conf::verbose()
-{
-	return false;
-}
-
-bool conf::dry()
-{
-	return false;
 }
 
 }	// namespace

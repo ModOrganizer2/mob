@@ -1,0 +1,10 @@
+--- PCbuild/openssl.props	(revision 5c02a39a0b31a330e06b4d6f44835afb205dc7cc)
++++ PCbuild/openssl.props	(date 1575994670797)
+@@ -13,6 +13,7 @@
+     <_DLLSuffix>-1_1</_DLLSuffix>
+     <_DLLSuffix Condition="$(Platform) == 'ARM'">$(_DLLSuffix)-arm</_DLLSuffix>
+     <_DLLSuffix Condition="$(Platform) == 'ARM64'">$(_DLLSuffix)-arm64</_DLLSuffix>
++    <_DLLSuffix Condition="$(Platform) == 'x64'">$(_DLLSuffix)-x64</_DLLSuffix>
+   </PropertyGroup>
+   <ItemGroup>
+     <_SSLDLL Include="$(opensslOutDir)\libcrypto$(_DLLSuffix).dll" />

@@ -34,7 +34,7 @@ fs::path find_vcvars()
 
 void vcvars()
 {
-	info("vcvars");
+	debug("vcvars");
 
 	const fs::path tmp = paths::temp_file();
 
@@ -273,7 +273,16 @@ void git_clone::clone()
 		<< " clone"
 		<< " --recurse-submodules"
 		<< " --depth 1"
-		<< " --branch \"" + branch_ + "\" "
+		<< " --branch \"" + branch_ + "\" ";
+
+	if (!conf::verbose())
+	{
+		oss
+			<< " --quiet"
+			<< " -c advice.detachedHead=false";
+	}
+
+	oss
 		<< " \"" + repo_url().string() + "\" "
 		<< " \"" + where_.string() + "\"";
 
@@ -287,7 +296,12 @@ void git_clone::pull()
 	oss
 		<< "\"" + third_party::git().string() + "\""
 		<< " pull"
-		<< " --recurse-submodules"
+		<< " --recurse-submodules";
+
+	if (!conf::verbose())
+		oss << " --quiet";
+
+	oss
 		<< " \"" + repo_url().string() + "\" "
 		<< " \"" << branch_ << "\"";
 
@@ -465,8 +479,8 @@ void patcher::do_run()
 		}
 
 		const std::string input = "--input=\"" + p.string() + "\"";
-		const std::string check = base + " --dry-run --force --reverse " + input;
-		const std::string apply = base + " --forward --batch " + input;
+		const std::string check = base + " --dry-run --force --reverse " + input + redir_nul();
+		const std::string apply = base + " --forward --batch " + input + redir_nul();
 
 		{
 			// check
@@ -479,7 +493,7 @@ void patcher::do_run()
 
 		{
 			// apply
-			info("applying patch " + p.string());
+			debug("applying patch " + p.string());
 			execute_and_join(op::run(apply));
 		}
 	}
@@ -554,6 +568,51 @@ void jom::do_run()
 
 	const bool check_exit_code = !(flags_ & accept_failure);
 	execute_and_join(op::run(oss.str(), dir_), check_exit_code);
+}
+
+
+msbuild::msbuild(
+	fs::path sln,
+	std::vector<std::string> projects,
+	std::vector<std::string> params) :
+		process_runner("msbuild"),
+		sln_(std::move(sln)),
+		projects_(std::move(projects)),
+		params_(std::move(params))
+{
+}
+
+void msbuild::do_run()
+{
+	std::ostringstream oss;
+
+	oss
+		<< "\"" << third_party::msbuild().string() << "\""
+		<< " -nologo "
+		<< " -maxCpuCount"
+		<< " -property:UseMultiToolTask=true "
+		<< " -property:EnforceProcessCountAcrossBuilds=true "
+		<< " -property:Configuration=Release"
+		<< " -property:Platform=x64"
+		<< " -property:PlatformToolset=" + versions::vs_toolset()
+		<< " -property:WindowsTargetPlatformVersion=" << versions::sdk();
+
+	if (!projects_.empty())
+		oss << " -target:" + builder::join(projects_, ",");
+
+	for (auto&& p : params_)
+		oss << " -property:" + p;
+
+	if (!conf::verbose())
+	{
+		oss
+			<< " -verbosity:minimal "
+			<< " -consoleLoggerParameters:ErrorsOnly ";
+	}
+
+	oss << " \"" + sln_.string() + "\"";
+
+	execute_and_join(op::run(oss.str(), sln_.parent_path()));
 }
 
 }	// namespace
