@@ -91,7 +91,7 @@ const std::string& get_conf(const std::string& name)
 }
 
 
-bool conf::verbose() { return true; }
+bool conf::verbose() { return false; }
 bool conf::dry()     { return false; }
 
 fs::path third_party::sevenz()  { return "7z"; }

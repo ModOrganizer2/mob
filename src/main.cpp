@@ -103,7 +103,10 @@ public:
 	void fetch()
 	{
 		do_fetch();
-		run_tool<patcher>(paths::patches() / name_, get_source_path());
+
+		run_tool(patcher()
+			.task(name_)
+			.root(get_source_path()));
 	}
 
 	void build_and_install()
@@ -113,7 +116,7 @@ public:
 
 protected:
 	task(std::string name)
-		: name_(std::move(name)), interrupted_(false)
+		: name_(std::move(name)), interrupted_(false), tool_(nullptr)
 	{
 	}
 
@@ -126,26 +129,24 @@ protected:
 	virtual void do_fetch() {};
 	virtual void do_build_and_install() {};
 
-	template <class Tool, class... Args>
-	std::unique_ptr<Tool> run_tool(Args&&... args)
+	template <class Tool>
+	auto run_tool(Tool&& t)
 	{
-		Tool* p = nullptr;
-
 		{
+			tool_ = &t;
 			std::scoped_lock lock(tool_mutex_);
-			p = new Tool(std::forward<Args>(args)...);
-			tool_.reset(p);
 		}
 
 		check_interrupted();
-		p->run();
+		t.run();
 		check_interrupted();
 
 		{
 			std::scoped_lock lock(tool_mutex_);
-			tool_.release();
-			return std::unique_ptr<Tool>(p);
+			tool_ = nullptr;
 		}
+
+		return t.result();
 	}
 
 private:
@@ -153,7 +154,7 @@ private:
 	std::thread thread_;
 	std::atomic<bool> interrupted_;
 
-	std::unique_ptr<tool> tool_;
+	tool* tool_;
 	std::mutex tool_mutex_;
 
 	static std::mutex interrupt_mutex_;
@@ -191,24 +192,41 @@ public:
 protected:
 	void do_fetch() override
 	{
-		const auto nodots = replace_all(versions::sevenzip(), ".", "");
+		const auto file = run_tool(downloader(source_url()));
 
-		const auto file = run_tool<downloader>(
-			"https://www.7-zip.org/a/7z" + nodots + "-src.7z")->file();
-
-		run_tool<decompresser>(file, source_path());
+		run_tool(decompresser()
+			.file(file)
+			.output(source_path()));
 	}
 
 	void do_build_and_install() override
 	{
-		const fs::path src =
-			source_path() / "CPP" / "7zip" / "Bundles" / "Format7zF";
+		run_tool(jom()
+			.path(module_to_build())
+			.def("CPU=x64")
+			.def("NEW_COMPILER=1")
+			.def("MY_STATIC_LINK=1")
+			.def("NO_BUFFEROVERFLOWU=1"));
 
-		run_tool<jom>(src, "",
-			"/NOLOGO CPU=x64 NEW_COMPILER=1 "
-			"MY_STATIC_LINK=1 NO_BUFFEROVERFLOWU=1");
+		op::copy_file_to_dir_if_better(
+			module_to_build() / "x64/7z.dll",
+			paths::install_dlls());
+	}
 
-		op::copy_file_to_dir_if_better(src / "x64/7z.dll", paths::install_dlls());
+private:
+	url source_url() const
+	{
+		return "https://www.7-zip.org/a/7z" + version_for_url() + "-src.7z";
+	}
+
+	fs::path module_to_build() const
+	{
+		return source_path() / "CPP" / "7zip" / "Bundles" / "Format7zF";
+	}
+
+	std::string version_for_url() const
+	{
+		return replace_all(versions::sevenzip(), ".", "");
 	}
 };
 
@@ -229,20 +247,33 @@ public:
 protected:
 	void do_fetch() override
 	{
-		const auto file = run_tool<downloader>(
-			"http://zlib.net/zlib-" + versions::zlib() + ".tar.gz")->file();
+		const auto file = run_tool(downloader(source_url()));
 
-		run_tool<decompresser>(file, source_path());
+		run_tool(decompresser()
+			.file(file)
+			.output(source_path()));
 	}
 
 	void do_build_and_install() override
 	{
-		run_tool<cmake_for_nmake>(source_path(), "", source_path());
-		run_tool<jom>(source_path() / cmake_for_nmake::build_path(), "install", "");
+		const auto build_path = run_tool(cmake()
+			.generator(cmake::nmake)
+			.root(source_path())
+			.prefix(source_path()));
+
+		run_tool(jom()
+			.path(build_path)
+			.target("install"));
 
 		op::copy_file_to_dir_if_better(
-			source_path() / cmake_for_nmake::build_path() / "zconf.h",
+			build_path / "zconf.h",
 			source_path());
+	}
+
+private:
+	url source_url() const
+	{
+		return "https://zlib.net/zlib-" + versions::zlib() + ".tar.gz";
 	}
 };
 
@@ -299,14 +330,11 @@ private:
 
 	void fetch_prebuilt()
 	{
-		const auto underscores = replace_all(versions::boost(), ".", "_");
+		const auto file = run_tool(downloader(prebuilt_url()));
 
-		const auto file = run_tool<downloader>(
-			"https://github.com/ModOrganizer2/modorganizer-umbrella/"
-			"releases/download/1.1/boost_prebuilt_" + underscores + ".7z")
-				->file();
-
-		run_tool<decompresser>(file, source_path());
+		run_tool(decompresser()
+			.file(file)
+			.output(source_path()));
 	}
 
 	void build_and_install_prebuilt()
@@ -317,16 +345,33 @@ private:
 
 	void fetch_from_source()
 	{
-		const auto file = run_tool<downloader>(
-			"https://dl.bintray.com/boostorg/release/" +
-			boost_version_no_tags() + "/source/" +
-			boost_version_all_underscores() + ".zip")->file();
+		const auto file = run_tool(downloader(source_url()));
 
-		run_tool<decompresser>(file, source_path());
+		run_tool(decompresser()
+			.file(file)
+			.output(source_path()));
 	}
 
 	void build_and_install_from_source()
 	{
+	}
+
+
+	url prebuilt_url() const
+	{
+		const auto underscores = replace_all(versions::boost(), ".", "_");
+
+		return
+			"https://github.com/ModOrganizer2/modorganizer-umbrella/"
+			"releases/download/1.1/boost_prebuilt_" + underscores + ".7z";
+	}
+
+	url source_url() const
+	{
+		return
+			"https://dl.bintray.com/boostorg/release/" +
+			boost_version_no_tags() + "/source/" +
+			boost_version_all_underscores() + ".zip";
 	}
 
 	fs::path lib_path() const
@@ -426,17 +471,30 @@ public:
 protected:
 	void do_fetch() override
 	{
-		const auto file = run_tool<downloader>(
-			"https://github.com/fmtlib/fmt/releases/download/" +
-			versions::fmt() + "/fmt-" + versions::fmt() + ".zip")->file();
+		const auto file = run_tool(downloader(source_url()));
 
-		run_tool<decompresser>(file, source_path());
+		run_tool(decompresser()
+			.file(file)
+			.output(source_path()));
 	}
 
 	void do_build_and_install() override
 	{
-		run_tool<cmake_for_nmake>(source_path(), "-DFMT_TEST=OFF -DFMT_DOC=OFF");
-		run_tool<jom>(source_path() / cmake_for_nmake::build_path(), "", "");
+		const auto build_path = run_tool(cmake()
+			.generator(cmake::nmake)
+			.root(source_path())
+			.def("FMT_TEST=OFF")
+			.def("FMT_DOC=OFF"));
+
+		run_tool(jom().path(build_path));
+	}
+
+private:
+	url source_url() const
+	{
+		return
+			"https://github.com/fmtlib/fmt/releases/download/" +
+			versions::fmt() + "/fmt-" + versions::fmt() + ".zip";
 	}
 };
 
@@ -457,13 +515,21 @@ public:
 protected:
 	void do_fetch() override
 	{
-		run_tool<git_clone>("google", "googletest", versions::gtest(), source_path());
+		run_tool(git_clone()
+			.org("google")
+			.repo("googletest")
+			.branch(versions::gtest())
+			.output(source_path()));
 	}
 
 	void do_build_and_install() override
 	{
-		run_tool<cmake_for_nmake>(source_path());
-		run_tool<jom>(source_path() / cmake_for_nmake::build_path(), "", "");
+		const auto build_path = run_tool(cmake()
+			.generator(cmake::nmake)
+			.root(source_path()));
+
+		run_tool(jom()
+			.path(build_path));
 	}
 };
 
@@ -489,11 +555,11 @@ protected:
 
 	void do_fetch() override
 	{
-		const auto file = run_tool<downloader>(
-			"https://github.com/ModOrganizer2/libbsarch/releases/download/" +
-			versions::libbsarch() + "/" + dir_name() + ".7z")->file();
+		const auto file = run_tool(downloader(source_url()));
 
-		run_tool<decompresser>(file, source_path());
+		run_tool(decompresser()
+			.file(file)
+			.output(source_path()));
 	}
 
 	void do_build_and_install() override
@@ -501,6 +567,14 @@ protected:
 		op::copy_file_to_dir_if_better(
 			source_path() / "libbsarch.dll",
 			paths::install_dlls());
+	}
+
+private:
+	url source_url() const
+	{
+		return
+			"https://github.com/ModOrganizer2/libbsarch/releases/download/" +
+			versions::libbsarch() + "/" + dir_name() + ".7z";
 	}
 };
 
@@ -532,11 +606,11 @@ protected:
 
 	void do_fetch() override
 	{
-		const auto file = run_tool<downloader>(
-			"https://github.com/loot/libloot/releases/download/" +
-			versions::libloot() + "/" + dir_name() + ".7z")->file();
+		const auto file = run_tool(downloader(source_url()));
 
-		run_tool<decompresser>(file, source_path());
+		run_tool(decompresser()
+			.file(file)
+			.output(source_path()));
 	}
 
 	void do_build_and_install() override
@@ -544,6 +618,14 @@ protected:
 		op::copy_file_to_dir_if_better(
 			source_path() / "loot.dll",
 			paths::install_loot());
+	}
+
+private:
+	url source_url() const
+	{
+		return
+			"https://github.com/loot/libloot/releases/download/" +
+			versions::libloot() + "/" + dir_name() + ".7z";
 	}
 };
 
@@ -574,9 +656,11 @@ public:
 protected:
 	void do_fetch() override
 	{
-		run_tool<git_clone>(
-			"python", "cpython-bin-deps", "libffi",
-			source_path());
+		run_tool(git_clone()
+			.org("python")
+			.repo("cpython-bin-deps")
+			.branch("libffi")
+			.output(source_path()));
 	}
 };
 
@@ -607,11 +691,11 @@ protected:
 
 	void do_fetch() override
 	{
-		const std::string filename = "openssl-" + versions::openssl() + ".tar.gz";
-		const auto file = run_tool<downloader>(
-			"https://www.openssl.org/source/" + filename)->file();
+		const auto file = run_tool(downloader(source_url()));
 
-		run_tool<decompresser>(file, source_path());
+		run_tool(decompresser()
+			.file(file)
+			.output(source_path()));
 	}
 
 	void do_build_and_install() override
@@ -630,10 +714,10 @@ protected:
 private:
 	void configure()
 	{
-		run_tool<process_runner>(cmd(third_party::perl())
+		run_tool(process_runner(third_party::perl(), cmd::stdout_is_verbose)
 			.arg("Configure")
-			.arg("--openssldir", build_path())
-			.arg("--prefix", build_path())
+			.arg("--openssldir=", build_path())
+			.arg("--prefix=", build_path())
 			.arg("-FS")
 			.arg("-MP1")
 			.arg("VC-WIN64A")
@@ -644,14 +728,19 @@ private:
 	{
 		for (int tries=0; tries<3; ++tries)
 		{
-			const auto tool = run_tool<jom>(
-				source_path(), "install_engines", "", jom::accept_failure);
+			int exit_code = run_tool(jom()
+				.path(source_path())
+				.target("install_engines")
+				.flag(jom::accept_failure));
 
-			if (tool->exit_code() == 0)
+			if (exit_code == 0)
 				return;
 		}
 
-		run_tool<jom>(source_path(), "install_engines", "", jom::single_job);
+		run_tool(jom()
+			.path(source_path())
+			.target("install_engines")
+			.flag(jom::single_job));
 	}
 
 	void copy_files()
@@ -681,6 +770,14 @@ private:
 			op::copy_file_to_dir_if_better(
 				build_path() / "bin" / (name + ".pdb"), dir);
 		}
+	}
+
+
+	url source_url() const
+	{
+		return
+			"https://www.openssl.org/source/"
+			"openssl-" + versions::openssl() + ".tar.gz";
 	}
 
 	std::vector<std::string> output_names() const
@@ -752,11 +849,19 @@ public:
 protected:
 	void do_fetch() override
 	{
-		const auto file = run_tool<downloader>(
-			"https://sourceforge.net/projects/bzip2/files/"
-			"bzip2-" + versions::bzip2() + ".tar.gz/download")->file();
+		const auto file = run_tool(downloader(source_url()));
 
-		run_tool<decompresser>(file, source_path());
+		run_tool(decompresser()
+			.file(file)
+			.output(source_path()));
+	}
+
+private:
+	url source_url() const
+	{
+		return
+			"https://sourceforge.net/projects/bzip2/files/"
+			"bzip2-" + versions::bzip2() + ".tar.gz/download";
 	}
 };
 
@@ -777,9 +882,11 @@ public:
 protected:
 	void do_fetch() override
 	{
-		const auto file = run_tool<git_clone>(
-			"python", "cpython", "v" + versions::python(),
-			source_path());
+		run_tool(git_clone()
+			.org("python")
+			.repo("cpython")
+			.branch("v" + versions::python())
+			.output(source_path()));
 
 		if (fs::exists(source_path() / "PCBuild" / "UpgradeLog.htm"))
 			debug("project already upgraded");
@@ -789,22 +896,18 @@ protected:
 
 	void do_build_and_install() override
 	{
-		run_tool<msbuild>(
-			solution_file(),
-			std::vector<std::string>
-			{
+		run_tool(msbuild()
+			.solution(solution_file())
+			.projects({
 				"python", "pythonw", "python3dll", "select", "pyexpat",
-				"unicodedata", "_queue", "_bz2", "_ssl"
-			},
-			std::vector<std::string>
-			{
+				"unicodedata", "_queue", "_bz2", "_ssl"})
+			.parameters({
 				"bz2Dir=" + bzip2::source_path().string(),
 				"zlibDir=" + zlib::source_path().string(),
 				"opensslIncludeDir=" + openssl::include_path().string(),
 				"opensslOutDir=" + openssl::source_path().string(),
 				"libffiIncludeDir=" + libffi::include_path().string(),
-				"libffiOutDir=" + libffi::lib_path().string()
-			});
+				"libffiOutDir=" + libffi::lib_path().string()}));
 
 		if (fs::exists(build_path() / "_mob_packaged"))
 		{
@@ -812,7 +915,9 @@ protected:
 		}
 		else
 		{
-			run_tool<process_runner>(cmd(source_path() / "python.bat")
+			const auto bat = source_path() / "python.bat";
+
+			run_tool(process_runner(bat, cmd::stdout_is_verbose)
 				.name("package python")
 				.arg(fs::path("PC/layout"))
 				.arg("--source", source_path())
@@ -849,7 +954,7 @@ protected:
 private:
 	void upgrade_project()
 	{
-		run_tool<process_runner>(cmd(third_party::devenv())
+		run_tool(process_runner(third_party::devenv(), cmd::stdout_is_verbose)
 			.name("upgrade project")
 			.arg(solution_file())
 			.arg("/upgrade"));
@@ -925,26 +1030,41 @@ BOOL WINAPI signal_handler(DWORD) noexcept
 }
 
 
+struct curl_init
+{
+	curl_init()
+	{
+		curl_global_init(CURL_GLOBAL_ALL );
+	}
+
+	~curl_init()
+	{
+		curl_global_cleanup();
+	}
+};
+
+
 int run(int argc, char** argv)
 {
 	try
 	{
 		::SetConsoleCtrlHandler(signal_handler, TRUE);
 
+		curl_init curl;
 		vcvars();
 		prepend_to_path(find_third_party_directory() / "bin");
 
 		g_tasks.push_back(std::make_unique<sevenz>());
-		//g_tasks.push_back(std::make_unique<zlib>());
-		//g_tasks.push_back(std::make_unique<boost>());
+		g_tasks.push_back(std::make_unique<zlib>());
+		g_tasks.push_back(std::make_unique<boost>());
 		g_tasks.push_back(std::make_unique<fmt>());
-		//g_tasks.push_back(std::make_unique<gtest>());
-		//g_tasks.push_back(std::make_unique<libbsarch>());
-		//g_tasks.push_back(std::make_unique<libloot>());
-		//g_tasks.push_back(std::make_unique<openssl>());
-		//g_tasks.push_back(std::make_unique<python>());
-		//g_tasks.push_back(std::make_unique<libffi>());
-		//g_tasks.push_back(std::make_unique<bzip2>());
+		g_tasks.push_back(std::make_unique<gtest>());
+		g_tasks.push_back(std::make_unique<libbsarch>());
+		g_tasks.push_back(std::make_unique<libloot>());
+		g_tasks.push_back(std::make_unique<openssl>());
+		g_tasks.push_back(std::make_unique<libffi>());
+		g_tasks.push_back(std::make_unique<bzip2>());
+		g_tasks.push_back(std::make_unique<python>());
 
 		if (argc > 1)
 		{
@@ -969,10 +1089,13 @@ int run(int argc, char** argv)
 
 
 		for (auto&& t : g_tasks)
+		{
 			t->run();
-
-		for (auto&& t : g_tasks)
 			t->join();
+		}
+
+		//for (auto&& t : g_tasks)
+		//	t->join();
 
 		return 0;
 	}

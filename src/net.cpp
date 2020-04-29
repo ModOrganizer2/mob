@@ -7,15 +7,6 @@
 namespace builder
 {
 
-std::string redir_nul()
-{
-	if (conf::verbose())
-		return {};
-	else
-		return " > NUL";
-}
-
-
 url::url(const char* p)
 	: s_(p)
 {
@@ -86,10 +77,13 @@ void curl_downloader::run()
 {
 	auto* c = curl_easy_init();
 
+	char error_buffer[CURL_ERROR_SIZE + 1] = {};
+
 	curl_easy_setopt(c, CURLOPT_URL, url_.c_str());
 	curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, on_write_static);
 	curl_easy_setopt(c, CURLOPT_WRITEDATA, this);
 	curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1l);
+	curl_easy_setopt(c, CURLOPT_ERRORBUFFER, error_buffer);
 
 	file_deleter output_deleter(path_);
 
@@ -99,7 +93,7 @@ void curl_downloader::run()
 	if (interrupt_)
 		return;
 
-	if (r == 0)
+	if (r == CURLE_OK)
 	{
 		long h = 0;
 		curl_easy_getinfo(c, CURLINFO_RESPONSE_CODE, &h);
@@ -117,6 +111,7 @@ void curl_downloader::run()
 	else
 	{
 		error(url_.string() + " curl: " + curl_easy_strerror(r));
+		error(error_buffer);
 	}
 
 	curl_easy_cleanup(c);

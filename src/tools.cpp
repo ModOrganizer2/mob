@@ -74,6 +74,18 @@ tool::tool(std::string name)
 {
 }
 
+tool::tool(tool&& t)
+	: name_(std::move(t.name_)), interrupted_(t.interrupted_.load())
+{
+}
+
+tool& tool::operator=(tool&& t)
+{
+	name_ = std::move(t.name_);
+	interrupted_ = t.interrupted_.load();
+	return *this;
+}
+
 void tool::run()
 {
 	do_run();
@@ -95,39 +107,29 @@ bool tool::interrupted() const
 }
 
 
-process_runner::process_runner(std::string name)
+basic_process_runner::basic_process_runner(std::string name)
 	: tool(std::move(name))
 {
 }
 
-process_runner::process_runner(std::string name, std::string cmd, fs::path cwd)
-	: tool(std::move(name)), cmd_(std::move(cmd)), cwd_(std::move(cwd))
-{
-}
-
-void process_runner::do_run()
-{
-	execute_and_join(op::run(cmd_, cwd_));
-}
-
-void process_runner::do_interrupt()
+void basic_process_runner::do_interrupt()
 {
 	process_.interrupt();
 }
 
-int process_runner::execute_and_join(process p, bool check_exit_code)
+int basic_process_runner::execute_and_join(process p, bool check_exit_code)
 {
 	process_ = std::move(p);
 	join(check_exit_code);
 	return process_.exit_code();
 }
 
-int process_runner::execute_and_join(const cmd& c, bool check_exit_code)
+int basic_process_runner::execute_and_join(const cmd& c, bool check_exit_code)
 {
 	return execute_and_join(op::run(c.string(), c.cwd()), check_exit_code);
 }
 
-void process_runner::join(bool check_exit_code)
+void basic_process_runner::join(bool check_exit_code)
 {
 	process_.join();
 
@@ -142,30 +144,38 @@ void process_runner::join(bool check_exit_code)
 	}
 }
 
-int process_runner::exit_code() const
+int basic_process_runner::exit_code() const
 {
 	return process_.exit_code();
 }
 
 
-downloader::downloader(url u)
+downloader::downloader()
+	: tool("downloader")
+{
+}
+
+downloader::downloader(builder::url u)
 	: tool("downloader")
 {
 	urls_.push_back(std::move(u));
 }
 
-downloader::downloader(std::vector<url> urls)
-	: tool("downloader"), urls_(std::move(urls))
+downloader& downloader::url(const builder::url& u)
 {
+	urls_.push_back(u);
+	return *this;
 }
 
-fs::path downloader::file() const
+fs::path downloader::result() const
 {
 	return file_;
 }
 
 void downloader::do_run()
 {
+	dl_.reset(new curl_downloader);
+
 	// check if one the urls has already been downloaded
 	for (auto&& u : urls_)
 	{
@@ -183,15 +193,18 @@ void downloader::do_run()
 	{
 		const fs::path file = path_for_url(u);
 
-		dl_.start(u, file);
-		dl_.join();
+		dl_->start(u, file);
+		dl_->join();
 
-		if (dl_.ok())
+		if (dl_->ok())
 		{
 			file_ = file;
 			return;
 		}
 	}
+
+	if (interrupted())
+		return;
 
 	// all failed
 	bail_out("all urls failed");
@@ -199,10 +212,11 @@ void downloader::do_run()
 
 void downloader::do_interrupt()
 {
-	dl_.interrupt();
+	if (dl_)
+		dl_->interrupt();
 }
 
-fs::path downloader::path_for_url(const url& u) const
+fs::path downloader::path_for_url(const builder::url& u) const
 {
 	std::string filename;
 
@@ -216,7 +230,7 @@ fs::path downloader::path_for_url(const url& u) const
 		if (url_string.ends_with(strip))
 			url_string = url_string.substr(0, url_string.size() - strip.size());
 
-		filename = url(url_string).filename();
+		filename = builder::url(url_string).filename();
 	}
 	else
 	{
@@ -227,13 +241,33 @@ fs::path downloader::path_for_url(const url& u) const
 }
 
 
-git_clone::git_clone(std::string a, std::string r, std::string b, fs::path w) :
-	process_runner("git_clone"),
-	author_(std::move(a)),
-	repo_(std::move(r)),
-	branch_(std::move(b)),
-	where_(std::move(w))
+git_clone::git_clone()
+	: basic_process_runner("git_clone")
 {
+}
+
+git_clone& git_clone::org(const std::string& name)
+{
+	org_ = name;
+	return *this;
+}
+
+git_clone& git_clone::repo(const std::string& name)
+{
+	repo_ = name;
+	return *this;
+}
+
+git_clone& git_clone::branch(const std::string& name)
+{
+	branch_ = name;
+	return *this;
+}
+
+git_clone& git_clone::output(const fs::path& dir)
+{
+	where_ = dir;
+	return *this;
 }
 
 void git_clone::do_run()
@@ -248,7 +282,7 @@ void git_clone::do_run()
 
 void git_clone::clone()
 {
-	execute_and_join(cmd(third_party::git())
+	execute_and_join(cmd(third_party::git(), cmd::stdout_is_verbose)
 		.arg("clone")
 		.arg("--recurse-submodules")
 		.arg("--depth", "1")
@@ -261,7 +295,7 @@ void git_clone::clone()
 
 void git_clone::pull()
 {
-	execute_and_join(cmd(third_party::git())
+	execute_and_join(cmd(third_party::git(), cmd::stdout_is_verbose)
 		.arg("pull")
 		.arg("--recurse-submodules")
 		.arg("--quiet", cmd::quiet)
@@ -272,14 +306,25 @@ void git_clone::pull()
 
 url git_clone::repo_url() const
 {
-	return "https://github.com/" + author_ + "/" + repo_ + ".git";
+	return "https://github.com/" + org_ + "/" + repo_ + ".git";
 }
 
 
-decompresser::decompresser(fs::path file, fs::path where) :
-	process_runner("decompresser"),
-	file_(std::move(file)), where_(std::move(where))
+decompresser::decompresser()
+	: basic_process_runner("decompresser")
 {
+}
+
+decompresser& decompresser::file(const fs::path& file)
+{
+	file_ = file;
+	return *this;
+}
+
+decompresser& decompresser::output(const fs::path& dir)
+{
+	where_ = dir;
+	return *this;
 }
 
 void decompresser::do_run()
@@ -321,14 +366,14 @@ void decompresser::do_run()
 
 	if (file_.string().ends_with(".tar.gz"))
 	{
-		c = cmd(third_party::sevenz())
+		c = cmd(third_party::sevenz(), cmd::noflags)
 				.arg("x")
 				.arg("-so", file_)
 				.string();
 
 		c += " | ";
 
-		c += cmd(third_party::sevenz())
+		c += cmd(third_party::sevenz(), cmd::noflags)
 			.arg("x")
 			.arg("-aoa")
 			.arg("-si")
@@ -338,7 +383,7 @@ void decompresser::do_run()
 	}
 	else
 	{
-		c = cmd(third_party::sevenz())
+		c = cmd(third_party::sevenz(), cmd::stdout_is_verbose)
 			.arg("x")
 			.arg("-aoa")
 			.arg("-bd")
@@ -414,10 +459,21 @@ void decompresser::check_duplicate_directory()
 }
 
 
-patcher::patcher(fs::path patch_dir, fs::path output_dir) :
-	process_runner("patcher"),
-	patches_(std::move(patch_dir)), output_(std::move(output_dir))
+patcher::patcher()
+	: basic_process_runner("patcher")
 {
+}
+
+patcher& patcher::task(const std::string& name)
+{
+	patches_ = paths::patches() / name;
+	return *this;
+}
+
+patcher& patcher::root(const fs::path& dir)
+{
+	output_ = dir;
+	return *this;
 }
 
 void patcher::do_run()
@@ -425,7 +481,7 @@ void patcher::do_run()
 	if (!fs::exists(patches_))
 		return;
 
-	const auto base = cmd(third_party::patch())
+	const auto base = cmd(third_party::patch(), cmd::stdout_is_verbose)
 		.arg("--read-only", "ignore")
 		.arg("--strip", "0")
 		.arg("--directory", output_)
@@ -475,105 +531,157 @@ void patcher::do_run()
 }
 
 
-process do_cmake(
-	const fs::path& build, const fs::path& prefix,
-	const std::string& args, const std::string& generator)
+cmake::cmake() :
+	basic_process_runner("cmake"),
+	gen_(nmake), cmd_(third_party::cmake(), cmd::stdout_is_verbose)
 {
-	auto c = cmd(third_party::cmake())
-		.arg("-G", generator)
-		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER")
+}
+
+cmake& cmake::generator(generators g)
+{
+	gen_ = g;
+	return *this;
+}
+
+cmake& cmake::root(const fs::path& p)
+{
+	root_ = p;
+	return *this;
+}
+
+cmake& cmake::prefix(const fs::path& s)
+{
+	prefix_ = s;
+	return *this;
+}
+
+cmake& cmake::def(const std::string& s)
+{
+	cmd_.arg("-D" + s);
+	return *this;
+}
+
+fs::path cmake::result() const
+{
+	return output_;
+}
+
+void cmake::do_run()
+{
+	std::string g;
+
+	switch (gen_)
+	{
+		case nmake:
+		{
+			output_ = root_ / "build";
+			g = "NMake Makefiles";
+			break;
+		}
+
+		case vs:
+		{
+			output_ = root_ / "vsbuild";
+			g = "Visual Studio " + versions::vs() + " " + versions::vs_year();
+			break;
+		}
+	}
+
+
+	cmd_
+		.arg("-G", "\"" + g + "\"")
+		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", cmd::quiet)
 		.arg("--log-level", "WARNING", cmd::quiet);
 
-	if (!prefix.empty())
-		c.arg("-DCMAKE_INSTALL_PREFIX=", prefix, cmd::nospace);
+	if (!prefix_.empty())
+		cmd_.arg("-DCMAKE_INSTALL_PREFIX=", prefix_, cmd::nospace);
 
-	c
-		.arg(args)
-		.arg("..");
+	cmd_.arg("..");
+	cmd_.cwd(output_);
 
-	return op::run(c.string(), build);
+	execute_and_join(cmd_);
 }
 
 
-cmake_for_nmake::cmake_for_nmake(fs::path r, std::string a, fs::path p) :
-	process_runner("cmake_for_nmake"),
-	root_(std::move(r)), args_(std::move(a)), prefix_(std::move(p))
+
+jom::jom() :
+	basic_process_runner("jom"),
+	cmd_(third_party::jom(), cmd::stdout_is_verbose), flags_(noflags)
 {
 }
 
-fs::path cmake_for_nmake::build_path()
+jom& jom::path(const fs::path& p)
 {
-	return "build";
+	cmd_.cwd(p);
+	return *this;
 }
 
-void cmake_for_nmake::do_run()
+jom& jom::target(const std::string& s)
 {
-	const auto build = root_ / build_path();
-	const std::string g = "NMake Makefiles";
-	execute_and_join(do_cmake(build, prefix_, args_, g));
+	target_ = s;
+	return *this;
 }
 
-
-cmake_for_vs::cmake_for_vs(fs::path r, std::string a, fs::path p) :
-	process_runner("cmake_for_vs"),
-	root_(std::move(r)), args_(std::move(a)), prefix_(std::move(p))
+jom& jom::def(const std::string& s)
 {
+	cmd_.arg(s);
+	return *this;
 }
 
-fs::path cmake_for_vs::build_path()
+jom& jom::flag(flags f)
 {
-	return "vsbuild";
+	flags_ = f;
+	return *this;
 }
 
-void cmake_for_vs::do_run()
+int jom::result() const
 {
-	const auto build = root_ / build_path();
-	const std::string g = "Visual Studio " + versions::vs() + " " + versions::vs_year();
-	execute_and_join(do_cmake(build, prefix_, args_, g));
-}
-
-
-jom::jom(fs::path dir, std::string target, std::string args, flags f) :
-	process_runner("jom " + target),
-	dir_(std::move(dir)), target_(std::move(target)),
-	args_(std::move(args)), flags_(f)
-{
+	return exit_code();
 }
 
 void jom::do_run()
 {
-	auto c = cmd(third_party::jom())
+	cmd_
 		.arg("/C", cmd::quiet)
 		.arg("/S", cmd::quiet)
 		.arg("/K");
 
 	if (flags_ & single_job)
-		c.arg("/J", "1");
+		cmd_.arg("/J", "1");
 
-	c
-		.arg(args_)
-		.arg(target_)
-		.cwd(dir_);
+	cmd_.arg(target_);
 
 	const bool check_exit_code = !(flags_ & accept_failure);
-	execute_and_join(c, check_exit_code);
+	execute_and_join(cmd_, check_exit_code);
 }
 
 
-msbuild::msbuild(
-	fs::path sln,
-	std::vector<std::string> projects,
-	std::vector<std::string> params) :
-		process_runner("msbuild"),
-		sln_(std::move(sln)),
-		projects_(std::move(projects)),
-		params_(std::move(params))
+msbuild::msbuild()
+	: basic_process_runner("msbuild")
 {
+}
+
+msbuild& msbuild::solution(const fs::path& sln)
+{
+	sln_ = sln;
+	return *this;
+}
+
+msbuild& msbuild::projects(const std::vector<std::string>& names)
+{
+	projects_ = names;
+	return *this;
+}
+
+msbuild& msbuild::parameters(const std::vector<std::string>& params)
+{
+	params_ = params;
+	return *this;
 }
 
 void msbuild::do_run()
 {
-	auto c = cmd(third_party::msbuild())
+	auto c = cmd(third_party::msbuild(), cmd::noflags)
 		.arg("-nologo")
 		.arg("-maxCpuCount")
 		.arg("-property:UseMultiToolTask=true")

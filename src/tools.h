@@ -12,10 +12,15 @@ void vcvars();
 class tool
 {
 public:
+	tool(tool&& t);
+	tool& operator=(tool&& t);
+
 	virtual ~tool() = default;
 
 	void run();
 	void interrupt();
+
+	void result() {}
 
 protected:
 	tool(std::string name);
@@ -34,37 +39,35 @@ private:
 class downloader : public tool
 {
 public:
-	downloader(url u);
-	downloader(std::vector<url> urls);
+	downloader();
+	downloader(builder::url u);
 
-	fs::path file() const;
+	downloader& url(const builder::url& u);
+
+	fs::path result() const;
 
 protected:
 	void do_run() override;
 	void do_interrupt() override;
 
 private:
-	curl_downloader dl_;
+	std::unique_ptr<curl_downloader> dl_;
 	fs::path file_;
-	std::vector<url> urls_;
+	std::vector<builder::url> urls_;
 
-	fs::path path_for_url(const url& u) const;
+	fs::path path_for_url(const builder::url& u) const;
 };
 
 
-class process_runner : public tool
+class basic_process_runner : public tool
 {
 public:
-	process_runner(std::string name, std::string cmd, fs::path cwd={});
-	process_runner(const cmd& c);
-
 	void join(bool check_exit_code=true);
 	int exit_code() const;
 
 protected:
-	process_runner(std::string name);
+	basic_process_runner(std::string name);
 
-	void do_run() override;
 	void do_interrupt() override;
 
 	int execute_and_join(process p, bool check_exit_code=true);
@@ -77,17 +80,74 @@ private:
 };
 
 
-class git_clone : public process_runner
+class process_runner : public basic_process_runner
 {
 public:
-	git_clone(
-		std::string author, std::string repo, std::string b, fs::path where);
+	process_runner(fs::path exe, cmd::flags flags)
+		: basic_process_runner(exe.filename().string()), cmd_(exe, flags)
+	{
+	}
+
+	process_runner& name(const std::string& s)
+	{
+		cmd_.name(s);
+		return *this;
+	}
+
+	const std::string& name() const
+	{
+		return cmd_.name();
+	}
+
+	process_runner& cwd(const fs::path& p)
+	{
+		cmd_.cwd(p);
+		return *this;
+	}
+
+	const fs::path& cwd() const
+	{
+		return cmd_.cwd();
+	}
+
+	template <class... Args>
+	process_runner& arg(Args&&... args)
+	{
+		cmd_.arg(std::forward<Args>(args)...);
+		return *this;
+	}
+
+	int result() const
+	{
+		return exit_code();
+	}
+
+protected:
+	void do_run() override
+	{
+		execute_and_join(cmd_);
+	}
+
+private:
+	cmd cmd_;
+};
+
+
+class git_clone : public basic_process_runner
+{
+public:
+	git_clone();
+
+	git_clone& org(const std::string& name);
+	git_clone& repo(const std::string& name);
+	git_clone& branch(const std::string& name);
+	git_clone& output(const fs::path& dir);
 
 protected:
 	void do_run() override;
 
 private:
-	std::string author_;
+	std::string org_;
 	std::string repo_;
 	std::string branch_;
 	fs::path where_;
@@ -98,10 +158,12 @@ private:
 };
 
 
-class decompresser : public process_runner
+class decompresser : public basic_process_runner
 {
 public:
-	decompresser(fs::path file, fs::path where);
+	decompresser();
+	decompresser& file(const fs::path& file);
+	decompresser& output(const fs::path& dir);
 
 protected:
 	void do_run() override;
@@ -115,10 +177,13 @@ private:
 };
 
 
-class patcher : public process_runner
+class patcher : public basic_process_runner
 {
 public:
-	patcher(fs::path patch_dir, fs::path output_dir);
+	patcher();
+
+	patcher& task(const std::string& name);
+	patcher& root(const fs::path& dir);
 
 protected:
 	void do_run() override;
@@ -129,70 +194,73 @@ private:
 };
 
 
-class cmake_for_nmake : public process_runner
+class cmake : public basic_process_runner
 {
 public:
-	cmake_for_nmake(fs::path root, std::string args={}, fs::path prefix={});
-	static fs::path build_path();
+	enum generators
+	{
+		vs    = 0x01,
+		nmake = 0x02
+	};
+
+	cmake();
+
+	cmake& generator(generators g);
+	cmake& root(const fs::path& p);
+	cmake& prefix(const fs::path& s);
+	cmake& def(const std::string& s);
+
+	fs::path result() const;
 
 protected:
 	void do_run() override;
 
 private:
 	fs::path root_;
-	std::string args_;
+	generators gen_;
 	fs::path prefix_;
+	fs::path output_;
+	cmd cmd_;
 };
 
 
-class cmake_for_vs : public process_runner
-{
-public:
-	cmake_for_vs(fs::path root, std::string args={}, fs::path prefix={});
-	static fs::path build_path();
-
-protected:
-	void do_run() override;
-
-private:
-	fs::path root_;
-	std::string args_;
-	fs::path prefix_;
-};
-
-
-class jom : public process_runner
+class jom : public basic_process_runner
 {
 public:
 	enum flags
 	{
-		default_flags  = 0x00,
+		noflags        = 0x00,
 		single_job     = 0x01,
 		accept_failure = 0x02
 	};
 
-	jom(
-		fs::path dir, std::string target, std::string args,
-		flags f=default_flags);
+	jom();
+
+	jom& path(const fs::path& p);
+	jom& target(const std::string& s);
+	jom& def(const std::string& s);
+	jom& flag(flags f);
+
+	int result() const;
 
 protected:
 	void do_run() override;
 
 private:
-	fs::path dir_;
+	cmd cmd_;
 	std::string target_;
-	std::string args_;
 	flags flags_;
 };
 
 
-class msbuild : public process_runner
+class msbuild : public basic_process_runner
 {
 public:
-	msbuild(
-		fs::path sln,
-		std::vector<std::string> projects,
-		std::vector<std::string> params);
+	msbuild();
+
+	msbuild& solution(const fs::path& sln);
+	msbuild& projects(const std::vector<std::string>& names);
+	msbuild& parameters(const std::vector<std::string>& params);
 
 protected:
 	void do_run() override;

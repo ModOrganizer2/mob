@@ -189,6 +189,16 @@ std::string join(const std::vector<std::string>& v, const std::string& sep)
 	return s;
 }
 
+
+std::string redir_nul()
+{
+	if (conf::verbose())
+		return {};
+	else
+		return " > NUL";
+}
+
+
 cmd& cmd::name(const std::string& s)
 {
 	name_ = s;
@@ -214,40 +224,48 @@ const fs::path& cmd::cwd() const
 	return cwd_;
 }
 
-void cmd::add_arg(const std::string& name, const std::string& value, flags f)
+std::string cmd::string() const
+{
+	if (flags_ & stdout_is_verbose)
+		return s_ + redir_nul();
+	else
+		return s_;
+}
+
+void cmd::add_arg(const std::string& k, const std::string& v, arg_flags f)
 {
 	if ((f & quiet) && conf::verbose())
 		return;
 
-	if (name.empty() && value.empty())
+	if (k.empty() && v.empty())
 		return;
 
-	if (name.empty())
-		s_ += " " + value;
-	else if (f & nospace)
-		s_ += " " + name + value;
+	if (k.empty())
+		s_ += " " + v;
+	else if ((f & nospace) || k.back() == '=')
+		s_ += " " + k + v;
 	else
-		s_ += " " + name + " " + value;
+		s_ += " " + k + " " + v;
 }
 
 std::string cmd::arg_to_string(const char* s)
 {
-	return std::string(" ") + s;
+	return s;
 }
 
 std::string cmd::arg_to_string(const std::string& s)
 {
-	return " " + s;
+	return s;
 }
 
 std::string cmd::arg_to_string(const fs::path& p)
 {
-	return " \"" + p.string() + "\"";
+	return "\"" + p.string() + "\"";
 }
 
 std::string cmd::arg_to_string(const url& u)
 {
-	return " " + u.string();
+	return u.string();
 }
 
 
