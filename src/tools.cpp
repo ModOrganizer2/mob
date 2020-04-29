@@ -39,7 +39,7 @@ void vcvars()
 	const fs::path tmp = paths::temp_file();
 
 	const std::string cmd =
-		"\"" + find_vcvars().string() + "\" amd64" + redir_nul() + " && "
+		"\"" + find_vcvars().string() + "\" amd64 && "
 		"set > \"" + tmp.string() + "\"";
 
 	op::run(cmd);
@@ -66,29 +66,6 @@ void vcvars()
 		SetEnvironmentVariableA(name.c_str(), nullptr);
 		SetEnvironmentVariableA(name.c_str(), value.c_str());
 	}
-}
-
-
-process do_cmake(
-	const fs::path& build, const fs::path& prefix,
-	const std::string& args, const std::string& generator)
-{
-	std::string cmd = "\"" + third_party::cmake().string() + "\"";
-
-	cmd += " -G \"" + generator + "\" -DCMAKE_INSTALL_MESSAGE=NEVER";
-
-	if (!prefix.empty())
-		cmd += " -DCMAKE_INSTALL_PREFIX=\"" + prefix.string() + "\"";
-
-	if (!conf::verbose())
-		cmd += " --log-level=WARNING";
-
-	if (!args.empty())
-		cmd += " " + args;
-
-	cmd += " ..";
-
-	return op::run(cmd, build);
 }
 
 
@@ -143,6 +120,11 @@ int process_runner::execute_and_join(process p, bool check_exit_code)
 	process_ = std::move(p);
 	join(check_exit_code);
 	return process_.exit_code();
+}
+
+int process_runner::execute_and_join(const cmd& c, bool check_exit_code)
+{
+	return execute_and_join(op::run(c.string(), c.cwd()), check_exit_code);
 }
 
 void process_runner::join(bool check_exit_code)
@@ -266,46 +248,26 @@ void git_clone::do_run()
 
 void git_clone::clone()
 {
-	std::ostringstream oss;
-
-	oss
-		<< "\"" + third_party::git().string() + "\""
-		<< " clone"
-		<< " --recurse-submodules"
-		<< " --depth 1"
-		<< " --branch \"" + branch_ + "\" ";
-
-	if (!conf::verbose())
-	{
-		oss
-			<< " --quiet"
-			<< " -c advice.detachedHead=false";
-	}
-
-	oss
-		<< " \"" + repo_url().string() + "\" "
-		<< " \"" + where_.string() + "\"";
-
-	execute_and_join(op::run(oss.str()));
+	execute_and_join(cmd(third_party::git())
+		.arg("clone")
+		.arg("--recurse-submodules")
+		.arg("--depth", "1")
+		.arg("--branch", branch_)
+		.arg("--quiet", cmd::quiet)
+		.arg("-c", "advice.detachedHead=false", cmd::quiet)
+		.arg(repo_url())
+		.arg(where_));
 }
 
 void git_clone::pull()
 {
-	std::ostringstream oss;
-
-	oss
-		<< "\"" + third_party::git().string() + "\""
-		<< " pull"
-		<< " --recurse-submodules";
-
-	if (!conf::verbose())
-		oss << " --quiet";
-
-	oss
-		<< " \"" + repo_url().string() + "\" "
-		<< " \"" << branch_ << "\"";
-
-	execute_and_join(op::run(oss.str(), where_));
+	execute_and_join(cmd(third_party::git())
+		.arg("pull")
+		.arg("--recurse-submodules")
+		.arg("--quiet", cmd::quiet)
+		.arg(repo_url())
+		.arg(branch_)
+		.cwd(where_));
 }
 
 url git_clone::repo_url() const
@@ -336,13 +298,8 @@ void decompresser::do_run()
 	info("decompress " + file_.string() + " into " + where_.string());
 
 	op::touch(interrupt_file());
-
-	const auto sevenz = "\"" + third_party::sevenz().string() + "\"";
-
 	op::create_directories(where_);
 	directory_deleter delete_output(where_);
-
-	process p;
 
 	// the -spe from 7z is supposed to figure out if there's a folder in the
 	// archive with the same name as the target and extract its content to
@@ -360,20 +317,38 @@ void decompresser::do_run()
 	// so the handling of a duplicate directory is done manually in
 	// check_duplicate_directory() below
 
+	std::string c;
+
 	if (file_.string().ends_with(".tar.gz"))
 	{
-		p = op::run(
-			sevenz + " x -so \"" + file_.string() + "\" | " +
-			sevenz + " x -aoa -si -ttar -o\"" + where_.string() + "\" " + redir_nul());
+		c = cmd(third_party::sevenz())
+				.arg("x")
+				.arg("-so", file_)
+				.string();
+
+		c += " | ";
+
+		c += cmd(third_party::sevenz())
+			.arg("x")
+			.arg("-aoa")
+			.arg("-si")
+			.arg("-ttar")
+			.arg("-o", where_, cmd::nospace)
+			.string();
 	}
 	else
 	{
-		p = op::run(
-			sevenz + " x -aoa -bd -bb0 -o\"" + where_.string() + "\" "
-			"\"" + file_.string() + "\" " + redir_nul());
+		c = cmd(third_party::sevenz())
+			.arg("x")
+			.arg("-aoa")
+			.arg("-bd")
+			.arg("-bb0")
+			.arg("-o", where_, cmd::nospace)
+			.arg(file_)
+			.string();
 	}
 
-	execute_and_join(std::move(p));
+	execute_and_join(op::run(c));
 	check_duplicate_directory();
 
 	delete_output.cancel();
@@ -450,18 +425,11 @@ void patcher::do_run()
 	if (!fs::exists(patches_))
 		return;
 
-	std::ostringstream oss;
-
-	oss
-		<< "\"" << third_party::patch().string() << "\" "
-		<< "--read-only=ignore "
-		<< "--strip=0 "
-		<< "--directory=\"" << output_.string() << "\" ";
-
-	if (!conf::verbose())
-		oss << "--quiet ";
-
-	const std::string base = oss.str();
+	const auto base = cmd(third_party::patch())
+		.arg("--read-only", "ignore")
+		.arg("--strip", "0")
+		.arg("--directory", output_)
+		.arg("--quiet", cmd::quiet);
 
 	for (auto e : fs::directory_iterator(patches_))
 	{
@@ -478,13 +446,20 @@ void patcher::do_run()
 			continue;
 		}
 
-		const std::string input = "--input=\"" + p.string() + "\"";
-		const std::string check = base + " --dry-run --force --reverse " + input + redir_nul();
-		const std::string apply = base + " --forward --batch " + input + redir_nul();
+		const auto check = cmd(base)
+			.arg("--dry-run")
+			.arg("--force")
+			.arg("--reverse")
+			.arg("--input", p);
+
+		const auto apply = cmd(base)
+			.arg("--forward")
+			.arg("--batch")
+			.arg("--input", p);
 
 		{
 			// check
-			if (execute_and_join(op::run(check), false) == 0)
+			if (execute_and_join(check, false) == 0)
 			{
 				debug("patch " + p.string() + " already applied");
 				continue;
@@ -494,9 +469,29 @@ void patcher::do_run()
 		{
 			// apply
 			debug("applying patch " + p.string());
-			execute_and_join(op::run(apply));
+			execute_and_join(apply);
 		}
 	}
+}
+
+
+process do_cmake(
+	const fs::path& build, const fs::path& prefix,
+	const std::string& args, const std::string& generator)
+{
+	auto c = cmd(third_party::cmake())
+		.arg("-G", generator)
+		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER")
+		.arg("--log-level", "WARNING", cmd::quiet);
+
+	if (!prefix.empty())
+		c.arg("-DCMAKE_INSTALL_PREFIX=", prefix, cmd::nospace);
+
+	c
+		.arg(args)
+		.arg("..");
+
+	return op::run(c.string(), build);
 }
 
 
@@ -547,27 +542,21 @@ jom::jom(fs::path dir, std::string target, std::string args, flags f) :
 
 void jom::do_run()
 {
-	std::ostringstream oss;
-	oss << "\"" << third_party::jom().string() << "\"";
-
-	if (!conf::verbose())
-		oss << " /C /S";
-
-	oss << " /K ";
+	auto c = cmd(third_party::jom())
+		.arg("/C", cmd::quiet)
+		.arg("/S", cmd::quiet)
+		.arg("/K");
 
 	if (flags_ & single_job)
-		oss << " /J 1";
+		c.arg("/J", "1");
 
-	if (!args_.empty())
-		oss << " " << args_;
-
-	if (!target_.empty())
-		oss << " " << target_;
-
-	oss << redir_nul();
+	c
+		.arg(args_)
+		.arg(target_)
+		.cwd(dir_);
 
 	const bool check_exit_code = !(flags_ & accept_failure);
-	execute_and_join(op::run(oss.str(), dir_), check_exit_code);
+	execute_and_join(c, check_exit_code);
 }
 
 
@@ -584,35 +573,29 @@ msbuild::msbuild(
 
 void msbuild::do_run()
 {
-	std::ostringstream oss;
-
-	oss
-		<< "\"" << third_party::msbuild().string() << "\""
-		<< " -nologo "
-		<< " -maxCpuCount"
-		<< " -property:UseMultiToolTask=true "
-		<< " -property:EnforceProcessCountAcrossBuilds=true "
-		<< " -property:Configuration=Release"
-		<< " -property:Platform=x64"
-		<< " -property:PlatformToolset=" + versions::vs_toolset()
-		<< " -property:WindowsTargetPlatformVersion=" << versions::sdk();
+	auto c = cmd(third_party::msbuild())
+		.arg("-nologo")
+		.arg("-maxCpuCount")
+		.arg("-property:UseMultiToolTask=true")
+		.arg("-property:EnforceProcessCountAcrossBuilds=true")
+		.arg("-property:Configuration=Release")
+		.arg("-property:Platform=x64")
+		.arg("-property:PlatformToolset=" + versions::vs_toolset())
+		.arg("-property:WindowsTargetPlatformVersion=" + versions::sdk())
+		.arg("-verbosity:minimal", cmd::quiet)
+		.arg("-consoleLoggerParameters:ErrorsOnly", cmd::quiet);
 
 	if (!projects_.empty())
-		oss << " -target:" + builder::join(projects_, ",");
+		c.arg("-target:" + builder::join(projects_, ","));
 
 	for (auto&& p : params_)
-		oss << " -property:" + p;
+		c.arg("-property:" + p);
 
-	if (!conf::verbose())
-	{
-		oss
-			<< " -verbosity:minimal "
-			<< " -consoleLoggerParameters:ErrorsOnly ";
-	}
+	c
+		.arg(sln_)
+		.cwd(sln_.parent_path());
 
-	oss << " \"" + sln_.string() + "\"";
-
-	execute_and_join(op::run(oss.str(), sln_.parent_path()));
+	execute_and_join(c);
 }
 
 }	// namespace

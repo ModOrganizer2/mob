@@ -630,15 +630,14 @@ protected:
 private:
 	void configure()
 	{
-		run_tool<process_runner>(
-			"perl",
-			"\"" + third_party::perl().string() + "\" " +
-			"Configure "
-			"--openssldir=\"" + build_path().string() + "\" "
-			"--prefix=\"" + build_path().string() + "\" "
-			"-FS -MP1 "
-			"VC-WIN64A",
-			source_path());
+		run_tool<process_runner>(cmd(third_party::perl())
+			.arg("Configure")
+			.arg("--openssldir", build_path())
+			.arg("--prefix", build_path())
+			.arg("-FS")
+			.arg("-MP1")
+			.arg("VC-WIN64A")
+			.cwd(source_path()));
 	}
 
 	void install_engines()
@@ -813,16 +812,15 @@ protected:
 		}
 		else
 		{
-			run_tool<process_runner>(
-				"package python",
-				"\"" + (source_path() / "python.bat").string() + "\""
-				" \"PC/layout\""
-				" --source=\"" + source_path().string() + "\""
-				" --build=\"" + build_path().string() + "\""
-				" --temp=\"" + (build_path() / "pythoncore_temp").string() + "\""
-				" --copy=\"" + (build_path() / "pythoncore").string() + "\""
-				" --preset-embed",
-				source_path());
+			run_tool<process_runner>(cmd(source_path() / "python.bat")
+				.name("package python")
+				.arg(fs::path("PC/layout"))
+				.arg("--source", source_path())
+				.arg("--build", build_path())
+				.arg("--temp", (build_path() / "pythoncore_temp"))
+				.arg("--copy", (build_path() / "pythoncore"))
+				.arg("--preset-embed")
+				.cwd(source_path()));
 
 			op::touch(build_path() / "_mob_packaged");
 		}
@@ -851,11 +849,10 @@ protected:
 private:
 	void upgrade_project()
 	{
-		run_tool<process_runner>(
-			"upgrade project",
-			"\"" + third_party::devenv().string() + "\" "
-			"\"" + solution_file().string() + "\" "
-			"/upgrade" + redir_nul());
+		run_tool<process_runner>(cmd(third_party::devenv())
+			.name("upgrade project")
+			.arg(solution_file())
+			.arg("/upgrade"));
 	}
 
 	fs::path solution_file() const
@@ -937,15 +934,15 @@ int run(int argc, char** argv)
 		vcvars();
 		prepend_to_path(find_third_party_directory() / "bin");
 
-		//g_tasks.push_back(std::make_unique<sevenz>());
+		g_tasks.push_back(std::make_unique<sevenz>());
 		//g_tasks.push_back(std::make_unique<zlib>());
 		//g_tasks.push_back(std::make_unique<boost>());
-		//g_tasks.push_back(std::make_unique<fmt>());
+		g_tasks.push_back(std::make_unique<fmt>());
 		//g_tasks.push_back(std::make_unique<gtest>());
 		//g_tasks.push_back(std::make_unique<libbsarch>());
 		//g_tasks.push_back(std::make_unique<libloot>());
 		//g_tasks.push_back(std::make_unique<openssl>());
-		g_tasks.push_back(std::make_unique<python>());
+		//g_tasks.push_back(std::make_unique<python>());
 		//g_tasks.push_back(std::make_unique<libffi>());
 		//g_tasks.push_back(std::make_unique<bzip2>());
 

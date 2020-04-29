@@ -3,6 +3,8 @@
 namespace builder
 {
 
+class url;
+
 class bailed
 {
 public:
@@ -137,5 +139,61 @@ std::string replace_all(
 	std::string s, const std::string& from, const std::string& to);
 
 std::string join(const std::vector<std::string>& v, const std::string& sep);
+
+
+class cmd
+{
+public:
+	enum flags
+	{
+		noflags = 0x00,
+		quiet   = 0x01,
+		nospace = 0x02
+	};
+
+	cmd(const fs::path& exe)
+		: exe_(exe.filename().string())
+	{
+		s_ += arg_to_string(exe);
+	}
+
+	cmd& name(const std::string& s);
+	const std::string& name() const;
+
+	cmd& cwd(const fs::path& p);
+	const fs::path& cwd() const;
+
+	template <class T>
+	cmd& arg(const T& value, flags f=noflags)
+	{
+		add_arg("", arg_to_string(value), f);
+		return *this;
+	}
+
+	template <class T>
+	cmd& arg(const std::string& name, const T& value, flags f=noflags)
+	{
+		add_arg(name, arg_to_string(value), f);
+		return *this;
+	}
+
+	const std::string& string() const
+	{
+		return s_;
+	}
+
+private:
+	std::string name_;
+	std::string exe_;
+	fs::path cwd_;
+	std::string s_;
+
+	void add_arg(const std::string& name, const std::string& value, flags f);
+
+	std::string arg_to_string(const char* s);
+	std::string arg_to_string(const std::string& s);
+	std::string arg_to_string(const fs::path& p);
+	std::string arg_to_string(const url& u);
+};
 
 }	// namespace

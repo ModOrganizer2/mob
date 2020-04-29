@@ -2,6 +2,7 @@
 #include "utility.h"
 #include "conf.h"
 #include "op.h"
+#include "net.h"
 
 namespace builder
 {
@@ -186,6 +187,67 @@ std::string join(const std::vector<std::string>& v, const std::string& sep)
 	}
 
 	return s;
+}
+
+cmd& cmd::name(const std::string& s)
+{
+	name_ = s;
+	return *this;
+}
+
+const std::string& cmd::name() const
+{
+	if (name_.empty())
+		return exe_;
+	else
+		return name_;
+}
+
+cmd& cmd::cwd(const fs::path& p)
+{
+	cwd_ = p;
+	return *this;
+}
+
+const fs::path& cmd::cwd() const
+{
+	return cwd_;
+}
+
+void cmd::add_arg(const std::string& name, const std::string& value, flags f)
+{
+	if ((f & quiet) && conf::verbose())
+		return;
+
+	if (name.empty() && value.empty())
+		return;
+
+	if (name.empty())
+		s_ += " " + value;
+	else if (f & nospace)
+		s_ += " " + name + value;
+	else
+		s_ += " " + name + " " + value;
+}
+
+std::string cmd::arg_to_string(const char* s)
+{
+	return std::string(" ") + s;
+}
+
+std::string cmd::arg_to_string(const std::string& s)
+{
+	return " " + s;
+}
+
+std::string cmd::arg_to_string(const fs::path& p)
+{
+	return " \"" + p.string() + "\"";
+}
+
+std::string cmd::arg_to_string(const url& u)
+{
+	return " " + u.string();
 }
 
 

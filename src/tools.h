@@ -56,6 +56,7 @@ class process_runner : public tool
 {
 public:
 	process_runner(std::string name, std::string cmd, fs::path cwd={});
+	process_runner(const cmd& c);
 
 	void join(bool check_exit_code=true);
 	int exit_code() const;
@@ -65,7 +66,9 @@ protected:
 
 	void do_run() override;
 	void do_interrupt() override;
+
 	int execute_and_join(process p, bool check_exit_code=true);
+	int execute_and_join(const cmd& c, bool check_exit_code=true);
 
 private:
 	std::string cmd_;
