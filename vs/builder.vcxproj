@@ -85,6 +85,18 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\src\tasks\boost.cpp" />
+    <ClCompile Include="..\src\tasks\bzip2.cpp" />
+    <ClCompile Include="..\src\tasks\fmt.cpp" />
+    <ClCompile Include="..\src\tasks\gtest.cpp" />
+    <ClCompile Include="..\src\tasks\libbsarch.cpp" />
+    <ClCompile Include="..\src\tasks\libffi.cpp" />
+    <ClCompile Include="..\src\tasks\libloot.cpp" />
+    <ClCompile Include="..\src\tasks\openssl.cpp" />
+    <ClCompile Include="..\src\tasks\python.cpp" />
+    <ClCompile Include="..\src\tasks\sevenz.cpp" />
+    <ClCompile Include="..\src\tasks\task.cpp" />
+    <ClCompile Include="..\src\tasks\zlib.cpp" />
     <ClCompile Include="..\src\tools.cpp" />
     <ClCompile Include="..\src\utility.cpp" />
   </ItemGroup>
@@ -93,6 +105,8 @@
     <ClInclude Include="..\src\op.h" />
     <ClInclude Include="..\src\net.h" />
     <ClInclude Include="..\src\pch.h" />
+    <ClInclude Include="..\src\tasks\task.h" />
+    <ClInclude Include="..\src\tasks\tasks.h" />
     <ClInclude Include="..\src\tools.h" />
     <ClInclude Include="..\src\utility.h" />
   </ItemGroup>

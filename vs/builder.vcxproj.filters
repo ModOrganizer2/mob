@@ -4,6 +4,9 @@
     <Filter Include="src">
       <UniqueIdentifier>{23ea265d-5536-4626-b27a-5403447aec6e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\tasks">
+      <UniqueIdentifier>{892d19b8-e898-4c80-be14-e1ee1fb13209}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -27,6 +30,42 @@
     <ClCompile Include="..\src\op.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\tasks\fmt.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tasks\gtest.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tasks\libbsarch.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tasks\libffi.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tasks\libloot.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tasks\openssl.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tasks\python.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tasks\sevenz.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tasks\zlib.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tasks\boost.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tasks\bzip2.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tasks\task.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
@@ -46,6 +85,12 @@
     </ClInclude>
     <ClInclude Include="..\src\op.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\tasks\task.h">
+      <Filter>src\tasks</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\tasks\tasks.h">
+      <Filter>src\tasks</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
