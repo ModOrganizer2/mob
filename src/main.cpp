@@ -278,183 +278,6 @@ private:
 };
 
 
-class boost : public basic_task<boost>
-{
-public:
-	boost()
-		: basic_task("boost")
-	{
-	}
-
-	static fs::path source_path()
-	{
-		const auto underscores = replace_all(versions::boost(), ".", "_");
-		return paths::build() / ("boost_" + underscores);
-	}
-
-protected:
-	void do_fetch() override
-	{
-		if (prebuilt::boost())
-			fetch_prebuilt();
-		else
-			fetch_from_source();
-	}
-
-	void do_build_and_install() override
-	{
-		if (prebuilt::boost())
-			build_and_install_prebuilt();
-		else
-			build_and_install_from_source();
-	}
-
-private:
-	std::smatch parse_boost_version() const
-	{
-		// 1.72.0-b1-rc1
-		// everything but 1.72 is optional
-		std::regex re(R"((\d+)\.(\d+)(?:\.(\d+)(?:-(\w+)(?:-(\w+))?)?)?)");
-		std::smatch m;
-
-		if (!std::regex_match(versions::boost(), m, re))
-			bail_out("bad boost version '" + versions::boost() + "'");
-
-		return m;
-	}
-
-	std::string source_download_filename() const
-	{
-		return boost_version_all_underscores() + ".zip";
-	}
-
-	void fetch_prebuilt()
-	{
-		const auto file = run_tool(downloader(prebuilt_url()));
-
-		run_tool(decompresser()
-			.file(file)
-			.output(source_path()));
-	}
-
-	void build_and_install_prebuilt()
-	{
-		op::copy_file_to_dir_if_better(
-			lib_path() / python_dll(), paths::install_bin());
-	}
-
-	void fetch_from_source()
-	{
-		const auto file = run_tool(downloader(source_url()));
-
-		run_tool(decompresser()
-			.file(file)
-			.output(source_path()));
-	}
-
-	void build_and_install_from_source()
-	{
-	}
-
-
-	url prebuilt_url() const
-	{
-		const auto underscores = replace_all(versions::boost(), ".", "_");
-
-		return
-			"https://github.com/ModOrganizer2/modorganizer-umbrella/"
-			"releases/download/1.1/boost_prebuilt_" + underscores + ".7z";
-	}
-
-	url source_url() const
-	{
-		return
-			"https://dl.bintray.com/boostorg/release/" +
-			boost_version_no_tags() + "/source/" +
-			boost_version_all_underscores() + ".zip";
-	}
-
-	fs::path lib_path() const
-	{
-		const std::string lib = "lib64-msvc-" + versions::boost_vs();
-		return source_path() / lib / "lib";
-	}
-
-	std::string python_dll() const
-	{
-		std::ostringstream oss;
-
-		// builds something like boost_python38-vc142-mt-x64-1_72.dll
-
-		// boost_python38-
-		oss << "boost_python" << python_version_no_patch() + "-";
-
-		// vc142-
-		oss << "vc" + replace_all(versions::boost_vs(), ".", "") << "-";
-
-		// mt-x64-1_72
-		oss << "mt-x64-" << boost_version_no_patch_underscores();
-
-		oss << ".dll";
-
-		return oss.str();
-	}
-
-	std::string python_version_no_patch() const
-	{
-		// matches 3.8 and 3.8.1
-		std::regex re(R"((\d+)\.(\d+)(?:\.(\d+))?)");
-
-		std::smatch m;
-		if (!std::regex_match(versions::python(), m, re))
-			bail_out("bad python version '" + versions::python() + "'");
-
-		// 38
-		return m[1].str() + m[2].str();
-	}
-
-	std::string boost_version_no_patch_underscores() const
-	{
-		const auto m = parse_boost_version();
-
-		// 1_72
-		return m[1].str() + "_" + m[2].str();
-	}
-
-	std::string boost_version_no_tags() const
-	{
-		const auto m = parse_boost_version();
-
-		// 1.72.1
-		std::string s = m[1].str() + "." + m[2].str();
-
-		if (m.size() > 3)
-			s += "." + m[3].str();
-
-		return s;
-	}
-
-	std::string boost_version_all_underscores() const
-	{
-		const auto m = parse_boost_version();
-
-		// boost_1_72_0_b1_rc1
-		std::string s = "boost_" + m[1].str() + "_" + m[2].str();
-
-		if (m.size() > 3)
-			s += "_" + m[3].str();
-
-		if (m.size() > 4)
-			s += "_" + m[4].str();
-
-		if (m.size() > 5)
-			s += "_" + m[5].str();
-
-		return s;
-	}
-};
-
-
 class fmt : public basic_task<fmt>
 {
 public:
@@ -869,14 +692,58 @@ private:
 class python : public basic_task<python>
 {
 public:
+	struct version_info
+	{
+		std::string major;
+		std::string minor;
+		std::string patch;
+	};
+
+
 	python()
 		: basic_task("python")
 	{
 	}
 
+	static version_info version()
+	{
+		// 3.8.1
+		// .1 is optional
+		std::regex re(R"((\d+)\.(\d+)(?:\.(\d+))?)");
+		std::smatch m;
+
+		if (!std::regex_match(versions::python(), m, re))
+			bail_out("bad python version '" + versions::python() + "'");
+
+		version_info v;
+
+		v.major = m[1];
+		v.minor = m[2];
+
+		if (m.size() > 3)
+			v.patch = m[3];
+
+		return v;
+	}
+
 	static fs::path source_path()
 	{
 		return paths::build() / ("python-" + versions::python());
+	}
+
+	static fs::path build_path()
+	{
+		return source_path() / "PCBuild" / "amd64";
+	}
+
+	static fs::path python_exe()
+	{
+		return build_path() / "python.exe";
+	}
+
+	static fs::path include_path()
+	{
+		return source_path() / "Include";
 	}
 
 protected:
@@ -932,7 +799,7 @@ protected:
 
 		op::copy_file_to_dir_if_better(
 			source_path() / "PC" / "pyconfig.h",
-			source_path() / "Include");
+			include_path());
 
 		op::copy_file_to_dir_if_better(
 			build_path() / "*.lib",
@@ -965,30 +832,244 @@ private:
 		return source_path() / "PCBuild" / "pcbuild.sln";
 	}
 
-	fs::path build_path() const
+	std::string version_for_dll() const
 	{
-		return source_path() / "PCBuild" / "amd64";
+		const auto v = version();
+
+		// 38
+		return v.major + v.minor;
+	}
+};
+
+
+class boost : public basic_task<boost>
+{
+public:
+	boost()
+		: basic_task("boost")
+	{
 	}
 
-	std::smatch parse_version() const
+	static fs::path source_path()
 	{
-		// 3.8.1
-		// .1 is optional
-		std::regex re(R"((\d+)\.(\d+)(?:\.(\d+))?)");
+		return paths::build() / ("boost_" + boost_version_no_tags_underscores());
+	}
+
+protected:
+	void do_fetch() override
+	{
+		if (prebuilt::boost())
+			fetch_prebuilt();
+		else
+			fetch_from_source();
+	}
+
+	void do_build_and_install() override
+	{
+		if (prebuilt::boost())
+			build_and_install_prebuilt();
+		else
+			build_and_install_from_source();
+	}
+
+private:
+	static std::smatch parse_boost_version()
+	{
+		// 1.72.0-b1-rc1
+		// everything but 1.72 is optional
+		std::regex re(R"((\d+)\.(\d+)(?:\.(\d+)(?:-(\w+)(?:-(\w+))?)?)?)");
 		std::smatch m;
 
-		if (!std::regex_match(versions::python(), m, re))
-			bail_out("bad python version '" + versions::python() + "'");
+		if (!std::regex_match(versions::boost(), m, re))
+			bail_out("bad boost version '" + versions::boost() + "'");
 
 		return m;
 	}
 
-	std::string version_for_dll() const
+	std::string source_download_filename()
 	{
-		std::smatch m = parse_version();
+		return boost_version_all_underscores() + ".zip";
+	}
+
+	void fetch_prebuilt()
+	{
+		const auto file = run_tool(downloader(prebuilt_url()));
+
+		run_tool(decompresser()
+			.file(file)
+			.output(source_path()));
+	}
+
+	void build_and_install_prebuilt()
+	{
+		op::copy_file_to_dir_if_better(
+			lib_path() / python_dll(), paths::install_bin());
+	}
+
+	void fetch_from_source()
+	{
+		const auto file = run_tool(downloader(source_url()));
+
+		run_tool(decompresser()
+			.file(file)
+			.output(source_path()));
+
+		if (fs::exists(source_path() / "b2.exe"))
+		{
+			debug("boost already bootstraped");
+		}
+		else
+		{
+			write_config_jam();
+
+			run_tool(process_runner(source_path() / "bootstrap.bat", cmd::noflags)
+				.cwd(source_path()));
+		}
+	}
+
+	void build_and_install_from_source()
+	{
+		const fs::path out = "lib64-msvc-" + versions::vs_toolset();
+
+		run_tool(process_runner(source_path() / "b2", cmd::noflags)
+			.arg("address-model=", "64")
+			//.arg("-a")  // rebuild all
+			.arg("link=", "shared")
+			.arg("--user-config=", config_jam_file())
+			.arg("toolset=msvc-" + versions::vs_toolset())
+			.arg("--stagedir=", out)
+			.arg("--libdir=", out)
+			.arg("--with-python")
+			.cwd(source_path()));
+
+		op::copy_file_to_dir_if_better(
+			source_path() / out / "lib" / python_dll(),
+			paths::install_bin());
+	}
+
+	fs::path config_jam_file() const
+	{
+		return source_path() / "user-config-64.jam";
+	}
+
+	void write_config_jam()
+	{
+		std::ofstream out(config_jam_file());
+
+		out
+			<< "using python\n"
+			<< "  : " << python_version_for_jam() << "\n"
+			<< "  : " << python::python_exe().generic_string() << "\n"
+			<< "  : " << python::include_path().generic_string() << "\n"
+			<< "  : " << python::build_path().generic_string() << "\n"
+			<< "  : <address-model>64\n"
+			<< "  : <define>BOOST_ALL_NO_LIB=1\n"
+			<< "  ;";
+	}
+
+
+	static url prebuilt_url()
+	{
+		const auto underscores = replace_all(versions::boost(), ".", "_");
+
+		return
+			"https://github.com/ModOrganizer2/modorganizer-umbrella/"
+			"releases/download/1.1/boost_prebuilt_" + underscores + ".7z";
+	}
+
+	static url source_url()
+	{
+		return
+			"https://dl.bintray.com/boostorg/release/" +
+			boost_version_no_tags() + "/source/" +
+			boost_version_all_underscores() + ".zip";
+	}
+
+	static fs::path lib_path()
+	{
+		const std::string lib = "lib64-msvc-" + versions::boost_vs();
+		return source_path() / lib / "lib";
+	}
+
+	static std::string python_dll()
+	{
+		std::ostringstream oss;
+
+		// builds something like boost_python38-vc142-mt-x64-1_72.dll
+
+		// boost_python38-
+		oss << "boost_python" << python_version_for_dll() + "-";
+
+		// vc142-
+		oss << "vc" + replace_all(versions::boost_vs(), ".", "") << "-";
+
+		// mt-x64-1_72
+		oss << "mt-x64-" << boost_version_no_patch_underscores();
+
+		oss << ".dll";
+
+		return oss.str();
+	}
+
+	static std::string python_version_for_dll()
+	{
+		const auto v = python::version();
 
 		// 38
-		return m[1].str() + m[2].str();
+		return v.major + v.minor;
+	}
+
+	static std::string python_version_for_jam()
+	{
+		const auto v = python::version();
+
+		// 3.8
+		return v.major + "." + v.minor;
+	}
+
+	static std::string boost_version_no_patch_underscores()
+	{
+		const auto m = parse_boost_version();
+
+		// 1_72
+		return m[1].str() + "_" + m[2].str();
+	}
+
+	static std::string boost_version_no_tags()
+	{
+		const auto m = parse_boost_version();
+
+		// 1.72.1
+		std::string s = m[1].str() + "." + m[2].str();
+
+		if (m.size() > 3)
+			s += "." + m[3].str();
+
+		return s;
+	}
+
+	static std::string boost_version_no_tags_underscores()
+	{
+		return replace_all(boost_version_no_tags(), ".", "_");
+	}
+
+	static std::string boost_version_all_underscores()
+	{
+		const auto m = parse_boost_version();
+
+		// boost_1_72_0_b1_rc1
+		std::string s = "boost_" + m[1].str() + "_" + m[2].str();
+
+		if (m.size() > 3)
+			s += "_" + m[3].str();
+
+		if (m.size() > 4)
+			s += "_" + m[4].str();
+
+		if (m.size() > 5)
+			s += "_" + m[5].str();
+
+		return s;
 	}
 };
 
@@ -1056,7 +1137,6 @@ int run(int argc, char** argv)
 
 		g_tasks.push_back(std::make_unique<sevenz>());
 		g_tasks.push_back(std::make_unique<zlib>());
-		g_tasks.push_back(std::make_unique<boost>());
 		g_tasks.push_back(std::make_unique<fmt>());
 		g_tasks.push_back(std::make_unique<gtest>());
 		g_tasks.push_back(std::make_unique<libbsarch>());
@@ -1065,6 +1145,7 @@ int run(int argc, char** argv)
 		g_tasks.push_back(std::make_unique<libffi>());
 		g_tasks.push_back(std::make_unique<bzip2>());
 		g_tasks.push_back(std::make_unique<python>());
+		g_tasks.push_back(std::make_unique<boost>());
 
 		if (argc > 1)
 		{

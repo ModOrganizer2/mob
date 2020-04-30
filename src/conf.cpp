@@ -63,7 +63,7 @@ static std::map<std::string, std::string> g_conf =
 {
 	{"vs",           "16"},
 	{"vs_year",      "2019"},
-	{"vs_toolset",   "v142"},
+	{"vs_toolset",   "14.2"},
 	{"sdk",          "10.0.18362.0"},
 	{"sevenzip",     "19.00"},
 	{"zlib",         "1.2.11"},

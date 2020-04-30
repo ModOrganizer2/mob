@@ -481,7 +481,7 @@ void patcher::do_run()
 	if (!fs::exists(patches_))
 		return;
 
-	const auto base = cmd(third_party::patch(), cmd::stdout_is_verbose)
+	const auto base = cmd(third_party::patch(), cmd::noflags)
 		.arg("--read-only", "ignore")
 		.arg("--strip", "0")
 		.arg("--directory", output_)
@@ -681,6 +681,9 @@ msbuild& msbuild::parameters(const std::vector<std::string>& params)
 
 void msbuild::do_run()
 {
+	// 14.2 to v142
+	const auto toolset = "v" + replace_all(versions::vs_toolset(), ".", "");
+
 	auto c = cmd(third_party::msbuild(), cmd::noflags)
 		.arg("-nologo")
 		.arg("-maxCpuCount")
@@ -688,7 +691,7 @@ void msbuild::do_run()
 		.arg("-property:EnforceProcessCountAcrossBuilds=true")
 		.arg("-property:Configuration=Release")
 		.arg("-property:Platform=x64")
-		.arg("-property:PlatformToolset=" + versions::vs_toolset())
+		.arg("-property:PlatformToolset=" + toolset)
 		.arg("-property:WindowsTargetPlatformVersion=" + versions::sdk())
 		.arg("-verbosity:minimal", cmd::quiet)
 		.arg("-consoleLoggerParameters:ErrorsOnly", cmd::quiet);
