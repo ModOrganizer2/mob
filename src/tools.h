@@ -271,4 +271,17 @@ private:
 	std::vector<std::string> params_;
 };
 
+
+class devenv_upgrade : public basic_process_runner
+{
+public:
+	devenv_upgrade(fs::path sln);
+
+protected:
+	void do_run() override;
+
+private:
+	fs::path sln_;
+};
+
 }	// namespace

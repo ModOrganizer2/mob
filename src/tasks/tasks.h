@@ -130,6 +130,23 @@ private:
 };
 
 
+class lz4 : public basic_task<lz4>
+{
+public:
+	lz4();
+	static fs::path source_path();
+
+protected:
+	void do_fetch() override;
+	void do_build_and_install() override;
+
+private:
+	static fs::path solution_dir();
+	static fs::path solution_file();
+	static fs::path bin_dir();
+};
+
+
 class openssl : public basic_task<openssl>
 {
 public:
@@ -180,8 +197,6 @@ protected:
 	void do_build_and_install() override;
 
 private:
-	void upgrade_project();
-
 	static fs::path solution_file();
 	static std::string version_for_dll();
 };

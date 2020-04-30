@@ -709,4 +709,23 @@ void msbuild::do_run()
 	execute_and_join(c);
 }
 
+
+devenv_upgrade::devenv_upgrade(fs::path sln)
+	: basic_process_runner("upgrade project"), sln_(std::move(sln))
+{
+}
+
+void devenv_upgrade::do_run()
+{
+	if (fs::exists(sln_.parent_path() / "UpgradeLog.htm"))
+	{
+		debug("project already upgraded");
+		return;
+	}
+
+	execute_and_join(cmd(third_party::devenv(), cmd::stdout_is_verbose)
+		.arg("/upgrade")
+		.arg(sln_));
+}
+
 }	// namespace

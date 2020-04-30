@@ -77,6 +77,7 @@ static std::map<std::string, std::string> g_conf =
 	{"libloot_hash", "gf725dd7"},
 	{"openssl",      "1.1.1d"},
 	{"bzip2",        "1.0.6"},
+	{"lz4",          "1.9.2"},
 
 	{"prefix",   R"(C:\dev\projects\mobuild-out)"},
 };
@@ -121,6 +122,7 @@ const std::string& versions::libloot()      { return get_conf("libloot"); }
 const std::string& versions::libloot_hash() { return get_conf("libloot_hash"); }
 const std::string& versions::openssl()      { return get_conf("openssl"); }
 const std::string& versions::bzip2()		{ return get_conf("bzip2"); }
+const std::string& versions::lz4()          { return get_conf("lz4"); }
 
 fs::path paths::prefix()         { return get_conf("prefix"); }
 fs::path paths::cache()          { return prefix() / "downloads"; }

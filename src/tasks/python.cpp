@@ -43,10 +43,7 @@ void python::do_fetch()
 		.branch("v" + versions::python())
 		.output(source_path()));
 
-	if (fs::exists(source_path() / "PCBuild" / "UpgradeLog.htm"))
-		debug("project already upgraded");
-	else
-		upgrade_project();
+	run_tool(devenv_upgrade(solution_file()));
 }
 
 void python::do_build_and_install()
@@ -104,14 +101,6 @@ void python::do_build_and_install()
 	op::copy_file_to_dir_if_better(
 		build_path() / ("python" + version_for_dll() + ".pdb"),
 		paths::install_pdbs());
-}
-
-void python::upgrade_project()
-{
-	run_tool(process_runner(third_party::devenv(), cmd::stdout_is_verbose)
-		.name("upgrade project")
-		.arg(solution_file())
-		.arg("/upgrade"));
 }
 
 fs::path python::build_path()

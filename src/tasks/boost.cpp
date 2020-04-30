@@ -72,7 +72,6 @@ void boost::build_and_install_from_source()
 
 	run_tool(process_runner(source_path() / "b2", cmd::noflags)
 		.arg("address-model=", "64")
-		//.arg("-a")  // rebuild all
 		.arg("link=", "shared")
 		.arg("--user-config=", config_jam_file())
 		.arg("toolset=msvc-" + versions::vs_toolset())

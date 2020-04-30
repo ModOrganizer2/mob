@@ -44,6 +44,7 @@ struct versions
 	static const std::string& libloot_hash();
 	static const std::string& openssl();
 	static const std::string& bzip2();
+	static const std::string& lz4();
 };
 
 struct paths

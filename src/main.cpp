@@ -9,54 +9,6 @@
 namespace builder
 {
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-template <class Tool, class... Args>
-class dummy : public basic_task<dummy<Tool, Args...>>
-{
-public:
-	dummy(Args&&... args)
-		: basic_task("dummy"), args_(std::forward<Args>(args)...)
-	{
-	}
-
-
-protected:
-	void do_fetch() override
-	{
-		std::apply([&](auto&&... args){ run_tool<Tool>(args...); }, args_);
-	}
-
-private:
-	std::tuple<Args...> args_;
-};
-
-
-template <class Tool, class... Args>
-std::unique_ptr<dummy<Tool, Args...>> make_dummy(Args&&... args)
-{
-	using Dummy = dummy<Tool, Args...>;
-	return std::unique_ptr<Dummy>(new Dummy(std::forward<Args>(args)...));
-}
-
-
 BOOL WINAPI signal_handler(DWORD) noexcept
 {
 	info("caught sigint");
@@ -100,6 +52,7 @@ int run(int argc, char** argv)
 		add_task<bzip2>();
 		add_task<python>();
 		add_task<boost>();
+		add_task<lz4>();
 
 		if (argc > 1)
 			return run_task(argv[1]) ? 0 : 1;
