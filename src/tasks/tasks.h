@@ -147,6 +147,30 @@ private:
 };
 
 
+class ncc : public basic_task<ncc>
+{
+public:
+	ncc();
+	static fs::path source_path();
+
+protected:
+	void do_fetch() override;
+	void do_build_and_install() override;
+};
+
+
+class nmm : public basic_task<nmm>
+{
+public:
+	nmm();
+	static fs::path source_path();
+
+protected:
+	void do_fetch() override;
+	void do_build_and_install() override;
+};
+
+
 class openssl : public basic_task<openssl>
 {
 public:

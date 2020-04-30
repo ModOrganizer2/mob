@@ -272,6 +272,9 @@ git_clone& git_clone::output(const fs::path& dir)
 
 void git_clone::do_run()
 {
+	if (org_.empty() || repo_.empty() || where_.empty())
+		bail_out("git_clone missing parameters");
+
 	const fs::path dot_git = where_ / ".git";
 
 	if (!fs::exists(dot_git))
@@ -657,7 +660,7 @@ void jom::do_run()
 
 
 msbuild::msbuild()
-	: basic_process_runner("msbuild")
+	: basic_process_runner("msbuild"), config_("Release"), platform_("x64")
 {
 }
 
@@ -679,6 +682,18 @@ msbuild& msbuild::parameters(const std::vector<std::string>& params)
 	return *this;
 }
 
+msbuild& msbuild::config(const std::string& s)
+{
+	config_ = s;
+	return *this;
+}
+
+msbuild& msbuild::platform(const std::string& s)
+{
+	platform_ = s;
+	return *this;
+}
+
 void msbuild::do_run()
 {
 	// 14.2 to v142
@@ -689,8 +704,8 @@ void msbuild::do_run()
 		.arg("-maxCpuCount")
 		.arg("-property:UseMultiToolTask=true")
 		.arg("-property:EnforceProcessCountAcrossBuilds=true")
-		.arg("-property:Configuration=Release")
-		.arg("-property:Platform=x64")
+		.arg("-property:Configuration=", config_, cmd::quote)
+		.arg("-property:Platform=", platform_, cmd::quote)
 		.arg("-property:PlatformToolset=" + toolset)
 		.arg("-property:WindowsTargetPlatformVersion=" + versions::sdk())
 		.arg("-verbosity:minimal", cmd::quiet)
@@ -726,6 +741,20 @@ void devenv_upgrade::do_run()
 	execute_and_join(cmd(third_party::devenv(), cmd::stdout_is_verbose)
 		.arg("/upgrade")
 		.arg(sln_));
+}
+
+
+nuget::nuget(fs::path sln)
+	: basic_process_runner("nuget"), sln_(std::move(sln))
+{
+}
+
+void nuget::do_run()
+{
+	execute_and_join(cmd(third_party::nuget(), cmd::noflags)
+		.arg("restore")
+		.arg(sln_)
+		.cwd(sln_.parent_path()));
 }
 
 }	// namespace

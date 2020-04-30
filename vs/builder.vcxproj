@@ -93,6 +93,8 @@
     <ClCompile Include="..\src\tasks\libffi.cpp" />
     <ClCompile Include="..\src\tasks\libloot.cpp" />
     <ClCompile Include="..\src\tasks\lz4.cpp" />
+    <ClCompile Include="..\src\tasks\ncc.cpp" />
+    <ClCompile Include="..\src\tasks\nmm.cpp" />
     <ClCompile Include="..\src\tasks\openssl.cpp" />
     <ClCompile Include="..\src\tasks\python.cpp" />
     <ClCompile Include="..\src\tasks\sevenz.cpp" />

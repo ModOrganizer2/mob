@@ -1,0 +1,10 @@
+--- publish.bat	Thu Apr 30 00:08:44 2020
++++ publish.bat	Thu Apr 30 00:08:14 2020
+@@ -1,6 +1,6 @@
+ set _NMMPATH=%~dp0..\Nexus-Mod-Manager
+ set _NMMCLIPATH=%~dp0
+-set outputPath=..\..\install\bin
++set outputPath=%~1
+
+ mkdir  "%outputPath%\NCC"
+ copy "%_NMMPATH%\Stage\Release\AntlrUtil.dll" "%outputPath%\NCC"

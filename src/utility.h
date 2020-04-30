@@ -148,7 +148,8 @@ public:
 	{
 		noargflags = 0x00,
 		quiet   = 0x01,
-		nospace = 0x02
+		nospace = 0x02,
+		quote   = 0x04
 	};
 
 	enum flags
@@ -161,7 +162,7 @@ public:
 	cmd(const fs::path& exe, flags f)
 		: exe_(exe.filename().string()), flags_(f)
 	{
-		s_ += arg_to_string(exe);
+		s_ += arg_to_string(exe, false);
 	}
 
 	cmd& name(const std::string& s);
@@ -173,14 +174,14 @@ public:
 	template <class T>
 	cmd& arg(const T& value, arg_flags f=noargflags)
 	{
-		add_arg("", arg_to_string(value), f);
+		add_arg("", arg_to_string(value, (f & quote)), f);
 		return *this;
 	}
 
 	template <class T>
 	cmd& arg(const std::string& name, const T& value, arg_flags f=noargflags)
 	{
-		add_arg(name, arg_to_string(value), f);
+		add_arg(name, arg_to_string(value, (f & quote)), f);
 		return *this;
 	}
 
@@ -195,10 +196,10 @@ private:
 
 	void add_arg(const std::string& k, const std::string& v, arg_flags f);
 
-	std::string arg_to_string(const char* s);
-	std::string arg_to_string(const std::string& s);
-	std::string arg_to_string(const fs::path& p);
-	std::string arg_to_string(const url& u);
+	std::string arg_to_string(const char* s, bool force_quote);
+	std::string arg_to_string(const std::string& s, bool force_quote);
+	std::string arg_to_string(const fs::path& p, bool force_quote);
+	std::string arg_to_string(const url& u, bool force_quote);
 };
 
 }	// namespace

@@ -53,9 +53,19 @@ int run(int argc, char** argv)
 		add_task<python>();
 		add_task<boost>();
 		add_task<lz4>();
+		add_task<nmm>();
+		add_task<ncc>();
 
 		if (argc > 1)
-			return run_task(argv[1]) ? 0 : 1;
+		{
+			for (int i=1; i<argc; ++i)
+			{
+				if (!run_task(argv[i]))
+					return 1;
+			}
+
+			return 0;
+		}
 
 		run_all_tasks();
 

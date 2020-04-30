@@ -248,24 +248,33 @@ void cmd::add_arg(const std::string& k, const std::string& v, arg_flags f)
 		s_ += " " + k + " " + v;
 }
 
-std::string cmd::arg_to_string(const char* s)
+std::string cmd::arg_to_string(const char* s, bool force_quote)
 {
-	return s;
+	if (force_quote)
+		return "\"" + std::string(s) + "\"";
+	else
+		return s;
 }
 
-std::string cmd::arg_to_string(const std::string& s)
+std::string cmd::arg_to_string(const std::string& s, bool force_quote)
 {
-	return s;
+	if (force_quote)
+		return "\"" + std::string(s) + "\"";
+	else
+		return s;
 }
 
-std::string cmd::arg_to_string(const fs::path& p)
+std::string cmd::arg_to_string(const fs::path& p, bool)
 {
 	return "\"" + p.string() + "\"";
 }
 
-std::string cmd::arg_to_string(const url& u)
+std::string cmd::arg_to_string(const url& u, bool force_quote)
 {
-	return u.string();
+	if (force_quote)
+		return "\"" + u.string() + "\"";
+	else
+		return u.string();
 }
 
 

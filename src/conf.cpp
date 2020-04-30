@@ -78,6 +78,7 @@ static std::map<std::string, std::string> g_conf =
 	{"openssl",      "1.1.1d"},
 	{"bzip2",        "1.0.6"},
 	{"lz4",          "1.9.2"},
+	{"nmm",          "0.70.11"},
 
 	{"prefix",   R"(C:\dev\projects\mobuild-out)"},
 };
@@ -92,8 +93,10 @@ const std::string& get_conf(const std::string& name)
 }
 
 
-bool conf::verbose() { return false; }
-bool conf::dry()     { return false; }
+bool conf::verbose()          { return true; }
+bool conf::dry()              { return false; }
+std::string conf::mo_org()    { return "ModOrganizer2"; }
+std::string conf::mo_branch() { return "master"; }
 
 fs::path third_party::sevenz()  { return "7z"; }
 fs::path third_party::jom()     { return "jom"; }
@@ -103,6 +106,7 @@ fs::path third_party::cmake()   { return "cmake"; }
 fs::path third_party::perl()    { return "perl"; }
 fs::path third_party::devenv()  { return "devenv"; }
 fs::path third_party::msbuild() { return "msbuild"; }
+fs::path third_party::nuget()   { return "nuget"; }
 
 bool prebuilt::boost() { return false; }
 
@@ -123,6 +127,7 @@ const std::string& versions::libloot_hash() { return get_conf("libloot_hash"); }
 const std::string& versions::openssl()      { return get_conf("openssl"); }
 const std::string& versions::bzip2()		{ return get_conf("bzip2"); }
 const std::string& versions::lz4()          { return get_conf("lz4"); }
+const std::string& versions::nmm()          { return get_conf("nmm"); }
 
 fs::path paths::prefix()         { return get_conf("prefix"); }
 fs::path paths::cache()          { return prefix() / "downloads"; }

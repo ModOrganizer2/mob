@@ -261,6 +261,8 @@ public:
 	msbuild& solution(const fs::path& sln);
 	msbuild& projects(const std::vector<std::string>& names);
 	msbuild& parameters(const std::vector<std::string>& params);
+	msbuild& config(const std::string& s);
+	msbuild& platform(const std::string& s);
 
 protected:
 	void do_run() override;
@@ -269,6 +271,8 @@ private:
 	fs::path sln_;
 	std::vector<std::string> projects_;
 	std::vector<std::string> params_;
+	std::string config_;
+	std::string platform_;
 };
 
 
@@ -276,6 +280,19 @@ class devenv_upgrade : public basic_process_runner
 {
 public:
 	devenv_upgrade(fs::path sln);
+
+protected:
+	void do_run() override;
+
+private:
+	fs::path sln_;
+};
+
+
+class nuget : public basic_process_runner
+{
+public:
+	nuget(fs::path sln);
 
 protected:
 	void do_run() override;

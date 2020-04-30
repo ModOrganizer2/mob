@@ -69,6 +69,12 @@
     <ClCompile Include="..\src\tasks\lz4.cpp">
       <Filter>src\tasks</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\tasks\ncc.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tasks\nmm.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">

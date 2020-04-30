@@ -7,6 +7,8 @@ struct conf
 {
 	static bool verbose();
 	static bool dry();
+	static std::string mo_org();
+	static std::string mo_branch();
 };
 
 struct third_party
@@ -19,6 +21,7 @@ struct third_party
 	static fs::path perl();
 	static fs::path devenv();
 	static fs::path msbuild();
+	static fs::path nuget();
 };
 
 struct prebuilt
@@ -45,6 +48,7 @@ struct versions
 	static const std::string& openssl();
 	static const std::string& bzip2();
 	static const std::string& lz4();
+	static const std::string& nmm();
 };
 
 struct paths
