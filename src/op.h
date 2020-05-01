@@ -5,6 +5,9 @@
 namespace builder
 {
 
+void vcvars();
+
+
 class process
 {
 public:
@@ -43,7 +46,7 @@ public:
 	static void rename(const fs::path& src, const fs::path& dest);
 	static void move_to_directory(const fs::path& src, const fs::path& dest_dir);
 	static void copy_file_to_dir_if_better(const fs::path& file, const fs::path& dest_dir);
-	static process run(const std::string& cmd, const fs::path& cwd={});
+	static process run(arch a, const std::string& cmd, const fs::path& cwd={});
 
 private:
 	static void do_touch(const fs::path& p);
@@ -53,7 +56,7 @@ private:
 	static void do_copy_file_to_dir(const fs::path& f, const fs::path& d);
 	static void do_remove_readonly(const fs::path& p);
 	static void do_rename(const fs::path& src, const fs::path& dest);
-	static process do_run(const std::string& cmd, const fs::path& cwd);
+	static process do_run(arch a, const std::string& cmd, const fs::path& cwd);
 	static void check(const fs::path& p);
 };
 

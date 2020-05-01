@@ -98,7 +98,9 @@
     <ClCompile Include="..\src\tasks\openssl.cpp" />
     <ClCompile Include="..\src\tasks\python.cpp" />
     <ClCompile Include="..\src\tasks\sevenz.cpp" />
+    <ClCompile Include="..\src\tasks\spdlog.cpp" />
     <ClCompile Include="..\src\tasks\task.cpp" />
+    <ClCompile Include="..\src\tasks\usvfs.cpp" />
     <ClCompile Include="..\src\tasks\zlib.cpp" />
     <ClCompile Include="..\src\tools.cpp" />
     <ClCompile Include="..\src\utility.cpp" />

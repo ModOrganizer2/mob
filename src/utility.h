@@ -141,6 +141,16 @@ std::string replace_all(
 std::string join(const std::vector<std::string>& v, const std::string& sep);
 
 
+enum class arch
+{
+	x86 = 1,
+	x64,
+	dont_care,
+
+	def = x64
+};
+
+
 class cmd
 {
 public:

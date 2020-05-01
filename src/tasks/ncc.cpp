@@ -30,7 +30,9 @@ void ncc::do_build_and_install()
 		.projects({"NexusClientCLI"})
 		.platform("Any CPU"));
 
-	run_tool(process_runner(source_path() / "publish.bat", cmd::noflags)
+	const auto publish =source_path() / "publish.bat";
+
+	run_tool(process_runner(arch::dont_care, publish, cmd::noflags)
 		.arg(paths::install_bin()));
 }
 

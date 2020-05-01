@@ -7,68 +7,6 @@
 namespace builder
 {
 
-fs::path find_vcvars()
-{
-	const std::vector<std::string> editions =
-	{
-		"Preview", "Enterprise", "Professional", "Community"
-	};
-
-	for (auto&& edition : editions)
-	{
-		const auto p =
-			paths::program_files_x86() /
-			"Microsoft Visual Studio" /
-			versions::vs_year() /
-			edition / "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
-
-		if (fs::exists(p))
-		{
-			debug("found " + p.string());
-			return p;
-		}
-	}
-
-	bail_out("couldn't find visual studio");
-}
-
-void vcvars()
-{
-	debug("vcvars");
-
-	const fs::path tmp = paths::temp_file();
-
-	const std::string cmd =
-		"\"" + find_vcvars().string() + "\" amd64 && "
-		"set > \"" + tmp.string() + "\"";
-
-	op::run(cmd);
-
-	std::stringstream ss(read_text_file(tmp));
-	op::delete_file(tmp);
-
-	for (;;)
-	{
-		std::string line;
-		std::getline(ss, line);
-		if (!ss)
-			break;
-
-		const auto sep = line.find('=');
-
-		if (sep == std::string::npos)
-			continue;
-
-		const std::string name = line.substr(0, sep);
-		const std::string value = line.substr(sep + 1);
-
-		//debug("setting env " + name);
-		SetEnvironmentVariableA(name.c_str(), nullptr);
-		SetEnvironmentVariableA(name.c_str(), value.c_str());
-	}
-}
-
-
 tool::tool(std::string name)
 	: name_(std::move(name)), interrupted_(false)
 {
@@ -117,23 +55,23 @@ void basic_process_runner::do_interrupt()
 	process_.interrupt();
 }
 
-int basic_process_runner::execute_and_join(process p, bool check_exit_code)
+int basic_process_runner::execute_and_join(process p, bool check)
 {
 	process_ = std::move(p);
-	join(check_exit_code);
+	join(check);
 	return process_.exit_code();
 }
 
-int basic_process_runner::execute_and_join(const cmd& c, bool check_exit_code)
+int basic_process_runner::execute_and_join(arch a, const cmd& c, bool check)
 {
-	return execute_and_join(op::run(c.string(), c.cwd()), check_exit_code);
+	return execute_and_join(op::run(a, c.string(), c.cwd()), check);
 }
 
-void basic_process_runner::join(bool check_exit_code)
+void basic_process_runner::join(bool check)
 {
 	process_.join();
 
-	if (check_exit_code && !interrupted())
+	if (check && !interrupted())
 	{
 		if (process_.exit_code() != 0)
 		{
@@ -285,7 +223,7 @@ void git_clone::do_run()
 
 void git_clone::clone()
 {
-	execute_and_join(cmd(third_party::git(), cmd::stdout_is_verbose)
+	execute_and_join(arch::dont_care, cmd(third_party::git(), cmd::stdout_is_verbose)
 		.arg("clone")
 		.arg("--recurse-submodules")
 		.arg("--depth", "1")
@@ -298,7 +236,7 @@ void git_clone::clone()
 
 void git_clone::pull()
 {
-	execute_and_join(cmd(third_party::git(), cmd::stdout_is_verbose)
+	execute_and_join(arch::dont_care, cmd(third_party::git(), cmd::stdout_is_verbose)
 		.arg("pull")
 		.arg("--recurse-submodules")
 		.arg("--quiet", cmd::quiet)
@@ -396,7 +334,7 @@ void decompresser::do_run()
 			.string();
 	}
 
-	execute_and_join(op::run(c));
+	execute_and_join(op::run(arch::dont_care, c));
 	check_duplicate_directory();
 
 	delete_output.cancel();
@@ -518,7 +456,7 @@ void patcher::do_run()
 
 		{
 			// check
-			if (execute_and_join(check, false) == 0)
+			if (execute_and_join(arch::dont_care, check, false) == 0)
 			{
 				debug("patch " + p.string() + " already applied");
 				continue;
@@ -528,7 +466,7 @@ void patcher::do_run()
 		{
 			// apply
 			debug("applying patch " + p.string());
-			execute_and_join(apply);
+			execute_and_join(arch::dont_care, apply);
 		}
 	}
 }
@@ -536,7 +474,8 @@ void patcher::do_run()
 
 cmake::cmake() :
 	basic_process_runner("cmake"),
-	gen_(nmake), cmd_(third_party::cmake(), cmd::stdout_is_verbose)
+	gen_(jom), arch_(arch::def),
+	cmd_(third_party::cmake(), cmd::stdout_is_verbose)
 {
 }
 
@@ -564,6 +503,12 @@ cmake& cmake::def(const std::string& s)
 	return *this;
 }
 
+cmake& cmake::architecture(arch a)
+{
+	arch_ = a;
+	return *this;
+}
+
 fs::path cmake::result() const
 {
 	return output_;
@@ -571,30 +516,24 @@ fs::path cmake::result() const
 
 void cmake::do_run()
 {
-	std::string g;
-
-	switch (gen_)
+	if (conf::clean())
 	{
-		case nmake:
+		for (auto&& [k, g] : all_generators())
 		{
-			output_ = root_ / "build";
-			g = "NMake Makefiles";
-			break;
-		}
-
-		case vs:
-		{
-			output_ = root_ / "vsbuild";
-			g = "Visual Studio " + versions::vs() + " " + versions::vs_year();
-			break;
+			op::delete_directory(root_ / g.output_dir(arch::x86));
+			op::delete_directory(root_ / g.output_dir(arch::x64));
 		}
 	}
 
+	const auto& g = get_generator();
+	output_ = root_ / (g.output_dir(arch_));
 
 	cmd_
-		.arg("-G", "\"" + g + "\"")
+		.arg("-G", "\"" + g.name + "\"")
+		.arg("-DCMAKE_BUILD_TYPE=Release")
 		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", cmd::quiet)
-		.arg("--log-level", "WARNING", cmd::quiet);
+		.arg("--log-level", "WARNING", cmd::quiet)
+		.arg(g.get_arch(arch_));
 
 	if (!prefix_.empty())
 		cmd_.arg("-DCMAKE_INSTALL_PREFIX=", prefix_, cmd::nospace);
@@ -602,14 +541,88 @@ void cmake::do_run()
 	cmd_.arg("..");
 	cmd_.cwd(output_);
 
-	execute_and_join(cmd_);
+	execute_and_join(arch_, cmd_);
+}
+
+const std::map<cmake::generators, cmake::gen_info>&
+cmake::all_generators() const
+{
+	static const std::map<generators, gen_info> map =
+	{
+		{ generators::jom, {"build", "NMake Makefiles JOM", "", "" }},
+
+		{ generators::vs, {
+			"vsbuild",
+			"Visual Studio " + versions::vs() + " " + versions::vs_year(),
+			 "Win32",
+			"x64"
+		}}
+	};
+
+	return map;
+}
+
+const cmake::gen_info& cmake::get_generator() const
+{
+	const auto& map = all_generators();
+
+	auto itor = map.find(gen_);
+	if (itor == map.end())
+		bail_out("unknown generator");
+
+	return itor->second;
+}
+
+std::string cmake::gen_info::get_arch(arch a) const
+{
+	switch (a)
+	{
+		case arch::x86:
+		{
+			if (x86.empty())
+				return {};
+			else
+				return "-A " + x86;
+		}
+
+		case arch::x64:
+		{
+			if (x64.empty())
+				return {};
+			else
+				return "-A" + x64;
+		}
+
+		case arch::dont_care:
+			return {};
+
+		default:
+			bail_out("gen_info::get_arch(): bad arch");
+	}
+}
+
+std::string cmake::gen_info::output_dir(arch a) const
+{
+	switch (a)
+	{
+		case arch::x86:
+			return (dir + "_32");
+
+		case arch::x64:
+		case arch::dont_care:
+			return dir;
+
+		default:
+			bail_out("gen_info::get_arch(): bad arch");
+	}
 }
 
 
 
 jom::jom() :
 	basic_process_runner("jom"),
-	cmd_(third_party::jom(), cmd::stdout_is_verbose), flags_(noflags)
+	cmd_(third_party::jom(), cmd::stdout_is_verbose), flags_(noflags),
+	arch_(arch::def)
 {
 }
 
@@ -637,6 +650,12 @@ jom& jom::flag(flags f)
 	return *this;
 }
 
+jom& jom::architecture(arch a)
+{
+	arch_ = a;
+	return *this;
+}
+
 int jom::result() const
 {
 	return exit_code();
@@ -655,12 +674,12 @@ void jom::do_run()
 	cmd_.arg(target_);
 
 	const bool check_exit_code = !(flags_ & accept_failure);
-	execute_and_join(cmd_, check_exit_code);
+	execute_and_join(arch_, cmd_, check_exit_code);
 }
 
 
 msbuild::msbuild()
-	: basic_process_runner("msbuild"), config_("Release"), platform_("x64")
+	: basic_process_runner("msbuild"), config_("Release"), arch_(arch::def)
 {
 }
 
@@ -694,10 +713,41 @@ msbuild& msbuild::platform(const std::string& s)
 	return *this;
 }
 
+msbuild& msbuild::architecture(arch a)
+{
+	arch_ = a;
+	return *this;
+}
+
 void msbuild::do_run()
 {
 	// 14.2 to v142
 	const auto toolset = "v" + replace_all(versions::vs_toolset(), ".", "");
+
+	std::string plat;
+
+	if (platform_.empty())
+	{
+		switch (arch_)
+		{
+			case arch::x86:
+				plat = "Win32";
+				break;
+
+			case arch::x64:
+				plat = "x64";
+				break;
+
+			case arch::dont_care:
+			default:
+				bail_out("msbuild::do_run(): bad arch");
+		}
+	}
+	else
+	{
+		plat = platform_;
+	}
+
 
 	auto c = cmd(third_party::msbuild(), cmd::noflags)
 		.arg("-nologo")
@@ -705,9 +755,9 @@ void msbuild::do_run()
 		.arg("-property:UseMultiToolTask=true")
 		.arg("-property:EnforceProcessCountAcrossBuilds=true")
 		.arg("-property:Configuration=", config_, cmd::quote)
-		.arg("-property:Platform=", platform_, cmd::quote)
 		.arg("-property:PlatformToolset=" + toolset)
 		.arg("-property:WindowsTargetPlatformVersion=" + versions::sdk())
+		.arg("-property:Platform=", plat, cmd::quote)
 		.arg("-verbosity:minimal", cmd::quiet)
 		.arg("-consoleLoggerParameters:ErrorsOnly", cmd::quiet);
 
@@ -721,7 +771,7 @@ void msbuild::do_run()
 		.arg(sln_)
 		.cwd(sln_.parent_path());
 
-	execute_and_join(c);
+	execute_and_join(arch_, c);
 }
 
 
@@ -738,7 +788,9 @@ void devenv_upgrade::do_run()
 		return;
 	}
 
-	execute_and_join(cmd(third_party::devenv(), cmd::stdout_is_verbose)
+	// don't care about arch, but it can't be dont_care because it doesn't
+	// use vcvars at all
+	execute_and_join(arch::def, cmd(third_party::devenv(), cmd::stdout_is_verbose)
 		.arg("/upgrade")
 		.arg(sln_));
 }
@@ -751,7 +803,7 @@ nuget::nuget(fs::path sln)
 
 void nuget::do_run()
 {
-	execute_and_join(cmd(third_party::nuget(), cmd::noflags)
+	execute_and_join(arch::dont_care, cmd(third_party::nuget(), cmd::noflags)
 		.arg("restore")
 		.arg(sln_)
 		.cwd(sln_.parent_path()));

@@ -11,7 +11,7 @@ lz4::lz4()
 
 fs::path lz4::source_path()
 {
-	return paths::build() / ("lz4-v" + versions::lz4());
+	return paths::build() / ("lz4-" + versions::lz4());
 }
 
 void lz4::do_fetch()
@@ -19,7 +19,7 @@ void lz4::do_fetch()
 	run_tool(git_clone()
 		.org("lz4")
 		.repo("lz4")
-		.branch("v" + versions::lz4())
+		.branch(versions::lz4())
 		.output(source_path()));
 
 	run_tool(devenv_upgrade(solution_file()));

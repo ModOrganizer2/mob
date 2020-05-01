@@ -26,7 +26,7 @@ void fmt::do_fetch()
 void fmt::do_build_and_install()
 {
 	const auto build_path = run_tool(cmake()
-		.generator(cmake::nmake)
+		.generator(cmake::jom)
 		.root(source_path())
 		.def("FMT_TEST=OFF")
 		.def("FMT_DOC=OFF"));

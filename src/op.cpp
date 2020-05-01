@@ -6,6 +6,130 @@
 namespace builder
 {
 
+class environment
+{
+public:
+	void add(std::string k, std::string v)
+	{
+		vars_.push_back({std::move(k), std::move(v)});
+	}
+
+	void create()
+	{
+		for (auto&& v : vars_)
+		{
+			string_ += v.first + "=" + v.second;
+			string_.append(1, '\0');
+		}
+
+		string_.append(1, '\0');
+	}
+
+	void* get() const
+	{
+		return (void*)string_.c_str();
+	}
+
+private:
+	std::vector<std::pair<std::string, std::string>> vars_;
+	std::string string_;
+};
+
+
+static environment g_env_x86, g_env_x64;
+
+
+fs::path find_vcvars()
+{
+	const std::vector<std::string> editions =
+	{
+		"Preview", "Enterprise", "Professional", "Community"
+	};
+
+	for (auto&& edition : editions)
+	{
+		const auto p =
+			paths::program_files_x86() /
+			"Microsoft Visual Studio" /
+			versions::vs_year() /
+			edition / "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
+
+		if (fs::exists(p))
+		{
+			debug("found " + p.string());
+			return p;
+		}
+	}
+
+	bail_out("couldn't find visual studio");
+}
+
+environment get_vcvars_env(arch a)
+{
+	debug("vcvars");
+
+	std::string arch_s;
+
+	switch (a)
+	{
+		case arch::x86:
+			arch_s = "x86";
+			break;
+
+		case arch::x64:
+			arch_s = "amd64";
+			break;
+
+		case arch::dont_care:
+		default:
+			bail_out("get_vcvars_env: bad arch");
+	}
+
+	const fs::path tmp = paths::temp_file();
+
+	// "vcvarsall.bat" amd64 && set > temp_file
+	const std::string cmd =
+		"\"" + find_vcvars().string() + "\" " + arch_s + " && "
+		"set > \"" + tmp.string() + "\"";
+
+	op::run(arch::dont_care, cmd);
+
+	std::stringstream ss(read_text_file(tmp));
+	op::delete_file(tmp);
+
+
+	environment env;
+
+	for (;;)
+	{
+		std::string line;
+		std::getline(ss, line);
+		if (!ss)
+			break;
+
+		const auto sep = line.find('=');
+
+		if (sep == std::string::npos)
+			continue;
+
+		std::string name = line.substr(0, sep);
+		std::string value = line.substr(sep + 1);
+
+		env.add(std::move(name), std::move(value));
+	}
+
+	env.create();
+
+	return env;
+}
+
+void vcvars()
+{
+	g_env_x86 = get_vcvars_env(arch::x86);
+	g_env_x64 = get_vcvars_env(arch::x64);
+}
+
+
 process::process()
 	: code_(0)
 {
@@ -307,7 +431,7 @@ void op::copy_file_to_dir_if_better(const fs::path& file, const fs::path& dir)
 	}
 }
 
-process op::run(const std::string& cmd, const fs::path& cwd)
+process op::run(arch a, const std::string& cmd, const fs::path& cwd)
 {
 	if (!cwd.empty())
 		debug("> cd " + cwd.string());
@@ -317,7 +441,7 @@ process op::run(const std::string& cmd, const fs::path& cwd)
 	if (conf::dry())
 		return {};
 
-	return do_run(cmd, cwd);
+	return do_run(a, cmd, cwd);
 }
 
 void op::do_touch(const fs::path& p)
@@ -401,7 +525,7 @@ void op::do_rename(const fs::path& src, const fs::path& dest)
 		bail_out("can't rename " + src.string() + " to " + dest.string(), ec);
 }
 
-process op::do_run(const std::string& what, const fs::path& cwd)
+process op::do_run(arch a, const std::string& what, const fs::path& cwd)
 {
 	STARTUPINFOA si = { .cb=sizeof(si) };
 	PROCESS_INFORMATION pi = {};
@@ -411,6 +535,28 @@ process op::do_run(const std::string& what, const fs::path& cwd)
 
 	const char* cwd_p = nullptr;
 	std::string cwd_s;
+
+
+	const environment* env = nullptr;
+
+	switch (a)
+	{
+		case arch::x86:
+			env = &g_env_x86;
+			break;
+
+		case arch::x64:
+			env = &g_env_x64;
+			break;
+
+		case arch::dont_care:
+			// no environment
+			break;
+
+		default:
+			bail_out("op::do_run: bad arch");
+	}
+
 
 	if (!cwd.empty())
 	{
@@ -422,7 +568,7 @@ process op::do_run(const std::string& what, const fs::path& cwd)
 	const auto r = ::CreateProcessA(
 		cmd.c_str(), const_cast<char*>(args.c_str()),
 		nullptr, nullptr, FALSE, CREATE_NEW_PROCESS_GROUP,
-		nullptr, cwd_p, &si, &pi);
+		(env ? env->get() : nullptr), cwd_p, &si, &pi);
 
 	if (!r)
 	{

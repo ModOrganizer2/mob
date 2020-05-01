@@ -69,7 +69,7 @@ static std::map<std::string, std::string> g_conf =
 	{"zlib",         "1.2.11"},
 	{"boost",        "1.72.0-b1-rc1"},
 	{"boost_vs",     "14.2"},
-	{"python",       "3.8.1"},
+	{"python",       "v3.8.1"},
 	{"fmt",          "6.1.2"},
 	{"gtest",        "master"},
 	{"libbsarch",    "0.0.8"},
@@ -77,8 +77,10 @@ static std::map<std::string, std::string> g_conf =
 	{"libloot_hash", "gf725dd7"},
 	{"openssl",      "1.1.1d"},
 	{"bzip2",        "1.0.6"},
-	{"lz4",          "1.9.2"},
+	{"lz4",          "v1.9.2"},
 	{"nmm",          "0.70.11"},
+	{"spdlog",       "v1.4.2"},
+	{"usvfs",        "master"},
 
 	{"prefix",   R"(C:\dev\projects\mobuild-out)"},
 };
@@ -92,11 +94,16 @@ const std::string& get_conf(const std::string& name)
 	return itor->second;
 }
 
+bool g_clean = false;
+
 
 bool conf::verbose()          { return true; }
 bool conf::dry()              { return false; }
 std::string conf::mo_org()    { return "ModOrganizer2"; }
 std::string conf::mo_branch() { return "master"; }
+bool conf::clean()            { return  g_clean; }
+
+void conf::set_clean(bool b)  { g_clean = b; }
 
 fs::path third_party::sevenz()  { return "7z"; }
 fs::path third_party::jom()     { return "jom"; }
@@ -128,6 +135,8 @@ const std::string& versions::openssl()      { return get_conf("openssl"); }
 const std::string& versions::bzip2()		{ return get_conf("bzip2"); }
 const std::string& versions::lz4()          { return get_conf("lz4"); }
 const std::string& versions::nmm()          { return get_conf("nmm"); }
+const std::string& versions::spdlog()       { return get_conf("spdlog"); }
+const std::string& versions::usvfs()        { return get_conf("usvfs"); }
 
 fs::path paths::prefix()         { return get_conf("prefix"); }
 fs::path paths::cache()          { return prefix() / "downloads"; }

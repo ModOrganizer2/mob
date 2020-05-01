@@ -26,7 +26,7 @@ void zlib::do_fetch()
 void zlib::do_build_and_install()
 {
 	const auto build_path = run_tool(cmake()
-		.generator(cmake::nmake)
+		.generator(cmake::jom)
 		.root(source_path())
 		.prefix(source_path()));
 

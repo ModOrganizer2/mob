@@ -42,7 +42,7 @@ void boost::fetch_prebuilt()
 void boost::build_and_install_prebuilt()
 {
 	op::copy_file_to_dir_if_better(
-		lib_path() / python_dll(), paths::install_bin());
+		lib_path(arch::x64) / "lib" / python_dll(), paths::install_bin());
 }
 
 void boost::fetch_from_source()
@@ -61,28 +61,52 @@ void boost::fetch_from_source()
 	{
 		write_config_jam();
 
-		run_tool(process_runner(source_path() / "bootstrap.bat", cmd::noflags)
+		const auto bootstrap = source_path() / "bootstrap.bat";
+
+		run_tool(process_runner(arch::dont_care, bootstrap, cmd::noflags)
 			.cwd(source_path()));
 	}
 }
 
 void boost::build_and_install_from_source()
 {
-	const fs::path out = "lib64-msvc-" + versions::vs_toolset();
+	do_b2(
+		{"thread", "date_time", "filesystem", "locale"},
+		"static", "static", arch::x64);
 
-	run_tool(process_runner(source_path() / "b2", cmd::noflags)
-		.arg("address-model=", "64")
-		.arg("link=", "shared")
-		.arg("--user-config=", config_jam_file())
-		.arg("toolset=msvc-" + versions::vs_toolset())
-		.arg("--stagedir=", out)
-		.arg("--libdir=", out)
-		.arg("--with-python")
-		.cwd(source_path()));
+	do_b2(
+		{"thread", "date_time", "filesystem", "locale"},
+		"static", "static", arch::x86);
+
+	do_b2(
+		{"python"},
+		"shared", "shared", arch::x64);
 
 	op::copy_file_to_dir_if_better(
-		source_path() / out / "lib" / python_dll(),
+		lib_path(arch::x64) / "lib" / python_dll(),
 		paths::install_bin());
+}
+
+void boost::do_b2(
+	const std::vector<std::string>& components,
+	const std::string& link, const std::string& runtime_link, arch a)
+{
+	process_runner p(a, source_path() / "b2", cmd::noflags);
+
+	p
+		.arg("address-model=",  address_model_for_arch(a))
+		.arg("link=",           link)
+		.arg("runtime-link=",   runtime_link)
+		.arg("toolset=",        "msvc-" + versions::vs_toolset())
+		.arg("--user-config=",  config_jam_file())
+		.arg("--stagedir=",     lib_path(a))
+		.arg("--libdir=",       lib_path(a))
+		.cwd(source_path());
+
+	for (auto&& c : components)
+		p.arg("--with-" + c);
+
+	run_tool(p);
 }
 
 void boost::write_config_jam()
@@ -141,10 +165,12 @@ url boost::source_url()
 		boost_version_all_underscores() + ".zip";
 }
 
-fs::path boost::lib_path()
+fs::path boost::lib_path(arch a)
 {
-	const std::string lib = "lib64-msvc-" + versions::boost_vs();
-	return source_path() / lib / "lib";
+	const std::string lib =
+		"lib" + address_model_for_arch(a) + "-msvc-" + versions::boost_vs();
+
+	return source_path() / lib;
 }
 
 std::string boost::python_dll()
@@ -226,6 +252,22 @@ std::string boost::boost_version_all_underscores()
 		s += "_" + m[5].str();
 
 	return s;
+}
+
+std::string boost::address_model_for_arch(arch a)
+{
+	switch (a)
+	{
+		case arch::x86:
+			return "32";
+
+		case arch::x64:
+		case arch::dont_care:
+			return "64";
+
+		default:
+			bail_out("boost: bad arch");
+	}
 }
 
 }	// namespace

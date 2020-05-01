@@ -25,12 +25,26 @@ void gtest::do_fetch()
 
 void gtest::do_build_and_install()
 {
-	const auto build_path = run_tool(cmake()
-		.generator(cmake::nmake)
+	// x64
+	const auto build_path_x64 = run_tool(cmake()
+		.generator(cmake::jom)
+		.architecture(arch::x64)
 		.root(source_path()));
 
 	run_tool(jom()
-		.path(build_path));
+		.architecture(arch::x64)
+		.path(build_path_x64));
+
+
+	// x86
+	const auto build_path_x86 = run_tool(cmake()
+		.generator(cmake::jom)
+		.architecture(arch::x86)
+		.root(source_path()));
+
+	run_tool(jom()
+		.architecture(arch::x86)
+		.path(build_path_x86));
 }
 
 }	// namespace

@@ -6,9 +6,6 @@
 namespace builder
 {
 
-void vcvars();
-
-
 class tool
 {
 public:
@@ -71,7 +68,7 @@ protected:
 	void do_interrupt() override;
 
 	int execute_and_join(process p, bool check_exit_code=true);
-	int execute_and_join(const cmd& c, bool check_exit_code=true);
+	int execute_and_join(arch a, const cmd& c, bool check_exit_code=true);
 
 private:
 	std::string cmd_;
@@ -83,8 +80,9 @@ private:
 class process_runner : public basic_process_runner
 {
 public:
-	process_runner(fs::path exe, cmd::flags flags)
-		: basic_process_runner(exe.filename().string()), cmd_(exe, flags)
+	process_runner(arch a, fs::path exe, cmd::flags flags) :
+		basic_process_runner(exe.filename().string()),
+		arch_(a), cmd_(exe, flags)
 	{
 	}
 
@@ -125,10 +123,11 @@ public:
 protected:
 	void do_run() override
 	{
-		execute_and_join(cmd_);
+		execute_and_join(arch_, cmd_);
 	}
 
 private:
+	arch arch_;
 	cmd cmd_;
 };
 
@@ -200,7 +199,7 @@ public:
 	enum generators
 	{
 		vs    = 0x01,
-		nmake = 0x02
+		jom   = 0x02
 	};
 
 	cmake();
@@ -209,6 +208,7 @@ public:
 	cmake& root(const fs::path& p);
 	cmake& prefix(const fs::path& s);
 	cmake& def(const std::string& s);
+	cmake& architecture(arch a);
 
 	fs::path result() const;
 
@@ -216,11 +216,26 @@ protected:
 	void do_run() override;
 
 private:
+	struct gen_info
+	{
+		std::string dir;
+		std::string name;
+		std::string x86;
+		std::string x64;
+
+		std::string get_arch(arch a) const;
+		std::string output_dir(arch a) const;
+	};
+
 	fs::path root_;
 	generators gen_;
 	fs::path prefix_;
 	fs::path output_;
+	arch arch_;
 	cmd cmd_;
+
+	const std::map<generators, gen_info>& all_generators() const;
+	const gen_info& get_generator() const;
 };
 
 
@@ -240,6 +255,7 @@ public:
 	jom& target(const std::string& s);
 	jom& def(const std::string& s);
 	jom& flag(flags f);
+	jom& architecture(arch a);
 
 	int result() const;
 
@@ -250,6 +266,7 @@ private:
 	cmd cmd_;
 	std::string target_;
 	flags flags_;
+	arch arch_;
 };
 
 
@@ -263,6 +280,7 @@ public:
 	msbuild& parameters(const std::vector<std::string>& params);
 	msbuild& config(const std::string& s);
 	msbuild& platform(const std::string& s);
+	msbuild& architecture(arch a);
 
 protected:
 	void do_run() override;
@@ -273,6 +291,7 @@ private:
 	std::vector<std::string> params_;
 	std::string config_;
 	std::string platform_;
+	arch arch_;
 };
 
 

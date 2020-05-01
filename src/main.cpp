@@ -55,12 +55,26 @@ int run(int argc, char** argv)
 		add_task<lz4>();
 		add_task<nmm>();
 		add_task<ncc>();
+		add_task<spdlog>();
+		add_task<usvfs>();
 
 		if (argc > 1)
 		{
+			std::vector<std::string> tasks;
+
 			for (int i=1; i<argc; ++i)
 			{
-				if (!run_task(argv[i]))
+				const std::string arg = argv[i];
+
+				if (arg == "--clean")
+					conf::set_clean(true);
+				else
+					tasks.push_back(arg);
+			}
+
+			for (auto&& t : tasks)
+			{
+				if (!run_task(t))
 					return 1;
 			}
 

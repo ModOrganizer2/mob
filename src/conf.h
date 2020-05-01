@@ -9,6 +9,9 @@ struct conf
 	static bool dry();
 	static std::string mo_org();
 	static std::string mo_branch();
+
+	static bool clean();
+	static void set_clean(bool b);
 };
 
 struct third_party
@@ -49,6 +52,8 @@ struct versions
 	static const std::string& bzip2();
 	static const std::string& lz4();
 	static const std::string& nmm();
+	static const std::string& spdlog();
+	static const std::string& usvfs();
 };
 
 struct paths

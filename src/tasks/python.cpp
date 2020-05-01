@@ -11,9 +11,9 @@ python::python()
 
 python::version_info python::version()
 {
-	// 3.8.1
-	// .1 is optional
-	std::regex re(R"((\d+)\.(\d+)(?:\.(\d+))?)");
+	// v3.8.1
+	// v and .1 are optional
+	std::regex re(R"(v?(\d+)\.(\d+)(?:\.(\d+))?)");
 	std::smatch m;
 
 	if (!std::regex_match(versions::python(), m, re))
@@ -32,7 +32,14 @@ python::version_info python::version()
 
 fs::path python::source_path()
 {
-	return paths::build() / ("python-" + versions::python());
+	const auto v = version();
+
+	// 3.8.1
+	std::string s = v.major + "." + v.minor;
+	if (v.patch != "")
+		s += "." + v.patch;
+
+	return paths::build() / ("python-" + s);
 }
 
 void python::do_fetch()
@@ -40,7 +47,7 @@ void python::do_fetch()
 	run_tool(git_clone()
 		.org("python")
 		.repo("cpython")
-		.branch("v" + versions::python())
+		.branch(versions::python())
 		.output(source_path()));
 
 	run_tool(devenv_upgrade(solution_file()));
@@ -69,7 +76,7 @@ void python::do_build_and_install()
 	{
 		const auto bat = source_path() / "python.bat";
 
-		run_tool(process_runner(bat, cmd::stdout_is_verbose)
+		run_tool(process_runner(arch::dont_care, bat, cmd::stdout_is_verbose)
 			.name("package python")
 			.arg(fs::path("PC/layout"))
 			.arg("--source", source_path())

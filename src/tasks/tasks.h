@@ -27,12 +27,16 @@ private:
 	void build_and_install_from_source();
 	void write_config_jam();
 
+	void do_b2(
+		const std::vector<std::string>& components,
+		const std::string& link, const std::string& runtime_link, arch a);
+
 	static std::smatch parse_boost_version();
 	static std::string source_download_filename();
 	static fs::path config_jam_file();
 	static url prebuilt_url();
 	static url source_url();
-	static fs::path lib_path();
+	static fs::path lib_path(arch a);
 	static std::string python_dll();
 	static std::string python_version_for_dll();
 	static std::string python_version_for_jam();
@@ -40,6 +44,7 @@ private:
 	static std::string boost_version_no_tags();
 	static std::string boost_version_no_tags_underscores();
 	static std::string boost_version_all_underscores();
+	static std::string address_model_for_arch(arch a);
 };
 
 
@@ -240,6 +245,29 @@ private:
 	static url source_url();
 	static std::string version_for_url();
 	static fs::path module_to_build();
+};
+
+
+class spdlog : public basic_task<spdlog>
+{
+public:
+	spdlog();
+	static fs::path source_path();
+
+protected:
+	void do_fetch() override;
+};
+
+
+class usvfs : public basic_task<usvfs>
+{
+public:
+	usvfs();
+	static fs::path source_path();
+
+protected:
+	void do_fetch() override;
+	void do_build_and_install() override;
 };
 
 
