@@ -13,6 +13,7 @@ public:
 
 	const char* c_str() const;
 	const std::string& string() const;
+	bool empty() const;
 
 	std::string filename() const;
 

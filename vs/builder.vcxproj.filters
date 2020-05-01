@@ -81,6 +81,9 @@
     <ClCompile Include="..\src\tasks\usvfs.cpp">
       <Filter>src\tasks</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\tasks\sip.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">

@@ -17,8 +17,7 @@ fs::path usvfs::source_path()
 void usvfs::do_fetch()
 {
 	run_tool(git_clone()
-		.org(conf::mo_org())
-		.repo("usvfs")
+		.url(make_github_url(conf::mo_org(), "usvfs"))
 		.branch(versions::usvfs())
 		.output(source_path()));
 }

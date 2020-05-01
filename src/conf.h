@@ -54,6 +54,8 @@ struct versions
 	static const std::string& nmm();
 	static const std::string& spdlog();
 	static const std::string& usvfs();
+	static const std::string& qt();
+	static const std::string& sip();
 };
 
 struct paths

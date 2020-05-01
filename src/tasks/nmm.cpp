@@ -17,8 +17,7 @@ fs::path nmm::source_path()
 void nmm::do_fetch()
 {
 	run_tool(git_clone()
-		.org("Nexus-Mods")
-		.repo("Nexus-Mod-Manager")
+		.url(make_github_url("Nexus-Mods", "Nexus-Mod-Manager"))
 		.branch(versions::nmm())
 		.output(source_path()));
 

@@ -27,6 +27,11 @@ const std::string& url::string() const
 	return s_;
 }
 
+bool url::empty() const
+{
+	return s_.empty();
+}
+
 std::string url::filename() const
 {
 	const auto pos = s_.find_last_of("/");

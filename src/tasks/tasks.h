@@ -220,14 +220,30 @@ public:
 	static fs::path build_path();
 	static fs::path python_exe();
 	static fs::path include_path();
+	static fs::path scripts_path();
 
 protected:
 	void do_fetch() override;
 	void do_build_and_install() override;
 
 private:
+	void install_pip();
+
 	static fs::path solution_file();
 	static std::string version_for_dll();
+};
+
+
+class sip : public basic_task<sip>
+{
+public:
+	sip();
+
+	static fs::path source_path();
+
+protected:
+	void do_fetch() override;
+	void do_build_and_install() override;
 };
 
 

@@ -45,8 +45,7 @@ fs::path python::source_path()
 void python::do_fetch()
 {
 	run_tool(git_clone()
-		.org("python")
-		.repo("cpython")
+		.url(make_github_url("python", "cpython"))
 		.branch(versions::python())
 		.output(source_path()));
 
@@ -89,6 +88,8 @@ void python::do_build_and_install()
 		op::touch(build_path() / "_mob_packaged");
 	}
 
+	install_pip();
+
 	op::copy_file_to_dir_if_better(
 		source_path() / "PC" / "pyconfig.h",
 		include_path());
@@ -110,6 +111,14 @@ void python::do_build_and_install()
 		paths::install_pdbs());
 }
 
+void python::install_pip()
+{
+	debug("installing pip");
+
+	run_tool(process_runner(arch::dont_care, python_exe(), cmd::noflags)
+		.arg("-m", "ensurepip"));
+}
+
 fs::path python::build_path()
 {
 	return source_path() / "PCBuild" / "amd64";
@@ -123,6 +132,11 @@ fs::path python::python_exe()
 fs::path python::include_path()
 {
 	return source_path() / "Include";
+}
+
+fs::path python::scripts_path()
+{
+	return source_path() / "Scripts";
 }
 
 fs::path python::solution_file()

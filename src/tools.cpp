@@ -179,20 +179,20 @@ fs::path downloader::path_for_url(const builder::url& u) const
 }
 
 
+url make_github_url(const std::string& org, const std::string& repo)
+{
+	return "https://github.com/" + org + "/" + repo + ".git";
+}
+
+
 git_clone::git_clone()
 	: basic_process_runner("git_clone")
 {
 }
 
-git_clone& git_clone::org(const std::string& name)
+git_clone& git_clone::url(const builder::url& u)
 {
-	org_ = name;
-	return *this;
-}
-
-git_clone& git_clone::repo(const std::string& name)
-{
-	repo_ = name;
+	url_ = u;
 	return *this;
 }
 
@@ -210,7 +210,7 @@ git_clone& git_clone::output(const fs::path& dir)
 
 void git_clone::do_run()
 {
-	if (org_.empty() || repo_.empty() || where_.empty())
+	if (url_.empty() || where_.empty())
 		bail_out("git_clone missing parameters");
 
 	const fs::path dot_git = where_ / ".git";
@@ -230,7 +230,7 @@ void git_clone::clone()
 		.arg("--branch", branch_)
 		.arg("--quiet", cmd::quiet)
 		.arg("-c", "advice.detachedHead=false", cmd::quiet)
-		.arg(repo_url())
+		.arg(url_)
 		.arg(where_));
 }
 
@@ -240,14 +240,9 @@ void git_clone::pull()
 		.arg("pull")
 		.arg("--recurse-submodules")
 		.arg("--quiet", cmd::quiet)
-		.arg(repo_url())
+		.arg(url_)
 		.arg(branch_)
 		.cwd(where_));
-}
-
-url git_clone::repo_url() const
-{
-	return "https://github.com/" + org_ + "/" + repo_ + ".git";
 }
 
 

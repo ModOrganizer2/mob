@@ -57,6 +57,7 @@ int run(int argc, char** argv)
 		add_task<ncc>();
 		add_task<spdlog>();
 		add_task<usvfs>();
+		add_task<sip>();
 
 		if (argc > 1)
 		{

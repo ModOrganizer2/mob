@@ -17,8 +17,7 @@ fs::path gtest::source_path()
 void gtest::do_fetch()
 {
 	run_tool(git_clone()
-		.org("google")
-		.repo("googletest")
+		.url(make_github_url("google", "googletest"))
 		.branch(versions::gtest())
 		.output(source_path()));
 }

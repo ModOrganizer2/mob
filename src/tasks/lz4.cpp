@@ -17,8 +17,7 @@ fs::path lz4::source_path()
 void lz4::do_fetch()
 {
 	run_tool(git_clone()
-		.org("lz4")
-		.repo("lz4")
+		.url(make_github_url("lz4","lz4"))
 		.branch(versions::lz4())
 		.output(source_path()));
 

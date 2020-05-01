@@ -132,13 +132,15 @@ private:
 };
 
 
+url make_github_url(const std::string& org, const std::string& repo);
+
+
 class git_clone : public basic_process_runner
 {
 public:
 	git_clone();
 
-	git_clone& org(const std::string& name);
-	git_clone& repo(const std::string& name);
+	git_clone& url(const builder::url& u);
 	git_clone& branch(const std::string& name);
 	git_clone& output(const fs::path& dir);
 
@@ -146,14 +148,12 @@ protected:
 	void do_run() override;
 
 private:
-	std::string org_;
-	std::string repo_;
+	builder::url url_;
 	std::string branch_;
 	fs::path where_;
 
 	void clone();
 	void pull();
-	url repo_url() const;
 };
 
 

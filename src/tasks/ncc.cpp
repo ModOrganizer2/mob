@@ -17,8 +17,7 @@ fs::path ncc::source_path()
 void ncc::do_fetch()
 {
 	run_tool(git_clone()
-		.org(conf::mo_org())
-		.repo("modorganizer-NCC")
+		.url(make_github_url(conf::mo_org(), "modorganizer-NCC"))
 		.branch(conf::mo_branch())
 		.output(source_path()));
 }

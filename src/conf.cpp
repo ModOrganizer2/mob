@@ -81,6 +81,8 @@ static std::map<std::string, std::string> g_conf =
 	{"nmm",          "0.70.11"},
 	{"spdlog",       "v1.4.2"},
 	{"usvfs",        "master"},
+	{"qt",           "5.14.2"},
+	{"sip",          "5.1.2"},
 
 	{"prefix",   R"(C:\dev\projects\mobuild-out)"},
 };
@@ -137,6 +139,8 @@ const std::string& versions::lz4()          { return get_conf("lz4"); }
 const std::string& versions::nmm()          { return get_conf("nmm"); }
 const std::string& versions::spdlog()       { return get_conf("spdlog"); }
 const std::string& versions::usvfs()        { return get_conf("usvfs"); }
+const std::string& versions::qt()           { return get_conf("qt"); }
+const std::string& versions::sip()          { return get_conf("sip"); }
 
 fs::path paths::prefix()         { return get_conf("prefix"); }
 fs::path paths::cache()          { return prefix() / "downloads"; }
