@@ -78,6 +78,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\src\conf.cpp" />
+    <ClCompile Include="..\src\env.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\net.cpp" />
     <ClCompile Include="..\src\op.cpp" />
@@ -110,6 +111,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\conf.h" />
+    <ClInclude Include="..\src\env.h" />
     <ClInclude Include="..\src\op.h" />
     <ClInclude Include="..\src\net.h" />
     <ClInclude Include="..\src\pch.h" />

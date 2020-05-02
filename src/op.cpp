@@ -6,8 +6,6 @@
 namespace builder
 {
 
-
-
 void op::touch(const fs::path& p)
 {
 	debug("touching " + p.string());

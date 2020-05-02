@@ -90,6 +90,9 @@
     <ClCompile Include="..\src\process.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\env.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
@@ -117,6 +120,9 @@
       <Filter>src\tasks</Filter>
     </ClInclude>
     <ClInclude Include="..\src\process.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\env.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
