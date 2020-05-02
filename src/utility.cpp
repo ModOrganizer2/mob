@@ -170,8 +170,7 @@ file_deleter::~file_deleter()
 
 void file_deleter::delete_now()
 {
-	if (fs::exists(p_))
-		op::delete_file(p_);
+	op::delete_file(p_, op::optional);
 }
 
 void file_deleter::cancel()
@@ -193,8 +192,7 @@ directory_deleter::~directory_deleter()
 
 void directory_deleter::delete_now()
 {
-	if (fs::exists(p_))
-		op::delete_directory(p_);
+	op::delete_directory(p_, op::optional);
 }
 
 void directory_deleter::cancel()

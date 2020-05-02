@@ -42,6 +42,11 @@ fs::path python::source_path()
 	return paths::build() / ("python-" + s);
 }
 
+fs::path python::build_path()
+{
+	return source_path() / "PCBuild" / "amd64";
+}
+
 void python::do_fetch()
 {
 	run_tool(git_clone()
@@ -119,11 +124,6 @@ void python::install_pip()
 	run_tool(process_runner(process()
 		.binary(python_exe())
 		.arg("-m", "ensurepip")));
-}
-
-fs::path python::build_path()
-{
-	return source_path() / "PCBuild" / "amd64";
 }
 
 fs::path python::python_exe()

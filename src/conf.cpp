@@ -101,16 +101,42 @@ const std::string& get_conf(const std::string& name)
 	return itor->second;
 }
 
+bool g_redownload = false;
+bool g_redecompress = false;
 bool g_clean = false;
+bool g_dry = false;
+bool g_verbose = false;
 
+bool conf::verbose()          { return g_verbose; }
+bool conf::dry()              { return g_dry; }
+bool conf::redownload()       { return g_redownload; }
+bool conf::redecompress()     { return g_redecompress; }
+bool conf::clean()            { return g_clean; }
 
-bool conf::verbose()          { return true; }
-bool conf::dry()              { return false; }
 std::string conf::mo_org()    { return "ModOrganizer2"; }
 std::string conf::mo_branch() { return "master"; }
-bool conf::clean()            { return  g_clean; }
 
-void conf::set_clean(bool b)  { g_clean = b; }
+void conf::set(int argc, char** argv)
+{
+	for (int i=0; i<argc; ++i)
+	{
+		const std::string a = argv[i];
+
+		if (a == "--redownload")
+			g_redownload = true;
+		else if (a == "--redecompress")
+			g_redecompress = true;
+		else if (a == "--clean")
+			g_clean = true;
+		else if (a == "--dry")
+			g_dry = true;
+		else if (a == "--verbose")
+			g_verbose = true;
+		else if (a.starts_with("--"))
+			bail_out("unknown option " + a);
+	}
+}
+
 
 fs::path third_party::sevenz()  { return "7z"; }
 fs::path third_party::jom()     { return "jom"; }

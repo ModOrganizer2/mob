@@ -24,10 +24,21 @@ void op::create_directories(const fs::path& p)
 		do_create_directories(p);
 }
 
-void op::delete_directory(const fs::path& p)
+void op::delete_directory(const fs::path& p, flags f)
 {
 	debug("deleting directory " + p.string());
 	check(p);
+
+	if (!fs::exists(p))
+	{
+		if (f & optional)
+		{
+			debug("not deleting directory " + p.string() + ", doesn't exist");
+			return;
+		}
+
+		bail_out("can't delete directory " + p.string() + ", doesn't exist");
+	}
 
 	if (fs::exists(p) && !fs::is_directory(p))
 		bail_out(p.string() + " is not a directory");
@@ -36,13 +47,21 @@ void op::delete_directory(const fs::path& p)
 		do_delete_directory(p);
 }
 
-void op::delete_file(const fs::path& p)
+void op::delete_file(const fs::path& p, flags f)
 {
-	if (!fs::exists(p))
-		return;
-
 	debug("deleting file " + p.string());
 	check(p);
+
+	if (!fs::exists(p))
+	{
+		if (f & optional)
+		{
+			debug("not deleting file " + p.string() + ", doesn't exist");
+			return;
+		}
+
+		bail_out("can't delete file " + p.string() + ", doesn't exist");
+	}
 
 	if (fs::exists(p) && !fs::is_regular_file(p))
 		bail_out("can't delete " + p.string() + ", not a file");
@@ -166,7 +185,7 @@ void op::move_to_directory(const fs::path& src, const fs::path& dest_dir)
 }
 
 void op::copy_file_to_dir_if_better(
-	const fs::path& file, const fs::path& dir, copy_flags f)
+	const fs::path& file, const fs::path& dir, flags f)
 {
 	check(file);
 	check(dir);
@@ -236,9 +255,6 @@ void op::do_create_directories(const fs::path& p)
 
 void op::do_delete_directory(const fs::path& p)
 {
-	if (!fs::exists(p))
-		return;
-
 	std::error_code ec;
 	fs::remove_all(p, ec);
 

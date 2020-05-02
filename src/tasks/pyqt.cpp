@@ -14,6 +14,11 @@ fs::path pyqt::source_path()
 	return paths::build() / ("PyQt5-" + versions::pyqt());
 }
 
+fs::path pyqt::build_path()
+{
+	return source_path() / "build";
+}
+
 void pyqt::do_fetch()
 {
 	const auto file = run_tool(downloader(source_url()));
@@ -64,8 +69,7 @@ void pyqt::do_build_and_install()
 		// sip-install.exe has trouble with deleting the build/ directory and
 		// trying to recreate it to fast, giving an access denied error; do it
 		// here instead
-		if (fs::exists(source_path() / "build"))
-			op::delete_directory(source_path() / "build");
+		op::delete_directory(source_path() / "build", op::optional);
 
 		run_tool(process_runner(process()
 			.binary(sip::sip_install_exe())
@@ -73,7 +77,7 @@ void pyqt::do_build_and_install()
 			.arg("--verbose")
 			.arg("--pep484-pyi")
 			.arg("--link-full-dll")
-			.arg("--build-dir", build_dir())
+			.arg("--build-dir", build_path())
 			.arg("--enable", "pylupdate")  // these are not in modules so they
 			.arg("--enable", "pyrcc")      // don't get copied below
 			.args(zip(repeat("--enable"), modules))
@@ -137,11 +141,6 @@ url pyqt::source_url()
 	return
 		"https://pypi.io/packages/source/P/PyQt5/"
 		"PyQt5-" + versions::pyqt() + ".tar.gz";
-}
-
-fs::path pyqt::build_dir()
-{
-	return source_path() / "build";
 }
 
 fs::path pyqt::sip_install_file()

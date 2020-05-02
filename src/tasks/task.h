@@ -29,21 +29,25 @@ public:
 	static void interrupt_all();
 
 	const std::string& name() const;
+
 	virtual fs::path get_source_path() const = 0;
 
 	void run();
 	void interrupt();
 	void join();
+
 	void fetch();
 	void build_and_install();
+	void clean();
 
 protected:
 	task(std::string name);
 
 	void check_interrupted();
 
-	virtual void do_fetch() {};
-	virtual void do_build_and_install() {};
+	virtual void do_fetch() {}
+	virtual void do_build_and_install() {}
+	virtual void do_clean() {}
 
 	template <class Tool>
 	auto run_tool(Tool&& t)

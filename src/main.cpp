@@ -67,13 +67,13 @@ int run(int argc, char** argv)
 		{
 			std::vector<std::string> tasks;
 
+			conf::set(argc, argv);
+
 			for (int i=1; i<argc; ++i)
 			{
 				const std::string arg = argv[i];
 
-				if (arg == "--clean")
-					conf::set_clean(true);
-				else
+				if (!arg.starts_with("--"))
 					tasks.push_back(arg);
 			}
 

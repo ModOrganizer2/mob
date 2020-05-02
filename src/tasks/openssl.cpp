@@ -14,6 +14,11 @@ fs::path openssl::source_path()
 	return paths::build() / ("openssl-" + versions::openssl());
 }
 
+fs::path openssl::build_path()
+{
+	return source_path() / "build";
+}
+
 void openssl::do_fetch()
 {
 	const auto file = run_tool(downloader(source_url()));
@@ -103,12 +108,6 @@ fs::path openssl::include_path()
 {
 	return openssl::source_path() / "include";
 }
-
-fs::path openssl::build_path()
-{
-	return source_path() / "build";
-}
-
 
 url openssl::source_url()
 {

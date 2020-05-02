@@ -37,6 +37,11 @@ void sevenz::do_build_and_install()
 		paths::install_dlls());
 }
 
+void sevenz::do_clean()
+{
+	op::delete_directory(module_to_build() / "x64", op::optional);
+}
+
 url sevenz::source_url()
 {
 	return "https://www.7-zip.org/a/7z" + version_for_url() + "-src.7z";

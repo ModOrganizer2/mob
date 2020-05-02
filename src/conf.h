@@ -5,13 +5,16 @@ namespace mob
 
 struct conf
 {
+	static void set(int argc, char** argv);
+
 	static bool verbose();
 	static bool dry();
+	static bool redownload();
+	static bool redecompress();
+	static bool clean();
+
 	static std::string mo_org();
 	static std::string mo_branch();
-
-	static bool clean();
-	static void set_clean(bool b);
 };
 
 struct third_party

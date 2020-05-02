@@ -126,7 +126,12 @@ void downloader::do_run()
 	for (auto&& u : urls_)
 	{
 		const auto file = path_for_url(u);
-		if (fs::exists(file))
+
+		if (conf::redownload())
+		{
+			op::delete_file(file, op::optional);
+		}
+		else if (fs::exists(file))
 		{
 			file_ = file;
 			debug("download " + file_.string() + " already exists");
@@ -281,7 +286,11 @@ decompresser& decompresser::output(const fs::path& dir)
 
 void decompresser::do_run()
 {
-	if (fs::exists(interrupt_file()))
+	if (conf::redecompress())
+	{
+		op::delete_directory(where_, op::optional);
+	}
+	else if (fs::exists(interrupt_file()))
 	{
 		debug("found interrupt file " + interrupt_file().string());
 		info("previous decompression was interrupted; resuming");
@@ -559,8 +568,11 @@ void cmake::do_run()
 	{
 		for (auto&& [k, g] : all_generators())
 		{
-			op::delete_directory(root_ / g.output_dir(arch::x86));
-			op::delete_directory(root_ / g.output_dir(arch::x64));
+			op::delete_directory(
+				root_ / g.output_dir(arch::x86), op::optional);
+
+			op::delete_directory(
+				root_ / g.output_dir(arch::x64), op::optional);
 		}
 	}
 

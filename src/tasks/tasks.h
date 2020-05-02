@@ -181,6 +181,7 @@ class openssl : public basic_task<openssl>
 {
 public:
 	openssl();
+
 	static fs::path source_path();
 	static fs::path include_path();
 
@@ -195,8 +196,8 @@ private:
 	void copy_dlls_to(const fs::path& dir);
 	void copy_pdbs_to(const fs::path& dir);
 
-	static fs::path build_path();
 	static url source_url();
+	static fs::path build_path();
 	static std::vector<std::string> output_names();
 	static std::smatch parse_version();
 	static std::string version_no_tags();
@@ -208,7 +209,6 @@ class pyqt : public basic_task<pyqt>
 {
 public:
 	pyqt();
-
 	static fs::path source_path();
 
 protected:
@@ -216,8 +216,8 @@ protected:
 	void do_build_and_install() override;
 
 	static url source_url();
-	static fs::path build_dir();
 	static fs::path sip_install_file();
+	static fs::path build_path();
 };
 
 
@@ -278,6 +278,7 @@ public:
 protected:
 	void do_fetch() override;
 	void do_build_and_install() override;
+	void do_clean() override;
 
 private:
 	static url source_url();

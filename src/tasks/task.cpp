@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "task.h"
+#include "../conf.h"
+#include "../op.h"
 #include "../tools.h"
-#include "../utility.h"
 
 namespace mob
 {
@@ -85,6 +86,9 @@ void task::run()
 	{
 		try
 		{
+			if (conf::clean())
+				clean();
+
 			check_interrupted();
 			fetch();
 			check_interrupted();
@@ -136,6 +140,10 @@ void task::build_and_install()
 	do_build_and_install();
 }
 
+void task::clean()
+{
+	do_clean();
+}
 
 void task::check_interrupted()
 {

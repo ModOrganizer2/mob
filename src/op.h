@@ -8,23 +8,22 @@ namespace mob
 class op
 {
 public:
-	enum copy_flags
+	enum flags
 	{
-		no_copy_flags=0,
+		noflags = 0,
 		optional = 1
 	};
 
 	static void touch(const fs::path& p);
 	static void create_directories(const fs::path& p);
-	static void delete_directory(const fs::path& p);
-	static void delete_file(const fs::path& p);
+	static void delete_directory(const fs::path& p, flags f=noflags);
+	static void delete_file(const fs::path& p, flags f=noflags);
 	static void remove_readonly(const fs::path& first);
 	static void rename(const fs::path& src, const fs::path& dest);
 	static void move_to_directory(const fs::path& src, const fs::path& dest_dir);
 
 	static void copy_file_to_dir_if_better(
-		const fs::path& file, const fs::path& dest_dir,
-		copy_flags f=no_copy_flags);
+		const fs::path& file, const fs::path& dest_dir, flags f=noflags);
 
 private:
 	static void do_touch(const fs::path& p);
