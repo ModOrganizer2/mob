@@ -203,6 +203,23 @@ private:
 };
 
 
+class pyqt : public basic_task<pyqt>
+{
+public:
+	pyqt();
+
+	static fs::path source_path();
+
+protected:
+	void do_fetch() override;
+	void do_build_and_install() override;
+
+	static url source_url();
+	static fs::path build_dir();
+	static fs::path sip_install_file();
+};
+
+
 class python : public basic_task<python>
 {
 public:
@@ -221,6 +238,7 @@ public:
 	static fs::path python_exe();
 	static fs::path include_path();
 	static fs::path scripts_path();
+	static fs::path site_packages_path();
 
 protected:
 	void do_fetch() override;
@@ -240,6 +258,9 @@ public:
 	sip();
 
 	static fs::path source_path();
+	static fs::path sip_module_exe();
+	static fs::path sip_install_exe();
+	static fs::path module_source_path();
 
 protected:
 	void do_fetch() override;

@@ -6,195 +6,207 @@
 namespace builder
 {
 
-class environment
+process::impl::impl(const impl& i)
+	: interrupt(i.interrupt.load())
 {
-public:
-	void add(std::string k, std::string v)
-	{
-		vars_.push_back({std::move(k), std::move(v)});
-	}
-
-	void create()
-	{
-		for (auto&& v : vars_)
-		{
-			string_ += v.first + "=" + v.second;
-			string_.append(1, '\0');
-		}
-
-		string_.append(1, '\0');
-	}
-
-	void* get() const
-	{
-		return (void*)string_.c_str();
-	}
-
-private:
-	std::vector<std::pair<std::string, std::string>> vars_;
-	std::string string_;
-};
-
-
-static environment g_env_x86, g_env_x64;
-
-
-fs::path find_vcvars()
-{
-	const std::vector<std::string> editions =
-	{
-		"Preview", "Enterprise", "Professional", "Community"
-	};
-
-	for (auto&& edition : editions)
-	{
-		const auto p =
-			paths::program_files_x86() /
-			"Microsoft Visual Studio" /
-			versions::vs_year() /
-			edition / "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
-
-		if (fs::exists(p))
-		{
-			debug("found " + p.string());
-			return p;
-		}
-	}
-
-	bail_out("couldn't find visual studio");
 }
 
-environment get_vcvars_env(arch a)
+process::impl& process::impl::operator=(const impl& i)
 {
-	debug("vcvars");
-
-	std::string arch_s;
-
-	switch (a)
-	{
-		case arch::x86:
-			arch_s = "x86";
-			break;
-
-		case arch::x64:
-			arch_s = "amd64";
-			break;
-
-		case arch::dont_care:
-		default:
-			bail_out("get_vcvars_env: bad arch");
-	}
-
-	const fs::path tmp = paths::temp_file();
-
-	// "vcvarsall.bat" amd64 && set > temp_file
-	const std::string cmd =
-		"\"" + find_vcvars().string() + "\" " + arch_s + " && "
-		"set > \"" + tmp.string() + "\"";
-
-	op::run(arch::dont_care, cmd);
-
-	std::stringstream ss(read_text_file(tmp));
-	op::delete_file(tmp);
-
-
-	environment env;
-
-	for (;;)
-	{
-		std::string line;
-		std::getline(ss, line);
-		if (!ss)
-			break;
-
-		const auto sep = line.find('=');
-
-		if (sep == std::string::npos)
-			continue;
-
-		std::string name = line.substr(0, sep);
-		std::string value = line.substr(sep + 1);
-
-		env.add(std::move(name), std::move(value));
-	}
-
-	env.create();
-
-	return env;
-}
-
-void vcvars()
-{
-	g_env_x86 = get_vcvars_env(arch::x86);
-	g_env_x64 = get_vcvars_env(arch::x64);
+	interrupt = i.interrupt.load();
+	return *this;
 }
 
 
 process::process()
-	: code_(0)
+	: flags_(process::noflags), code_(0)
 {
-}
-
-process::process(std::string cmd, handle_ptr h)
-	: cmd_(std::move(cmd)), handle_(std::move(h)), code_(0)
-{
-}
-
-process::process(process&& p) :
-	cmd_(std::move(p.cmd_)),
-	handle_(std::move(p.handle_)),
-	interrupt_(p.interrupt_.load()),
-	code_(p.code_)
-{
-}
-
-process& process::operator=(process&& p)
-{
-	cmd_ = std::move(p.cmd_);
-	handle_ = std::move(p.handle_);
-	interrupt_ = p.interrupt_.load();
-	code_ = p.code_;
-	return *this;
 }
 
 process::~process()
 {
-	join();
+	try
+	{
+		join();
+	}
+	catch(...)
+	{
+	}
+}
+
+process process::raw(const std::string& cmd)
+{
+	process p;
+	p.raw_ = cmd;
+	return p;
+}
+
+process& process::name(const std::string& name)
+{
+	name_ = name;
+	return *this;
+}
+
+const std::string& process::name() const
+{
+	return name_;
+}
+
+process& process::binary(const fs::path& p)
+{
+	bin_ = p;
+	return *this;
+}
+
+const fs::path& process::binary() const
+{
+	return bin_;
+}
+
+process& process::cwd(const fs::path& p)
+{
+	cwd_ = p;
+	return *this;
+}
+
+const fs::path& process::cwd() const
+{
+	return cwd_;
+}
+
+process& process::flags(flags_t f)
+{
+	flags_ = f;
+	return *this;
+}
+
+process::flags_t process::flags() const
+{
+	return flags_;
+}
+
+process& process::env(const builder::env& e)
+{
+	env_ = e;
+	return *this;
+}
+
+std::string process::make_name() const
+{
+	if (!name_.empty())
+		return name_;
+
+	return make_cmd();
+}
+
+std::string process::make_cmd() const
+{
+	if (!raw_.empty())
+		return raw_;
+
+	std::string s = "\"" + bin_.string() + "\" " + cmd_.string();
+
+	if ((flags_ & stdout_is_verbose) == 0)
+		s += redir_nul();
+
+	return s;
+}
+
+void process::pipe_into(const process& p)
+{
+	raw_ = make_cmd() + " | " + p.make_cmd();
+}
+
+void process::run()
+{
+	if (!cwd_.empty())
+		debug("> cd " + cwd_.string());
+
+	const auto what = make_cmd();
+	debug("> " + what);
+
+	if (conf::dry())
+		return;
+
+	do_run(what);
+}
+
+void process::do_run(const std::string& what)
+{
+	STARTUPINFOA si = { .cb=sizeof(si) };
+	PROCESS_INFORMATION pi = {};
+
+	const std::string cmd = current_env::get("COMSPEC");
+	const std::string args = "/C \"" + what + "\"";
+
+	const char* cwd_p = nullptr;
+	std::string cwd_s;
+
+	if (!cwd_.empty())
+	{
+		create_directories(cwd_);
+		cwd_s = cwd_.string();
+		cwd_p = (cwd_s.empty() ? nullptr : cwd_s.c_str());
+	}
+
+	const auto r = ::CreateProcessA(
+		cmd.c_str(), const_cast<char*>(args.c_str()),
+		nullptr, nullptr, FALSE, CREATE_NEW_PROCESS_GROUP,
+		env_.get_pointers(), cwd_p, &si, &pi);
+
+	if (!r)
+	{
+		const auto e = GetLastError();
+		bail_out("failed to start '" + cmd + "'", e);
+	}
+
+	::CloseHandle(pi.hThread);
+	impl_.handle.reset(pi.hProcess);
 }
 
 void process::interrupt()
 {
-	interrupt_ = true;
+	impl_.interrupt = true;
 }
 
 void process::join()
 {
-	if (!handle_)
+	if (!impl_.handle)
 		return;
 
 	bool interrupted = false;
 
 	for (;;)
 	{
-		const auto r = WaitForSingleObject(handle_.get(), 100);
+		const auto r = WaitForSingleObject(impl_.handle.get(), 100);
 
 		if (r == WAIT_OBJECT_0)
 		{
 			// done
-			GetExitCodeProcess(handle_.get(), &code_);
+			GetExitCodeProcess(impl_.handle.get(), &code_);
+
+			if ((flags_ & allow_failure) || impl_.interrupt)
+				break;
+
+			if (code_ != 0)
+			{
+				impl_.handle = {};
+				bail_out(make_name() + " returned " + std::to_string(code_));
+			}
+
 			break;
 		}
 
 		if (r == WAIT_TIMEOUT)
 		{
-			if (interrupt_ && !interrupted)
+			if (impl_.interrupt && !interrupted)
 			{
-				const auto pid = GetProcessId(handle_.get());
+				const auto pid = GetProcessId(impl_.handle.get());
 
 				if (pid == 0)
 				{
 					error("process id is 0, terminating instead");
-					::TerminateProcess(handle_.get(), 0xffff);
+					::TerminateProcess(impl_.handle.get(), 0xffff);
 					break;
 				}
 				else
@@ -210,22 +222,18 @@ void process::join()
 		}
 
 		const auto e = GetLastError();
-		handle_ = {};
+		impl_.handle = {};
 		bail_out("failed to wait on process", e);
 	}
 
-	handle_ = {};
-}
-
-const std::string& process::cmd() const
-{
-	return cmd_;
+	impl_.handle = {};
 }
 
 int process::exit_code() const
 {
 	return static_cast<int>(code_);
 }
+
 
 void op::touch(const fs::path& p)
 {
@@ -386,7 +394,8 @@ void op::move_to_directory(const fs::path& src, const fs::path& dest_dir)
 	do_rename(src, target);
 }
 
-void op::copy_file_to_dir_if_better(const fs::path& file, const fs::path& dir)
+void op::copy_file_to_dir_if_better(
+	const fs::path& file, const fs::path& dir, copy_flags f)
 {
 	check(file);
 	check(dir);
@@ -396,7 +405,12 @@ void op::copy_file_to_dir_if_better(const fs::path& file, const fs::path& dir)
 		if (!conf::dry())
 		{
 			if (!fs::exists(file) || !fs::is_regular_file(file))
+			{
+				if (f & optional)
+					return;
+
 				bail_out("can't copy " + file.string() + ", not a file");
+			}
 
 			if (fs::exists(dir) && !fs::is_directory(dir))
 				bail_out("can't copy to " + dir.string() + ", not a directory");
@@ -429,19 +443,6 @@ void op::copy_file_to_dir_if_better(const fs::path& file, const fs::path& dir)
 				copy_file_to_dir_if_better(e.path(), dir);
 		}
 	}
-}
-
-process op::run(arch a, const std::string& cmd, const fs::path& cwd)
-{
-	if (!cwd.empty())
-		debug("> cd " + cwd.string());
-
-	debug("> " + cmd);
-
-	if (conf::dry())
-		return {};
-
-	return do_run(a, cmd, cwd);
 }
 
 void op::do_touch(const fs::path& p)
@@ -523,62 +524,6 @@ void op::do_rename(const fs::path& src, const fs::path& dest)
 
 	if (ec)
 		bail_out("can't rename " + src.string() + " to " + dest.string(), ec);
-}
-
-process op::do_run(arch a, const std::string& what, const fs::path& cwd)
-{
-	STARTUPINFOA si = { .cb=sizeof(si) };
-	PROCESS_INFORMATION pi = {};
-
-	const std::string cmd = env("COMSPEC");
-	const std::string args = "/C \"" + what + "\"";
-
-	const char* cwd_p = nullptr;
-	std::string cwd_s;
-
-
-	const environment* env = nullptr;
-
-	switch (a)
-	{
-		case arch::x86:
-			env = &g_env_x86;
-			break;
-
-		case arch::x64:
-			env = &g_env_x64;
-			break;
-
-		case arch::dont_care:
-			// no environment
-			break;
-
-		default:
-			bail_out("op::do_run: bad arch");
-	}
-
-
-	if (!cwd.empty())
-	{
-		create_directories(cwd);
-		cwd_s = cwd.string();
-		cwd_p = (cwd_s.empty() ? nullptr : cwd_s.c_str());
-	}
-
-	const auto r = ::CreateProcessA(
-		cmd.c_str(), const_cast<char*>(args.c_str()),
-		nullptr, nullptr, FALSE, CREATE_NEW_PROCESS_GROUP,
-		(env ? env->get() : nullptr), cwd_p, &si, &pi);
-
-	if (!r)
-	{
-		const auto e = GetLastError();
-		bail_out("failed to start '" + cmd + "'", e);
-	}
-
-	::CloseHandle(pi.hThread);
-
-	return process(what, handle_ptr(pi.hProcess));
 }
 
 void op::check(const fs::path& p)

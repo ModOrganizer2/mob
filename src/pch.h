@@ -56,6 +56,9 @@
 #include <map>
 #include <optional>
 #include <atomic>
+#include <functional>
+#include <vector>
+#include <array>
 
 #include <Shlobj.h>
 #include <shlwapi.h>

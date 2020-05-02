@@ -38,14 +38,17 @@ void openssl::do_build_and_install()
 
 void openssl::configure()
 {
-	run_tool(process_runner(arch::x64, third_party::perl(), cmd::stdout_is_verbose)
+	run_tool(process_runner(process()
+		.binary(third_party::perl())
+		.flags(process::stdout_is_verbose)
 		.arg("Configure")
 		.arg("--openssldir=", build_path())
 		.arg("--prefix=", build_path())
 		.arg("-FS")
 		.arg("-MP1")
 		.arg("VC-WIN64A")
-		.cwd(source_path()));
+		.cwd(source_path())
+		.env(env::vs(arch::x64))));
 }
 
 void openssl::install_engines()
@@ -55,7 +58,7 @@ void openssl::install_engines()
 		int exit_code = run_tool(jom()
 			.path(source_path())
 			.target("install_engines")
-			.flag(jom::accept_failure));
+			.flag(jom::allow_failure));
 
 		if (exit_code == 0)
 			return;

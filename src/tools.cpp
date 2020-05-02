@@ -55,36 +55,43 @@ void basic_process_runner::do_interrupt()
 	process_.interrupt();
 }
 
-int basic_process_runner::execute_and_join(process p, bool check)
+int basic_process_runner::execute_and_join()
 {
-	process_ = std::move(p);
-	join(check);
+	process_.run();
+	join();
 	return process_.exit_code();
 }
 
-int basic_process_runner::execute_and_join(arch a, const cmd& c, bool check)
-{
-	return execute_and_join(op::run(a, c.string(), c.cwd()), check);
-}
-
-void basic_process_runner::join(bool check)
+void basic_process_runner::join()
 {
 	process_.join();
-
-	if (check && !interrupted())
-	{
-		if (process_.exit_code() != 0)
-		{
-			bail_out(
-				process_.cmd() + " returned " +
-				std::to_string(process_.exit_code()));
-		}
-	}
 }
 
 int basic_process_runner::exit_code() const
 {
 	return process_.exit_code();
+}
+
+
+process_runner::process_runner(process p)
+{
+	process_ = std::move(p);
+}
+
+int process_runner::result() const
+{
+	return exit_code();
+}
+
+void process_runner::do_run()
+{
+	execute_and_join();
+//	execute_and_join(process(
+//		arch_,
+//		"\"" + bin_.string() + "\" " + cmd_.string(),
+//		cwd_,
+//		env_,
+//		flags_));
 }
 
 
@@ -223,7 +230,9 @@ void git_clone::do_run()
 
 void git_clone::clone()
 {
-	execute_and_join(arch::dont_care, cmd(third_party::git(), cmd::stdout_is_verbose)
+	process_ = process()
+		.binary(third_party::git())
+		.flags(process::stdout_is_verbose)
 		.arg("clone")
 		.arg("--recurse-submodules")
 		.arg("--depth", "1")
@@ -231,18 +240,24 @@ void git_clone::clone()
 		.arg("--quiet", cmd::quiet)
 		.arg("-c", "advice.detachedHead=false", cmd::quiet)
 		.arg(url_)
-		.arg(where_));
+		.arg(where_);
+
+	execute_and_join();
 }
 
 void git_clone::pull()
 {
-	execute_and_join(arch::dont_care, cmd(third_party::git(), cmd::stdout_is_verbose)
+	process_ = process()
+		.binary(third_party::git())
+		.flags(process::stdout_is_verbose)
 		.arg("pull")
 		.arg("--recurse-submodules")
 		.arg("--quiet", cmd::quiet)
 		.arg(url_)
 		.arg(branch_)
-		.cwd(where_));
+		.cwd(where_);
+
+	execute_and_join();
 }
 
 
@@ -298,38 +313,37 @@ void decompresser::do_run()
 	// so the handling of a duplicate directory is done manually in
 	// check_duplicate_directory() below
 
-	std::string c;
-
 	if (file_.string().ends_with(".tar.gz"))
 	{
-		c = cmd(third_party::sevenz(), cmd::noflags)
-				.arg("x")
-				.arg("-so", file_)
-				.string();
+		auto extract_tar = process()
+			.binary(third_party::sevenz())
+			.arg("x")
+			.arg("-so", file_);
 
-		c += " | ";
-
-		c += cmd(third_party::sevenz(), cmd::noflags)
+		auto extract_gz = process()
+			.binary(third_party::sevenz())
 			.arg("x")
 			.arg("-aoa")
 			.arg("-si")
 			.arg("-ttar")
-			.arg("-o", where_, cmd::nospace)
-			.string();
+			.arg("-o", where_, cmd::nospace);
+
+		process_ = process::pipe(extract_tar, extract_gz);
 	}
 	else
 	{
-		c = cmd(third_party::sevenz(), cmd::stdout_is_verbose)
+		process_ = process()
+			.binary(third_party::sevenz())
+			.flags(process::stdout_is_verbose)
 			.arg("x")
 			.arg("-aoa")
 			.arg("-bd")
 			.arg("-bb0")
 			.arg("-o", where_, cmd::nospace)
-			.arg(file_)
-			.string();
+			.arg(file_);
 	}
 
-	execute_and_join(op::run(arch::dont_care, c));
+	execute_and_join();
 	check_duplicate_directory();
 
 	delete_output.cancel();
@@ -406,6 +420,12 @@ patcher& patcher::task(const std::string& name)
 	return *this;
 }
 
+patcher& patcher::file(const fs::path& p)
+{
+	file_ = p;
+	return *this;
+}
+
 patcher& patcher::root(const fs::path& dir)
 {
 	output_ = dir;
@@ -417,61 +437,84 @@ void patcher::do_run()
 	if (!fs::exists(patches_))
 		return;
 
-	const auto base = cmd(third_party::patch(), cmd::noflags)
+	if (file_.empty())
+	{
+		for (auto e : fs::directory_iterator(patches_))
+		{
+			if (!e.is_regular_file())
+				continue;
+
+			const auto p = e.path();
+
+			if (p.extension() == ".manual_patch")
+			{
+				// skip manual patches
+				continue;
+			}
+			else if (p.extension() != ".patch")
+			{
+				warn(
+					"file without .patch extension " + p.string() + " "
+					"in patches directory " + patches_.string());
+
+				continue;
+			}
+
+			do_patch(p);
+		}
+	}
+	else
+	{
+		do_patch(patches_ / file_);
+	}
+}
+
+void patcher::do_patch(const fs::path& patch_file)
+{
+	const auto base = process()
+		.binary(third_party::patch())
 		.arg("--read-only", "ignore")
 		.arg("--strip", "0")
 		.arg("--directory", output_)
 		.arg("--quiet", cmd::quiet);
 
-	for (auto e : fs::directory_iterator(patches_))
+	const auto check = process(base)
+		.flags(process::allow_failure)
+		.arg("--dry-run")
+		.arg("--force")
+		.arg("--reverse")
+		.arg("--input", patch_file);
+
+	const auto apply = process(base)
+		.arg("--forward")
+		.arg("--batch")
+		.arg("--input", patch_file);
+
 	{
-		if (!e.is_regular_file())
-			continue;
-
-		const auto p = e.path();
-		if (p.extension() != ".patch")
+		// check
+		process_ = check;
+		if (execute_and_join() == 0)
 		{
-			warn(
-				"file without .patch extension " + p.string() + " "
-				"in patches directory " + patches_.string());
-
-			continue;
+			debug("patch " + patch_file.string() + " already applied");
+			return;
 		}
+	}
 
-		const auto check = cmd(base)
-			.arg("--dry-run")
-			.arg("--force")
-			.arg("--reverse")
-			.arg("--input", p);
-
-		const auto apply = cmd(base)
-			.arg("--forward")
-			.arg("--batch")
-			.arg("--input", p);
-
-		{
-			// check
-			if (execute_and_join(arch::dont_care, check, false) == 0)
-			{
-				debug("patch " + p.string() + " already applied");
-				continue;
-			}
-		}
-
-		{
-			// apply
-			debug("applying patch " + p.string());
-			execute_and_join(arch::dont_care, apply);
-		}
+	{
+		// apply
+		process_ = apply;
+		debug("applying patch " + patch_file.string());
+		execute_and_join();
 	}
 }
 
 
-cmake::cmake() :
-	basic_process_runner("cmake"),
-	gen_(jom), arch_(arch::def),
-	cmd_(third_party::cmake(), cmd::stdout_is_verbose)
+cmake::cmake()
+	: basic_process_runner("cmake"), gen_(jom), arch_(arch::def)
 {
+	process_
+		.binary(third_party::cmake())
+		.flags(process::stdout_is_verbose);
 }
 
 cmake& cmake::generator(generators g)
@@ -494,7 +537,7 @@ cmake& cmake::prefix(const fs::path& s)
 
 cmake& cmake::def(const std::string& s)
 {
-	cmd_.arg("-D" + s);
+	process_.arg("-D" + s);
 	return *this;
 }
 
@@ -523,7 +566,7 @@ void cmake::do_run()
 	const auto& g = get_generator();
 	output_ = root_ / (g.output_dir(arch_));
 
-	cmd_
+	process_
 		.arg("-G", "\"" + g.name + "\"")
 		.arg("-DCMAKE_BUILD_TYPE=Release")
 		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", cmd::quiet)
@@ -531,12 +574,14 @@ void cmake::do_run()
 		.arg(g.get_arch(arch_));
 
 	if (!prefix_.empty())
-		cmd_.arg("-DCMAKE_INSTALL_PREFIX=", prefix_, cmd::nospace);
+		process_.arg("-DCMAKE_INSTALL_PREFIX=", prefix_, cmd::nospace);
 
-	cmd_.arg("..");
-	cmd_.cwd(output_);
+	process_
+		.arg("..")
+		.env(env::vs(arch_))
+		.cwd(output_);
 
-	execute_and_join(arch_, cmd_);
+	execute_and_join();
 }
 
 const std::map<cmake::generators, cmake::gen_info>&
@@ -614,16 +659,16 @@ std::string cmake::gen_info::output_dir(arch a) const
 
 
 
-jom::jom() :
-	basic_process_runner("jom"),
-	cmd_(third_party::jom(), cmd::stdout_is_verbose), flags_(noflags),
-	arch_(arch::def)
+jom::jom()
+	: basic_process_runner("jom"), arch_(arch::def)
 {
+	process_
+		.binary(third_party::jom());
 }
 
 jom& jom::path(const fs::path& p)
 {
-	cmd_.cwd(p);
+	process_.cwd(p);
 	return *this;
 }
 
@@ -635,7 +680,7 @@ jom& jom::target(const std::string& s)
 
 jom& jom::def(const std::string& s)
 {
-	cmd_.arg(s);
+	process_.arg(s);
 	return *this;
 }
 
@@ -658,24 +703,33 @@ int jom::result() const
 
 void jom::do_run()
 {
-	cmd_
+	process_
 		.arg("/C", cmd::quiet)
 		.arg("/S", cmd::quiet)
 		.arg("/K");
 
 	if (flags_ & single_job)
-		cmd_.arg("/J", "1");
+		process_.arg("/J", "1");
 
-	cmd_.arg(target_);
+	process_.arg(target_);
 
-	const bool check_exit_code = !(flags_ & accept_failure);
-	execute_and_join(arch_, cmd_, check_exit_code);
+	if (flags_ & allow_failure)
+	{
+		process_.flags(process::flags_t(
+			process_.flags() | process::allow_failure));
+	}
+
+	process_.env(env::vs(arch_));
+
+	execute_and_join();
 }
 
 
 msbuild::msbuild()
 	: basic_process_runner("msbuild"), config_("Release"), arch_(arch::def)
 {
+	process_
+		.binary(third_party::msbuild());
 }
 
 msbuild& msbuild::solution(const fs::path& sln)
@@ -744,7 +798,7 @@ void msbuild::do_run()
 	}
 
 
-	auto c = cmd(third_party::msbuild(), cmd::noflags)
+	process_
 		.arg("-nologo")
 		.arg("-maxCpuCount")
 		.arg("-property:UseMultiToolTask=true")
@@ -757,22 +811,27 @@ void msbuild::do_run()
 		.arg("-consoleLoggerParameters:ErrorsOnly", cmd::quiet);
 
 	if (!projects_.empty())
-		c.arg("-target:" + builder::join(projects_, ","));
+		process_.arg("-target:" + builder::join(projects_, ","));
 
 	for (auto&& p : params_)
-		c.arg("-property:" + p);
+		process_.arg("-property:" + p);
 
-	c
+	process_
 		.arg(sln_)
-		.cwd(sln_.parent_path());
+		.cwd(sln_.parent_path())
+		.env(env::vs(arch_));
 
-	execute_and_join(arch_, c);
+	execute_and_join();
 }
 
 
 devenv_upgrade::devenv_upgrade(fs::path sln)
 	: basic_process_runner("upgrade project"), sln_(std::move(sln))
 {
+	process_
+		.binary(third_party::devenv())
+		.flags(process::stdout_is_verbose)
+		.env(env::vs(arch::x64));
 }
 
 void devenv_upgrade::do_run()
@@ -783,25 +842,27 @@ void devenv_upgrade::do_run()
 		return;
 	}
 
-	// don't care about arch, but it can't be dont_care because it doesn't
-	// use vcvars at all
-	execute_and_join(arch::def, cmd(third_party::devenv(), cmd::stdout_is_verbose)
+	process_
 		.arg("/upgrade")
-		.arg(sln_));
+		.arg(sln_);
+
+	execute_and_join();
 }
 
 
 nuget::nuget(fs::path sln)
 	: basic_process_runner("nuget"), sln_(std::move(sln))
 {
+	process_
+		.binary(third_party::nuget())
+		.arg("restore")
+		.arg(sln_)
+		.cwd(sln_.parent_path());
 }
 
 void nuget::do_run()
 {
-	execute_and_join(arch::dont_care, cmd(third_party::nuget(), cmd::noflags)
-		.arg("restore")
-		.arg(sln_)
-		.cwd(sln_.parent_path()));
+	execute_and_join();
 }
 
 }	// namespace

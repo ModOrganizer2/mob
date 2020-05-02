@@ -61,6 +61,7 @@ fs::path find_third_party_directory()
 
 static std::map<std::string, std::string> g_conf =
 {
+	{"qt_install",   ""},
 	{"vs",           "16"},
 	{"vs_year",      "2019"},
 	{"vs_toolset",   "14.2"},
@@ -82,7 +83,11 @@ static std::map<std::string, std::string> g_conf =
 	{"spdlog",       "v1.4.2"},
 	{"usvfs",        "master"},
 	{"qt",           "5.14.2"},
+	{"qt_vs",        "2017"},
+	{"pyqt",         "5.14.2"},
+	{"pyqt_builder", "1.3.0"},
 	{"sip",          "5.1.2"},
+	{"pyqt_sip",     "12.7.2"},
 
 	{"prefix",   R"(C:\dev\projects\mobuild-out)"},
 };
@@ -140,18 +145,22 @@ const std::string& versions::nmm()          { return get_conf("nmm"); }
 const std::string& versions::spdlog()       { return get_conf("spdlog"); }
 const std::string& versions::usvfs()        { return get_conf("usvfs"); }
 const std::string& versions::qt()           { return get_conf("qt"); }
+const std::string& versions::qt_vs()        { return get_conf("qt_vs"); }
+const std::string& versions::pyqt()         { return get_conf("pyqt"); }
+const std::string& versions::pyqt_builder() { return get_conf("pyqt_builder"); }
 const std::string& versions::sip()          { return get_conf("sip"); }
+const std::string& versions::pyqt_sip()     { return get_conf("pyqt_sip"); }
 
-fs::path paths::prefix()         { return get_conf("prefix"); }
-fs::path paths::cache()          { return prefix() / "downloads"; }
-fs::path paths::build()          { return prefix() / "build"; }
-fs::path paths::install()        { return prefix() / "install"; }
-fs::path paths::install_bin()    { return install() / "bin"; }
-fs::path paths::install_libs()   { return install() / "libs"; }
-fs::path paths::install_pdbs()   { return install() / "pdbs"; }
-fs::path paths::install_dlls()   { return install_bin() / "dlls"; }
-fs::path paths::install_loot()   { return install_bin() / "loot"; }
-
+fs::path paths::prefix()          { return get_conf("prefix"); }
+fs::path paths::cache()           { return prefix() / "downloads"; }
+fs::path paths::build()           { return prefix() / "build"; }
+fs::path paths::install()         { return prefix() / "install"; }
+fs::path paths::install_bin()     { return install() / "bin"; }
+fs::path paths::install_libs()    { return install() / "libs"; }
+fs::path paths::install_pdbs()    { return install() / "pdbs"; }
+fs::path paths::install_dlls()    { return install_bin() / "dlls"; }
+fs::path paths::install_loot()    { return install_bin() / "loot"; }
+fs::path paths::install_plugins() { return install_bin() / "plugins"; }
 
 
 fs::path paths::patches()
@@ -160,31 +169,172 @@ fs::path paths::patches()
 	return p;
 }
 
+fs::path find_in_path(const std::string& exe)
+{
+	const std::size_t buffer_size = MAX_PATH;
+	char buffer[buffer_size + 1] = {};
+
+	if (SearchPathA(nullptr, exe.c_str(), nullptr, buffer_size, buffer, nullptr))
+		return buffer;
+	else
+		return {};
+}
+
+bool try_parts(fs::path& check, const std::vector<std::string>& parts)
+{
+	for (std::size_t i=0; i<parts.size() - 1; ++i)
+	{
+		fs::path p = check;
+
+		for (std::size_t j=i; j<parts.size(); ++j)
+			p /= parts[j];
+
+		if (fs::exists(p) && fs::is_regular_file(p))
+		{
+			check = p;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool find_cmake(fs::path& check)
+{
+	// try Qt/Qt5.14.2/msvc*/bin/qmake.exe
+	if (try_parts(check, {
+	    "Qt",
+	    "Qt" + versions::qt(),
+	    "msvc" + versions::qt_vs() + "_64",
+	    "bin",
+	    "qmake.exe"}))
+	{
+		return true;
+	}
+
+	// try Qt/5.14.2/msvc*/bin/qmake.exe
+	if (try_parts(check, {
+	    "Qt",
+	    versions::qt(),
+	    "msvc" + versions::qt_vs() + "_64",
+	    "bin",
+	    "qmake.exe"}))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool find_qt(fs::path& check)
+{
+	if (!find_cmake(check))
+		return false;
+
+	check = fs::absolute(check.parent_path() / "..");
+	return true;
+}
+
+fs::path paths::qt()
+{
+	static fs::path path = []
+	{
+		fs::path p = get_conf("qt_install");
+
+		if (!p.empty())
+		{
+			p = fs::absolute(p);
+			if (!find_qt(p))
+				bail_out("no qt install in " + p.string());
+
+			return p;
+		}
+
+
+		std::vector<fs::path> locations =
+		{
+			program_files_x64(),
+			"C:",
+			"D:"
+		};
+
+		// look for qmake, which is in %qt%/version/msvc.../bin
+		fs::path qmake = find_in_path("qmake.exe");
+		if (!qmake.empty())
+			locations.insert(locations.begin(), qmake.parent_path() / "../../");
+
+		// look for qtcreator.exe, which is in %qt%/Tools/QtCreator/bin
+		fs::path qtcreator = find_in_path("qtcreator.exe");
+		if (!qtcreator.empty())
+			locations.insert(locations.begin(), qtcreator.parent_path() / "../../../");
+
+		for (fs::path loc : locations)
+		{
+			loc = fs::absolute(loc);
+			if (find_qt(loc))
+				return loc;
+		}
+
+		bail_out("can't find qt install");
+	}();
+
+	return path;
+}
+
+fs::path paths::qt_bin()
+{
+	static fs::path path = qt() / "bin";
+	return path;
+}
+
+fs::path get_known_folder(const GUID& id)
+{
+	wchar_t* buffer = nullptr;
+	const auto r = ::SHGetKnownFolderPath(id, 0, 0, &buffer);
+
+	if (r != S_OK)
+		return {};
+
+	fs::path p = buffer;
+	::CoTaskMemFree(buffer);
+
+	return p;
+}
 
 fs::path paths::program_files_x86()
 {
 	static fs::path path = []
 	{
-		wchar_t* buffer = nullptr;
+		fs::path p = get_known_folder(FOLDERID_ProgramFilesX86);
 
-		const auto r = ::SHGetKnownFolderPath(
-			FOLDERID_ProgramFilesX86, 0, 0, &buffer);
-
-		fs::path p;
-
-		if (r == S_OK)
-		{
-			p = buffer;
-			::CoTaskMemFree(buffer);
-		}
-		else
+		if (p.empty())
 		{
 			const auto e = GetLastError();
-			error("failed to get program files folder", e);
+			error("failed to get x86 program files folder", e);
 			p = fs::path(R"(C:\Program Files (x86))");
 		}
 
-		debug("program files is " + p.string());
+		debug("x86 program files is " + p.string());
+		return p;
+	}();
+
+	return path;
+}
+
+fs::path paths::program_files_x64()
+{
+	static fs::path path = []
+	{
+		fs::path p = get_known_folder(FOLDERID_ProgramFilesX64);
+
+		if (p.empty())
+		{
+			const auto e = GetLastError();
+			error("failed to get x64 program files folder", e);
+			p = fs::path(R"(C:\Program Files)");
+		}
+
+		debug("x64 program files is " + p.string());
 		return p;
 	}();
 

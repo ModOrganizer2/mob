@@ -1,0 +1,36 @@
+--- builder.py	(date 1575938575861)
++++ builder.py	(date 1575938575861)
+@@ -402,17 +402,29 @@
+                     'QMAKE_LFLAGS += -Wl,--version-script={}.exp'.format(
+                             buildable.target))
+
+-        pro_lines.append(
++        if project.py_platform == 'win32':
++            for include_dir in project.py_include_dir.split(';'):
++                pro_lines.append(
++                        'INCLUDEPATH += {}'.format(
++                                self.qmake_quote(include_dir)))
++        else:
++            pro_lines.append(
+                 'INCLUDEPATH += {}'.format(
+-                        self.qmake_quote(project.py_include_dir)))
++                    self.qmake_quote(project.py_include_dir)))
+
++        if project.py_pylib_shlib != "":
++            pro_lines.append(
++                    'DEFINES += {}'.format(
++                        self.qmake_quote("PYTHON_LIB=\"{}\"".format(
++                                project.py_pylib_shlib))))
++
+         # Python.h on Windows seems to embed the need for pythonXY.lib, so tell
+         # it where it is.
+         # TODO: is this still necessary for Python v3.8?
+         if not buildable.static:
+             pro_lines.extend(['win32 {',
+-                    '    LIBS += -L{}'.format(
+-                            self.qmake_quote(project.py_pylib_dir)),
++                    '    LIBS += -L{}{}'.format(
++                            self.qmake_quote(project.py_pylib_dir), '' if project.py_pylib_lib == '' else ' -l' + project.py_pylib_lib),
+                     '}'])
+
+         # Add any installables from the buildable

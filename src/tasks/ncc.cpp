@@ -31,8 +31,9 @@ void ncc::do_build_and_install()
 
 	const auto publish =source_path() / "publish.bat";
 
-	run_tool(process_runner(arch::dont_care, publish, cmd::noflags)
-		.arg(paths::install_bin()));
+	run_tool(process_runner(process()
+		.binary(publish)
+		.arg(paths::install_bin())));
 }
 
 }	// namespace

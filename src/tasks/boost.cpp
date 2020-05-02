@@ -63,8 +63,9 @@ void boost::fetch_from_source()
 
 		const auto bootstrap = source_path() / "bootstrap.bat";
 
-		run_tool(process_runner(arch::dont_care, bootstrap, cmd::noflags)
-			.cwd(source_path()));
+		run_tool(process_runner(process()
+			.binary(bootstrap)
+			.cwd(source_path())));
 	}
 }
 
@@ -87,13 +88,23 @@ void boost::build_and_install_from_source()
 		paths::install_bin());
 }
 
+template <class F>
+std::vector<std::string> map(const std::vector<std::string>& v, F&& f)
+{
+	std::vector<std::string> out;
+
+	for (auto&& e : v)
+		out.push_back(f(e));
+
+	return out;
+}
+
 void boost::do_b2(
 	const std::vector<std::string>& components,
 	const std::string& link, const std::string& runtime_link, arch a)
 {
-	process_runner p(a, source_path() / "b2", cmd::noflags);
-
-	p
+	run_tool(process_runner(process()
+		.binary(source_path() / "b2")
 		.arg("address-model=",  address_model_for_arch(a))
 		.arg("link=",           link)
 		.arg("runtime-link=",   runtime_link)
@@ -101,12 +112,9 @@ void boost::do_b2(
 		.arg("--user-config=",  config_jam_file())
 		.arg("--stagedir=",     lib_path(a))
 		.arg("--libdir=",       lib_path(a))
-		.cwd(source_path());
-
-	for (auto&& c : components)
-		p.arg("--with-" + c);
-
-	run_tool(p);
+		.args(map(components, [](auto&& c) { return "--with-" + c; }))
+		.env(env::vs(a))
+		.cwd(source_path())));
 }
 
 void boost::write_config_jam()

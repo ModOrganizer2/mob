@@ -59,76 +59,28 @@ private:
 class basic_process_runner : public tool
 {
 public:
-	void join(bool check_exit_code=true);
+	void join();
 	int exit_code() const;
 
 protected:
-	basic_process_runner(std::string name);
+	process process_;
+
+	basic_process_runner(std::string name={});
 
 	void do_interrupt() override;
-
-	int execute_and_join(process p, bool check_exit_code=true);
-	int execute_and_join(arch a, const cmd& c, bool check_exit_code=true);
-
-private:
-	std::string cmd_;
-	fs::path cwd_;
-	process process_;
+	int execute_and_join();
 };
 
 
 class process_runner : public basic_process_runner
 {
 public:
-	process_runner(arch a, fs::path exe, cmd::flags flags) :
-		basic_process_runner(exe.filename().string()),
-		arch_(a), cmd_(exe, flags)
-	{
-	}
+	process_runner(process p);
 
-	process_runner& name(const std::string& s)
-	{
-		cmd_.name(s);
-		return *this;
-	}
-
-	const std::string& name() const
-	{
-		return cmd_.name();
-	}
-
-	process_runner& cwd(const fs::path& p)
-	{
-		cmd_.cwd(p);
-		return *this;
-	}
-
-	const fs::path& cwd() const
-	{
-		return cmd_.cwd();
-	}
-
-	template <class... Args>
-	process_runner& arg(Args&&... args)
-	{
-		cmd_.arg(std::forward<Args>(args)...);
-		return *this;
-	}
-
-	int result() const
-	{
-		return exit_code();
-	}
+	int result() const;
 
 protected:
-	void do_run() override
-	{
-		execute_and_join(arch_, cmd_);
-	}
-
-private:
-	arch arch_;
-	cmd cmd_;
+	void do_run() override;
 };
 
 
@@ -182,6 +134,7 @@ public:
 	patcher();
 
 	patcher& task(const std::string& name);
+	patcher& file(const fs::path& p);
 	patcher& root(const fs::path& dir);
 
 protected:
@@ -190,6 +143,9 @@ protected:
 private:
 	fs::path patches_;
 	fs::path output_;
+	fs::path file_;
+
+	void do_patch(const fs::path& patch_file);
 };
 
 
@@ -232,7 +188,6 @@ private:
 	fs::path prefix_;
 	fs::path output_;
 	arch arch_;
-	cmd cmd_;
 
 	const std::map<generators, gen_info>& all_generators() const;
 	const gen_info& get_generator() const;
@@ -246,7 +201,7 @@ public:
 	{
 		noflags        = 0x00,
 		single_job     = 0x01,
-		accept_failure = 0x02
+		allow_failure  = 0x02
 	};
 
 	jom();
@@ -263,7 +218,6 @@ protected:
 	void do_run() override;
 
 private:
-	cmd cmd_;
 	std::string target_;
 	flags flags_;
 	arch arch_;

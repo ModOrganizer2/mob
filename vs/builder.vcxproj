@@ -22,13 +22,13 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -96,6 +96,7 @@
     <ClCompile Include="..\src\tasks\ncc.cpp" />
     <ClCompile Include="..\src\tasks\nmm.cpp" />
     <ClCompile Include="..\src\tasks\openssl.cpp" />
+    <ClCompile Include="..\src\tasks\pyqt.cpp" />
     <ClCompile Include="..\src\tasks\python.cpp" />
     <ClCompile Include="..\src\tasks\sevenz.cpp" />
     <ClCompile Include="..\src\tasks\sip.cpp" />

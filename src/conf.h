@@ -55,7 +55,11 @@ struct versions
 	static const std::string& spdlog();
 	static const std::string& usvfs();
 	static const std::string& qt();
+	static const std::string& qt_vs();
+	static const std::string& pyqt();
+	static const std::string& pyqt_builder();
 	static const std::string& sip();
+	static const std::string& pyqt_sip();
 };
 
 struct paths
@@ -72,10 +76,14 @@ struct paths
 
 	static fs::path install_dlls();
 	static fs::path install_loot();
+	static fs::path install_plugins();
 
+	static fs::path qt();
+	static fs::path qt_bin();
 	static fs::path program_files_x86();
-	static fs::path temp_dir();
+	static fs::path program_files_x64();
 
+	static fs::path temp_dir();
 	static fs::path temp_file();
 };
 

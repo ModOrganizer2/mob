@@ -39,7 +39,11 @@ int run(int argc, char** argv)
 
 		curl_init curl;
 		vcvars();
-		prepend_to_path(find_third_party_directory() / "bin");
+
+		current_env::set(
+			"PATH",
+			(find_third_party_directory() / "bin").string() + ";",
+			env::prepend);
 
 		add_task<sevenz>();
 		add_task<zlib>();
@@ -58,6 +62,7 @@ int run(int argc, char** argv)
 		add_task<spdlog>();
 		add_task<usvfs>();
 		add_task<sip>();
+		add_task<pyqt>();
 
 		if (argc > 1)
 		{

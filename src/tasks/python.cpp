@@ -75,15 +75,16 @@ void python::do_build_and_install()
 	{
 		const auto bat = source_path() / "python.bat";
 
-		run_tool(process_runner(arch::dont_care, bat, cmd::stdout_is_verbose)
-			.name("package python")
+		run_tool(process_runner(process()
+			.binary(bat)
+			.flags(process::stdout_is_verbose)
 			.arg(fs::path("PC/layout"))
 			.arg("--source", source_path())
 			.arg("--build", build_path())
 			.arg("--temp", (build_path() / "pythoncore_temp"))
 			.arg("--copy", (build_path() / "pythoncore"))
 			.arg("--preset-embed")
-			.cwd(source_path()));
+			.cwd(source_path())));
 
 		op::touch(build_path() / "_mob_packaged");
 	}
@@ -115,8 +116,9 @@ void python::install_pip()
 {
 	debug("installing pip");
 
-	run_tool(process_runner(arch::dont_care, python_exe(), cmd::noflags)
-		.arg("-m", "ensurepip"));
+	run_tool(process_runner(process()
+		.binary(python_exe())
+		.arg("-m", "ensurepip")));
 }
 
 fs::path python::build_path()
@@ -137,6 +139,11 @@ fs::path python::include_path()
 fs::path python::scripts_path()
 {
 	return source_path() / "Scripts";
+}
+
+fs::path python::site_packages_path()
+{
+	return source_path() / "Lib" / "site-packages";
 }
 
 fs::path python::solution_file()
