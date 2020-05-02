@@ -85,6 +85,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\src\process.cpp" />
     <ClCompile Include="..\src\tasks\boost.cpp" />
     <ClCompile Include="..\src\tasks\bzip2.cpp" />
     <ClCompile Include="..\src\tasks\fmt.cpp" />
@@ -112,6 +113,7 @@
     <ClInclude Include="..\src\op.h" />
     <ClInclude Include="..\src\net.h" />
     <ClInclude Include="..\src\pch.h" />
+    <ClInclude Include="..\src\process.h" />
     <ClInclude Include="..\src\tasks\task.h" />
     <ClInclude Include="..\src\tasks\tasks.h" />
     <ClInclude Include="..\src\tools.h" />

@@ -157,8 +157,8 @@ public:
 		prepend
 	};
 
-	static env vs_x64();
 	static env vs_x86();
+	static env vs_x64();
 	static env vs(arch a);
 
 	env& append_path(const fs::path& p);

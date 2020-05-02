@@ -38,7 +38,6 @@ int run(int argc, char** argv)
 		::SetConsoleCtrlHandler(signal_handler, TRUE);
 
 		curl_init curl;
-		vcvars();
 
 		current_env::set(
 			"PATH",

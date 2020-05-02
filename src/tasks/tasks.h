@@ -5,6 +5,7 @@
 #include "../conf.h"
 #include "../tools.h"
 #include "../utility.h"
+#include "../op.h"
 
 namespace builder
 {

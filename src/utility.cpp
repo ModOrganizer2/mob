@@ -3,6 +3,7 @@
 #include "conf.h"
 #include "op.h"
 #include "net.h"
+#include "process.h"
 
 namespace builder
 {
@@ -262,9 +263,6 @@ void directory_deleter::cancel()
 }
 
 
-static env g_env_x86, g_env_x64;
-
-
 fs::path find_vcvars()
 {
 	const std::vector<std::string> editions =
@@ -347,20 +345,17 @@ env get_vcvars_env(arch a)
 	return e;
 }
 
-void vcvars()
+
+env env::vs_x86()
 {
-	g_env_x86 = get_vcvars_env(arch::x86);
-	g_env_x64 = get_vcvars_env(arch::x64);
+	static env e = get_vcvars_env(arch::x86);
+	return e;
 }
 
 env env::vs_x64()
 {
-	return g_env_x64;
-}
-
-env env::vs_x86()
-{
-	return g_env_x86;
+	static env e = get_vcvars_env(arch::x64);
+	return e;
 }
 
 env env::vs(arch a)
@@ -368,10 +363,10 @@ env env::vs(arch a)
 	switch (a)
 	{
 		case arch::x86:
-			return g_env_x86;
+			return vs_x86();
 
 		case arch::x64:
-			return g_env_x64;
+			return vs_x64();
 
 		case arch::dont_care:
 			return {};

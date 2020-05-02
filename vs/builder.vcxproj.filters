@@ -87,6 +87,9 @@
     <ClCompile Include="..\src\tasks\pyqt.cpp">
       <Filter>src\tasks</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\process.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
@@ -112,6 +115,9 @@
     </ClInclude>
     <ClInclude Include="..\src\tasks\tasks.h">
       <Filter>src\tasks</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\process.h">
+      <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
