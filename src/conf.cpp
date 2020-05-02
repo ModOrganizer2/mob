@@ -2,7 +2,7 @@
 #include "conf.h"
 #include "utility.h"
 
-namespace builder
+namespace mob
 {
 
 fs::path find_root()

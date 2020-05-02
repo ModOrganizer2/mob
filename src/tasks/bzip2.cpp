@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "tasks.h"
 
-namespace builder
+namespace mob
 {
 
 bzip2::bzip2()
@@ -30,4 +30,4 @@ url bzip2::source_url()
 		"bzip2-" + versions::bzip2() + ".tar.gz/download";
 }
 
-}	// namespace builder
+}	// namespace

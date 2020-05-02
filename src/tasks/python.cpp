@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "tasks.h"
 
-namespace builder
+namespace mob
 {
 
 python::python()
@@ -159,4 +159,4 @@ std::string python::version_for_dll()
 	return v.major + v.minor;
 }
 
-}	// namespace builder
+}	// namespace

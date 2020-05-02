@@ -66,7 +66,7 @@
 
 #pragma warning(pop)
 
-namespace builder
+namespace mob
 {
 
 namespace fs = std::filesystem;

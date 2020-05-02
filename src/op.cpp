@@ -3,7 +3,7 @@
 #include "utility.h"
 #include "conf.h"
 
-namespace builder
+namespace mob
 {
 
 void op::touch(const fs::path& p)

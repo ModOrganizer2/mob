@@ -3,7 +3,7 @@
 #include "utility.h"
 #include "env.h"
 
-namespace builder
+namespace mob
 {
 
 class process
@@ -88,7 +88,7 @@ public:
 		return *this;
 	}
 
-	process& env(const builder::env& e);
+	process& env(const mob::env& e);
 
 	void run();
 	void interrupt();
@@ -111,7 +111,7 @@ private:
 	fs::path bin_;
 	fs::path cwd_;
 	flags_t flags_;
-	builder::env env_;
+	mob::env env_;
 	std::string raw_;
 	std::string cmd_;
 

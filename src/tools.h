@@ -3,7 +3,7 @@
 #include "net.h"
 #include "process.h"
 
-namespace builder
+namespace mob
 {
 
 class tool
@@ -37,9 +37,9 @@ class downloader : public tool
 {
 public:
 	downloader();
-	downloader(builder::url u);
+	downloader(mob::url u);
 
-	downloader& url(const builder::url& u);
+	downloader& url(const mob::url& u);
 
 	fs::path result() const;
 
@@ -50,9 +50,9 @@ protected:
 private:
 	std::unique_ptr<curl_downloader> dl_;
 	fs::path file_;
-	std::vector<builder::url> urls_;
+	std::vector<mob::url> urls_;
 
-	fs::path path_for_url(const builder::url& u) const;
+	fs::path path_for_url(const mob::url& u) const;
 };
 
 
@@ -92,7 +92,7 @@ class git_clone : public basic_process_runner
 public:
 	git_clone();
 
-	git_clone& url(const builder::url& u);
+	git_clone& url(const mob::url& u);
 	git_clone& branch(const std::string& name);
 	git_clone& output(const fs::path& dir);
 
@@ -100,7 +100,7 @@ protected:
 	void do_run() override;
 
 private:
-	builder::url url_;
+	mob::url url_;
 	std::string branch_;
 	fs::path where_;
 

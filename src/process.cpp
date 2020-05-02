@@ -3,7 +3,7 @@
 #include "conf.h"
 #include "net.h"
 
-namespace builder
+namespace mob
 {
 
 process::impl::impl(const impl& i)
@@ -85,7 +85,7 @@ process::flags_t process::flags() const
 	return flags_;
 }
 
-process& process::env(const builder::env& e)
+process& process::env(const mob::env& e)
 {
 	env_ = e;
 	return *this;
@@ -139,7 +139,7 @@ void process::do_run(const std::string& what)
 	STARTUPINFOA si = { .cb=sizeof(si) };
 	PROCESS_INFORMATION pi = {};
 
-	const std::string cmd = current_env::get("COMSPEC");
+	const std::string cmd = this_env::get("COMSPEC");
 	const std::string args = "/C \"" + what + "\"";
 
 	const char* cwd_p = nullptr;

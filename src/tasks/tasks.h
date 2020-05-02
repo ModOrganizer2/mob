@@ -7,7 +7,7 @@
 #include "../utility.h"
 #include "../op.h"
 
-namespace builder
+namespace mob
 {
 
 class boost : public basic_task<boost>

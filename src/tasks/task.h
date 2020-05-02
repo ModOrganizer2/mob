@@ -1,4 +1,6 @@
-namespace builder
+#pragma once
+
+namespace mob
 {
 
 class task;

@@ -2,7 +2,7 @@
 
 #include "utility.h"
 
-namespace builder
+namespace mob
 {
 
 class env
@@ -39,18 +39,16 @@ private:
 	map::const_iterator find(const std::string& name) const;
 };
 
-}	// namespace
 
-
-namespace builder::current_env
+struct this_env
 {
+	static void set(
+		const std::string& k,
+		const std::string& v,
+		env::flags f=env::replace);
 
-void set(
-	const std::string& k,
-	const std::string& v,
-	env::flags f=env::replace);
-
-env get();
-std::string get(const std::string& k);
+	static env get();
+	static std::string get(const std::string& k);
+};
 
 }	// namespace

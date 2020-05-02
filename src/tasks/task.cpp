@@ -3,7 +3,7 @@
 #include "../tools.h"
 #include "../utility.h"
 
-namespace builder
+namespace mob
 {
 
 class interrupted {};

@@ -2,7 +2,7 @@
 
 #include "utility.h"
 
-namespace builder
+namespace mob
 {
 
 class url

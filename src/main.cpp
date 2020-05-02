@@ -6,7 +6,7 @@
 #include "utility.h"
 #include "tasks/tasks.h"
 
-namespace builder
+namespace mob
 {
 
 BOOL WINAPI signal_handler(DWORD) noexcept
@@ -39,7 +39,7 @@ int run(int argc, char** argv)
 
 		curl_init curl;
 
-		current_env::set(
+		this_env::set(
 			"PATH",
 			(find_third_party_directory() / "bin").string() + ";",
 			env::prepend);
@@ -102,8 +102,8 @@ int run(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-	int r = builder::run(argc, argv);
-	builder::dump_logs();
+	int r = mob::run(argc, argv);
+	mob::dump_logs();
 	//std::cin.get();
 	return r;
 }

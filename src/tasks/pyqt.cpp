@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "tasks.h"
 
-namespace builder
+namespace mob
 {
 
 pyqt::pyqt()
@@ -47,10 +47,10 @@ void pyqt::do_build_and_install()
 
 	auto pyqt_env = env::vs_x64()
 		.append_path({
-		paths::qt_bin(),
-		python::build_path(),
-		python::source_path(),
-		python::scripts_path()})
+			paths::qt_bin(),
+			python::build_path(),
+			python::source_path(),
+			python::scripts_path()})
 		.set("CL", " /MP")
 		.set("LIB", ";" + paths::install_libs().string(), env::append)
 		.set("PYTHONHOME", python::source_path().string());

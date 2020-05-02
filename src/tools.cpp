@@ -5,7 +5,7 @@
 #include "conf.h"
 #include "tasks/tasks.h"
 
-namespace builder
+namespace mob
 {
 
 tool::tool(std::string name)
@@ -101,13 +101,13 @@ downloader::downloader()
 {
 }
 
-downloader::downloader(builder::url u)
+downloader::downloader(mob::url u)
 	: tool("downloader")
 {
 	urls_.push_back(std::move(u));
 }
 
-downloader& downloader::url(const builder::url& u)
+downloader& downloader::url(const mob::url& u)
 {
 	urls_.push_back(u);
 	return *this;
@@ -162,7 +162,7 @@ void downloader::do_interrupt()
 		dl_->interrupt();
 }
 
-fs::path downloader::path_for_url(const builder::url& u) const
+fs::path downloader::path_for_url(const mob::url& u) const
 {
 	std::string filename;
 
@@ -176,7 +176,7 @@ fs::path downloader::path_for_url(const builder::url& u) const
 		if (url_string.ends_with(strip))
 			url_string = url_string.substr(0, url_string.size() - strip.size());
 
-		filename = builder::url(url_string).filename();
+		filename = mob::url(url_string).filename();
 	}
 	else
 	{
@@ -198,7 +198,7 @@ git_clone::git_clone()
 {
 }
 
-git_clone& git_clone::url(const builder::url& u)
+git_clone& git_clone::url(const mob::url& u)
 {
 	url_ = u;
 	return *this;
@@ -812,7 +812,7 @@ void msbuild::do_run()
 		.arg("-consoleLoggerParameters:ErrorsOnly", process::quiet);
 
 	if (!projects_.empty())
-		process_.arg("-target:" + builder::join(projects_, ","));
+		process_.arg("-target:" + mob::join(projects_, ","));
 
 	for (auto&& p : params_)
 		process_.arg("-property:" + p);

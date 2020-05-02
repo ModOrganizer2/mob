@@ -4,7 +4,7 @@
 #include "process.h"
 #include "op.h"
 
-namespace builder
+namespace mob
 {
 
 fs::path find_vcvars()
@@ -222,13 +222,9 @@ void* env::get_pointers() const
 	return (void*)string_.c_str();
 }
 
-}	// namespace
 
 
-namespace builder::current_env
-{
-
-void set(const std::string& k, const std::string& v, env::flags f)
+void this_env::set(const std::string& k, const std::string& v, env::flags f)
 {
 	switch (f)
 	{
@@ -246,7 +242,7 @@ void set(const std::string& k, const std::string& v, env::flags f)
 	}
 }
 
-std::string get(const std::string& name)
+std::string this_env::get(const std::string& name)
 {
 	const std::size_t buffer_size = GetEnvironmentVariableA(
 		name.c_str(), nullptr, 0);
@@ -263,7 +259,7 @@ std::string get(const std::string& name)
 	return buffer.get();
 }
 
-env get()
+env this_env::get()
 {
 	env e;
 
