@@ -36,13 +36,9 @@ void pyqt::do_build_and_install()
 		"_QOpenGLFunctions_4_1_Core"
 	};
 
-	run_tool(process_runner(process()
-		.binary(python::python_exe())
-		.arg("-m", "pip")
-		.arg("install")
-		.arg("--no-warn-script-location")
-		.arg("--disable-pip-version-check")
-		.arg("PyQt-builder==" + versions::pyqt_builder())));
+	run_tool(pip_install()
+		.package("PyQt-builder")
+		.version(versions::pyqt_builder()));
 
 	run_tool(patcher()
 		.task(name())
@@ -100,14 +96,8 @@ void pyqt::do_build_and_install()
 	}
 	else
 	{
-		run_tool(process_runner(process()
-			.binary(python::python_exe())
-			.arg("-m", "pip")
-			.arg("install")
-			.arg("--no-warn-script-location")
-			.arg("--disable-pip-version-check")
-			.arg(paths::cache() / sip_install_file())
-			.cwd(python::source_path())));
+		run_tool(pip_install()
+			.file(paths::cache() / sip_install_file()));
 
 		op::touch(source_path() / "_mob_installed");
 	}

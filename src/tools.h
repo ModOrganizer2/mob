@@ -274,4 +274,23 @@ private:
 	fs::path sln_;
 };
 
+
+class pip_install : public basic_process_runner
+{
+public:
+	pip_install();
+
+	pip_install& package(const std::string& s);
+	pip_install& version(const std::string& s);
+	pip_install& file(const fs::path& p);
+
+protected:
+	void do_run() override;
+
+private:
+	std::string package_;
+	std::string version_;
+	fs::path file_;
+};
+
 }	// namespace
