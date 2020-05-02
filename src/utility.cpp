@@ -157,66 +157,6 @@ std::string join(const std::vector<std::string>& v, const std::string& sep)
 }
 
 
-std::string redir_nul()
-{
-	if (conf::verbose())
-		return {};
-	else
-		return " > NUL";
-}
-
-
-const std::string& cmd::string() const
-{
-	return s_;
-}
-
-void cmd::add_arg(const std::string& k, const std::string& v, flags f)
-{
-	if ((f & quiet) && conf::verbose())
-		return;
-
-	if (k.empty() && v.empty())
-		return;
-
-	if (k.empty())
-		s_ += " " + v;
-	else if ((f & nospace) || k.back() == '=')
-		s_ += " " + k + v;
-	else
-		s_ += " " + k + " " + v;
-}
-
-std::string cmd::arg_to_string(const char* s, bool force_quote)
-{
-	if (force_quote)
-		return "\"" + std::string(s) + "\"";
-	else
-		return s;
-}
-
-std::string cmd::arg_to_string(const std::string& s, bool force_quote)
-{
-	if (force_quote)
-		return "\"" + std::string(s) + "\"";
-	else
-		return s;
-}
-
-std::string cmd::arg_to_string(const fs::path& p, bool)
-{
-	return "\"" + p.string() + "\"";
-}
-
-std::string cmd::arg_to_string(const url& u, bool force_quote)
-{
-	if (force_quote)
-		return "\"" + u.string() + "\"";
-	else
-		return u.string();
-}
-
-
 file_deleter::file_deleter(fs::path p)
 	: p_(std::move(p)), delete_(true)
 {

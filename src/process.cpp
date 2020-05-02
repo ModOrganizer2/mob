@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "process.h"
 #include "conf.h"
+#include "net.h"
 
 namespace builder
 {
@@ -103,10 +104,13 @@ std::string process::make_cmd() const
 	if (!raw_.empty())
 		return raw_;
 
-	std::string s = "\"" + bin_.string() + "\" " + cmd_.string();
+	std::string s = "\"" + bin_.string() + "\" " + cmd_;
 
 	if ((flags_ & stdout_is_verbose) == 0)
-		s += redir_nul();
+	{
+		if (!conf::verbose())
+			s += " > NUL";
+	}
 
 	return s;
 }
@@ -231,6 +235,51 @@ void process::join()
 int process::exit_code() const
 {
 	return static_cast<int>(code_);
+}
+
+void process::add_arg(const std::string& k, const std::string& v, arg_flags f)
+{
+	if ((f & quiet) && conf::verbose())
+		return;
+
+	if (k.empty() && v.empty())
+		return;
+
+	if (k.empty())
+		cmd_ += " " + v;
+	else if ((f & nospace) || k.back() == '=')
+		cmd_ += " " + k + v;
+	else
+		cmd_ += " " + k + " " + v;
+}
+
+std::string process::arg_to_string(const char* s, bool force_quote)
+{
+	if (force_quote)
+		return "\"" + std::string(s) + "\"";
+	else
+		return s;
+}
+
+std::string process::arg_to_string(const std::string& s, bool force_quote)
+{
+	if (force_quote)
+		return "\"" + std::string(s) + "\"";
+	else
+		return s;
+}
+
+std::string process::arg_to_string(const fs::path& p, bool)
+{
+	return "\"" + p.string() + "\"";
+}
+
+std::string process::arg_to_string(const url& u, bool force_quote)
+{
+	if (force_quote)
+		return "\"" + u.string() + "\"";
+	else
+		return u.string();
 }
 
 }	// namespace

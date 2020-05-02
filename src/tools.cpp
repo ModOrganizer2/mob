@@ -237,8 +237,8 @@ void git_clone::clone()
 		.arg("--recurse-submodules")
 		.arg("--depth", "1")
 		.arg("--branch", branch_)
-		.arg("--quiet", cmd::quiet)
-		.arg("-c", "advice.detachedHead=false", cmd::quiet)
+		.arg("--quiet", process::quiet)
+		.arg("-c", "advice.detachedHead=false", process::quiet)
 		.arg(url_)
 		.arg(where_);
 
@@ -252,7 +252,7 @@ void git_clone::pull()
 		.flags(process::stdout_is_verbose)
 		.arg("pull")
 		.arg("--recurse-submodules")
-		.arg("--quiet", cmd::quiet)
+		.arg("--quiet", process::quiet)
 		.arg(url_)
 		.arg(branch_)
 		.cwd(where_);
@@ -326,7 +326,7 @@ void decompresser::do_run()
 			.arg("-aoa")
 			.arg("-si")
 			.arg("-ttar")
-			.arg("-o", where_, cmd::nospace);
+			.arg("-o", where_, process::nospace);
 
 		process_ = process::pipe(extract_tar, extract_gz);
 	}
@@ -339,7 +339,7 @@ void decompresser::do_run()
 			.arg("-aoa")
 			.arg("-bd")
 			.arg("-bb0")
-			.arg("-o", where_, cmd::nospace)
+			.arg("-o", where_, process::nospace)
 			.arg(file_);
 	}
 
@@ -476,7 +476,7 @@ void patcher::do_patch(const fs::path& patch_file)
 		.arg("--read-only", "ignore")
 		.arg("--strip", "0")
 		.arg("--directory", output_)
-		.arg("--quiet", cmd::quiet);
+		.arg("--quiet", process::quiet);
 
 	const auto check = process(base)
 		.flags(process::allow_failure)
@@ -569,12 +569,12 @@ void cmake::do_run()
 	process_
 		.arg("-G", "\"" + g.name + "\"")
 		.arg("-DCMAKE_BUILD_TYPE=Release")
-		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", cmd::quiet)
-		.arg("--log-level", "WARNING", cmd::quiet)
+		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", process::quiet)
+		.arg("--log-level", "WARNING", process::quiet)
 		.arg(g.get_arch(arch_));
 
 	if (!prefix_.empty())
-		process_.arg("-DCMAKE_INSTALL_PREFIX=", prefix_, cmd::nospace);
+		process_.arg("-DCMAKE_INSTALL_PREFIX=", prefix_, process::nospace);
 
 	process_
 		.arg("..")
@@ -704,8 +704,8 @@ int jom::result() const
 void jom::do_run()
 {
 	process_
-		.arg("/C", cmd::quiet)
-		.arg("/S", cmd::quiet)
+		.arg("/C", process::quiet)
+		.arg("/S", process::quiet)
 		.arg("/K");
 
 	if (flags_ & single_job)
@@ -803,12 +803,12 @@ void msbuild::do_run()
 		.arg("-maxCpuCount")
 		.arg("-property:UseMultiToolTask=true")
 		.arg("-property:EnforceProcessCountAcrossBuilds=true")
-		.arg("-property:Configuration=", config_, cmd::quote)
+		.arg("-property:Configuration=", config_, process::quote)
 		.arg("-property:PlatformToolset=" + toolset)
 		.arg("-property:WindowsTargetPlatformVersion=" + versions::sdk())
-		.arg("-property:Platform=", plat, cmd::quote)
-		.arg("-verbosity:minimal", cmd::quiet)
-		.arg("-consoleLoggerParameters:ErrorsOnly", cmd::quiet);
+		.arg("-property:Platform=", plat, process::quote)
+		.arg("-verbosity:minimal", process::quiet)
+		.arg("-consoleLoggerParameters:ErrorsOnly", process::quiet);
 
 	if (!projects_.empty())
 		process_.arg("-target:" + builder::join(projects_, ","));

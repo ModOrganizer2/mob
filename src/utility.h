@@ -127,8 +127,6 @@ void debug(Args&&... args)
 }
 
 
-std::string redir_nul();
-
 std::string read_text_file(const fs::path& p);
 
 std::string replace_all(
@@ -145,48 +143,6 @@ enum class arch
 
 	def = x64
 };
-
-
-class cmd
-{
-public:
-	enum flags
-	{
-		noflags = 0x00,
-		quiet   = 0x01,
-		nospace = 0x02,
-		quote   = 0x04
-	};
-
-
-	template <class T, class=std::enable_if_t<!std::is_same_v<T, flags>>>
-	cmd& arg(const T& value, flags f=noflags)
-	{
-		add_arg("", arg_to_string(value, (f & quote)), f);
-		return *this;
-	}
-
-	template <class T, class=std::enable_if_t<!std::is_same_v<T, flags>>>
-	cmd& arg(const std::string& name, const T& value, flags f=noflags)
-	{
-		add_arg(name, arg_to_string(value, (f & quote)), f);
-		return *this;
-	}
-
-	const std::string& string() const;
-
-private:
-	std::string exe_;
-	std::string s_;
-
-	void add_arg(const std::string& k, const std::string& v, flags f);
-
-	std::string arg_to_string(const char* s, bool force_quote);
-	std::string arg_to_string(const std::string& s, bool force_quote);
-	std::string arg_to_string(const fs::path& p, bool force_quote);
-	std::string arg_to_string(const url& u, bool force_quote);
-};
-
 
 
 template <class T>
