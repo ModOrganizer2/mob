@@ -2,6 +2,7 @@
 #include "op.h"
 #include "utility.h"
 #include "conf.h"
+#include "context.h"
 
 namespace mob
 {
@@ -15,75 +16,90 @@ void op::touch(const fs::path& p)
 		do_touch(p);
 }
 
-void op::create_directories(const fs::path& p)
+void op::create_directories(const fs::path& p, const context* cx)
 {
-	debug("creating directory " + p.string());
-	check(p);
+	cx->log(context::op, "creating dir " + p.string());
+	check(p, cx);
 
 	if (!conf::dry())
-		do_create_directories(p);
+		do_create_directories(p, cx);
 }
 
-void op::delete_directory(const fs::path& p, flags f)
+void op::delete_directory(const fs::path& p, flags f, const context* cx)
 {
-	debug("deleting directory " + p.string());
-	check(p);
+	if (!cx)
+		cx = context::dummy();
+
+	cx->log(context::op, "deleting dir " + p.string());
+	check(p, cx);
 
 	if (!fs::exists(p))
 	{
 		if (f & optional)
 		{
-			debug("not deleting directory " + p.string() + ", doesn't exist");
+			cx->log(
+				context::op_trace,
+				"not deleting dir " + p.string() + ", doesn't exist");
+
 			return;
 		}
 
-		bail_out("can't delete directory " + p.string() + ", doesn't exist");
+		cx->bail_out("can't delete dir " + p.string() + ", doesn't exist");
 	}
 
 	if (fs::exists(p) && !fs::is_directory(p))
-		bail_out(p.string() + " is not a directory");
+		cx->bail_out(p.string() + " is not a dir");
 
 	if (!conf::dry())
-		do_delete_directory(p);
+		do_delete_directory(p, cx);
 }
 
-void op::delete_file(const fs::path& p, flags f)
+void op::delete_file(const fs::path& p, flags f, const context* cx)
 {
-	debug("deleting file " + p.string());
-	check(p);
+	if (!cx)
+		cx = context::dummy();
+
+	cx->log(context::op, "deleting file " + p.string());
+	check(p, cx);
 
 	if (!fs::exists(p))
 	{
 		if (f & optional)
 		{
-			debug("not deleting file " + p.string() + ", doesn't exist");
+			cx->log(
+				context::op_trace,
+				"not deleting file " + p.string() + ", doesn't exist");
+
 			return;
 		}
 
-		bail_out("can't delete file " + p.string() + ", doesn't exist");
+		cx->bail_out("can't delete file " + p.string() + ", doesn't exist");
 	}
 
 	if (fs::exists(p) && !fs::is_regular_file(p))
-		bail_out("can't delete " + p.string() + ", not a file");
+		cx->bail_out("can't delete " + p.string() + ", not a file");
 
 	if (!conf::dry())
-		do_delete_file(p);
+		do_delete_file(p, cx);
 }
 
-void op::remove_readonly(const fs::path& first)
+void op::remove_readonly(const fs::path& first, const context* cx)
 {
-	debug("removing read-only from " + first.string());
-	check(first);
+	if (!cx)
+		cx = context::dummy();
+
+	cx->log(context::op, "removing read-only from " + first.string());
+	check(first, cx);
 
 	if (!conf::dry())
 	{
 		if (fs::is_regular_file(first))
-			do_remove_readonly(first);
+			do_remove_readonly(first, cx);
 
 		for (auto&& p : fs::recursive_directory_iterator(first))
 		{
 			if (fs::is_regular_file(p))
-				do_remove_readonly(p);
+				do_remove_readonly(p, cx);
 		}
 	}
 }
@@ -203,7 +219,7 @@ void op::copy_file_to_dir_if_better(
 			}
 
 			if (fs::exists(dir) && !fs::is_directory(dir))
-				bail_out("can't copy to " + dir.string() + ", not a directory");
+				bail_out("can't copy to " + dir.string() + ", not a dir");
 		}
 
 		const auto target = dir / file.filename();
@@ -244,16 +260,16 @@ void op::do_touch(const fs::path& p)
 		bail_out("failed to touch " + p.string());
 }
 
-void op::do_create_directories(const fs::path& p)
+void op::do_create_directories(const fs::path& p, const context* cx)
 {
 	std::error_code ec;
 	fs::create_directories(p, ec);
 
 	if (ec)
-		bail_out("can't create " + p.string(), ec);
+		cx->bail_out("can't create " + p.string(), ec);
 }
 
-void op::do_delete_directory(const fs::path& p)
+void op::do_delete_directory(const fs::path& p, const context* cx)
 {
 	std::error_code ec;
 	fs::remove_all(p, ec);
@@ -262,24 +278,29 @@ void op::do_delete_directory(const fs::path& p)
 	{
 		if (ec.value() == ERROR_ACCESS_DENIED)
 		{
-			remove_readonly(p);
+			cx->log(
+				context::op,
+				"got access denied trying to delete dir " + p.string() + ", "
+				"trying to remove read-only flag recursively");
+
+			remove_readonly(p, cx);
 			fs::remove_all(p, ec);
 
 			if (!ec)
 				return;
 		}
 
-		bail_out("failed to delete " + p.string(), ec);
+		cx->bail_out("failed to delete " + p.string(), ec);
 	}
 }
 
-void op::do_delete_file(const fs::path& p)
+void op::do_delete_file(const fs::path& p, const context* cx)
 {
 	std::error_code ec;
 	fs::remove(p, ec);
 
 	if (ec)
-		bail_out("can't delete " + p.string(), ec);
+		cx->bail_out("can't delete " + p.string(), ec);
 }
 
 void op::do_copy_file_to_dir(const fs::path& f, const fs::path& d)
@@ -295,13 +316,15 @@ void op::do_copy_file_to_dir(const fs::path& f, const fs::path& d)
 		bail_out("can't copy " + f.string() + " to " + d.string(), ec);
 }
 
-void op::do_remove_readonly(const fs::path& p)
+void op::do_remove_readonly(const fs::path& p, const context* cx)
 {
+	cx->log(context::op_trace, "chmod +x " + p.string());
+
 	std::error_code ec;
 	fs::permissions(p, fs::perms::owner_write, fs::perm_options::add, ec);
 
 	if (ec)
-		bail_out("can't remove read-only flag on " + p.string(), ec);
+		cx->bail_out("can't remove read-only flag on " + p.string(), ec);
 }
 
 void op::do_rename(const fs::path& src, const fs::path& dest)
@@ -313,10 +336,10 @@ void op::do_rename(const fs::path& src, const fs::path& dest)
 		bail_out("can't rename " + src.string() + " to " + dest.string(), ec);
 }
 
-void op::check(const fs::path& p)
+void op::check(const fs::path& p, const context* cx)
 {
 	if (p.empty())
-		bail_out("path is empty");
+		cx->bail_out("path is empty");
 
 	if (p.native().starts_with(paths::prefix().native()))
 		return;
@@ -324,7 +347,7 @@ void op::check(const fs::path& p)
 	if (p.native().starts_with(paths::temp_dir().native()))
 		return;
 
-	bail_out("path " + p.string() + " is outside prefix");
+	cx->bail_out("path " + p.string() + " is outside prefix");
 }
 
 }	// namespace

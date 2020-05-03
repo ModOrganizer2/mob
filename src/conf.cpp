@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "conf.h"
 #include "utility.h"
+#include "context.h"
 
 namespace mob
 {
@@ -101,17 +102,20 @@ const std::string& get_conf(const std::string& name)
 	return itor->second;
 }
 
+bool g_dry = false;
+int g_log = 0;
 bool g_redownload = false;
 bool g_redecompress = false;
-bool g_clean = false;
-bool g_dry = false;
-bool g_verbose = false;
+bool g_rebuild = false;
 
-bool conf::verbose()          { return g_verbose; }
+bool conf::more_trace()       { return g_log > 2; }
+bool conf::trace()            { return g_log > 1; }
+bool conf::verbose()          { return g_log > 0; }
+
 bool conf::dry()              { return g_dry; }
 bool conf::redownload()       { return g_redownload; }
 bool conf::redecompress()     { return g_redecompress; }
-bool conf::clean()            { return g_clean; }
+bool conf::rebuild()          { return g_rebuild; }
 
 std::string conf::mo_org()    { return "ModOrganizer2"; }
 std::string conf::mo_branch() { return "master"; }
@@ -122,16 +126,26 @@ void conf::set(int argc, char** argv)
 	{
 		const std::string a = argv[i];
 
-		if (a == "--redownload")
+		if (a == "--dry")
+			g_dry = true;
+		else if (a == "--verbose")
+			g_log = 1;
+		else if (a == "--trace")
+			g_log = 2;
+		else if (a == "--more-trace")
+			g_log = 3;
+		else if (a == "--redownload")
 			g_redownload = true;
 		else if (a == "--redecompress")
 			g_redecompress = true;
+		else if (a == "--rebuild")
+			g_rebuild = true;
 		else if (a == "--clean")
-			g_clean = true;
-		else if (a == "--dry")
-			g_dry = true;
-		else if (a == "--verbose")
-			g_verbose = true;
+		{
+			g_redownload = true;
+			g_redecompress = true;
+			g_rebuild = true;
+		}
 		else if (a.starts_with("--"))
 			bail_out("unknown option " + a);
 	}

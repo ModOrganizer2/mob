@@ -6,6 +6,33 @@
 namespace mob
 {
 
+class url;
+
+
+class async_pipe
+{
+public:
+    async_pipe();
+
+    handle_ptr create();
+    std::string read();
+
+private:
+    static const std::size_t buffer_size = 50000;
+	static const DWORD pipe_timeout = 500;
+
+    handle_ptr stdout_;
+    handle_ptr event_;
+    char buffer_[buffer_size];
+    OVERLAPPED ov_;
+    bool pending_;
+
+    HANDLE create_pipe();
+    std::string try_read();
+    std::string check_pending();
+};
+
+
 class process
 {
 public:
@@ -101,6 +128,7 @@ private:
 	{
 		handle_ptr handle;
 		std::atomic<bool> interrupt{false};
+		async_pipe stdout_pipe, stderr_pipe;
 
 		impl() = default;
 		impl(const impl&);
@@ -130,5 +158,8 @@ private:
 	std::string arg_to_string(const fs::path& p, bool force_quote);
 	std::string arg_to_string(const url& u, bool force_quote);
 };
+
+
+MOB_ENUM_OPERATORS(process::flags_t);
 
 }	// namespace

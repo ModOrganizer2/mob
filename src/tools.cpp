@@ -9,7 +9,7 @@ namespace mob
 {
 
 tool::tool(std::string name)
-	: name_(std::move(name)), interrupted_(false)
+	: cx_(nullptr), name_(std::move(name)), interrupted_(false)
 {
 }
 
@@ -25,8 +25,18 @@ tool& tool::operator=(tool&& t)
 	return *this;
 }
 
-void tool::run()
+const std::string& tool::name() const
 {
+	return name_;
+}
+
+void tool::run(context& cx)
+{
+	cx_ = &cx;
+
+	cx_->tool = this;
+	guard g([&]{ cx_->tool = nullptr; });
+
 	do_run();
 }
 
@@ -87,29 +97,25 @@ int process_runner::result() const
 void process_runner::do_run()
 {
 	execute_and_join();
-//	execute_and_join(process(
-//		arch_,
-//		"\"" + bin_.string() + "\" " + cmd_.string(),
-//		cwd_,
-//		env_,
-//		flags_));
 }
 
 
 downloader::downloader()
-	: tool("downloader")
+	: tool("dl")
 {
 }
 
 downloader::downloader(mob::url u)
-	: tool("downloader")
+	: downloader()
 {
 	urls_.push_back(std::move(u));
 }
 
 downloader& downloader::url(const mob::url& u)
 {
+	cx_->log(context::trace, "adding url " + u.string());
 	urls_.push_back(u);
+
 	return *this;
 }
 
@@ -120,45 +126,71 @@ fs::path downloader::result() const
 
 void downloader::do_run()
 {
-	dl_.reset(new curl_downloader);
+	dl_.reset(new curl_downloader(cx_));
 
-	// check if one the urls has already been downloaded
+	cx_->log(context::trace, "looking for already downloaded files");
+
 	for (auto&& u : urls_)
 	{
 		const auto file = path_for_url(u);
 
-		if (conf::redownload())
+		if (fs::exists(file))
 		{
-			op::delete_file(file, op::optional);
+			if (conf::redownload())
+			{
+				cx_->log(context::redownload, "deleting " + file.string());
+				op::delete_file(file, op::optional, cx_);
+			}
+			else
+			{
+				cx_->log(context::trace, "picking " + file_.string());
+				file_ = file;
+				return;
+			}
 		}
-		else if (fs::exists(file))
+		else
 		{
-			file_ = file;
-			debug("download " + file_.string() + " already exists");
-			return;
+			cx_->log(context::trace, "no " + file.string());
 		}
 	}
+
+
+	cx_->log(context::trace, "no cached downloads were found, will try:");
+	for (auto&& u : urls_)
+		cx_->log(context::trace, "  . " + u.string());
+
 
 	// try them in order
 	for (auto&& u : urls_)
 	{
 		const fs::path file = path_for_url(u);
 
+		cx_->log(
+			context::trace,
+			"trying " + u.string() + " into " + file.string());
+
 		dl_->start(u, file);
+		cx_->log(context::trace, "waiting for download");
 		dl_->join();
 
 		if (dl_->ok())
 		{
+			cx_->log(context::trace, "file " + file.string() + " downloaded");
 			file_ = file;
 			return;
 		}
+
+		cx_->log(context::trace, "download failed");
 	}
 
 	if (interrupted())
+	{
+		cx_->log(context::interrupted, "");
 		return;
+	}
 
 	// all failed
-	bail_out("all urls failed");
+	cx_->bail_out("all urls failed to download");
 }
 
 void downloader::do_interrupt()
@@ -178,8 +210,15 @@ fs::path downloader::path_for_url(const mob::url& u) const
 		// sf downloads end with /download, strip it to get the filename
 		const std::string strip = "/download";
 
+		cx_->log(
+			context::trace,
+			"url " + u.string() + " is a sourceforge download, stripping " +
+			 strip);
+
 		if (url_string.ends_with(strip))
 			url_string = url_string.substr(0, url_string.size() - strip.size());
+		else
+			cx_->log(context::trace, "no need to strip " + u.string());
 
 		filename = mob::url(url_string).filename();
 	}
@@ -489,7 +528,7 @@ void patcher::do_patch(const fs::path& patch_file)
 		.arg("--quiet", process::quiet);
 
 	const auto check = process(base)
-		.flags(process::allow_failure)
+		.flags(process::allow_failure|process::stdout_is_verbose)
 		.arg("--dry-run")
 		.arg("--force")
 		.arg("--reverse")
@@ -564,7 +603,7 @@ fs::path cmake::result() const
 
 void cmake::do_run()
 {
-	if (conf::clean())
+	if (conf::rebuild())
 	{
 		for (auto&& [k, g] : all_generators())
 		{

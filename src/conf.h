@@ -7,11 +7,14 @@ struct conf
 {
 	static void set(int argc, char** argv);
 
+	static bool more_trace();
+	static bool trace();
 	static bool verbose();
+
 	static bool dry();
 	static bool redownload();
 	static bool redecompress();
-	static bool clean();
+	static bool rebuild();
 
 	static std::string mo_org();
 	static std::string mo_branch();

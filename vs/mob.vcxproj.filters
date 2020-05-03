@@ -93,6 +93,9 @@
     <ClCompile Include="..\src\env.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\context.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
@@ -123,6 +126,9 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\src\env.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\context.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

@@ -14,12 +14,16 @@ public:
 
 	virtual ~tool() = default;
 
-	void run();
+	const std::string& name() const;
+
+	void run(context& cx);
 	void interrupt();
 
 	void result() {}
 
 protected:
+	context* cx_;
+
 	tool(std::string name);
 
 	bool interrupted() const;

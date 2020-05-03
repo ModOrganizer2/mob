@@ -2,9 +2,189 @@
 #include "process.h"
 #include "conf.h"
 #include "net.h"
+#include "context.h"
 
 namespace mob
 {
+
+async_pipe::async_pipe()
+	: pending_(false)
+{
+	std::memset(buffer_, 0, sizeof(buffer_));
+	std::memset(&ov_, 0, sizeof(ov_));
+}
+
+handle_ptr async_pipe::create()
+{
+	// creating pipe
+	handle_ptr out(create_pipe());
+	if (out.get() == INVALID_HANDLE_VALUE)
+		return {};
+
+	ov_.hEvent = ::CreateEvent(nullptr, TRUE, FALSE, nullptr);
+
+	if (ov_.hEvent == NULL)
+	{
+		const auto e = GetLastError();
+		bail_out("CreateEvent failed", e);
+	}
+
+	event_.reset(ov_.hEvent);
+
+	return out;
+}
+
+std::string async_pipe::read()
+{
+	if (pending_)
+		return check_pending();
+	else
+		return try_read();
+}
+
+HANDLE async_pipe::create_pipe()
+{
+	const std::string pipe_name_prefix = "\\\\.\\pipe\\mob_pipe";
+	const std::string pipe_name = pipe_name_prefix + std::to_string(rand());
+
+	SECURITY_ATTRIBUTES sa = {};
+	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+	sa.bInheritHandle = TRUE;
+
+	handle_ptr pipe;
+
+	// creating pipe
+	{
+		HANDLE pipe_handle = ::CreateNamedPipeA(
+			pipe_name.c_str(), PIPE_ACCESS_DUPLEX|FILE_FLAG_OVERLAPPED,
+			PIPE_TYPE_BYTE|PIPE_READMODE_BYTE|PIPE_WAIT,
+			1, 50'000, 50'000, pipe_timeout, &sa);
+
+		if (pipe_handle == INVALID_HANDLE_VALUE)
+		{
+			const auto e = GetLastError();
+			bail_out("CreateNamedPipe failed", e);
+		}
+
+		pipe.reset(pipe_handle);
+	}
+
+	{
+		// duplicating the handle to read from it
+		HANDLE output_read = INVALID_HANDLE_VALUE;
+
+		const auto r = DuplicateHandle(
+			GetCurrentProcess(), pipe.get(), GetCurrentProcess(), &output_read,
+			0, TRUE, DUPLICATE_SAME_ACCESS);
+
+		if (!r)
+		{
+			const auto e = GetLastError();
+			bail_out("DuplicateHandle for pipe", e);
+		}
+
+		stdout_.reset(output_read);
+	}
+
+
+	// creating handle to pipe which is passed to CreateProcess()
+	HANDLE output_write = ::CreateFileA(
+		pipe_name.c_str(), FILE_WRITE_DATA|SYNCHRONIZE, 0,
+		&sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+
+	if (output_write == INVALID_HANDLE_VALUE)
+	{
+		const auto e = GetLastError();
+		bail_out("CreateFileW for pipe failed", e);
+	}
+
+	return output_write;
+}
+
+std::string async_pipe::try_read()
+{
+	DWORD bytes_read = 0;
+
+	if (!::ReadFile(stdout_.get(), buffer_, buffer_size, &bytes_read, &ov_))
+	{
+		const auto e = GetLastError();
+
+		switch (e)
+		{
+			case ERROR_IO_PENDING:
+			{
+				pending_ = true;
+				break;
+			}
+
+			case ERROR_BROKEN_PIPE:
+			{
+				// broken pipe probably means lootcli is finished
+				break;
+			}
+
+			default:
+			{
+				bail_out("async_pipe read failed", e);
+				break;
+			}
+		}
+
+		return {};
+	}
+
+	return {buffer_, buffer_ + bytes_read};
+}
+
+std::string async_pipe::check_pending()
+{
+	DWORD bytes_read = 0;
+
+	const auto r = WaitForSingleObject(event_.get(), pipe_timeout);
+
+	if (r == WAIT_FAILED) {
+		const auto e = GetLastError();
+		bail_out("WaitForSingleObject in async_pipe failed", e);
+	}
+
+	if (!::GetOverlappedResult(stdout_.get(), &ov_, &bytes_read, FALSE))
+	{
+		const auto e = GetLastError();
+
+		switch (e)
+		{
+			case ERROR_IO_INCOMPLETE:
+			{
+				break;
+			}
+
+			case WAIT_TIMEOUT:
+			{
+				break;
+			}
+
+			case ERROR_BROKEN_PIPE:
+			{
+				// broken pipe probably means lootcli is finished
+				break;
+			}
+
+			default:
+			{
+				bail_out("GetOverlappedResult failed in async_pipe", e);
+				break;
+			}
+		}
+
+		return {};
+	}
+
+	::ResetEvent(event_.get());
+	pending_ = false;
+
+	return {buffer_, buffer_ + bytes_read};
+}
+
 
 process::impl::impl(const impl& i)
 	: interrupt(i.interrupt.load())
@@ -106,7 +286,7 @@ std::string process::make_cmd() const
 
 	std::string s = "\"" + bin_.string() + "\" " + cmd_;
 
-	if ((flags_ & stdout_is_verbose) == 0)
+	if (flags_ & stdout_is_verbose)
 	{
 		if (!conf::verbose())
 			s += " > NUL";
@@ -139,6 +319,14 @@ void process::do_run(const std::string& what)
 	STARTUPINFOA si = { .cb=sizeof(si) };
 	PROCESS_INFORMATION pi = {};
 
+	auto process_stdout = impl_.stdout_pipe.create();
+	si.hStdOutput = process_stdout.get();
+
+	auto process_stderr = impl_.stderr_pipe.create();
+	si.hStdError = process_stderr.get();
+
+	si.dwFlags = STARTF_USESTDHANDLES;
+
 	const std::string cmd = this_env::get("COMSPEC");
 	const std::string args = "/C \"" + what + "\"";
 
@@ -154,7 +342,7 @@ void process::do_run(const std::string& what)
 
 	const auto r = ::CreateProcessA(
 		cmd.c_str(), const_cast<char*>(args.c_str()),
-		nullptr, nullptr, FALSE, CREATE_NEW_PROCESS_GROUP,
+		nullptr, nullptr, TRUE, CREATE_NEW_PROCESS_GROUP,
 		env_.get_pointers(), cwd_p, &si, &pi);
 
 	if (!r)
@@ -202,6 +390,15 @@ void process::join()
 
 		if (r == WAIT_TIMEOUT)
 		{
+			std::string s = impl_.stdout_pipe.read();
+			//if (!s.empty())
+			//	std::cout << "stdin: " << s << "\n";
+
+			s = impl_.stderr_pipe.read();
+			//if (!s.empty())
+			//	std::cout << "stderr: " << s << "\n";
+
+
 			if (impl_.interrupt && !interrupted)
 			{
 				const auto pid = GetProcessId(impl_.handle.get());

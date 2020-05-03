@@ -59,6 +59,7 @@
 #include <functional>
 #include <vector>
 #include <array>
+#include <set>
 
 #include <Shlobj.h>
 #include <shlwapi.h>

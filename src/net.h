@@ -5,6 +5,9 @@
 namespace mob
 {
 
+class context;
+
+
 class url
 {
 public:
@@ -25,7 +28,7 @@ private:
 class curl_downloader
 {
 public:
-	curl_downloader();
+	curl_downloader(const context* cx=nullptr);
 
 	void start(const url& u, const fs::path& file);
 	void join();
@@ -33,10 +36,12 @@ public:
 	bool ok() const;
 
 private:
+	const context* cx_;
 	url url_;
 	fs::path path_;
 	file_ptr file_;
 	std::thread thread_;
+	std::size_t bytes_;
 	std::atomic<bool> interrupt_;
 	bool ok_;
 
@@ -46,6 +51,13 @@ private:
 		char* ptr, size_t size, size_t nmemb, void* user) noexcept;
 
 	void on_write(char* ptr, std::size_t n) noexcept;
+
+
+	static int on_debug_static(
+		CURL* handle, curl_infotype type,
+		char* data, size_t size, void *user) noexcept;
+
+	void on_debug(curl_infotype type, std::string_view s);
 };
 
 }	// namespace

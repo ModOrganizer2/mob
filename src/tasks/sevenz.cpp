@@ -5,7 +5,7 @@ namespace mob
 {
 
 sevenz::sevenz()
-	: basic_task("7z")
+	: basic_task({"7z", "sevenz"})
 {
 }
 
@@ -39,7 +39,10 @@ void sevenz::do_build_and_install()
 
 void sevenz::do_clean()
 {
-	op::delete_directory(module_to_build() / "x64", op::optional);
+	const fs::path out_path = module_to_build() / "x64";
+
+	cx_.log(context::rebuild, "deleting " + out_path.string());
+	op::delete_directory(out_path, op::optional, &cx_);
 }
 
 url sevenz::source_url()

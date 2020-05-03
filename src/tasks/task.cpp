@@ -21,11 +21,14 @@ bool run_task(const std::string& name)
 {
 	for (auto&& t : g_tasks)
 	{
-		if (t->name() == name)
+		for (auto&& n : t->names())
 		{
-			t->run();
-			t->join();
-			return true;
+			if (n == name)
+			{
+				t->run();
+				t->join();
+				return true;
+			}
 		}
 	}
 
@@ -48,9 +51,15 @@ void run_all_tasks()
 }
 
 
-task::task(std::string name)
-	: name_(std::move(name)), interrupted_(false), tool_(nullptr)
+task::task(const char* name)
+	: task(std::vector<std::string>{name})
 {
+}
+
+task::task(std::vector<std::string> names)
+	: names_(std::move(names)), interrupted_(false), tool_(nullptr)
+{
+	cx_.task = this;
 }
 
 task::~task()
@@ -75,18 +84,23 @@ void task::interrupt_all()
 
 const std::string& task::name() const
 {
-	return name_;
+	return names_[0];
+}
+
+const std::vector<std::string>& task::names() const
+{
+	return names_;
 }
 
 void task::run()
 {
-	info(name_);
+	info(name());
 
 	thread_ = std::thread([&]
 	{
 		try
 		{
-			if (conf::clean())
+			if (conf::rebuild())
 				clean();
 
 			check_interrupted();
@@ -96,7 +110,7 @@ void task::run()
 		}
 		catch(bailed e)
 		{
-			error(name_ + " bailed out, interrupting all tasks");
+			error(name() + " bailed out, interrupting all tasks");
 			interrupt_all();
 		}
 		catch(interrupted)
@@ -105,7 +119,7 @@ void task::run()
 		}
 		catch(std::exception& e)
 		{
-			error(name_ + " uncaught exception: " + e.what());
+			error(name() + " uncaught exception: " + e.what());
 			interrupt_all();
 		}
 	});
@@ -131,7 +145,7 @@ void task::fetch()
 	do_fetch();
 
 	run_tool(patcher()
-		.task(name_)
+		.task(name())
 		.root(get_source_path()));
 }
 
@@ -149,6 +163,13 @@ void task::check_interrupted()
 {
 	if (interrupted_)
 		throw interrupted();
+}
+
+void task::run_current_tool()
+{
+	check_interrupted();
+	tool_->run(cx_);
+	check_interrupted();
 }
 
 }	// namespace

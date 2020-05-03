@@ -1,5 +1,8 @@
 #pragma once
 
+#include "../utility.h"
+#include "../context.h"
+
 namespace mob
 {
 
@@ -29,6 +32,7 @@ public:
 	static void interrupt_all();
 
 	const std::string& name() const;
+	const std::vector<std::string>& names() const;
 
 	virtual fs::path get_source_path() const = 0;
 
@@ -41,7 +45,10 @@ public:
 	void clean();
 
 protected:
-	task(std::string name);
+	context cx_;
+
+	task(const char* name);
+	task(std::vector<std::string> names);
 
 	void check_interrupted();
 
@@ -57,9 +64,7 @@ protected:
 			std::scoped_lock lock(tool_mutex_);
 		}
 
-		check_interrupted();
-		t.run();
-		check_interrupted();
+		run_current_tool();
 
 		{
 			std::scoped_lock lock(tool_mutex_);
@@ -70,7 +75,7 @@ protected:
 	}
 
 private:
-	std::string name_;
+	std::vector<std::string> names_;
 	std::thread thread_;
 	std::atomic<bool> interrupted_;
 
@@ -78,6 +83,8 @@ private:
 	std::mutex tool_mutex_;
 
 	static std::mutex interrupt_mutex_;
+
+	void run_current_tool();
 };
 
 

@@ -3,7 +3,9 @@
 namespace mob
 {
 
-class url;
+#define MOB_ENUM_OPERATORS(E) \
+	inline E operator|(E e1, E e2) { return (E)((int)e1 | (int)e2); }
+
 
 class bailed
 {
@@ -49,6 +51,25 @@ struct file_closer
 using file_ptr = std::unique_ptr<FILE, file_closer>;
 
 
+template <class F>
+class guard
+{
+public:
+	guard(F f)
+		: f_(f)
+	{
+	}
+
+	~guard()
+	{
+		f_();
+	}
+
+private:
+	F f_;
+};
+
+
 class file_deleter
 {
 public:
@@ -81,50 +102,6 @@ private:
 	fs::path p_;
 	bool delete_;
 };
-
-
-enum class level
-{
-	debug, info, warning, error, bail
-};
-
-
-std::string error_message(DWORD e);
-
-void out(level lv, const std::string& s);
-void out(level lv, const std::string& s, DWORD e);
-void out(level lv, const std::string& s, const std::error_code& e);
-void dump_logs();
-
-template <class... Args>
-[[noreturn]] void bail_out(Args&&... args)
-{
-	out(level::bail, std::forward<Args>(args)...);
-}
-
-template <class... Args>
-void error(Args&&... args)
-{
-	out(level::error, std::forward<Args>(args)...);
-}
-
-template <class... Args>
-void warn(Args&&... args)
-{
-	out(level::warning, std::forward<Args>(args)...);
-}
-
-template <class... Args>
-void info(Args&&... args)
-{
-	out(level::info, std::forward<Args>(args)...);
-}
-
-template <class... Args>
-void debug(Args&&... args)
-{
-	out(level::debug, std::forward<Args>(args)...);
-}
 
 
 std::string read_text_file(const fs::path& p);

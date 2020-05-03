@@ -3,6 +3,7 @@
 #include "conf.h"
 #include "process.h"
 #include "op.h"
+#include "context.h"
 
 namespace mob
 {
@@ -56,11 +57,16 @@ env get_vcvars_env(arch a)
 	const fs::path tmp = paths::temp_file();
 
 	// "vcvarsall.bat" amd64 && set > temp_file
-	const std::string cmd =
-		"\"" + find_vcvars().string() + "\" " + arch_s + " && "
-		"set > \"" + tmp.string() + "\"";
+	std::string cmd =
+		"\"" + find_vcvars().string() + "\" " + arch_s;
 
-	process::raw(cmd).run();
+	if (!conf::verbose())
+		cmd += " > NUL";
+
+	cmd += " && set > \"" + tmp.string() + "\"";
+
+	process::raw(cmd)
+		.run();
 
 	std::stringstream ss(read_text_file(tmp));
 	op::delete_file(tmp);
