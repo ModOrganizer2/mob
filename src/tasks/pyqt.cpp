@@ -23,7 +23,7 @@ void pyqt::do_fetch()
 {
 	const auto file = run_tool(downloader(source_url()));
 
-	run_tool(decompresser()
+	run_tool(extractor()
 		.file(file)
 		.output(source_path()));
 }

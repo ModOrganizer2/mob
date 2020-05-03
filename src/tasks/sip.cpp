@@ -61,7 +61,7 @@ void sip::do_fetch()
 			.arg("sip==" + versions::sip())));
 	}
 
-	run_tool(decompresser()
+	run_tool(extractor()
 		.file(download_file)
 		.output(source_path()));
 }

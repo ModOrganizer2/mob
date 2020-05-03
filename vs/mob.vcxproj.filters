@@ -7,6 +7,9 @@
     <Filter Include="src\tasks">
       <UniqueIdentifier>{892d19b8-e898-4c80-be14-e1ee1fb13209}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\tools">
+      <UniqueIdentifier>{b0afbfc3-9b49-4768-9077-a8284ced4416}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -19,9 +22,6 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\net.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\tools.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\utility.cpp">
@@ -96,6 +96,33 @@
     <ClCompile Include="..\src\context.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\tools\extractor.cpp">
+      <Filter>src\tools</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tools\git.cpp">
+      <Filter>src\tools</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tools\jom.cpp">
+      <Filter>src\tools</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tools\msbuild.cpp">
+      <Filter>src\tools</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tools\patcher.cpp">
+      <Filter>src\tools</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tools\process_runner.cpp">
+      <Filter>src\tools</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tools\tools.cpp">
+      <Filter>src\tools</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tools\cmake.cpp">
+      <Filter>src\tools</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tools\downloader.cpp">
+      <Filter>src\tools</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
@@ -105,9 +132,6 @@
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\src\conf.h">
-      <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\tools.h">
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\src\utility.h">
@@ -130,6 +154,9 @@
     </ClInclude>
     <ClInclude Include="..\src\context.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\tools\tools.h">
+      <Filter>src\tools</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

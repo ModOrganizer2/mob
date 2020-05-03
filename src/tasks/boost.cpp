@@ -34,7 +34,7 @@ void boost::fetch_prebuilt()
 {
 	const auto file = run_tool(downloader(prebuilt_url()));
 
-	run_tool(decompresser()
+	run_tool(extractor()
 		.file(file)
 		.output(source_path()));
 }
@@ -49,7 +49,7 @@ void boost::fetch_from_source()
 {
 	const auto file = run_tool(downloader(source_url()));
 
-	run_tool(decompresser()
+	run_tool(extractor()
 		.file(file)
 		.output(source_path()));
 

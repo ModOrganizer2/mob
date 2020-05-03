@@ -18,23 +18,23 @@ void sevenz::do_fetch()
 {
 	const auto file = run_tool(downloader(source_url()));
 
-	run_tool(decompresser()
+	run_tool(extractor()
 		.file(file)
 		.output(source_path()));
 }
 
 void sevenz::do_build_and_install()
 {
-	run_tool(jom()
-		.path(module_to_build())
-		.def("CPU=x64")
-		.def("NEW_COMPILER=1")
-		.def("MY_STATIC_LINK=1")
-		.def("NO_BUFFEROVERFLOWU=1"));
-
-	op::copy_file_to_dir_if_better(
-		module_to_build() / "x64/7z.dll",
-		paths::install_dlls());
+	//run_tool(jom()
+	//	.path(module_to_build())
+	//	.def("CPU=x64")
+	//	.def("NEW_COMPILER=1")
+	//	.def("MY_STATIC_LINK=1")
+	//	.def("NO_BUFFEROVERFLOWU=1"));
+	//
+	//op::copy_file_to_dir_if_better(
+	//	module_to_build() / "x64/7z.dll",
+	//	paths::install_dlls());
 }
 
 void sevenz::do_clean()

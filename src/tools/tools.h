@@ -1,7 +1,10 @@
 #pragma once
 
-#include "net.h"
-#include "process.h"
+#include "../net.h"
+#include "../process.h"
+#include "../conf.h"
+#include "../op.h"
+#include "../context.h"
 
 namespace mob
 {
@@ -113,12 +116,12 @@ private:
 };
 
 
-class decompresser : public basic_process_runner
+class extractor : public basic_process_runner
 {
 public:
-	decompresser();
-	decompresser& file(const fs::path& file);
-	decompresser& output(const fs::path& dir);
+	extractor();
+	extractor& file(const fs::path& file);
+	extractor& output(const fs::path& dir);
 
 protected:
 	void do_run() override;
