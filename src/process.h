@@ -2,6 +2,7 @@
 
 #include "utility.h"
 #include "env.h"
+#include "context.h"
 
 namespace mob
 {
@@ -39,8 +40,7 @@ public:
 	enum flags_t
 	{
 		noflags = 0x00,
-		stdout_is_verbose = 0x01,
-		allow_failure = 0x02
+		allow_failure = 0x01
 	};
 
 	enum arg_flags
@@ -79,6 +79,9 @@ public:
 
 	process& cwd(const fs::path& p);
 	const fs::path& cwd() const;
+
+	process& stdout_level(level lv);
+	process& stderr_level(level lv);
 
 	process& flags(flags_t f);
 	flags_t flags() const;
@@ -140,6 +143,8 @@ private:
 	fs::path bin_;
 	fs::path cwd_;
 	flags_t flags_;
+	level stdout_level_;
+	level stderr_level_;
 	mob::env env_;
 	std::string raw_;
 	std::string cmd_;

@@ -45,7 +45,6 @@ void openssl::configure()
 {
 	run_tool(process_runner(process()
 		.binary(third_party::perl())
-		.flags(process::stdout_is_verbose)
 		.arg("Configure")
 		.arg("--openssldir=", build_path())
 		.arg("--prefix=", build_path())

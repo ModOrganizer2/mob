@@ -48,7 +48,7 @@ fs::path find_in_root(const fs::path& file)
 	if (!fs::exists(p))
 		bail_out(p.string() + " not found");
 
-	debug("found " + p.string());
+	context::global()->log(context::trace, "found " + p.string());
 	return p;
 }
 

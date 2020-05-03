@@ -125,6 +125,16 @@ public:
 	}
 
 	template <class... Args>
+	void log(reasons r, level lv_override, std::string_view s, Args&&... args) const
+	{
+		if (!enabled(r))
+			return;
+
+		auto cxl = fix_log(r, s);
+		mob::out(lv_override, cxl.s, std::forward<Args>(args)...);
+	}
+
+	template <class... Args>
 	[[noreturn]] void bail_out(std::string_view s, Args&&... args) const
 	{
 		auto cxl = fix_log(bailing, s);

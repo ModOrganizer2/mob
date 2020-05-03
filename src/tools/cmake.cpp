@@ -8,8 +8,7 @@ cmake::cmake()
 	: basic_process_runner("cmake"), gen_(jom), arch_(arch::def)
 {
 	process_
-		.binary(third_party::cmake())
-		.flags(process::stdout_is_verbose);
+		.binary(third_party::cmake());
 }
 
 cmake& cmake::generator(generators g)

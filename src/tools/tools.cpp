@@ -61,7 +61,6 @@ devenv_upgrade::devenv_upgrade(fs::path sln)
 {
 	process_
 		.binary(third_party::devenv())
-		.flags(process::stdout_is_verbose)
 		.env(env::vs(arch::x64));
 }
 

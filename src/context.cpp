@@ -292,18 +292,42 @@ std::string reason_string(context::reasons r)
 	}
 }
 
+std::string pad(std::string s, std::size_t n)
+{
+	if (s.size() < n)
+		s.append(n - s.size() , ' ');
+
+	return s;
+}
+
+std::string task_name(const task* t)
+{
+	const std::size_t longest = 7;
+	const std::size_t total = 1 + longest + 2; // '[x] '
+
+	if (t)
+		return pad("[" + t->name() + "]", total);
+	else
+		return std::string(total, ' ');
+}
+
+std::string tool_name(const tool* t)
+{
+	const std::size_t longest = 7;
+	const std::size_t total = 1 + longest + 2; // '[x] '
+
+	if (t)
+		return pad("[" + t->name() + "]", total);
+	else
+		return std::string(total, ' ');
+}
+
 std::string prefix(context::reasons r)
 {
-	const std::size_t longest = 6;  // bypass
+	const std::size_t longest = 7;
+	const std::size_t total = 1 + longest + 2; // '[x] '
 
-									// '[x] '
-	const std::size_t total = 1 + longest + 2;
-
-	std::string ss = "[" + reason_string(r) + "] ";
-	if (ss.size() < total)
-		ss += std::string(total - ss.size() , ' ');
-
-	return ss;
+	return pad("[" + reason_string(r) + "] ", total);
 }
 
 context::cx_log context::fix_log(reasons r, std::string_view s) const
@@ -311,15 +335,8 @@ context::cx_log context::fix_log(reasons r, std::string_view s) const
 	auto lv = level::info;
 	std::ostringstream oss;
 
-	if (task)
-		oss << "[" << task->name() << "] ";
-	else
-		oss << "     ";
-
-	if (tool)
-		oss << "[" << tool->name() << "] ";
-	else
-		oss << "     ";
+	oss << task_name(task);
+	oss << tool_name(tool);
 
 	oss << prefix(r);
 
@@ -329,13 +346,17 @@ context::cx_log context::fix_log(reasons r, std::string_view s) const
 		case context::op_trace:
 		case context::net_trace:
 		case context::bypass:
-		case context::cmd:
-		case context::cmd_trace:
 		case context::std_out:
+		case context::cmd_trace:
 		case context::std_out_trace:
 		case context::std_err:
 		case context::std_err_trace:
-				oss << s;
+			oss << s;
+			lv = level::trace;
+			break;
+
+		case context::cmd:
+			oss << "> " << s;
 			lv = level::trace;
 			break;
 

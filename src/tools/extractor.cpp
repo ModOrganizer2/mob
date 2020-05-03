@@ -5,7 +5,7 @@ namespace mob
 {
 
 extractor::extractor()
-	: basic_process_runner("ex")
+	: basic_process_runner("extract")
 {
 }
 
@@ -96,7 +96,6 @@ void extractor::do_run()
 	{
 		process_ = process(cx_)
 			.binary(third_party::sevenz())
-			.flags(process::stdout_is_verbose)
 			.arg("x")
 			.arg("-aoa")
 			.arg("-bd")

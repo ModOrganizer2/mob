@@ -199,8 +199,10 @@ process::impl& process::impl::operator=(const impl& i)
 }
 
 
-process::process(const context* cx)
-	: cx_(cx), flags_(process::noflags), code_(0)
+process::process(const context* cx) :
+	cx_(cx), flags_(process::noflags),
+	stdout_level_(level::trace), stderr_level_(level::error),
+	code_(0)
 {
 	if (!cx_)
 		cx_ = context::global();
@@ -257,6 +259,18 @@ const fs::path& process::cwd() const
 	return cwd_;
 }
 
+process& process::stdout_level(level lv)
+{
+	stdout_level_ = lv;
+	return *this;
+}
+
+process& process::stderr_level(level lv)
+{
+	stderr_level_ = lv;
+	return *this;
+}
+
 process& process::flags(flags_t f)
 {
 	flags_ = f;
@@ -287,15 +301,7 @@ std::string process::make_cmd() const
 	if (!raw_.empty())
 		return raw_;
 
-	std::string s = "\"" + bin_.string() + "\" " + cmd_;
-
-	if (flags_ & stdout_is_verbose)
-	{
-		if (!conf::verbose())
-			s += " > NUL";
-	}
-
-	return s;
+	return "\"" + bin_.string() + "\" " + cmd_;
 }
 
 void process::pipe_into(const process& p)
@@ -384,6 +390,8 @@ void process::join()
 		if (r == WAIT_OBJECT_0)
 		{
 			// done
+			read_pipes();
+
 			GetExitCodeProcess(impl_.handle.get(), &code_);
 
 			cx_->log(
@@ -462,13 +470,13 @@ void process::read_pipes()
 	std::string_view s = impl_.stdout_pipe.read();
 	for_each_line(s, [&](auto&& line)
 	{
-		cx_->log(context::std_out, line);
+		cx_->log(context::std_out, stdout_level_, line);
 	});
 
 	s = impl_.stderr_pipe.read();
 	for_each_line(s, [&](auto&& line)
 	{
-		cx_->log(context::std_err, line);
+		cx_->log(context::std_err, stderr_level_, line);
 	});
 }
 

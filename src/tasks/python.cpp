@@ -82,7 +82,6 @@ void python::do_build_and_install()
 
 		run_tool(process_runner(process()
 			.binary(bat)
-			.flags(process::stdout_is_verbose)
 			.arg(fs::path("PC/layout"))
 			.arg("--source", source_path())
 			.arg("--build", build_path())

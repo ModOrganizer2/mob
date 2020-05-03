@@ -6,7 +6,7 @@ namespace mob
 {
 
 patcher::patcher()
-	: basic_process_runner("patcher")
+	: basic_process_runner("patch")
 {
 }
 
@@ -31,27 +31,46 @@ patcher& patcher::root(const fs::path& dir)
 void patcher::do_run()
 {
 	if (!fs::exists(patches_))
+	{
+		cx_->log(
+			context::trace,
+			"patch directory " + patches_.string() + " doesn't exist, "
+			"assuming no patches");
+
 		return;
+	}
 
 	if (file_.empty())
 	{
+		cx_->log(
+			context::trace,
+			"looking for patches in " + patches_.string());
+
 		for (auto e : fs::directory_iterator(patches_))
 		{
 			if (!e.is_regular_file())
+			{
+				cx_->log(
+					context::trace,
+					"skipping " + e.path().string() + ", not a file");
+
 				continue;
+			}
 
 			const auto p = e.path();
 
 			if (p.extension() == ".manual_patch")
 			{
-				// skip manual patches
+				cx_->log(
+					context::trace,
+					"skipping manual patch " + e.path().string());
 				continue;
 			}
 			else if (p.extension() != ".patch")
 			{
-				warn(
-					"file without .patch extension " + p.string() + " "
-					"in patches directory " + patches_.string());
+				cx_->log(
+					context::warning,
+					"file with unknown extension " + p.string());
 
 				continue;
 			}
@@ -61,13 +80,14 @@ void patcher::do_run()
 	}
 	else
 	{
+		cx_->log(context::trace, "doing manual patch from " + file_.string());
 		do_patch(patches_ / file_);
 	}
 }
 
 void patcher::do_patch(const fs::path& patch_file)
 {
-	const auto base = process()
+	const auto base = process(cx_)
 		.binary(third_party::patch())
 		.arg("--read-only", "ignore")
 		.arg("--strip", "0")
@@ -75,7 +95,7 @@ void patcher::do_patch(const fs::path& patch_file)
 		.arg("--quiet", process::quiet);
 
 	const auto check = process(base)
-		.flags(process::allow_failure|process::stdout_is_verbose)
+		.flags(process::allow_failure)
 		.arg("--dry-run")
 		.arg("--force")
 		.arg("--reverse")
@@ -86,20 +106,39 @@ void patcher::do_patch(const fs::path& patch_file)
 		.arg("--batch")
 		.arg("--input", patch_file);
 
+	cx_->log(context::trace, "trying to patch using " + patch_file.string());
+
 	{
 		// check
+
+		cx_->log(context::trace, "checking if already patched");
+
 		process_ = check;
-		if (execute_and_join() == 0)
+		const auto ret = execute_and_join();
+
+		if (ret == 0)
 		{
-			debug("patch " + patch_file.string() + " already applied");
+			cx_->log(
+				context::trace,
+				"patch " + patch_file.string() + " already applied");
+
 			return;
+		}
+		else if (ret == 1)
+		{
+			cx_->log(context::trace, "looks like the patch is needed");
+		}
+		else
+		{
+			cx_->bail_out("patch returned " + std::to_string(ret));
 		}
 	}
 
 	{
 		// apply
+
+		cx_->log(context::trace, "applying patch " + patch_file.string());
 		process_ = apply;
-		debug("applying patch " + patch_file.string());
 		execute_and_join();
 	}
 }
