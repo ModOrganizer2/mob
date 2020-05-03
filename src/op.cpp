@@ -4,10 +4,20 @@
 #include "conf.h"
 #include "context.h"
 
-namespace mob
+namespace mob::op
 {
 
-void op::touch(const fs::path& p)
+void do_touch(const fs::path& p);
+void do_create_directories(const fs::path& p, const context* cx=nullptr);
+void do_delete_directory(const fs::path& p, const context* cx=nullptr);
+void do_delete_file(const fs::path& p, const context* cx=nullptr);
+void do_copy_file_to_dir(const fs::path& f, const fs::path& d);
+void do_remove_readonly(const fs::path& p, const context* cx=nullptr);
+void do_rename(const fs::path& src, const fs::path& dest);
+void check(const fs::path& p, const context* cx=nullptr);
+
+
+void touch(const fs::path& p)
 {
 	debug("touching " + p.string());
 	check(p);
@@ -16,7 +26,7 @@ void op::touch(const fs::path& p)
 		do_touch(p);
 }
 
-void op::create_directories(const fs::path& p, const context* cx)
+void create_directories(const fs::path& p, const context* cx)
 {
 	cx->log(context::op, "creating dir " + p.string());
 	check(p, cx);
@@ -25,7 +35,7 @@ void op::create_directories(const fs::path& p, const context* cx)
 		do_create_directories(p, cx);
 }
 
-void op::delete_directory(const fs::path& p, flags f, const context* cx)
+void delete_directory(const fs::path& p, flags f, const context* cx)
 {
 	if (!cx)
 		cx = context::dummy();
@@ -54,7 +64,7 @@ void op::delete_directory(const fs::path& p, flags f, const context* cx)
 		do_delete_directory(p, cx);
 }
 
-void op::delete_file(const fs::path& p, flags f, const context* cx)
+void delete_file(const fs::path& p, flags f, const context* cx)
 {
 	if (!cx)
 		cx = context::dummy();
@@ -83,7 +93,7 @@ void op::delete_file(const fs::path& p, flags f, const context* cx)
 		do_delete_file(p, cx);
 }
 
-void op::remove_readonly(const fs::path& first, const context* cx)
+void remove_readonly(const fs::path& first, const context* cx)
 {
 	if (!cx)
 		cx = context::dummy();
@@ -166,7 +176,7 @@ bool is_source_better(const fs::path& src, const fs::path& dest)
 	return false;
 }
 
-void op::rename(const fs::path& src, const fs::path& dest)
+void rename(const fs::path& src, const fs::path& dest)
 {
 	check(src);
 	check(dest);
@@ -182,7 +192,7 @@ void op::rename(const fs::path& src, const fs::path& dest)
 	do_rename(src, dest);
 }
 
-void op::move_to_directory(const fs::path& src, const fs::path& dest_dir)
+void move_to_directory(const fs::path& src, const fs::path& dest_dir)
 {
 	check(src);
 	check(dest_dir);
@@ -200,7 +210,7 @@ void op::move_to_directory(const fs::path& src, const fs::path& dest_dir)
 	do_rename(src, target);
 }
 
-void op::copy_file_to_dir_if_better(
+void copy_file_to_dir_if_better(
 	const fs::path& file, const fs::path& dir, flags f)
 {
 	check(file);
@@ -251,16 +261,16 @@ void op::copy_file_to_dir_if_better(
 	}
 }
 
-void op::do_touch(const fs::path& p)
+void do_touch(const fs::path& p)
 {
-	create_directories(p.parent_path());
+	op::create_directories(p.parent_path());
 
 	std::ofstream out(p);
 	if (!out)
 		bail_out("failed to touch " + p.string());
 }
 
-void op::do_create_directories(const fs::path& p, const context* cx)
+void do_create_directories(const fs::path& p, const context* cx)
 {
 	std::error_code ec;
 	fs::create_directories(p, ec);
@@ -269,7 +279,7 @@ void op::do_create_directories(const fs::path& p, const context* cx)
 		cx->bail_out("can't create " + p.string(), ec);
 }
 
-void op::do_delete_directory(const fs::path& p, const context* cx)
+void do_delete_directory(const fs::path& p, const context* cx)
 {
 	std::error_code ec;
 	fs::remove_all(p, ec);
@@ -294,7 +304,7 @@ void op::do_delete_directory(const fs::path& p, const context* cx)
 	}
 }
 
-void op::do_delete_file(const fs::path& p, const context* cx)
+void do_delete_file(const fs::path& p, const context* cx)
 {
 	std::error_code ec;
 	fs::remove(p, ec);
@@ -303,9 +313,9 @@ void op::do_delete_file(const fs::path& p, const context* cx)
 		cx->bail_out("can't delete " + p.string(), ec);
 }
 
-void op::do_copy_file_to_dir(const fs::path& f, const fs::path& d)
+void do_copy_file_to_dir(const fs::path& f, const fs::path& d)
 {
-	create_directories(d);
+	op::create_directories(d);
 
 	std::error_code ec;
 	fs::copy_file(
@@ -316,7 +326,7 @@ void op::do_copy_file_to_dir(const fs::path& f, const fs::path& d)
 		bail_out("can't copy " + f.string() + " to " + d.string(), ec);
 }
 
-void op::do_remove_readonly(const fs::path& p, const context* cx)
+void do_remove_readonly(const fs::path& p, const context* cx)
 {
 	cx->log(context::op_trace, "chmod +x " + p.string());
 
@@ -327,7 +337,7 @@ void op::do_remove_readonly(const fs::path& p, const context* cx)
 		cx->bail_out("can't remove read-only flag on " + p.string(), ec);
 }
 
-void op::do_rename(const fs::path& src, const fs::path& dest)
+void do_rename(const fs::path& src, const fs::path& dest)
 {
 	std::error_code ec;
 	fs::rename(src, dest, ec);
@@ -336,7 +346,7 @@ void op::do_rename(const fs::path& src, const fs::path& dest)
 		bail_out("can't rename " + src.string() + " to " + dest.string(), ec);
 }
 
-void op::check(const fs::path& p, const context* cx)
+void check(const fs::path& p, const context* cx)
 {
 	if (p.empty())
 		cx->bail_out("path is empty");
