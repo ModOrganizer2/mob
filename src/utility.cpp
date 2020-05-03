@@ -11,13 +11,13 @@ namespace mob
 
 std::string read_text_file(const fs::path& p)
 {
-	debug("reading " + p.string());
+	context::global()->log(context::trace, "reading " + p.string());
 
 	std::string s;
 
 	std::ifstream in(p);
 	if (!in)
-		bail_out("can't read from " + p.string() + "'");
+		context::global()->bail_out("can't read from " + p.string() + "'");
 
 	in.seekg(0, std::ios::end);
 	s.resize(static_cast<std::size_t>(in.tellg()));

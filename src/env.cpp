@@ -12,31 +12,42 @@ fs::path find_vcvars()
 {
 	const std::vector<std::string> editions =
 	{
-		"Preview", "Enterprise", "Professional", "Community"
+		"Community", "Preview", "Enterprise", "Professional"
 	};
+
+	const fs::path bat = "vcvarsall.bat";
+
+	context::global()->log(context::trace, "looking for " + bat.string());
 
 	for (auto&& edition : editions)
 	{
-		const auto p =
+		const auto dir =
 			paths::program_files_x86() /
 			"Microsoft Visual Studio" /
 			versions::vs_year() /
-			edition / "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
+			edition / "VC" / "Auxiliary" / "Build";
 
-		if (fs::exists(p))
+		const auto f = dir / bat;
+
+		if (fs::exists(f))
 		{
-			debug("found " + p.string());
-			return p;
+			context::global()->log(
+				context::trace, "found " + f.string());
+
+			return f;
+		}
+		else
+		{
+			context::global()->log(
+				context::trace, "not found in " + dir.string());
 		}
 	}
 
-	bail_out("couldn't find visual studio");
+	context::global()->bail_out("couldn't find visual studio");
 }
 
 env get_vcvars_env(arch a)
 {
-	debug("vcvars");
-
 	std::string arch_s;
 
 	switch (a)
@@ -54,25 +65,26 @@ env get_vcvars_env(arch a)
 			bail_out("get_vcvars_env: bad arch");
 	}
 
+	context::global()->log(context::trace, "looking for vcvars for " + arch_s);
+
 	const fs::path tmp = paths::temp_file();
 
 	// "vcvarsall.bat" amd64 && set > temp_file
 	std::string cmd =
-		"\"" + find_vcvars().string() + "\" " + arch_s;
-
-	if (!conf::verbose())
-		cmd += " > NUL";
-
-	cmd += " && set > \"" + tmp.string() + "\"";
+		"\"" + find_vcvars().string() + "\" " + arch_s +
+		" && set > \"" + tmp.string() + "\"";
 
 	process::raw(cmd)
 		.run();
 
+	context::global()->log(context::trace, "reading from " + tmp.string());
+
 	std::stringstream ss(read_text_file(tmp));
 	op::delete_file(tmp);
 
-
 	env e;
+
+	context::global()->log(context::trace, "parsing variables");
 
 	for (;;)
 	{
@@ -89,6 +101,7 @@ env get_vcvars_env(arch a)
 		std::string name = line.substr(0, sep);
 		std::string value = line.substr(sep + 1);
 
+		context::global()->log(context::trace, name + " = " + value);
 		e.set(std::move(name), std::move(value));
 	}
 

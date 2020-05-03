@@ -4,7 +4,8 @@ namespace mob
 {
 
 #define MOB_ENUM_OPERATORS(E) \
-	inline E operator|(E e1, E e2) { return (E)((int)e1 | (int)e2); }
+	inline E operator|(E e1, E e2) { return (E)((int)e1 | (int)e2); } \
+	inline E operator|=(E& e1, E e2) { e1 = e1 | e2; return e1; }
 
 
 class context;

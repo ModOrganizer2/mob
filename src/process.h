@@ -39,8 +39,9 @@ class process
 public:
 	enum flags_t
 	{
-		noflags = 0x00,
-		allow_failure = 0x01
+		noflags                = 0x00,
+		allow_failure          = 0x01,
+		terminate_on_interrupt = 0x02
 	};
 
 	enum arg_flags
@@ -50,6 +51,16 @@ public:
 		nospace = 0x02,
 		quote   = 0x04
 	};
+
+	struct filter
+	{
+		const std::string_view line;
+		context::reasons r;
+		level lv;
+		bool ignore;
+	};
+
+	using filter_fun = std::function<void (filter&)>;
 
 
 	process(const context* cx=nullptr);
@@ -71,6 +82,8 @@ public:
 		return r;
 	}
 
+	process& set_context(const context* cx);
+
 	process& name(const std::string& name);
 	const std::string& name() const;
 
@@ -81,7 +94,10 @@ public:
 	const fs::path& cwd() const;
 
 	process& stdout_level(level lv);
+	process& stdout_filter(filter_fun f);
+
 	process& stderr_level(level lv);
+	process& stderr_filter(filter_fun f);
 
 	process& flags(flags_t f);
 	flags_t flags() const;
@@ -144,7 +160,9 @@ private:
 	fs::path cwd_;
 	flags_t flags_;
 	level stdout_level_;
+	filter_fun stdout_filter_;
 	level stderr_level_;
+	filter_fun stderr_filter_;
 	mob::env env_;
 	std::string raw_;
 	std::string cmd_;

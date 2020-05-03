@@ -49,7 +49,17 @@ int jom::result() const
 
 void jom::do_run()
 {
+	process::flags_t flags = process::terminate_on_interrupt;
+	if (flags_ & allow_failure)
+		flags |= process::allow_failure;
+
 	process_
+		.set_context(cx_)
+		.stderr_filter([](auto&& f)
+		{
+			if (f.line.find("empower your cores") != std::string::npos)
+				f.lv = level::trace;
+		})
 		.arg("/C", process::quiet)
 		.arg("/S", process::quiet)
 		.arg("/K");
@@ -57,15 +67,10 @@ void jom::do_run()
 	if (flags_ & single_job)
 		process_.arg("/J", "1");
 
-	process_.arg(target_);
-
-	if (flags_ & allow_failure)
-	{
-		process_.flags(process::flags_t(
-			process_.flags() | process::allow_failure));
-	}
-
-	process_.env(env::vs(arch_));
+	process_
+		.arg(target_)
+		.flags(flags)
+		.env(env::vs(arch_));
 
 	execute_and_join();
 }

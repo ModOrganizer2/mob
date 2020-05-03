@@ -45,8 +45,10 @@ std::string_view async_pipe::read()
 
 HANDLE async_pipe::create_pipe()
 {
+	static std::atomic<int> pipe_id(0);
+
 	const std::string pipe_name_prefix = "\\\\.\\pipe\\mob_pipe";
-	const std::string pipe_name = pipe_name_prefix + std::to_string(rand());
+	const std::string pipe_name = pipe_name_prefix + std::to_string(++pipe_id);
 
 	SECURITY_ATTRIBUTES sa = {};
 	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -226,6 +228,12 @@ process process::raw(const std::string& cmd)
 	return p;
 }
 
+process& process::set_context(const context* cx)
+{
+	cx_ = cx;
+	return *this;
+}
+
 process& process::name(const std::string& name)
 {
 	name_ = name;
@@ -265,9 +273,21 @@ process& process::stdout_level(level lv)
 	return *this;
 }
 
+process& process::stdout_filter(filter_fun f)
+{
+	stdout_filter_ = f;
+	return *this;
+}
+
 process& process::stderr_level(level lv)
 {
 	stderr_level_ = lv;
+	return *this;
+}
+
+process& process::stderr_filter(filter_fun f)
+{
+	stderr_filter_ = f;
 	return *this;
 }
 
@@ -301,7 +321,7 @@ std::string process::make_cmd() const
 	if (!raw_.empty())
 		return raw_;
 
-	return "\"" + bin_.string() + "\" " + cmd_;
+	return "\"" + bin_.string() + "\"" + cmd_;
 }
 
 void process::pipe_into(const process& p)
@@ -371,7 +391,7 @@ void process::do_run(const std::string& what)
 void process::interrupt()
 {
 	impl_.interrupt = true;
-	cx_->log(context::cmd, "will interrupt");
+	cx_->log(context::cmd_trace, "will interrupt");
 }
 
 void process::join()
@@ -406,7 +426,7 @@ void process::join()
 				if (flags_ & allow_failure)
 				{
 					cx_->log(
-						context::cmd,
+						context::cmd_trace,
 						"process failed but failure was allowed");
 				}
 				else
@@ -427,13 +447,11 @@ void process::join()
 
 			if (impl_.interrupt && !interrupted)
 			{
-				const auto pid = GetProcessId(impl_.handle.get());
-
-				if (pid == 0)
+				if (flags_ & terminate_on_interrupt)
 				{
 					cx_->log(
-						context::error,
-						"process id is 0, terminating instead");
+						context::cmd_trace,
+						"terminating process (flag is set)");
 
 					::TerminateProcess(impl_.handle.get(), 0xffff);
 
@@ -441,11 +459,26 @@ void process::join()
 				}
 				else
 				{
-					cx_->log(
-						context::cmd,
-						"sending sigint to " + std::to_string(pid));
+					const auto pid = GetProcessId(impl_.handle.get());
 
-					GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
+					if (pid == 0)
+					{
+						cx_->log(
+							context::error,
+							"process id is 0, terminating instead");
+
+						::TerminateProcess(impl_.handle.get(), 0xffff);
+
+						break;
+					}
+					else
+					{
+						cx_->log(
+							context::cmd_trace,
+							"sending sigint to " + std::to_string(pid));
+
+						GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
+					}
 				}
 
 				interrupted = true;
@@ -470,14 +503,32 @@ void process::read_pipes()
 	std::string_view s = impl_.stdout_pipe.read();
 	for_each_line(s, [&](auto&& line)
 	{
-		cx_->log(context::std_out, stdout_level_, line);
+		filter f = {line, context::std_out, stdout_level_, false};
+
+		if (stdout_filter_)
+		{
+			stdout_filter_(f);
+			if (f.ignore)
+				return;
+		}
+
+		cx_->log(f.r, f.lv, f.line);
 	});
 
 	s = impl_.stderr_pipe.read();
 	for_each_line(s, [&](auto&& line)
 	{
-		cx_->log(context::std_err, stderr_level_, line);
-	});
+		filter f = {line, context::std_err, stderr_level_, false};
+
+		if (stderr_filter_)
+		{
+			stderr_filter_(f);
+			if (f.ignore)
+				return;
+		}
+
+		cx_->log(f.r, f.lv, f.line);
+		});
 }
 
 int process::exit_code() const

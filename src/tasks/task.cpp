@@ -131,10 +131,7 @@ void task::interrupt()
 
 	interrupted_ = true;
 	if (tool_)
-	{
-		cx_.log(context::trace, "interrupting tool " + tool_->name());
 		tool_->interrupt();
-	}
 }
 
 void task::join()

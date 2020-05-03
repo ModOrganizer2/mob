@@ -350,11 +350,20 @@ fs::path paths::program_files_x86()
 		if (p.empty())
 		{
 			const auto e = GetLastError();
-			error("failed to get x86 program files folder", e);
+
 			p = fs::path(R"(C:\Program Files (x86))");
+
+			context::global()->log(
+				context::warning,
+				"failed to get x86 program files folder, defaulting to " +
+				p.string(), e);
+		}
+		else
+		{
+			context::global()->log(
+				context::trace, "x86 program files is " + p.string());
 		}
 
-		debug("x86 program files is " + p.string());
 		return p;
 	}();
 
@@ -370,11 +379,20 @@ fs::path paths::program_files_x64()
 		if (p.empty())
 		{
 			const auto e = GetLastError();
-			error("failed to get x64 program files folder", e);
+
 			p = fs::path(R"(C:\Program Files)");
+
+			context::global()->log(
+				context::warning,
+				"failed to get x64 program files folder, defaulting to " +
+				p.string(), e);
+		}
+		else
+		{
+			context::global()->log(
+				context::trace, "x64 program files is " + p.string());
 		}
 
-		debug("x64 program files is " + p.string());
 		return p;
 	}();
 
@@ -391,11 +409,11 @@ fs::path paths::temp_dir()
 		if (GetTempPathW(static_cast<DWORD>(buffer_size), buffer) == 0)
 		{
 			const auto e = GetLastError();
-			bail_out("can't get temp path", e);
+			context::global()->bail_out("can't get temp path", e);
 		}
 
 		fs::path p(buffer);
-		debug("temp dir is " + p.string());
+		context::global()->log(context::trace, "temp dir is " + p.string());
 		return p;
 	}();
 
@@ -407,10 +425,12 @@ fs::path paths::temp_file()
 	static fs::path dir = temp_dir();
 
 	wchar_t name[MAX_PATH + 1] = {};
-	if (GetTempFileNameW(dir.native().c_str(), L"mo_", 0, name) == 0)
+	if (GetTempFileNameW(dir.native().c_str(), L"mob", 0, name) == 0)
 	{
 		const auto e = GetLastError();
-		bail_out("can't create temp file in " + dir.string(), e);
+
+		context::global()->bail_out(
+			"can't create temp file in " + dir.string(), e);
 	}
 
 	return dir / name;

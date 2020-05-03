@@ -44,7 +44,7 @@ void tool::interrupt()
 {
 	if (!interrupted_)
 	{
-		info("interrupting " + name_);
+		cx_->log(context::info, "interrupting " + name_);
 		interrupted_ = true;
 		do_interrupt();
 	}
