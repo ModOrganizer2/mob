@@ -3,6 +3,7 @@
 #include "conf.h"
 #include "net.h"
 #include "context.h"
+#include "op.h"
 
 namespace mob
 {
@@ -34,7 +35,7 @@ handle_ptr async_pipe::create()
 	return out;
 }
 
-std::string async_pipe::read()
+std::string_view async_pipe::read()
 {
 	if (pending_)
 		return check_pending();
@@ -101,7 +102,7 @@ HANDLE async_pipe::create_pipe()
 	return output_write;
 }
 
-std::string async_pipe::try_read()
+std::string_view async_pipe::try_read()
 {
 	DWORD bytes_read = 0;
 
@@ -133,10 +134,10 @@ std::string async_pipe::try_read()
 		return {};
 	}
 
-	return {buffer_, buffer_ + bytes_read};
+	return {buffer_, bytes_read};
 }
 
-std::string async_pipe::check_pending()
+std::string_view async_pipe::check_pending()
 {
 	DWORD bytes_read = 0;
 
@@ -182,7 +183,7 @@ std::string async_pipe::check_pending()
 	::ResetEvent(event_.get());
 	pending_ = false;
 
-	return {buffer_, buffer_ + bytes_read};
+	return {buffer_, bytes_read};
 }
 
 
@@ -198,9 +199,11 @@ process::impl& process::impl::operator=(const impl& i)
 }
 
 
-process::process()
-	: flags_(process::noflags), code_(0)
+process::process(const context* cx)
+	: cx_(cx), flags_(process::noflags), code_(0)
 {
+	if (!cx_)
+		cx_ = context::global();
 }
 
 process::~process()
@@ -303,10 +306,10 @@ void process::pipe_into(const process& p)
 void process::run()
 {
 	if (!cwd_.empty())
-		debug("> cd " + cwd_.string());
+		cx_->log(context::cmd, "cd " + cwd_.string());
 
 	const auto what = make_cmd();
-	debug("> " + what);
+	cx_->log(context::cmd, what);
 
 	if (conf::dry())
 		return;
@@ -335,10 +338,12 @@ void process::do_run(const std::string& what)
 
 	if (!cwd_.empty())
 	{
-		create_directories(cwd_);
+		op::create_directories(cwd_, cx_);
 		cwd_s = cwd_.string();
 		cwd_p = (cwd_s.empty() ? nullptr : cwd_s.c_str());
 	}
+
+	cx_->log(context::cmd_trace, "creating process");
 
 	const auto r = ::CreateProcessA(
 		cmd.c_str(), const_cast<char*>(args.c_str()),
@@ -348,8 +353,10 @@ void process::do_run(const std::string& what)
 	if (!r)
 	{
 		const auto e = GetLastError();
-		bail_out("failed to start '" + cmd + "'", e);
+		cx_->bail_out("failed to start '" + cmd + "'", e);
 	}
+
+	cx_->log(context::cmd_trace, "pid " + std::to_string(pi.dwProcessId));
 
 	::CloseHandle(pi.hThread);
 	impl_.handle.reset(pi.hProcess);
@@ -358,6 +365,7 @@ void process::do_run(const std::string& what)
 void process::interrupt()
 {
 	impl_.interrupt = true;
+	cx_->log(context::cmd, "will interrupt");
 }
 
 void process::join()
@@ -366,6 +374,8 @@ void process::join()
 		return;
 
 	bool interrupted = false;
+
+	cx_->log(context::cmd_trace, "joining");
 
 	for (;;)
 	{
@@ -376,13 +386,28 @@ void process::join()
 			// done
 			GetExitCodeProcess(impl_.handle.get(), &code_);
 
-			if ((flags_ & allow_failure) || impl_.interrupt)
+			cx_->log(
+				context::cmd_trace,
+				"process completed, exit code " + std::to_string(code_));
+
+			if (impl_.interrupt)
 				break;
 
 			if (code_ != 0)
 			{
-				impl_.handle = {};
-				bail_out(make_name() + " returned " + std::to_string(code_));
+				if (flags_ & allow_failure)
+				{
+					cx_->log(
+						context::cmd,
+						"process failed but failure was allowed");
+				}
+				else
+				{
+					impl_.handle = {};
+
+					cx_->bail_out(
+						make_name() + " returned " + std::to_string(code_));
+				}
 			}
 
 			break;
@@ -390,14 +415,7 @@ void process::join()
 
 		if (r == WAIT_TIMEOUT)
 		{
-			std::string s = impl_.stdout_pipe.read();
-			//if (!s.empty())
-			//	std::cout << "stdin: " << s << "\n";
-
-			s = impl_.stderr_pipe.read();
-			//if (!s.empty())
-			//	std::cout << "stderr: " << s << "\n";
-
+			read_pipes();
 
 			if (impl_.interrupt && !interrupted)
 			{
@@ -405,13 +423,20 @@ void process::join()
 
 				if (pid == 0)
 				{
-					error("process id is 0, terminating instead");
+					cx_->log(
+						context::error,
+						"process id is 0, terminating instead");
+
 					::TerminateProcess(impl_.handle.get(), 0xffff);
+
 					break;
 				}
 				else
 				{
-					debug("sending sigint to " + std::to_string(pid));
+					cx_->log(
+						context::cmd,
+						"sending sigint to " + std::to_string(pid));
+
 					GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
 				}
 
@@ -423,10 +448,28 @@ void process::join()
 
 		const auto e = GetLastError();
 		impl_.handle = {};
-		bail_out("failed to wait on process", e);
+		cx_->bail_out("failed to wait on process", e);
 	}
 
+	if (interrupted)
+		cx_->log(context::cmd_trace, "process interrupted and finished");
+
 	impl_.handle = {};
+}
+
+void process::read_pipes()
+{
+	std::string_view s = impl_.stdout_pipe.read();
+	for_each_line(s, [&](auto&& line)
+	{
+		cx_->log(context::std_out, line);
+	});
+
+	s = impl_.stderr_pipe.read();
+	for_each_line(s, [&](auto&& line)
+	{
+		cx_->log(context::std_err, line);
+	});
 }
 
 int process::exit_code() const

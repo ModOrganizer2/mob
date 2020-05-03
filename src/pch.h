@@ -60,6 +60,7 @@
 #include <vector>
 #include <array>
 #include <set>
+#include <charconv>
 
 #include <Shlobj.h>
 #include <shlwapi.h>

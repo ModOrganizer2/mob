@@ -13,7 +13,7 @@ struct conf
 
 	static bool dry();
 	static bool redownload();
-	static bool redecompress();
+	static bool reextract();
 	static bool rebuild();
 
 	static std::string mo_org();

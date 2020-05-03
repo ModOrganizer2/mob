@@ -94,7 +94,7 @@ const std::vector<std::string>& task::names() const
 
 void task::run()
 {
-	info(name());
+	cx_.log(context::info, "running task");
 
 	thread_ = std::thread([&]
 	{
@@ -131,7 +131,10 @@ void task::interrupt()
 
 	interrupted_ = true;
 	if (tool_)
+	{
+		cx_.log(context::trace, "interrupting tool " + tool_->name());
 		tool_->interrupt();
+	}
 }
 
 void task::join()
@@ -142,8 +145,10 @@ void task::join()
 
 void task::fetch()
 {
+	cx_.log(context::trace, "fetching");
 	do_fetch();
 
+	cx_.log(context::trace, "patching");
 	run_tool(patcher()
 		.task(name())
 		.root(get_source_path()));
@@ -151,11 +156,13 @@ void task::fetch()
 
 void task::build_and_install()
 {
+	cx_.log(context::trace, "build and install");
 	do_build_and_install();
 }
 
 void task::clean()
 {
+	cx_.log(context::rebuild, "cleaning");
 	do_clean();
 }
 
@@ -167,6 +174,8 @@ void task::check_interrupted()
 
 void task::run_current_tool()
 {
+	cx_.log(context::trace, "running tool " + tool_->name());
+
 	check_interrupted();
 	tool_->run(cx_);
 	check_interrupted();

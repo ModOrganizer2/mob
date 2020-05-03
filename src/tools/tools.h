@@ -130,8 +130,7 @@ private:
 	fs::path file_;
 	fs::path where_;
 
-	fs::path interrupt_file() const;
-	void check_duplicate_directory();
+	void check_duplicate_directory(const fs::path& ifile);
 };
 
 

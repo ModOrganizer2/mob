@@ -47,7 +47,7 @@ void downloader::do_run()
 			}
 			else
 			{
-				cx_->log(context::trace, "picking " + file_.string());
+				cx_->log(context::bypass, "picking " + file_.string());
 				file_ = file;
 				return;
 			}

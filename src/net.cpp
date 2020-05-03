@@ -48,7 +48,7 @@ curl_downloader::curl_downloader(const context* cx)
 	: cx_(cx), bytes_(0), interrupt_(false), ok_(false)
 {
 	if (!cx_)
-		cx_ = context::dummy();
+		cx_ = context::global();
 }
 
 void curl_downloader::start(const url& u, const fs::path& path)
@@ -106,7 +106,7 @@ void curl_downloader::run()
 		curl_easy_setopt(c, CURLOPT_VERBOSE, 1l);
 	}
 
-	file_deleter output_deleter(path_);
+	file_deleter output_deleter(path_, cx_);
 
 	cx_->log(context::net_trace, "curl: performing " + url_.string());
 	const auto r = curl_easy_perform(c);
@@ -244,11 +244,11 @@ void curl_downloader::on_debug(curl_infotype type, std::string_view s)
 					cx_->log(context::net_dump, buffer);
 				}
 
-				if (p == end)
-					break;
-
 				while (p != end && (*p == '\n' || *p == '\r'))
 					++p;
+
+				if (p == end)
+					break;
 
 				start = p;
 			}

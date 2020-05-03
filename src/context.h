@@ -19,6 +19,7 @@ std::string error_message(DWORD e);
 void out(level lv, const std::string& s);
 void out(level lv, const std::string& s, DWORD e);
 void out(level lv, const std::string& s, const std::error_code& e);
+
 void dump_logs();
 
 template <class... Args>
@@ -69,8 +70,21 @@ public:
 		// an action was done because the --rebuild option was set
 		rebuild,
 
+		// an action was done because the --reextract option was set
+		reextract,
+
 		// something returned early because it was interrupted
 		interrupted,
+
+		// command line of a process
+		cmd,
+		cmd_trace,
+
+		// output of a process
+		std_out,
+		std_out_trace,
+		std_err,
+		std_err_trace,
 
 		// a filesystem action
 		op,
@@ -81,14 +95,16 @@ public:
 		net_trace,
 		net_dump,
 
-		// generic error
+		// generic
+		info,
+		warning,
 		error,
 
 		// unrecoverable error, used by bail_out
 		bailing
 	};
 
-	static const context* dummy();
+	static const context* global();
 	static bool enabled(reasons r);
 
 	context() = default;
@@ -99,7 +115,7 @@ public:
 	tool* tool = nullptr;
 
 	template <class... Args>
-	void log(reasons r, const std::string& s, Args&&... args) const
+	void log(reasons r, std::string_view s, Args&&... args) const
 	{
 		if (!enabled(r))
 			return;
@@ -109,7 +125,7 @@ public:
 	}
 
 	template <class... Args>
-	[[noreturn]] void bail_out(const std::string& s, Args&&... args) const
+	[[noreturn]] void bail_out(std::string_view s, Args&&... args) const
 	{
 		auto cxl = fix_log(bailing, s);
 		mob::bail_out(cxl.s, std::forward<Args>(args)...);
@@ -122,7 +138,7 @@ private:
 		std::string s;
 	};
 
-	cx_log fix_log(reasons r, const std::string& s) const;
+	cx_log fix_log(reasons r, std::string_view s) const;
 };
 
 }	// namespace

@@ -15,7 +15,7 @@ public:
     async_pipe();
 
     handle_ptr create();
-    std::string read();
+    std::string_view read();
 
 private:
     static const std::size_t buffer_size = 50000;
@@ -28,8 +28,8 @@ private:
     bool pending_;
 
     HANDLE create_pipe();
-    std::string try_read();
-    std::string check_pending();
+    std::string_view try_read();
+    std::string_view check_pending();
 };
 
 
@@ -52,7 +52,7 @@ public:
 	};
 
 
-	process();
+	process(const context* cx=nullptr);
 	~process();
 
 	static process raw(const std::string& cmd);
@@ -135,6 +135,7 @@ private:
 		impl& operator=(const impl&);
 	};
 
+	const context* cx_;
 	std::string name_;
 	fs::path bin_;
 	fs::path cwd_;
@@ -149,7 +150,9 @@ private:
 	std::string make_name() const;
 	std::string make_cmd() const;
 	void pipe_into(const process& p);
+
 	void do_run(const std::string& what);
+	void read_pipes();
 
 	void add_arg(const std::string& k, const std::string& v, arg_flags f);
 

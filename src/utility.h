@@ -7,6 +7,8 @@ namespace mob
 	inline E operator|(E e1, E e2) { return (E)((int)e1 | (int)e2); }
 
 
+class context;
+
 class bailed
 {
 public:
@@ -73,7 +75,7 @@ private:
 class file_deleter
 {
 public:
-	file_deleter(fs::path p);
+	file_deleter(fs::path p, const context* cx);
 	file_deleter(const file_deleter&) = delete;
 	file_deleter& operator=(const file_deleter&) = delete;
 	~file_deleter();
@@ -82,6 +84,7 @@ public:
 	void cancel();
 
 private:
+	const context* cx_;
 	fs::path p_;
 	bool delete_;
 };
@@ -90,7 +93,7 @@ private:
 class directory_deleter
 {
 public:
-	directory_deleter(fs::path p);
+	directory_deleter(fs::path p, const context* cx);
 	directory_deleter(const directory_deleter&) = delete;
 	directory_deleter& operator=(const directory_deleter&) = delete;
 	~directory_deleter();
@@ -99,8 +102,27 @@ public:
 	void cancel();
 
 private:
+	const context* cx_;
 	fs::path p_;
 	bool delete_;
+};
+
+
+class interruption_file
+{
+public:
+	interruption_file(fs::path dir, std::string name, const context* cx);
+
+	fs::path file() const;
+	bool exists() const;
+
+	void create();
+	void remove();
+
+private:
+	const context* cx_;
+	fs::path dir_;
+	std::string name_;
 };
 
 
@@ -110,6 +132,35 @@ std::string replace_all(
 	std::string s, const std::string& from, const std::string& to);
 
 std::string join(const std::vector<std::string>& v, const std::string& sep);
+
+template <class F>
+void for_each_line(std::string_view s, F&& f)
+{
+	const char* start = s.data();
+	const char* end = s.data() + s.size();
+	const char* p = start;
+
+	for (;;)
+	{
+		if (p == end || *p == '\n' || *p == '\r')
+		{
+			if (p != start)
+				f(std::string_view(start, static_cast<std::size_t>(p - start)));
+
+			while (p != end && (*p == '\n' || *p == '\r'))
+				++p;
+
+			if (p == end)
+				break;
+
+			start = p;
+		}
+		else
+		{
+			++p;
+		}
+	}
+}
 
 
 enum class arch

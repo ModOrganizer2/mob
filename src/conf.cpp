@@ -105,7 +105,7 @@ const std::string& get_conf(const std::string& name)
 bool g_dry = false;
 int g_log = 0;
 bool g_redownload = false;
-bool g_redecompress = false;
+bool g_reextract = false;
 bool g_rebuild = false;
 
 bool conf::more_trace()       { return g_log > 2; }
@@ -114,7 +114,7 @@ bool conf::verbose()          { return g_log > 0; }
 
 bool conf::dry()              { return g_dry; }
 bool conf::redownload()       { return g_redownload; }
-bool conf::redecompress()     { return g_redecompress; }
+bool conf::reextract()        { return g_reextract; }
 bool conf::rebuild()          { return g_rebuild; }
 
 std::string conf::mo_org()    { return "ModOrganizer2"; }
@@ -136,14 +136,14 @@ void conf::set(int argc, char** argv)
 			g_log = 3;
 		else if (a == "--redownload")
 			g_redownload = true;
-		else if (a == "--redecompress")
-			g_redecompress = true;
+		else if (a == "--reextract")
+			g_reextract = true;
 		else if (a == "--rebuild")
 			g_rebuild = true;
 		else if (a == "--clean")
 		{
 			g_redownload = true;
-			g_redecompress = true;
+			g_reextract = true;
 			g_rebuild = true;
 		}
 		else if (a.starts_with("--"))
