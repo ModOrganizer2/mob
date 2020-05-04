@@ -57,9 +57,10 @@ task::task(const char* name)
 }
 
 task::task(std::vector<std::string> names)
-	: names_(std::move(names)), interrupted_(false), tool_(nullptr)
+	: names_(std::move(names)), interrupted_(false)
 {
-	cx_.task = this;
+	contexts_.push_back(std::make_unique<thread_context>(
+		std::this_thread::get_id(), context(name())));
 }
 
 task::~task()
@@ -74,13 +75,29 @@ task::~task()
 	}
 }
 
+const context& task::cx() const
+{
+	static const context bad("?");
+
+	{
+		std::scoped_lock lock(contexts_mutex_);
+
+		for (auto& td : contexts_)
+		{
+			if (td->tid == std::this_thread::get_id())
+				return td->cx;
+		}
+	}
+
+	return bad;
+}
+
 void task::interrupt_all()
 {
 	std::scoped_lock lock(interrupt_mutex_);
 	for (auto&& t : g_tasks)
 		t->interrupt();
 }
-
 
 const std::string& task::name() const
 {
@@ -92,13 +109,56 @@ const std::vector<std::string>& task::names() const
 	return names_;
 }
 
+void task::threaded_run(std::string thread_name, std::function<void ()> f)
+{
+	try
+	{
+		{
+			std::scoped_lock lock(contexts_mutex_);
+
+			contexts_.push_back(std::make_unique<thread_context>(
+				std::this_thread::get_id(), context(thread_name)));
+		}
+
+		guard g([&]
+		{
+			std::scoped_lock lock(contexts_mutex_);
+
+			for (auto itor=contexts_.begin(); itor!=contexts_.end(); ++itor)
+			{
+				if ((*itor)->tid == std::this_thread::get_id())
+				{
+					contexts_.erase(itor);
+					break;
+				}
+			}
+		});
+
+		f();
+	}
+	catch(bailed e)
+	{
+		error(name() + " bailed out, interrupting all tasks");
+		interrupt_all();
+	}
+	catch(interrupted)
+	{
+		return;
+	}
+	catch(std::exception& e)
+	{
+		error(name() + " uncaught exception: " + e.what());
+		interrupt_all();
+	}
+}
+
 void task::run()
 {
-	cx_.info(context::generic, "running task");
+	cx().info(context::generic, "running task");
 
 	thread_ = std::thread([&]
 	{
-		try
+		threaded_run(name(), [&]
 		{
 			if (conf::rebuild())
 				clean();
@@ -108,32 +168,19 @@ void task::run()
 			check_interrupted();
 			build_and_install();
 
-			cx_.debug(context::generic, "task completed");
-		}
-		catch(bailed e)
-		{
-			error(name() + " bailed out, interrupting all tasks");
-			interrupt_all();
-		}
-		catch(interrupted)
-		{
-			return;
-		}
-		catch(std::exception& e)
-		{
-			error(name() + " uncaught exception: " + e.what());
-			interrupt_all();
-		}
+			cx().debug(context::generic, "task completed");
+		});
 	});
 }
 
 void task::interrupt()
 {
-	std::scoped_lock lock(tool_mutex_);
+	std::scoped_lock lock(tools_mutex_);
 
 	interrupted_ = true;
-	if (tool_)
-		tool_->interrupt();
+
+	for (auto* t : tools_)
+		t->interrupt();
 }
 
 void task::join()
@@ -144,10 +191,10 @@ void task::join()
 
 void task::fetch()
 {
-	cx_.debug(context::generic, "fetching");
+	cx().debug(context::generic, "fetching");
 	do_fetch();
 
-	cx_.debug(context::generic, "patching");
+	cx().debug(context::generic, "patching");
 	run_tool(patcher()
 		.task(name())
 		.root(get_source_path()));
@@ -155,13 +202,13 @@ void task::fetch()
 
 void task::build_and_install()
 {
-	cx_.debug(context::generic, "build and install");
+	cx().debug(context::generic, "build and install");
 	do_build_and_install();
 }
 
 void task::clean()
 {
-	cx_.debug(context::rebuild, "cleaning");
+	cx().debug(context::rebuild, "cleaning");
 	do_clean();
 }
 
@@ -171,12 +218,33 @@ void task::check_interrupted()
 		throw interrupted();
 }
 
-void task::run_current_tool()
+void task::run_tool_impl(tool* t)
 {
-	cx_.debug(context::generic, "running tool " + tool_->name());
+	{
+		std::scoped_lock lock(tools_mutex_);
+		tools_.push_back(t);
+	}
+
+	guard g([&]
+	{
+		std::scoped_lock lock(tools_mutex_);
+
+		for (auto itor=tools_.begin(); itor!=tools_.end(); ++itor)
+		{
+			if (*itor == t)
+			{
+				tools_.erase(itor);
+				break;
+			}
+		}
+	});
+
+	cx().debug(context::generic, "running tool " + t->name());
+
+	context cxcopy(cx());
 
 	check_interrupted();
-	tool_->run(cx_);
+	t->run(cxcopy);
 	check_interrupted();
 }
 

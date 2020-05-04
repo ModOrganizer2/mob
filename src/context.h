@@ -57,12 +57,9 @@ public:
 	static const context* global();
 	static bool enabled(reason r, level lv);
 
-	context() = default;
-	context(const context&) = delete;
-	context& operator=(const context&) = delete;
+	context(std::string task_name);
 
-	task* task = nullptr;
-	tool* tool = nullptr;
+	void set_tool(tool* t);
 
 	void log(reason r, level lv, std::string_view s) const;
 	void log(reason r, level lv, std::string_view s, DWORD e) const;
@@ -109,6 +106,9 @@ public:
 	[[noreturn]] void bail_out(reason r, std::string_view s, const std::error_code& ec) const;
 
 private:
+	std::string task_;
+	const tool* tool_;
+
 	std::string make_log_string(reason r, level lv, std::string_view s) const;
 	void do_log(level lv, const std::string& s) const;
 };

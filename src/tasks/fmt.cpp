@@ -23,6 +23,11 @@ void fmt::do_fetch()
 		.output(source_path()));
 }
 
+void fmt::do_clean()
+{
+	cmake::clean(cx(), source_path());
+}
+
 void fmt::do_build_and_install()
 {
 	const auto build_path = run_tool(cmake()

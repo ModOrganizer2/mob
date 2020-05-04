@@ -32,12 +32,12 @@ void boost::do_build_and_install()
 
 void boost::do_clean()
 {
-	op::delete_directory(cx_, source_path() / "bin.v2", op::optional);
-	op::delete_directory(cx_, lib_path(arch::x86), op::optional);
-	op::delete_directory(cx_, lib_path(arch::x64), op::optional);
-	op::delete_file(cx_, config_jam_file(), op::optional);
-	op::delete_file(cx_, b2_exe(), op::optional);
-	op::delete_file(cx_, source_path() / "project-config.jam", op::optional);
+	op::delete_directory(cx(), source_path() / "bin.v2", op::optional);
+	op::delete_directory(cx(), lib_path(arch::x86), op::optional);
+	op::delete_directory(cx(), lib_path(arch::x64), op::optional);
+	op::delete_file(cx(), config_jam_file(), op::optional);
+	op::delete_file(cx(), b2_exe(), op::optional);
+	op::delete_file(cx(), source_path() / "project-config.jam", op::optional);
 }
 
 void boost::fetch_prebuilt()
@@ -51,7 +51,7 @@ void boost::fetch_prebuilt()
 
 void boost::build_and_install_prebuilt()
 {
-	op::copy_file_to_dir_if_better(cx_,
+	op::copy_file_to_dir_if_better(cx(),
 		lib_path(arch::x64) / "lib" / python_dll(),
 		paths::install_bin());
 }
@@ -81,7 +81,7 @@ void boost::build_and_install_from_source()
 {
 	if (fs::exists(b2_exe()))
 	{
-		cx_.trace(context::bypass,
+		cx().trace(context::bypass,
 			b2_exe().string() + " exists, boost already bootstrapped");
 	}
 	else
@@ -101,7 +101,7 @@ void boost::build_and_install_from_source()
 		{"python"},
 		"shared", "shared", arch::x64);
 
-	op::copy_file_to_dir_if_better(cx_,
+	op::copy_file_to_dir_if_better(cx(),
 		lib_path(arch::x64) / "lib" / python_dll(),
 		paths::install_bin());
 }
@@ -138,16 +138,16 @@ void boost::write_config_jam()
 		<< "  : <define>BOOST_ALL_NO_LIB=1\n"
 		<< "  ;";
 
-	cx_.trace(context::generic,
+	cx().trace(context::generic,
 		"writing config file at " + config_jam_file().string() + ":");
 
 	for_each_line(oss.str(), [&](auto&& line)
 	{
-		cx_.trace(context::generic, std::string(8, ' ') + std::string(line));
+		cx().trace(context::generic, std::string(8, ' ') + std::string(line));
 	});
 
 
-	op::write_text_file(cx_, config_jam_file(), oss.str());
+	op::write_text_file(cx(), config_jam_file(), oss.str());
 }
 
 

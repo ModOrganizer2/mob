@@ -45,10 +45,10 @@ public:
 	void clean();
 
 protected:
-	context cx_;
-
 	task(const char* name);
 	task(std::vector<std::string> names);
+
+	const context& cx() const;
 
 	void check_interrupted();
 
@@ -59,32 +59,54 @@ protected:
 	template <class Tool>
 	auto run_tool(Tool&& t)
 	{
-		{
-			std::scoped_lock lock(tool_mutex_);
-			tool_ = &t;
-		}
-
-		run_current_tool();
-
-		{
-			std::scoped_lock lock(tool_mutex_);
-			tool_ = nullptr;
-		}
-
+		run_tool_impl(&t);
 		return t.result();
 	}
 
+	void parallel(std::vector<std::pair<std::string, std::function<void ()>>> v)
+	{
+		std::vector<std::thread> ts;
+
+		for (auto&& [name, f] : v)
+		{
+			cx().trace(context::generic, "running in parallel: " + name);
+
+			ts.push_back(std::thread([this, name, f]
+			{
+				threaded_run(name, f);
+			}));
+		}
+
+		for (auto&& t : ts)
+			t.join();
+	}
+
 private:
+	struct thread_context
+	{
+		std::thread::id tid;
+		context cx;
+
+		thread_context(std::thread::id tid, context cx)
+			: tid(tid), cx(std::move(cx))
+		{
+		}
+	};
+
 	std::vector<std::string> names_;
 	std::thread thread_;
 	std::atomic<bool> interrupted_;
 
-	tool* tool_;
-	std::mutex tool_mutex_;
+	std::vector<std::unique_ptr<thread_context>> contexts_;
+	mutable std::mutex contexts_mutex_;
+
+	std::vector<tool*> tools_;
+	mutable std::mutex tools_mutex_;
 
 	static std::mutex interrupt_mutex_;
 
-	void run_current_tool();
+	void run_tool_impl(tool* t);
+	void threaded_run(std::string name, std::function<void ()> f);
 };
 
 

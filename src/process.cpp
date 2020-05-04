@@ -372,7 +372,9 @@ void process::do_run(const std::string& what)
 	auto process_stderr = impl_.stderr_pipe.create();
 	si.hStdError = process_stderr.get();
 
-	si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+	si.hStdInput = ::CreateFileA(
+		"NUL", GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, 0);
+
 	si.dwFlags = STARTF_USESTDHANDLES;
 
 	const std::string cmd = this_env::get("COMSPEC");

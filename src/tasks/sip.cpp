@@ -90,7 +90,7 @@ void sip::do_build_and_install()
 			.cwd(source_path())));
 	}
 
-	op::copy_file_to_dir_if_better(cx_,
+	op::copy_file_to_dir_if_better(cx(),
 		source_path() / "sip.h",
 		python::include_path());
 }

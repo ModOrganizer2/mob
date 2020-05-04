@@ -38,8 +38,8 @@ void tool::run(context& cx)
 {
 	cx_ = &cx;
 
-	cx_->tool = this;
-	guard g([&]{ cx_->tool = nullptr; });
+	cx_->set_tool(this);
+	guard g([&]{ cx_->set_tool(nullptr); });
 
 	do_run();
 }

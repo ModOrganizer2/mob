@@ -169,6 +169,8 @@ public:
 
 	cmake();
 
+	static void clean(const context& cx, const fs::path& root);
+
 	cmake& generator(generators g);
 	cmake& root(const fs::path& p);
 	cmake& prefix(const fs::path& s);
@@ -198,8 +200,8 @@ private:
 	fs::path output_;
 	arch arch_;
 
-	const std::map<generators, gen_info>& all_generators() const;
-	const gen_info& get_generator() const;
+	static const std::map<generators, gen_info>& all_generators();
+	static const gen_info& get_generator(generators g);
 };
 
 

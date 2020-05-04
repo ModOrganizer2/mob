@@ -12,7 +12,7 @@ url make_github_url(const std::string& org, const std::string& repo)
 
 
 git_clone::git_clone()
-	: basic_process_runner("git_clone")
+	: basic_process_runner("git")
 {
 }
 
@@ -39,6 +39,12 @@ void git_clone::do_run()
 	if (url_.empty() || where_.empty())
 		bail_out("git_clone missing parameters");
 
+	if (conf::redownload() || conf::reextract())
+	{
+		cx_->trace(context::rebuild, "deleting directory controlled by git");
+		op::delete_directory(*cx_, where_, op::optional);
+	}
+
 	const fs::path dot_git = where_ / ".git";
 
 	if (!fs::exists(dot_git))
@@ -51,6 +57,7 @@ void git_clone::clone()
 {
 	process_ = process()
 		.binary(third_party::git())
+		.stderr_level(context::level::trace)
 		.arg("clone")
 		.arg("--recurse-submodules")
 		.arg("--depth", "1")
@@ -67,6 +74,7 @@ void git_clone::pull()
 {
 	process_ = process()
 		.binary(third_party::git())
+		.stderr_level(context::level::trace)
 		.arg("pull")
 		.arg("--recurse-submodules")
 		.arg("--quiet", process::log_quiet)

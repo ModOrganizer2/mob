@@ -76,6 +76,7 @@ public:
 protected:
 	void do_fetch() override;
 	void do_build_and_install() override;
+	void do_clean() override;
 
 private:
 	static url source_url();
@@ -91,6 +92,7 @@ public:
 protected:
 	void do_fetch() override;
 	void do_build_and_install() override;
+	void do_clean() override;
 };
 
 

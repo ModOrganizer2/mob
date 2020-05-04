@@ -54,13 +54,13 @@ std::string reason_string(context::reason r)
 	}
 }
 
-std::string task_name(const task* t)
+std::string task_name(const std::string& name)
 {
 	const std::size_t longest = 7;
 	const std::size_t total = 1 + longest + 2; // '[x] '
 
-	if (t && !t->name().empty())
-		return pad_right("[" + t->name().substr(0, longest) + "]", total);
+	if (!name.empty())
+		return pad_right("[" + name.substr(0, longest) + "]", total);
 	else
 		return std::string(total, ' ');
 }
@@ -118,9 +118,20 @@ std::string timestamp()
 		return "?";
 }
 
+
+context::context(std::string task_name)
+	: task_(std::move(task_name)), tool_(nullptr)
+{
+}
+
+void context::set_tool(tool* t)
+{
+	tool_ = t;
+}
+
 const context* context::global()
 {
-	static thread_local context c;
+	static thread_local context c("");
 	return &c;
 }
 
@@ -208,8 +219,8 @@ std::string context::make_log_string(reason r, level, std::string_view s) const
 	std::ostringstream oss;
 
 	oss
-		<< task_name(task)
-		<< tool_name(tool)
+		<< task_name(task_)
+		<< tool_name(tool_)
 		<< prefix(r);
 
 	switch (r)

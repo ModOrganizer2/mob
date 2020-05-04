@@ -46,26 +46,34 @@ fs::path cmake::result() const
 	return output_;
 }
 
+void cmake::clean(const context& cx, const fs::path& root)
+{
+	cx.trace(context::rebuild, "deleting all generator directories");
+
+	for (auto&& [k, g] : all_generators())
+	{
+		op::delete_directory(cx,
+			root / g.output_dir(arch::x86), op::optional);
+
+		op::delete_directory(cx,
+			root / g.output_dir(arch::x64), op::optional);
+	}
+}
+
 void cmake::do_run()
 {
-	if (conf::rebuild())
-	{
-		cx_->trace(context::rebuild, "deleting all generator directories");
-
-		for (auto&& [k, g] : all_generators())
-		{
-			op::delete_directory(*cx_,
-				root_ / g.output_dir(arch::x86), op::optional);
-
-			op::delete_directory(*cx_,
-				root_ / g.output_dir(arch::x64), op::optional);
-		}
-	}
-
-	const auto& g = get_generator();
+	const auto& g = get_generator(gen_);
 	output_ = root_ / (g.output_dir(arch_));
 
 	process_
+		.stderr_filter([&](process::filter& f)
+		{
+			// cmake doesn't like NUL as stdin
+			if (f.line.find("Failed to create ConsoleBuf") != std::string::npos)
+				f.ignore = true;
+			else if (f.line.find("setActiveInputCodepage") != std::string::npos)
+				f.ignore = true;
+		})
 		.arg("-G", "\"" + g.name + "\"")
 		.arg("-DCMAKE_BUILD_TYPE=Release")
 		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", process::log_quiet)
@@ -83,8 +91,7 @@ void cmake::do_run()
 	execute_and_join();
 }
 
-const std::map<cmake::generators, cmake::gen_info>&
-cmake::all_generators() const
+const std::map<cmake::generators, cmake::gen_info>& cmake::all_generators()
 {
 	static const std::map<generators, gen_info> map =
 	{
@@ -101,11 +108,11 @@ cmake::all_generators() const
 	return map;
 }
 
-const cmake::gen_info& cmake::get_generator() const
+const cmake::gen_info& cmake::get_generator(generators g)
 {
 	const auto& map = all_generators();
 
-	auto itor = map.find(gen_);
+	auto itor = map.find(g);
 	if (itor == map.end())
 		bail_out("unknown generator");
 
