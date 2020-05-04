@@ -163,21 +163,28 @@ void extractor::check_duplicate_directory(const fs::path& ifile)
 
 	// give it a temp name in case there's yet another directory with the
 	// same name in it
-	const auto temp_dir_name = where_ / ("_mob_" + dir_name );
+	const auto temp_dir = where_ / ("_mob_" + dir_name );
 
 	cx_->trace(context::generic,
-		"renaming dir to " + temp_dir_name.string() + " to avoid clashes");
+		"renaming dir to " + temp_dir.string() + " to avoid clashes");
 
-	op::rename(*cx_,
-		where_ / dir_name,
-		where_ / temp_dir_name);
+	if (fs::exists(temp_dir))
+	{
+		cx_->trace(context::generic,
+			"temp dir " + temp_dir.string() + " already exists, "
+			"deleting");
+
+		op::delete_directory(*cx_, temp_dir);
+	}
+
+	op::rename(*cx_, where_ / dir_name, temp_dir);
 
 	// move the content of the directory up
-	for (auto e : fs::directory_iterator(where_ / temp_dir_name))
+	for (auto e : fs::directory_iterator(temp_dir))
 		op::move_to_directory(*cx_, e.path(), where_);
 
 	// delete the old directory, which should be empty now
-	op::delete_directory(*cx_, where_ / temp_dir_name);
+	op::delete_directory(*cx_, temp_dir);
 }
 
 }	// namespace

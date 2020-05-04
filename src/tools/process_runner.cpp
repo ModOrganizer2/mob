@@ -10,7 +10,7 @@ basic_process_runner::basic_process_runner(std::string name)
 {
 }
 
-std::string basic_process_runner::name() const
+std::string basic_process_runner::do_name() const
 {
 	return process_.name();
 }

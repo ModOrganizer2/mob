@@ -114,7 +114,8 @@ fs::path downloader::path_for_url(const mob::url& u) const
 		const std::string strip = "/download";
 
 		cx_->trace(context::net,
-			"url " + u.string() + " is sourceforge, stripping " + strip);
+			"url " + u.string() + " is sourceforge, "
+			"stripping " + strip + " for filename");
 
 		if (url_string.ends_with(strip))
 			url_string = url_string.substr(0, url_string.size() - strip.size());

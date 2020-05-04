@@ -17,7 +17,7 @@ public:
 
 	virtual ~tool() = default;
 
-	virtual std::string name() const;
+	std::string name() const;
 
 	void run(context& cx);
 	void interrupt();
@@ -30,8 +30,10 @@ protected:
 	tool(std::string name);
 
 	bool interrupted() const;
+
 	virtual void do_run() = 0;
 	virtual void do_interrupt() = 0;
+	virtual std::string do_name() const { return {}; }
 
 private:
 	std::string name_;
@@ -66,7 +68,7 @@ private:
 class basic_process_runner : public tool
 {
 public:
-	std::string name() const override;
+	std::string do_name() const override;
 	void join();
 	int exit_code() const;
 

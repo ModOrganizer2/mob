@@ -27,6 +27,10 @@ tool& tool::operator=(tool&& t)
 
 std::string tool::name() const
 {
+	std::string s = do_name();
+	if (!s.empty())
+		return s;
+
 	return name_;
 }
 
