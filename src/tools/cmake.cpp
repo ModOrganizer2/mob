@@ -66,14 +66,6 @@ void cmake::do_run()
 	output_ = root_ / (g.output_dir(arch_));
 
 	process_
-		.stderr_filter([&](process::filter& f)
-		{
-			// cmake doesn't like NUL as stdin
-			if (f.line.find("Failed to create ConsoleBuf") != std::string::npos)
-				f.ignore = true;
-			else if (f.line.find("setActiveInputCodepage") != std::string::npos)
-				f.ignore = true;
-		})
 		.arg("-G", "\"" + g.name + "\"")
 		.arg("-DCMAKE_BUILD_TYPE=Release")
 		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", process::log_quiet)

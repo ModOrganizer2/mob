@@ -127,6 +127,20 @@ private:
 };
 
 
+class bypass_file
+{
+public:
+	bypass_file(const context& cx, fs::path dir, std::string name);
+
+	bool exists() const;
+	void create();
+
+private:
+	const context& cx_;
+	fs::path file_;
+};
+
+
 class console_color
 {
 public:
@@ -155,6 +169,7 @@ std::string join(const std::vector<std::string>& v, const std::string& sep);
 
 std::string pad_right(std::string s, std::size_t n, char c=' ');
 std::string pad_left(std::string s, std::size_t n, char c=' ');
+
 
 template <class F>
 void for_each_line(std::string_view s, F&& f)

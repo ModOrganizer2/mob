@@ -24,7 +24,7 @@ private:
 
     handle_ptr stdout_;
     handle_ptr event_;
-    char buffer_[buffer_size];
+    std::unique_ptr<char[]> buffer_;
     OVERLAPPED ov_;
     bool pending_;
 

@@ -8,10 +8,19 @@
 namespace mob
 {
 
+HANDLE bit_bucket()
+{
+	SECURITY_ATTRIBUTES sa { .nLength = sizeof(sa), .bInheritHandle = TRUE };
+	return ::CreateFileA("NUL", GENERIC_WRITE, 0, &sa, OPEN_EXISTING, 0, 0);
+}
+
+
 async_pipe::async_pipe()
 	: pending_(false)
 {
-	std::memset(buffer_, 0, sizeof(buffer_));
+	buffer_ = std::make_unique<char[]>(buffer_size);
+	std::memset(buffer_.get(), 0, buffer_size);
+
 	std::memset(&ov_, 0, sizeof(ov_));
 }
 
@@ -108,7 +117,7 @@ std::string_view async_pipe::try_read()
 {
 	DWORD bytes_read = 0;
 
-	if (!::ReadFile(stdout_.get(), buffer_, buffer_size, &bytes_read, &ov_))
+	if (!::ReadFile(stdout_.get(), buffer_.get(), buffer_size, &bytes_read, &ov_))
 	{
 		const auto e = GetLastError();
 
@@ -136,7 +145,7 @@ std::string_view async_pipe::try_read()
 		return {};
 	}
 
-	return {buffer_, bytes_read};
+	return {buffer_.get(), bytes_read};
 }
 
 std::string_view async_pipe::check_pending()
@@ -185,7 +194,7 @@ std::string_view async_pipe::check_pending()
 	::ResetEvent(event_.get());
 	pending_ = false;
 
-	return {buffer_, bytes_read};
+	return {buffer_.get(), bytes_read};
 }
 
 
@@ -366,15 +375,12 @@ void process::do_run(const std::string& what)
 	STARTUPINFOA si = { .cb=sizeof(si) };
 	PROCESS_INFORMATION pi = {};
 
-	auto process_stdout = impl_.stdout_pipe.create();
-	si.hStdOutput = process_stdout.get();
-
 	auto process_stderr = impl_.stderr_pipe.create();
+	auto process_stdout = impl_.stdout_pipe.create();
+
+	si.hStdOutput = process_stdout.get();
 	si.hStdError = process_stderr.get();
-
-	si.hStdInput = ::CreateFileA(
-		"NUL", GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, 0);
-
+	si.hStdInput = bit_bucket();
 	si.dwFlags = STARTF_USESTDHANDLES;
 
 	const std::string cmd = this_env::get("COMSPEC");

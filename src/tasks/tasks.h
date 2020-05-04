@@ -224,6 +224,11 @@ public:
 protected:
 	void do_fetch() override;
 	void do_build_and_install() override;
+	void do_clean_for_rebuild() override;
+
+	void sip_build(const std::vector<std::string>& modules);
+	void install_sip_file();
+	void copy_files(const std::vector<std::string>& modules);
 
 	static url source_url();
 	static fs::path sip_install_file();

@@ -144,6 +144,50 @@ void interruption_file::remove()
 }
 
 
+bypass_file::bypass_file(const context& cx, fs::path dir, std::string name)
+	: cx_(cx), file_(dir / ("_mob_" + name))
+{
+}
+
+bool bypass_file::exists() const
+{
+	if (fs::exists(file_))
+	{
+		if (conf::rebuild())
+		{
+			cx_.trace(context::bypass,
+				"bypass file " + file_.string() + " exists, deleting");
+
+			op::delete_file(cx_, file_, op::optional);
+
+			return false;
+		}
+		else
+		{
+			cx_.trace(context::bypass,
+				"bypass file " + file_.string() + " exists");
+
+			return true;
+		}
+	}
+	else
+	{
+		cx_.trace(context::bypass,
+			"bypass file " + file_.string() + " not found");
+
+		return false;
+	}
+}
+
+void bypass_file::create()
+{
+	cx_.trace(context::bypass,
+		"create bypass file " + file_.string());
+
+	op::touch(cx_, file_);
+}
+
+
 enum class color_methods
 {
 	none = 0,
