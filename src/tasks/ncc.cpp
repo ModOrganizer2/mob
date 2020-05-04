@@ -14,6 +14,12 @@ fs::path ncc::source_path()
 	return paths::build() / "NexusClientCli";
 }
 
+void ncc::do_clean_for_rebuild()
+{
+	op::delete_directory(
+		cx(), source_path() / "NexusClientCLI" / "obj", op::optional);
+}
+
 void ncc::do_fetch()
 {
 	run_tool(git_clone()
@@ -33,6 +39,7 @@ void ncc::do_build_and_install()
 
 	run_tool(process_runner(process()
 		.binary(publish)
+		.stderr_level(context::level::trace)
 		.arg(paths::install_bin())));
 }
 

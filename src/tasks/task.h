@@ -42,7 +42,7 @@ public:
 
 	void fetch();
 	void build_and_install();
-	void clean();
+	void clean_for_rebuild();
 
 protected:
 	task(const char* name);
@@ -54,7 +54,7 @@ protected:
 
 	virtual void do_fetch() {}
 	virtual void do_build_and_install() {}
-	virtual void do_clean() {}
+	virtual void do_clean_for_rebuild() {}
 
 	template <class Tool>
 	auto run_tool(Tool&& t)

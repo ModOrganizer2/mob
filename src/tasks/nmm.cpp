@@ -14,6 +14,11 @@ fs::path nmm::source_path()
 	return paths::build() / "Nexus-Mod-Manager";
 }
 
+void nmm::do_clean_for_rebuild()
+{
+	op::delete_directory(cx(), source_path() / "Stage", op::optional);
+}
+
 void nmm::do_fetch()
 {
 	run_tool(git_clone()

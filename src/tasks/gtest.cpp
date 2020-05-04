@@ -14,7 +14,7 @@ fs::path gtest::source_path()
 	return paths::build() / "googletest";
 }
 
-void gtest::do_clean()
+void gtest::do_clean_for_rebuild()
 {
 	cmake::clean(cx(), source_path());
 }

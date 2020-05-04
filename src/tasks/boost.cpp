@@ -30,7 +30,7 @@ void boost::do_build_and_install()
 		build_and_install_from_source();
 }
 
-void boost::do_clean()
+void boost::do_clean_for_rebuild()
 {
 	op::delete_directory(cx(), source_path() / "bin.v2", op::optional);
 	op::delete_directory(cx(), lib_path(arch::x86), op::optional);

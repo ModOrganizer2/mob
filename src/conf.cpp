@@ -86,7 +86,7 @@ static std::map<std::string, std::string> g_conf =
 	{"openssl",      "1.1.1d"},
 	{"bzip2",        "1.0.6"},
 	{"lz4",          "v1.9.2"},
-	{"nmm",          "0.70.11"},
+	{"nmm",          "0.71.2"},
 	{"spdlog",       "v1.4.2"},
 	{"usvfs",        "master"},
 	{"qt",           "5.14.2"},

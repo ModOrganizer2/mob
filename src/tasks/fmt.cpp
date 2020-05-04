@@ -23,7 +23,7 @@ void fmt::do_fetch()
 		.output(source_path()));
 }
 
-void fmt::do_clean()
+void fmt::do_clean_for_rebuild()
 {
 	cmake::clean(cx(), source_path());
 }

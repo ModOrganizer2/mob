@@ -37,7 +37,7 @@ void sevenz::do_build_and_install()
 		paths::install_dlls());
 }
 
-void sevenz::do_clean()
+void sevenz::do_clean_for_rebuild()
 {
 	op::delete_directory(cx(), module_to_build() / "x64", op::optional);
 }

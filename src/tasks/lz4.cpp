@@ -14,6 +14,11 @@ fs::path lz4::source_path()
 	return paths::build() / ("lz4-" + versions::lz4());
 }
 
+void lz4::do_clean_for_rebuild()
+{
+	op::delete_directory(cx(), solution_dir() / "bin", op::optional);
+}
+
 void lz4::do_fetch()
 {
 	run_tool(git_clone()
@@ -31,11 +36,11 @@ void lz4::do_build_and_install()
 		.projects({"liblz4-dll"}));
 
 	op::copy_file_to_dir_if_better(cx(),
-		bin_dir() / "liblz4.dll",
+		out_dir() / "liblz4.dll",
 		paths::install_dlls());
 
 	op::copy_file_to_dir_if_better(cx(),
-		bin_dir() / "liblz4.pdb",
+		out_dir() / "liblz4.pdb",
 		paths::install_pdbs());
 }
 
@@ -49,7 +54,7 @@ fs::path lz4::solution_file()
 	return solution_dir() / "lz4.sln";
 }
 
-fs::path lz4::bin_dir()
+fs::path lz4::out_dir()
 {
 	return solution_dir() / "bin" / "x64_Release";
 }

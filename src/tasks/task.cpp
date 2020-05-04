@@ -161,7 +161,7 @@ void task::run()
 		threaded_run(name(), [&]
 		{
 			if (conf::rebuild())
-				clean();
+				clean_for_rebuild();
 
 			check_interrupted();
 			fetch();
@@ -206,10 +206,10 @@ void task::build_and_install()
 	do_build_and_install();
 }
 
-void task::clean()
+void task::clean_for_rebuild()
 {
 	cx().debug(context::rebuild, "cleaning");
-	do_clean();
+	do_clean_for_rebuild();
 }
 
 void task::check_interrupted()
