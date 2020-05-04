@@ -45,7 +45,8 @@ void delete_directory(const context& cx, const fs::path& p, flags f)
 		if (f & optional)
 		{
 			cx.trace(context::fs,
-				"not deleting dir " + p.string() + ", doesn't exist");
+				"not deleting dir " + p.string() + ", "
+				"doesn't exist (optional)");
 
 			return;
 		}
@@ -71,7 +72,8 @@ void delete_file(const context& cx, const fs::path& p, flags f)
 		if (f & optional)
 		{
 			cx.trace(context::fs,
-				"not deleting file " + p.string() + ", doesn't exist");
+				"not deleting file " + p.string() + ", "
+				"doesn't exist (optional)");
 
 			return;
 		}
@@ -232,8 +234,8 @@ void copy_file_to_dir_if_better(
 				if (f & optional)
 				{
 					cx.trace(context::fs,
-						"not copying " + file.string() + ", not found but "
-						"optional");
+						"not copying " + file.string() + ", "
+						"doesn't exist (optional)");
 
 					return;
 				}

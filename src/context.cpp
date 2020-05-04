@@ -43,7 +43,7 @@ std::string reason_string(context::reason r)
 		case context::redownload:    return "re-dl";
 		case context::rebuild:       return "re-bd";
 		case context::reextract:     return "re-ex";
-		case context::interrupted:   return "int";
+		case context::interruption:  return "int";
 		case context::cmd:			 return "cmd";
 		case context::std_out:		 return "stdout";
 		case context::std_err:		 return "stderr";
@@ -226,7 +226,7 @@ std::string context::make_log_string(reason r, level, std::string_view s) const
 			oss << s << " (happened because of --reextract)";
 			break;
 
-		case context::interrupted:
+		case context::interruption:
 			if (s.empty())
 				oss << "interrupted";
 			else

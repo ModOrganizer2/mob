@@ -72,7 +72,7 @@ void curl_downloader::join()
 
 void curl_downloader::interrupt()
 {
-	cx_.debug(context::interrupted, "will interrupt curl");
+	cx_.debug(context::interruption, "will interrupt curl");
 	interrupt_ = true;
 }
 

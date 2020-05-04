@@ -26,8 +26,9 @@ public:
 		// an action was done because the --reextract option was set
 		reextract,
 
-		// something returned early because it was interrupted
-		interrupted,
+		// an action was done in case of interruption or because something
+		// was interrupted
+		interruption,
 
 		// command line of a process
 		cmd,

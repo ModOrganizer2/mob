@@ -50,6 +50,8 @@ void cmake::do_run()
 {
 	if (conf::rebuild())
 	{
+		cx_->trace(context::rebuild, "deleting all generator directories");
+
 		for (auto&& [k, g] : all_generators())
 		{
 			op::delete_directory(*cx_,

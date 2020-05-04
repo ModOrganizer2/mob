@@ -88,7 +88,7 @@ void downloader::do_run()
 
 	if (interrupted())
 	{
-		cx_->trace(context::interrupted, "");
+		cx_->trace(context::interruption, "");
 		return;
 	}
 

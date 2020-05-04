@@ -372,6 +372,7 @@ void process::do_run(const std::string& what)
 	auto process_stderr = impl_.stderr_pipe.create();
 	si.hStdError = process_stderr.get();
 
+	si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
 	si.dwFlags = STARTF_USESTDHANDLES;
 
 	const std::string cmd = this_env::get("COMSPEC");
@@ -534,14 +535,14 @@ void process::on_timeout(bool& already_interrupted)
 
 			if (pid == 0)
 			{
-				cx_->error(context::cmd,
+				cx_->trace(context::cmd,
 					"process id is 0, terminating instead");
 
 				::TerminateProcess(impl_.handle.get(), 0xffff);
 			}
 			else
 			{
-				cx_->error(context::cmd,
+				cx_->trace(context::cmd,
 					"sending sigint to " + std::to_string(pid));
 
 				GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);

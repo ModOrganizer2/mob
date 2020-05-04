@@ -111,7 +111,10 @@ interruption_file::interruption_file(
 		: cx_(cx), dir_(std::move(dir)), name_(std::move(name))
 {
 	if (fs::exists(file()))
-		cx_.trace(context::generic, "found interrupt file " + file().string());
+	{
+		cx_.trace(context::interruption,
+			"found interrupt file " + file().string());
+	}
 }
 
 bool interruption_file::exists() const
@@ -126,13 +129,17 @@ fs::path interruption_file::file() const
 
 void interruption_file::create()
 {
-	cx_.trace(context::generic, "creating interrupt file " + file().string());
+	cx_.trace(context::interruption,
+		"creating interrupt file " + file().string());
+
 	op::touch(cx_, file());
 }
 
 void interruption_file::remove()
 {
-	cx_.trace(context::generic, "removing interrupt file " + file().string());
+	cx_.trace(context::interruption,
+		"removing interrupt file " + file().string());
+
 	op::delete_file(cx_, file());
 }
 
