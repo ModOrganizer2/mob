@@ -60,7 +60,7 @@ std::string task_name(const task* t)
 	const std::size_t total = 1 + longest + 2; // '[x] '
 
 	if (t && !t->name().empty())
-		return pad("[" + t->name() + "]", total);
+		return pad_right("[" + t->name().substr(0, longest) + "]", total);
 	else
 		return std::string(total, ' ');
 }
@@ -71,7 +71,7 @@ std::string tool_name(const tool* t)
 	const std::size_t total = 1 + longest + 2; // '[x] '
 
 	if (t && !t->name().empty())
-		return pad("[" + t->name() + "]", total);
+		return pad_right("[" + t->name().substr(0, longest) + "]", total);
 	else
 		return std::string(total, ' ');
 }
@@ -81,10 +81,10 @@ std::string prefix(context::reason r)
 	const std::size_t longest = 7;
 	const std::size_t total = 1 + longest + 2; // '[x] '
 
-	const std::string rs = reason_string(r);
+	const std::string rs = reason_string(r).substr(0, longest);
 
 	if (!rs.empty())
-		return pad("[" + rs + "] ", total);
+		return pad_right("[" + rs + "] ", total);
 	else
 		return std::string(total, ' ');
 }
@@ -95,8 +95,9 @@ std::string error_message(DWORD e)
 		static_cast<int>(e), std::system_category()).message();
 }
 
-std::string_view timestamp()
+std::string timestamp()
 {
+	const std::size_t max_length = 7; // 0000.00
 	static thread_local char buffer[50];
 
 	using namespace std::chrono;
@@ -112,7 +113,7 @@ std::string_view timestamp()
 	const auto n = static_cast<std::size_t>(r.ptr - buffer);
 
 	if (r.ec == std::errc())
-		return {buffer, n};
+		return pad_left(std::string(buffer, n), max_length, ' ');
 	else
 		return "?";
 }

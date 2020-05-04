@@ -32,6 +32,12 @@ void boost::do_build_and_install()
 
 void boost::do_clean()
 {
+	op::delete_directory(cx_, source_path() / "bin.v2", op::optional);
+	op::delete_directory(cx_, lib_path(arch::x86), op::optional);
+	op::delete_directory(cx_, lib_path(arch::x64), op::optional);
+	op::delete_file(cx_, config_jam_file(), op::optional);
+	op::delete_file(cx_, b2_exe(), op::optional);
+	op::delete_file(cx_, source_path() / "project-config.jam", op::optional);
 }
 
 void boost::fetch_prebuilt()

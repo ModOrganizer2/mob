@@ -201,8 +201,8 @@ process::impl& process::impl::operator=(const impl& i)
 }
 
 
-process::process(const context* cx) :
-	cx_(cx ? cx : &gcx()), flags_(process::noflags),
+process::process() :
+	cx_(&gcx()), flags_(process::noflags),
 	stdout_level_(context::level::trace),
 	stderr_level_(context::level::error),
 	code_(0)
@@ -220,9 +220,10 @@ process::~process()
 	}
 }
 
-process process::raw(const std::string& cmd)
+process process::raw(const context& cx, const std::string& cmd)
 {
 	process p;
+	p.cx_ = &cx;
 	p.raw_ = cmd;
 	return p;
 }
@@ -239,9 +240,12 @@ process& process::name(const std::string& name)
 	return *this;
 }
 
-const std::string& process::name() const
+std::string process::name() const
 {
-	return name_;
+	if (name_.empty())
+		return bin_.stem().string();
+	else
+		return name_;
 }
 
 process& process::binary(const fs::path& p)

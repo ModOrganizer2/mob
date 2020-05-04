@@ -39,10 +39,7 @@ void sevenz::do_build_and_install()
 
 void sevenz::do_clean()
 {
-	const fs::path out_path = module_to_build() / "x64";
-
-	cx_.debug(context::rebuild, "deleting " + out_path.string());
-	op::delete_directory(cx_, out_path, op::optional);
+	op::delete_directory(cx_, module_to_build() / "x64", op::optional);
 }
 
 url sevenz::source_url()

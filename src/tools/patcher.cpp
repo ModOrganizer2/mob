@@ -85,7 +85,7 @@ void patcher::do_run()
 
 void patcher::do_patch(const fs::path& patch_file)
 {
-	const auto base = process(cx_)
+	const auto base = process()
 		.binary(third_party::patch())
 		.arg("--read-only", "ignore")
 		.arg("--strip", "0")

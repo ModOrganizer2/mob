@@ -71,7 +71,7 @@ env get_vcvars_env(arch a)
 		"\"" + find_vcvars().string() + "\" " + arch_s +
 		" && set > \"" + tmp.string() + "\"";
 
-	process::raw(cmd)
+	process::raw(gcx(), cmd)
 		.run();
 
 	gcx().trace(context::generic, "reading from " + tmp.string());

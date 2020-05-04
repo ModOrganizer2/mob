@@ -39,10 +39,18 @@ std::string join(const std::vector<std::string>& v, const std::string& sep)
 	return s;
 }
 
-std::string pad(std::string s, std::size_t n)
+std::string pad_right(std::string s, std::size_t n, char c)
 {
 	if (s.size() < n)
-		s.append(n - s.size() , ' ');
+		s.append(n - s.size() , c);
+
+	return s;
+}
+
+std::string pad_left(std::string s, std::size_t n, char c)
+{
+	if (s.size() < n)
+		s.insert(s.begin(), n - s.size() , c);
 
 	return s;
 }

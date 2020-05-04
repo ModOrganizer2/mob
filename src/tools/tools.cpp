@@ -25,7 +25,7 @@ tool& tool::operator=(tool&& t)
 	return *this;
 }
 
-const std::string& tool::name() const
+std::string tool::name() const
 {
 	return name_;
 }

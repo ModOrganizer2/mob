@@ -75,12 +75,12 @@ void extractor::do_run()
 	{
 		cx_->trace(context::generic, "this is a tar.gz, piping");
 
-		auto extract_tar = process(cx_)
+		auto extract_tar = process()
 			.binary(third_party::sevenz())
 			.arg("x")
 			.arg("-so", file_);
 
-		auto extract_gz = process(cx_)
+		auto extract_gz = process()
 			.binary(third_party::sevenz())
 			.arg("x")
 			.arg("-aoa")
@@ -92,7 +92,7 @@ void extractor::do_run()
 	}
 	else
 	{
-		process_ = process(cx_)
+		process_ = process()
 			.binary(third_party::sevenz())
 			.arg("x")
 			.arg("-aoa")

@@ -107,6 +107,8 @@ void task::run()
 			fetch();
 			check_interrupted();
 			build_and_install();
+
+			cx_.debug(context::generic, "task completed");
 		}
 		catch(bailed e)
 		{

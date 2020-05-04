@@ -54,7 +54,6 @@ void jom::do_run()
 		flags |= process::allow_failure;
 
 	process_
-		.set_context(cx_)
 		.stderr_filter([](auto&& f)
 		{
 			if (f.line.find("empower your cores") != std::string::npos)

@@ -66,10 +66,10 @@ public:
 	using filter_fun = std::function<void (filter&)>;
 
 
-	process(const context* cx=nullptr);
+	process();
 	~process();
 
-	static process raw(const std::string& cmd);
+	static process raw(const context& cx, const std::string& cmd);
 
 	static process pipe(const process& p)
 	{
@@ -88,7 +88,7 @@ public:
 	process& set_context(const context* cx);
 
 	process& name(const std::string& name);
-	const std::string& name() const;
+	std::string name() const;
 
 	process& binary(const fs::path& p);
 	const fs::path& binary() const;
