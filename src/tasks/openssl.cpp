@@ -19,6 +19,15 @@ fs::path openssl::build_path()
 	return source_path() / "build";
 }
 
+void openssl::do_clean_for_rebuild()
+{
+	cx().debug(context::rebuild,
+		"openssl puts object files everywhere, so the whole tree will be "
+		"deleted for a rebuild");
+
+	op::delete_directory(cx(), source_path(), op::optional);
+}
+
 void openssl::do_fetch()
 {
 	const auto file = run_tool(downloader(source_url()));
@@ -31,13 +40,11 @@ void openssl::do_fetch()
 void openssl::do_build_and_install()
 {
 	if (fs::exists(source_path() / "makefile"))
-		debug("openssl already configured");
+		cx().trace(context::bypass, "openssl already configured");
 	else
 		configure();
 
 	install_engines();
-	info("openssl built successfully");
-
 	copy_files();
 }
 
@@ -57,7 +64,9 @@ void openssl::configure()
 
 void openssl::install_engines()
 {
-	for (int tries=0; tries<3; ++tries)
+	const int max_tries = 3;
+
+	for (int tries=0; tries<max_tries; ++tries)
 	{
 		int exit_code = run_tool(jom()
 			.path(source_path())
@@ -66,7 +75,15 @@ void openssl::install_engines()
 
 		if (exit_code == 0)
 			return;
+
+		cx().debug(context::generic,
+			"jom /J regularly fails with openssh because of race conditions; "
+			"trying again");
 	}
+
+	cx().debug(context::generic,
+		"jom /J has failed more than " + std::to_string(max_tries) + " "
+		"times, restarting one last time without /J; that one should work");
 
 	run_tool(jom()
 		.path(source_path())

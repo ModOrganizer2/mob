@@ -51,7 +51,10 @@ void jom::do_run()
 {
 	process::flags_t flags = process::terminate_on_interrupt;
 	if (flags_ & allow_failure)
+	{
+		process_.stderr_level(context::level::trace);
 		flags |= process::allow_failure;
+	}
 
 	process_
 		.stderr_filter([](process::filter& f)
