@@ -259,9 +259,12 @@ public:
 protected:
 	void do_fetch() override;
 	void do_build_and_install() override;
+	void do_clean_for_rebuild() override;
 
 private:
+	void package();
 	void install_pip();
+	void copy_files();
 
 	static fs::path solution_file();
 	static std::string version_for_dll();
@@ -281,6 +284,13 @@ public:
 protected:
 	void do_fetch() override;
 	void do_build_and_install() override;
+	void do_clean_for_rebuild() override;
+
+private:
+	void download();
+	void generate();
+
+	static fs::path download_file();
 };
 
 

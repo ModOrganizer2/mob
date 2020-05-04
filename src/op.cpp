@@ -278,9 +278,14 @@ void copy_file_to_dir_if_better(
 			const auto name = e.path().filename().string();
 
 			if (PathMatchSpecA(name.c_str(), wildcard.c_str()))
+			{
 				copy_file_to_dir_if_better(cx, e.path(), dir);
+			}
 			else
-				cx.trace(context::fs, name + " did not match " + wildcard);
+			{
+				cx.trace(context::fs,
+					name + " did not match " + wildcard + "; skipping");
+			}
 		}
 	}
 }

@@ -47,6 +47,14 @@ fs::path python::build_path()
 	return source_path() / "PCBuild" / "amd64";
 }
 
+void python::do_clean_for_rebuild()
+{
+	const fs::path pcbuild = source_path() / "PCBuild";
+
+	op::delete_directory(cx(), pcbuild / "amd64", op::optional);
+	op::delete_directory(cx(), pcbuild / "obj", op::optional);
+}
+
 void python::do_fetch()
 {
 	run_tool(git_clone()
@@ -72,9 +80,18 @@ void python::do_build_and_install()
 			"libffiIncludeDir=" + libffi::include_path().string(),
 			"libffiOutDir=" + libffi::lib_path().string()}));
 
-	if (fs::exists(build_path() / "_mob_packaged"))
+	package();
+	install_pip();
+	copy_files();
+}
+
+void python::package()
+{
+	bypass_file packaged_bypass(cx(), build_path(), "packaged");
+
+	if (packaged_bypass.exists())
 	{
-		debug("python already packaged");
+		cx().trace(context::bypass, "python already packaged");
 	}
 	else
 	{
@@ -92,9 +109,10 @@ void python::do_build_and_install()
 
 		op::touch(cx(), build_path() / "_mob_packaged");
 	}
+}
 
-	install_pip();
-
+void python::copy_files()
+{
 	op::copy_file_to_dir_if_better(cx(),
 		source_path() / "PC" / "pyconfig.h",
 		include_path());
@@ -118,7 +136,7 @@ void python::do_build_and_install()
 
 void python::install_pip()
 {
-	debug("installing pip");
+	cx().trace(context::generic, "installing pip");
 
 	run_tool(process_runner(process()
 		.binary(python_exe())
