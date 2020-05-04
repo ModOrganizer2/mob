@@ -45,10 +45,8 @@ std::string url::filename() const
 
 
 curl_downloader::curl_downloader(const context* cx)
-	: cx_(cx), bytes_(0), interrupt_(false), ok_(false)
+	: cx_(cx ? *cx : gcx()), bytes_(0), interrupt_(false), ok_(false)
 {
-	if (!cx_)
-		cx_ = context::global();
 }
 
 void curl_downloader::start(const url& u, const fs::path& path)
@@ -57,8 +55,7 @@ void curl_downloader::start(const url& u, const fs::path& path)
 	path_ = path;
 	ok_ = false;
 
-	cx_->log(
-		context::net,
+	cx_.debug(context::net,
 		"downloading " + url_.string() + " to " + path_.string());
 
 	if (conf::dry())
@@ -75,7 +72,7 @@ void curl_downloader::join()
 
 void curl_downloader::interrupt()
 {
-	cx_->log(context::interrupted, "will interrupt curl");
+	cx_.debug(context::interrupted, "will interrupt curl");
 	interrupt_ = true;
 }
 
@@ -86,7 +83,7 @@ bool curl_downloader::ok() const
 
 void curl_downloader::run()
 {
-	cx_->log(context::net_trace, "curl: initializing " + url_.string());
+	cx_.trace(context::net, "curl: initializing " + url_.string());
 
 	auto* c = curl_easy_init();
 	guard g([&]{ curl_easy_cleanup(c); });
@@ -99,24 +96,24 @@ void curl_downloader::run()
 	curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1l);
 	curl_easy_setopt(c, CURLOPT_ERRORBUFFER, error_buffer);
 
-	if (context::enabled(context::net_dump))
+	if (conf::log_dump())
 	{
 		curl_easy_setopt(c, CURLOPT_DEBUGFUNCTION, on_debug_static);
 		curl_easy_setopt(c, CURLOPT_DEBUGDATA, this);
 		curl_easy_setopt(c, CURLOPT_VERBOSE, 1l);
 	}
 
-	file_deleter output_deleter(path_, cx_);
+	file_deleter output_deleter(cx_, path_);
 
-	cx_->log(context::net_trace, "curl: performing " + url_.string());
+	cx_.trace(context::net, "curl: performing " + url_.string());
 	const auto r = curl_easy_perform(c);
-	cx_->log(context::net_trace, "curl: transfer finished " + url_.string());
+	cx_.trace(context::net, "curl: transfer finished " + url_.string());
 
 	file_.reset();
 
 	if (interrupt_)
 	{
-		cx_->log(context::net_trace, "curl: " + url_.string() + " interrupted");
+		cx_.trace(context::net, "curl: " + url_.string() + " interrupted");
 		return;
 	}
 
@@ -127,23 +124,22 @@ void curl_downloader::run()
 
 		if (h == 200)
 		{
-			cx_->log(context::net_trace, "curl: http 200 " + url_.string());
-			cx_->log(context::net_trace, "curl: got " + std::to_string(bytes_) + " bytes");
+			cx_.trace(context::net,
+				"curl: http 200 " + url_.string() + ", "
+				"transferred " + std::to_string(bytes_) + " bytes");
 
 			ok_ = true;
 			output_deleter.cancel();
 		}
 		else
 		{
-			cx_->log(
-				context::error,
+			cx_.error(context::net,
 				"curl: http " + std::to_string(h) + " " + url_.string());
 		}
 	}
 	else
 	{
-		cx_->log(
-			context::error,
+		cx_.error(context::net,
 			std::string("curl: ") +
 			curl_easy_strerror(r) + ", " + error_buffer + ", " +
 			url_.string());
@@ -169,9 +165,9 @@ void curl_downloader::on_write(char* ptr, std::size_t n) noexcept
 {
 	if (!file_)
 	{
-		op::create_directories(path_.parent_path(), cx_);
+		op::create_directories(cx_, path_.parent_path());
 
-		cx_->log(context::net_trace, "opening " + path_.string());
+		cx_.trace(context::net, "opening " + path_.string());
 		file_.reset(_wfopen(path_.native().c_str(), L"wb"));
 	}
 
@@ -218,45 +214,23 @@ void curl_downloader::on_debug(curl_infotype type, std::string_view s)
 
 	auto do_log = [&](std::string_view what, std::string_view s)
 	{
-		const char* start = s.data();
-		const char* end = s.data() + s.size();
-		const char* p = start;
-
-		for (;;)
+		for_each_line(s, [&](auto&& line)
 		{
-			if (p == end || *p == '\n' || *p == '\r')
+			if (what.empty())
 			{
-				if (p != start)
-				{
-					if (what.empty())
-					{
-						buffer = "curl: ";
-						buffer.append(start, p);
-					}
-					else
-					{
-						buffer = "curl: ";
-						buffer.append(what);
-						buffer.append(": ");
-						buffer.append(start, p);
-					}
-
-					cx_->log(context::net_dump, buffer);
-				}
-
-				while (p != end && (*p == '\n' || *p == '\r'))
-					++p;
-
-				if (p == end)
-					break;
-
-				start = p;
+				buffer = "curl: ";
+				buffer.append(line);
 			}
 			else
 			{
-				++p;
+				buffer = "curl: ";
+				buffer.append(what);
+				buffer.append(": ");
+				buffer.append(line);
 			}
-		}
+
+			cx_.dump(context::net, buffer);
+		});
 	};
 
 

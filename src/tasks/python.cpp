@@ -90,28 +90,28 @@ void python::do_build_and_install()
 			.arg("--preset-embed")
 			.cwd(source_path())));
 
-		op::touch(build_path() / "_mob_packaged");
+		op::touch(cx_, build_path() / "_mob_packaged");
 	}
 
 	install_pip();
 
-	op::copy_file_to_dir_if_better(
+	op::copy_file_to_dir_if_better(cx_,
 		source_path() / "PC" / "pyconfig.h",
 		include_path());
 
-	op::copy_file_to_dir_if_better(
+	op::copy_file_to_dir_if_better(cx_,
 		build_path() / "*.lib",
 		paths::install_libs());
 
-	op::copy_file_to_dir_if_better(
+	op::copy_file_to_dir_if_better(cx_,
 		build_path() / "libffi*.dll",
 		paths::install_bin());
 
-	op::copy_file_to_dir_if_better(
+	op::copy_file_to_dir_if_better(cx_,
 		build_path() / ("python" + version_for_dll() + ".dll"),
 		paths::install_bin());
 
-	op::copy_file_to_dir_if_better(
+	op::copy_file_to_dir_if_better(cx_,
 		build_path() / ("python" + version_for_dll() + ".pdb"),
 		paths::install_pdbs());
 }

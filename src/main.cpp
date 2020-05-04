@@ -11,7 +11,7 @@ namespace mob
 
 BOOL WINAPI signal_handler(DWORD) noexcept
 {
-	context::global()->log(context::trace, "caught sigint");
+	gcx().debug(context::generic, "caught sigint");
 	task::interrupt_all();
 	return TRUE;
 }

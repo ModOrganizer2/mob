@@ -17,7 +17,7 @@ fs::path find_vcvars()
 
 	const fs::path bat = "vcvarsall.bat";
 
-	context::global()->log(context::trace, "looking for " + bat.string());
+	gcx().trace(context::generic, "looking for " + bat.string());
 
 	for (auto&& edition : editions)
 	{
@@ -31,19 +31,16 @@ fs::path find_vcvars()
 
 		if (fs::exists(f))
 		{
-			context::global()->log(
-				context::trace, "found " + f.string());
-
+			gcx().trace(context::generic, "found " + f.string());
 			return f;
 		}
 		else
 		{
-			context::global()->log(
-				context::trace, "not found in " + dir.string());
+			gcx().trace(context::generic, "not found in " + dir.string());
 		}
 	}
 
-	context::global()->bail_out("couldn't find visual studio");
+	gcx().bail_out(context::generic, "couldn't find visual studio");
 }
 
 env get_vcvars_env(arch a)
@@ -62,10 +59,10 @@ env get_vcvars_env(arch a)
 
 		case arch::dont_care:
 		default:
-			bail_out("get_vcvars_env: bad arch");
+			gcx().bail_out(context::generic, "get_vcvars_env: bad arch");
 	}
 
-	context::global()->log(context::trace, "looking for vcvars for " + arch_s);
+	gcx().trace(context::generic, "looking for vcvars for " + arch_s);
 
 	const fs::path tmp = paths::temp_file();
 
@@ -77,14 +74,14 @@ env get_vcvars_env(arch a)
 	process::raw(cmd)
 		.run();
 
-	context::global()->log(context::trace, "reading from " + tmp.string());
+	gcx().trace(context::generic, "reading from " + tmp.string());
 
-	std::stringstream ss(read_text_file(tmp));
-	op::delete_file(tmp);
+	std::stringstream ss(read_text_file(gcx(), tmp));
+	op::delete_file(gcx(), tmp);
 
 	env e;
 
-	context::global()->log(context::trace, "parsing variables");
+	gcx().trace(context::generic, "parsing variables");
 
 	for (;;)
 	{
@@ -101,7 +98,7 @@ env get_vcvars_env(arch a)
 		std::string name = line.substr(0, sep);
 		std::string value = line.substr(sep + 1);
 
-		context::global()->log(context::trace, name + " = " + value);
+		gcx().trace(context::generic, name + " = " + value);
 		e.set(std::move(name), std::move(value));
 	}
 

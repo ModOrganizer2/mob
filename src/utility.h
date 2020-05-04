@@ -76,7 +76,7 @@ private:
 class file_deleter
 {
 public:
-	file_deleter(fs::path p, const context* cx);
+	file_deleter(const context& cx, fs::path p);
 	file_deleter(const file_deleter&) = delete;
 	file_deleter& operator=(const file_deleter&) = delete;
 	~file_deleter();
@@ -85,7 +85,7 @@ public:
 	void cancel();
 
 private:
-	const context* cx_;
+	const context& cx_;
 	fs::path p_;
 	bool delete_;
 };
@@ -94,7 +94,7 @@ private:
 class directory_deleter
 {
 public:
-	directory_deleter(fs::path p, const context* cx);
+	directory_deleter(const context& cx, fs::path p);
 	directory_deleter(const directory_deleter&) = delete;
 	directory_deleter& operator=(const directory_deleter&) = delete;
 	~directory_deleter();
@@ -103,7 +103,7 @@ public:
 	void cancel();
 
 private:
-	const context* cx_;
+	const context& cx_;
 	fs::path p_;
 	bool delete_;
 };
@@ -112,7 +112,7 @@ private:
 class interruption_file
 {
 public:
-	interruption_file(fs::path dir, std::string name, const context* cx);
+	interruption_file(const context& cx, fs::path dir, std::string name);
 
 	fs::path file() const;
 	bool exists() const;
@@ -121,18 +121,42 @@ public:
 	void remove();
 
 private:
-	const context* cx_;
+	const context& cx_;
 	fs::path dir_;
 	std::string name_;
 };
 
 
-std::string read_text_file(const fs::path& p);
+class console_color
+{
+public:
+	enum colors
+	{
+		white,
+		grey,
+		yellow,
+		red
+	};
+
+	console_color();
+	console_color(colors c);
+	~console_color();
+
+private:
+	bool reset_;
+	WORD old_atts_;
+};
+
+
+
+std::string read_text_file(const context& cx, const fs::path& p);
 
 std::string replace_all(
 	std::string s, const std::string& from, const std::string& to);
 
 std::string join(const std::vector<std::string>& v, const std::string& sep);
+
+std::string pad(std::string s, std::size_t n);
 
 template <class F>
 void for_each_line(std::string_view s, F&& f)

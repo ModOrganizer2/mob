@@ -32,17 +32,17 @@ void sevenz::do_build_and_install()
 		.def("MY_STATIC_LINK=1")
 		.def("NO_BUFFEROVERFLOWU=1"));
 
-	//op::copy_file_to_dir_if_better(
-	//	module_to_build() / "x64/7z.dll",
-	//	paths::install_dlls());
+	op::copy_file_to_dir_if_better(cx_,
+		module_to_build() / "x64/7z.dll",
+		paths::install_dlls());
 }
 
 void sevenz::do_clean()
 {
 	const fs::path out_path = module_to_build() / "x64";
 
-	cx_.log(context::rebuild, "deleting " + out_path.string());
-	op::delete_directory(out_path, op::optional, &cx_);
+	cx_.debug(context::rebuild, "deleting " + out_path.string());
+	op::delete_directory(cx_, out_path, op::optional);
 }
 
 url sevenz::source_url()

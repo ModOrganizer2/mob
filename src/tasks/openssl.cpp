@@ -76,7 +76,7 @@ void openssl::install_engines()
 
 void openssl::copy_files()
 {
-	op::copy_file_to_dir_if_better(
+	op::copy_file_to_dir_if_better(cx_,
 		source_path() / "ms" / "applink.c",
 		include_path());
 
@@ -89,7 +89,7 @@ void openssl::copy_dlls_to(const fs::path& dir)
 {
 	for (auto&& name : output_names())
 	{
-		op::copy_file_to_dir_if_better(
+		op::copy_file_to_dir_if_better(cx_,
 			build_path() / "bin" / (name + ".dll"), dir);
 	}
 }
@@ -98,7 +98,7 @@ void openssl::copy_pdbs_to(const fs::path& dir)
 {
 	for (auto&& name : output_names())
 	{
-		op::copy_file_to_dir_if_better(
+		op::copy_file_to_dir_if_better(cx_,
 			build_path() / "bin" / (name + ".pdb"), dir);
 	}
 }

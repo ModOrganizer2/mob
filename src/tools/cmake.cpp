@@ -52,10 +52,10 @@ void cmake::do_run()
 	{
 		for (auto&& [k, g] : all_generators())
 		{
-			op::delete_directory(
+			op::delete_directory(*cx_,
 				root_ / g.output_dir(arch::x86), op::optional);
 
-			op::delete_directory(
+			op::delete_directory(*cx_,
 				root_ / g.output_dir(arch::x64), op::optional);
 		}
 	}

@@ -47,16 +47,17 @@ public:
 	enum arg_flags
 	{
 		noargflags = 0x00,
-		quiet   = 0x01,
-		nospace = 0x02,
-		quote   = 0x04
+		verbose = 0x01,
+		quiet   = 0x02,
+		nospace = 0x04,
+		quote   = 0x08
 	};
 
 	struct filter
 	{
 		const std::string_view line;
-		context::reasons r;
-		level lv;
+		context::reason r;
+		context::level lv;
 		bool ignore;
 	};
 
@@ -93,10 +94,10 @@ public:
 	process& cwd(const fs::path& p);
 	const fs::path& cwd() const;
 
-	process& stdout_level(level lv);
+	process& stdout_level(context::level lv);
 	process& stdout_filter(filter_fun f);
 
-	process& stderr_level(level lv);
+	process& stderr_level(context::level lv);
 	process& stderr_filter(filter_fun f);
 
 	process& flags(flags_t f);
@@ -159,9 +160,9 @@ private:
 	fs::path bin_;
 	fs::path cwd_;
 	flags_t flags_;
-	level stdout_level_;
+	context::level stdout_level_;
 	filter_fun stdout_filter_;
-	level stderr_level_;
+	context::level stderr_level_;
 	filter_fun stderr_filter_;
 	mob::env env_;
 	std::string raw_;

@@ -9,15 +9,15 @@
 namespace mob
 {
 
-std::string read_text_file(const fs::path& p)
+std::string read_text_file(const context& cx, const fs::path& p)
 {
-	context::global()->log(context::trace, "reading " + p.string());
+	cx.trace(context::fs, "reading " + p.string());
 
 	std::string s;
 
 	std::ifstream in(p);
 	if (!in)
-		context::global()->bail_out("can't read from " + p.string() + "'");
+		cx.bail_out(context::fs, "can't read from " + p.string() + "'");
 
 	in.seekg(0, std::ios::end);
 	s.resize(static_cast<std::size_t>(in.tellg()));
@@ -57,13 +57,19 @@ std::string join(const std::vector<std::string>& v, const std::string& sep)
 	return s;
 }
 
+std::string pad(std::string s, std::size_t n)
+{
+	if (s.size() < n)
+		s.append(n - s.size() , ' ');
 
-file_deleter::file_deleter(fs::path p, const context* cx)
+	return s;
+}
+
+
+file_deleter::file_deleter(const context& cx, fs::path p)
 	: cx_(cx), p_(std::move(p)), delete_(true)
 {
-	cx_->log(
-		context::op_trace,
-		"will delete " + p_.string() + " if things go wrong");
+	cx_.trace(context::fs, "will delete " + p_.string() + " if things go bad");
 }
 
 file_deleter::~file_deleter()
@@ -74,29 +80,21 @@ file_deleter::~file_deleter()
 
 void file_deleter::delete_now()
 {
-	cx_->log(
-		context::op,
-		"something went wrong, deleting " + p_.string());
-
-	op::delete_file(p_, op::optional);
+	cx_.debug(context::fs, "something went bad, deleting " + p_.string());
+	op::delete_file(cx_, p_, op::optional);
 }
 
 void file_deleter::cancel()
 {
-	cx_->log(
-		context::op,
-		"everything okay, keeping " + p_.string());
-
+	cx_.trace(context::fs, "everything okay, keeping " + p_.string());
 	delete_ = false;
 }
 
 
-directory_deleter::directory_deleter(fs::path p, const context* cx)
+directory_deleter::directory_deleter(const context& cx, fs::path p)
 	: cx_(cx), p_(std::move(p)), delete_(true)
 {
-	cx_->log(
-		context::op_trace,
-		"will delete " + p_.string() + " if things go wrong");
+	cx_.trace(context::fs, "will delete " + p_.string() + " if things go bad");
 }
 
 directory_deleter::~directory_deleter()
@@ -107,33 +105,23 @@ directory_deleter::~directory_deleter()
 
 void directory_deleter::delete_now()
 {
-	cx_->log(
-		context::op,
-		"something went wrong, deleting " + p_.string());
-
-	op::delete_directory(p_, op::optional);
+	cx_.debug(context::fs, "something went bad, deleting " + p_.string());
+	op::delete_directory(cx_, p_, op::optional);
 }
 
 void directory_deleter::cancel()
 {
-	cx_->log(
-		context::op,
-		"everything okay, keeping " + p_.string());
-
+	cx_.trace(context::fs, "everything okay, keeping " + p_.string());
 	delete_ = false;
 }
 
 
 interruption_file::interruption_file(
-	fs::path dir, std::string name, const context* cx)
+	const context& cx, fs::path dir, std::string name)
 		: cx_(cx), dir_(std::move(dir)), name_(std::move(name))
 {
 	if (fs::exists(file()))
-	{
-		cx_->log(
-			context::trace,
-			"found interrupt file " + file().string());
-	}
+		cx_.trace(context::generic, "found interrupt file " + file().string());
 }
 
 bool interruption_file::exists() const
@@ -148,14 +136,117 @@ fs::path interruption_file::file() const
 
 void interruption_file::create()
 {
-	cx_->log(context::trace, "creating interrupt file " + file().string());
-	op::touch(file(), cx_);
+	cx_.trace(context::generic, "creating interrupt file " + file().string());
+	op::touch(cx_, file());
 }
 
 void interruption_file::remove()
 {
-	cx_->log(context::trace, "removing interrupt file " + file().string());
-	op::delete_file(file(), op::noflags, cx_);
+	cx_.trace(context::generic, "removing interrupt file " + file().string());
+	op::delete_file(cx_, file());
+}
+
+
+enum class color_methods
+{
+	none = 0,
+	ansi,
+	console
+};
+
+static color_methods g_color_method = []
+{
+	DWORD d = 0;
+	if (GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &d))
+	{
+		if ((d & ENABLE_VIRTUAL_TERMINAL_PROCESSING) == 0)
+			return color_methods::console;
+		else
+			return color_methods::ansi;
+	}
+
+	return color_methods::none;
+}();
+
+console_color::console_color()
+	: reset_(false), old_atts_(0)
+{
+}
+
+console_color::console_color(colors c)
+	: reset_(false), old_atts_(0)
+{
+	if (g_color_method == color_methods::ansi)
+	{
+		switch (c)
+		{
+			case colors::white:
+				break;
+
+			case colors::grey:
+				reset_ = true;
+				std::cout << "\033[38;2;150;150;150m";
+				break;
+
+			case colors::yellow:
+				reset_ = true;
+				std::cout << "\033[38;2;240;240;50m";
+				break;
+
+			case colors::red:
+				reset_ = true;
+				std::cout << "\033[38;2;240;50;50m";
+				break;
+		}
+	}
+	else if (g_color_method == color_methods::console)
+	{
+		CONSOLE_SCREEN_BUFFER_INFO bi = {};
+		GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bi);
+		old_atts_ = bi.wAttributes;
+
+		WORD atts = 0;
+
+		switch (c)
+		{
+			case colors::white:
+				break;
+
+			case colors::grey:
+				reset_ = true;
+				atts = FOREGROUND_BLUE|FOREGROUND_GREEN|FOREGROUND_RED;
+				break;
+
+			case colors::yellow:
+				reset_ = true;
+				atts = FOREGROUND_GREEN|FOREGROUND_RED;
+				break;
+
+			case colors::red:
+				reset_ = true;
+				atts = FOREGROUND_RED;
+				break;
+		}
+
+		if (atts != 0)
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), atts);
+	}
+}
+
+console_color::~console_color()
+{
+	if (!reset_)
+		return;
+
+	if (g_color_method == color_methods::ansi)
+	{
+		std::cout << "\033[39m\033[49m";
+	}
+	else if (g_color_method == color_methods::console)
+	{
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), old_atts_);
+	}
 }
 
 }	// namespace
+

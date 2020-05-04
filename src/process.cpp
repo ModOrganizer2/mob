@@ -202,12 +202,11 @@ process::impl& process::impl::operator=(const impl& i)
 
 
 process::process(const context* cx) :
-	cx_(cx), flags_(process::noflags),
-	stdout_level_(level::trace), stderr_level_(level::error),
+	cx_(cx ? cx : &gcx()), flags_(process::noflags),
+	stdout_level_(context::level::trace),
+	stderr_level_(context::level::error),
 	code_(0)
 {
-	if (!cx_)
-		cx_ = context::global();
 }
 
 process::~process()
@@ -267,7 +266,7 @@ const fs::path& process::cwd() const
 	return cwd_;
 }
 
-process& process::stdout_level(level lv)
+process& process::stdout_level(context::level lv)
 {
 	stdout_level_ = lv;
 	return *this;
@@ -279,7 +278,7 @@ process& process::stdout_filter(filter_fun f)
 	return *this;
 }
 
-process& process::stderr_level(level lv)
+process& process::stderr_level(context::level lv)
 {
 	stderr_level_ = lv;
 	return *this;
@@ -332,10 +331,10 @@ void process::pipe_into(const process& p)
 void process::run()
 {
 	if (!cwd_.empty())
-		cx_->log(context::cmd, "cd " + cwd_.string());
+		cx_->debug(context::cmd, "> cd " + cwd_.string());
 
 	const auto what = make_cmd();
-	cx_->log(context::cmd, what);
+	cx_->debug(context::cmd, "> " + what);
 
 	if (conf::dry())
 		return;
@@ -364,12 +363,12 @@ void process::do_run(const std::string& what)
 
 	if (!cwd_.empty())
 	{
-		op::create_directories(cwd_, cx_);
+		op::create_directories(*cx_, cwd_);
 		cwd_s = cwd_.string();
 		cwd_p = (cwd_s.empty() ? nullptr : cwd_s.c_str());
 	}
 
-	cx_->log(context::cmd_trace, "creating process");
+	cx_->trace(context::cmd, "creating process");
 
 	const auto r = ::CreateProcessA(
 		cmd.c_str(), const_cast<char*>(args.c_str()),
@@ -379,10 +378,10 @@ void process::do_run(const std::string& what)
 	if (!r)
 	{
 		const auto e = GetLastError();
-		cx_->bail_out("failed to start '" + cmd + "'", e);
+		cx_->bail_out(context::cmd, "failed to start '" + cmd + "'", e);
 	}
 
-	cx_->log(context::cmd_trace, "pid " + std::to_string(pi.dwProcessId));
+	cx_->trace(context::cmd, "pid " + std::to_string(pi.dwProcessId));
 
 	::CloseHandle(pi.hThread);
 	impl_.handle.reset(pi.hProcess);
@@ -391,7 +390,7 @@ void process::do_run(const std::string& what)
 void process::interrupt()
 {
 	impl_.interrupt = true;
-	cx_->log(context::cmd_trace, "will interrupt");
+	cx_->trace(context::cmd, "will interrupt");
 }
 
 void process::join()
@@ -401,7 +400,7 @@ void process::join()
 
 	bool interrupted = false;
 
-	cx_->log(context::cmd_trace, "joining");
+	cx_->trace(context::cmd, "joining");
 
 	for (;;)
 	{
@@ -414,8 +413,7 @@ void process::join()
 
 			GetExitCodeProcess(impl_.handle.get(), &code_);
 
-			cx_->log(
-				context::cmd_trace,
+			cx_->debug(context::cmd,
 				"process completed, exit code " + std::to_string(code_));
 
 			if (impl_.interrupt)
@@ -425,15 +423,14 @@ void process::join()
 			{
 				if (flags_ & allow_failure)
 				{
-					cx_->log(
-						context::cmd_trace,
+					cx_->debug(context::cmd,
 						"process failed but failure was allowed");
 				}
 				else
 				{
 					impl_.handle = {};
 
-					cx_->bail_out(
+					cx_->bail_out(context::cmd,
 						make_name() + " returned " + std::to_string(code_));
 				}
 			}
@@ -449,8 +446,7 @@ void process::join()
 			{
 				if (flags_ & terminate_on_interrupt)
 				{
-					cx_->log(
-						context::cmd_trace,
+					cx_->trace(context::cmd,
 						"terminating process (flag is set)");
 
 					::TerminateProcess(impl_.handle.get(), 0xffff);
@@ -463,8 +459,7 @@ void process::join()
 
 					if (pid == 0)
 					{
-						cx_->log(
-							context::error,
+						cx_->error(context::cmd,
 							"process id is 0, terminating instead");
 
 						::TerminateProcess(impl_.handle.get(), 0xffff);
@@ -473,8 +468,7 @@ void process::join()
 					}
 					else
 					{
-						cx_->log(
-							context::cmd_trace,
+						cx_->error(context::cmd,
 							"sending sigint to " + std::to_string(pid));
 
 						GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
@@ -489,11 +483,11 @@ void process::join()
 
 		const auto e = GetLastError();
 		impl_.handle = {};
-		cx_->bail_out("failed to wait on process", e);
+		cx_->bail_out(context::cmd, "failed to wait on process", e);
 	}
 
 	if (interrupted)
-		cx_->log(context::cmd_trace, "process interrupted and finished");
+		cx_->trace(context::cmd, "process interrupted and finished");
 
 	impl_.handle = {};
 }
@@ -528,7 +522,7 @@ void process::read_pipes()
 		}
 
 		cx_->log(f.r, f.lv, f.line);
-		});
+	});
 }
 
 int process::exit_code() const
@@ -538,7 +532,10 @@ int process::exit_code() const
 
 void process::add_arg(const std::string& k, const std::string& v, arg_flags f)
 {
-	if ((f & quiet) && conf::verbose())
+	if ((f & verbose) && !conf::log_trace())
+		return;
+
+	if ((f & quiet) && conf::log_trace())
 		return;
 
 	if (k.empty() && v.empty())

@@ -7,9 +7,12 @@ struct conf
 {
 	static void set(int argc, char** argv);
 
-	static bool more_trace();
-	static bool trace();
-	static bool verbose();
+	static bool log_dump();
+	static bool log_trace();
+	static bool log_debug();
+	static bool log_info();
+	static bool log_warning();
+	static bool log_error();
 
 	static bool dry();
 	static bool redownload();

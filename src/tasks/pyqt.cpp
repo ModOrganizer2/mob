@@ -69,7 +69,7 @@ void pyqt::do_build_and_install()
 		// sip-install.exe has trouble with deleting the build/ directory and
 		// trying to recreate it to fast, giving an access denied error; do it
 		// here instead
-		op::delete_directory(source_path() / "build", op::optional);
+		op::delete_directory(cx_, source_path() / "build", op::optional);
 
 		run_tool(process_runner(process()
 			.binary(sip::sip_install_exe())
@@ -84,7 +84,7 @@ void pyqt::do_build_and_install()
 			.cwd(source_path())
 			.env(pyqt_env)));
 
-		op::touch(source_path() / "_mob_built");
+		op::touch(cx_, source_path() / "_mob_built");
 	}
 
 	run_tool(process_runner(process()
@@ -103,34 +103,34 @@ void pyqt::do_build_and_install()
 		run_tool(pip_install()
 			.file(paths::cache() / sip_install_file()));
 
-		op::touch(source_path() / "_mob_installed");
+		op::touch(cx_, source_path() / "_mob_installed");
 	}
 
 
 	const fs::path site_packages_pyqt = python::site_packages_path() / "PyQt5";
 	const fs::path pyqt_plugin = paths::install_plugins() / "data" / "PyQt5";
 
-	op::copy_file_to_dir_if_better(
+	op::copy_file_to_dir_if_better(cx_,
 		site_packages_pyqt / "__init__.py",
 		pyqt_plugin);
 
-	op::copy_file_to_dir_if_better(
+	op::copy_file_to_dir_if_better(cx_,
 		site_packages_pyqt / "sip*",
 		pyqt_plugin);
 
 	for (auto&& m : modules)
 	{
-		op::copy_file_to_dir_if_better(
+		op::copy_file_to_dir_if_better(cx_,
 			site_packages_pyqt / (m + ".pyd"),
 			pyqt_plugin);
 
-		op::copy_file_to_dir_if_better(
+		op::copy_file_to_dir_if_better(cx_,
 			site_packages_pyqt / (m + ".pyi"),
 			pyqt_plugin,
 			op::optional);
 	}
 
-	op::copy_file_to_dir_if_better(
+	op::copy_file_to_dir_if_better(cx_,
 		sip::module_source_path() / "sip.pyi",
 		pyqt_plugin);
 

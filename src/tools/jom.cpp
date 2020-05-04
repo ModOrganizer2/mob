@@ -58,7 +58,7 @@ void jom::do_run()
 		.stderr_filter([](auto&& f)
 		{
 			if (f.line.find("empower your cores") != std::string::npos)
-				f.lv = level::trace;
+				f.lv = context::level::trace;
 		})
 		.arg("/C", process::quiet)
 		.arg("/S", process::quiet)

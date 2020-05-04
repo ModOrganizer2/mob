@@ -36,7 +36,7 @@ public:
 	bool ok() const;
 
 private:
-	const context* cx_;
+	const context& cx_;
 	url url_;
 	fs::path path_;
 	file_ptr file_;

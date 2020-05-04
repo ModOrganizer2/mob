@@ -6,37 +6,43 @@
 namespace mob
 {
 
-fs::path find_root()
+fs::path find_root_impl()
 {
-	debug("looking for root directory");
+	gcx().trace(context::generic, "looking for root directory");
 
 	fs::path p = fs::absolute("third-party");
-	debug("checking " + p.string());
+	gcx().trace(context::generic, "checking " + p.string());
 
-	if (!fs::exists(p))
-	{
-		p = fs::absolute("../third-party");
-		debug("checking " + p.string());
+	if (fs::exists(p))
+		return p;
 
-		if (!fs::exists(p))
-		{
-			p = fs::absolute("../../third-party");
-			debug("checking " + p.string());
+	p = fs::absolute("../third-party");
+	gcx().trace(context::generic, "checking " + p.string());
 
-			if (!fs::exists(p))
-			{
-				p = fs::absolute("../../../third-party");
-				debug("checking " + p.string());
+	if (fs::exists(p))
+		return p;
 
-				if (!fs::exists(p))
-					bail_out("root directory not found");
-			}
-		}
-	}
+	p = fs::absolute("../../third-party");
+	gcx().trace(context::generic, "checking " + p.string());
 
-	p = p.parent_path();
+	if (fs::exists(p))
+		return p;
 
-	debug("found root directory at " + p.string());
+	p = fs::absolute("../../../third-party");
+	gcx().trace(context::generic, "checking " + p.string());
+
+	if (fs::exists(p))
+		return p;
+
+	gcx().bail_out(context::generic, "root directory not found");
+}
+
+fs::path find_root()
+{
+	const auto p = find_root_impl().parent_path();
+
+	gcx().trace(context::generic, "found root directory at " + p.string());
+
 	return p;
 }
 
@@ -46,9 +52,9 @@ fs::path find_in_root(const fs::path& file)
 
 	fs::path p = root / file;
 	if (!fs::exists(p))
-		bail_out(p.string() + " not found");
+		gcx().bail_out(context::generic, p.string() + " not found");
 
-	context::global()->log(context::trace, "found " + p.string());
+	gcx().trace(context::generic, "found " + p.string());
 	return p;
 }
 
@@ -97,20 +103,23 @@ const std::string& get_conf(const std::string& name)
 {
 	auto itor = g_conf.find(name);
 	if (itor == g_conf.end())
-		bail_out("conf '" + name + "' doesn't exist");
+		gcx().bail_out(context::generic, "conf '" + name + "' doesn't exist");
 
 	return itor->second;
 }
 
 bool g_dry = false;
-int g_log = 0;
+int g_log = 5;
 bool g_redownload = false;
 bool g_reextract = false;
 bool g_rebuild = false;
 
-bool conf::more_trace()       { return g_log > 2; }
-bool conf::trace()            { return g_log > 1; }
-bool conf::verbose()          { return g_log > 0; }
+bool conf::log_dump()         { return g_log > 5; }
+bool conf::log_trace() 		  { return g_log > 4; }
+bool conf::log_debug() 		  { return g_log > 3; }
+bool conf::log_info() 		  { return g_log > 2; }
+bool conf::log_warning()      { return g_log > 1; }
+bool conf::log_error()        { return g_log > 0; }
 
 bool conf::dry()              { return g_dry; }
 bool conf::redownload()       { return g_redownload; }
@@ -122,18 +131,12 @@ std::string conf::mo_branch() { return "master"; }
 
 void conf::set(int argc, char** argv)
 {
-	for (int i=0; i<argc; ++i)
+	for (int i=1; i<argc; ++i)
 	{
 		const std::string a = argv[i];
 
 		if (a == "--dry")
 			g_dry = true;
-		else if (a == "--verbose")
-			g_log = 1;
-		else if (a == "--trace")
-			g_log = 2;
-		else if (a == "--more-trace")
-			g_log = 3;
 		else if (a == "--redownload")
 			g_redownload = true;
 		else if (a == "--reextract")
@@ -147,7 +150,7 @@ void conf::set(int argc, char** argv)
 			g_rebuild = true;
 		}
 		else if (a.starts_with("--"))
-			bail_out("unknown option " + a);
+			gcx().bail_out(context::generic, "unknown option " + a);
 	}
 }
 
@@ -284,8 +287,12 @@ fs::path paths::qt()
 		if (!p.empty())
 		{
 			p = fs::absolute(p);
+
 			if (!find_qt(p))
-				bail_out("no qt install in " + p.string());
+			{
+				gcx().bail_out(context::generic,
+					"no qt install in " + p.string());
+			}
 
 			return p;
 		}
@@ -315,7 +322,7 @@ fs::path paths::qt()
 				return loc;
 		}
 
-		bail_out("can't find qt install");
+		gcx().bail_out(context::generic, "can't find qt install");
 	}();
 
 	return path;
@@ -353,15 +360,14 @@ fs::path paths::program_files_x86()
 
 			p = fs::path(R"(C:\Program Files (x86))");
 
-			context::global()->log(
-				context::warning,
+			gcx().warning(context::generic,
 				"failed to get x86 program files folder, defaulting to " +
 				p.string(), e);
 		}
 		else
 		{
-			context::global()->log(
-				context::trace, "x86 program files is " + p.string());
+			gcx().trace(context::generic,
+				"x86 program files is " + p.string());
 		}
 
 		return p;
@@ -382,15 +388,14 @@ fs::path paths::program_files_x64()
 
 			p = fs::path(R"(C:\Program Files)");
 
-			context::global()->log(
-				context::warning,
+			gcx().warning(context::generic,
 				"failed to get x64 program files folder, defaulting to " +
 				p.string(), e);
 		}
 		else
 		{
-			context::global()->log(
-				context::trace, "x64 program files is " + p.string());
+			gcx().trace(context::generic,
+				"x64 program files is " + p.string());
 		}
 
 		return p;
@@ -409,11 +414,11 @@ fs::path paths::temp_dir()
 		if (GetTempPathW(static_cast<DWORD>(buffer_size), buffer) == 0)
 		{
 			const auto e = GetLastError();
-			context::global()->bail_out("can't get temp path", e);
+			gcx().bail_out(context::generic, "can't get temp path", e);
 		}
 
 		fs::path p(buffer);
-		context::global()->log(context::trace, "temp dir is " + p.string());
+		gcx().trace(context::generic, "temp dir is " + p.string());
 		return p;
 	}();
 
@@ -429,7 +434,7 @@ fs::path paths::temp_file()
 	{
 		const auto e = GetLastError();
 
-		context::global()->bail_out(
+		gcx().bail_out(context::generic,
 			"can't create temp file in " + dir.string(), e);
 	}
 

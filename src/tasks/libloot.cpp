@@ -25,7 +25,7 @@ void libloot::do_fetch()
 
 void libloot::do_build_and_install()
 {
-	op::copy_file_to_dir_if_better(
+	op::copy_file_to_dir_if_better(cx_,
 		source_path() / "loot.dll",
 		paths::install_loot());
 }

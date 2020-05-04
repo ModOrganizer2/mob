@@ -32,8 +32,7 @@ void patcher::do_run()
 {
 	if (!fs::exists(patches_))
 	{
-		cx_->log(
-			context::trace,
+		cx_->trace(context::generic,
 			"patch directory " + patches_.string() + " doesn't exist, "
 			"assuming no patches");
 
@@ -42,16 +41,14 @@ void patcher::do_run()
 
 	if (file_.empty())
 	{
-		cx_->log(
-			context::trace,
+		cx_->trace(context::generic,
 			"looking for patches in " + patches_.string());
 
 		for (auto e : fs::directory_iterator(patches_))
 		{
 			if (!e.is_regular_file())
 			{
-				cx_->log(
-					context::trace,
+				cx_->trace(context::generic,
 					"skipping " + e.path().string() + ", not a file");
 
 				continue;
@@ -61,15 +58,14 @@ void patcher::do_run()
 
 			if (p.extension() == ".manual_patch")
 			{
-				cx_->log(
-					context::trace,
+				cx_->trace(context::generic,
 					"skipping manual patch " + e.path().string());
+
 				continue;
 			}
 			else if (p.extension() != ".patch")
 			{
-				cx_->log(
-					context::warning,
+				cx_->warning(context::generic,
 					"file with unknown extension " + p.string());
 
 				continue;
@@ -80,7 +76,9 @@ void patcher::do_run()
 	}
 	else
 	{
-		cx_->log(context::trace, "doing manual patch from " + file_.string());
+		cx_->trace(context::generic,
+			"doing manual patch from " + file_.string());
+
 		do_patch(patches_ / file_);
 	}
 }
@@ -106,38 +104,41 @@ void patcher::do_patch(const fs::path& patch_file)
 		.arg("--batch")
 		.arg("--input", patch_file);
 
-	cx_->log(context::trace, "trying to patch using " + patch_file.string());
+	cx_->trace(context::generic,
+		"trying to patch using " + patch_file.string());
 
 	{
 		// check
 
-		cx_->log(context::trace, "checking if already patched");
+		cx_->trace(context::generic,
+			"checking if already patched");
 
 		process_ = check;
 		const auto ret = execute_and_join();
 
 		if (ret == 0)
 		{
-			cx_->log(
-				context::trace,
+			cx_->trace(context::generic,
 				"patch " + patch_file.string() + " already applied");
 
 			return;
 		}
 		else if (ret == 1)
 		{
-			cx_->log(context::trace, "looks like the patch is needed");
+			cx_->trace(context::generic,
+				"looks like the patch is needed");
 		}
 		else
 		{
-			cx_->bail_out("patch returned " + std::to_string(ret));
+			cx_->bail_out(context::generic,
+				"patch returned " + std::to_string(ret));
 		}
 	}
 
 	{
 		// apply
 
-		cx_->log(context::trace, "applying patch " + patch_file.string());
+		cx_->trace(context::generic, "applying patch " + patch_file.string());
 		process_ = apply;
 		execute_and_join();
 	}

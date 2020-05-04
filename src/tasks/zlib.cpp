@@ -34,7 +34,7 @@ void zlib::do_build_and_install()
 		.path(build_path)
 		.target("install"));
 
-	op::copy_file_to_dir_if_better(
+	op::copy_file_to_dir_if_better(cx_,
 		build_path / "zconf.h",
 		source_path());
 }

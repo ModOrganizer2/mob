@@ -30,11 +30,11 @@ void lz4::do_build_and_install()
 		.solution(solution_file())
 		.projects({"liblz4-dll"}));
 
-	op::copy_file_to_dir_if_better(
+	op::copy_file_to_dir_if_better(cx_,
 		bin_dir() / "liblz4.dll",
 		paths::install_dlls());
 
-	op::copy_file_to_dir_if_better(
+	op::copy_file_to_dir_if_better(cx_,
 		bin_dir() / "liblz4.pdb",
 		paths::install_pdbs());
 }

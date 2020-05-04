@@ -41,8 +41,9 @@ void boost::fetch_prebuilt()
 
 void boost::build_and_install_prebuilt()
 {
-	op::copy_file_to_dir_if_better(
-		lib_path(arch::x64) / "lib" / python_dll(), paths::install_bin());
+	op::copy_file_to_dir_if_better(cx_,
+		lib_path(arch::x64) / "lib" / python_dll(),
+		paths::install_bin());
 }
 
 void boost::fetch_from_source()
@@ -83,7 +84,7 @@ void boost::build_and_install_from_source()
 		{"python"},
 		"shared", "shared", arch::x64);
 
-	op::copy_file_to_dir_if_better(
+	op::copy_file_to_dir_if_better(cx_,
 		lib_path(arch::x64) / "lib" / python_dll(),
 		paths::install_bin());
 }
