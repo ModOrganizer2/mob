@@ -19,7 +19,7 @@ void check(const context& cx, const fs::path& p);
 
 void touch(const context& cx, const fs::path& p)
 {
-	cx.debug(context::fs, "touching " + p.string());
+	cx.trace(context::fs, "touching " + p.string());
 	check(cx, p);
 
 	if (!conf::dry())
@@ -28,7 +28,7 @@ void touch(const context& cx, const fs::path& p)
 
 void create_directories(const context& cx, const fs::path& p)
 {
-	cx.debug(context::fs, "creating dir " + p.string());
+	cx.trace(context::fs, "creating dir " + p.string());
 	check(cx, p);
 
 	if (!conf::dry())
@@ -37,7 +37,7 @@ void create_directories(const context& cx, const fs::path& p)
 
 void delete_directory(const context& cx, const fs::path& p, flags f)
 {
-	cx.debug(context::fs, "deleting dir " + p.string());
+	cx.trace(context::fs, "deleting dir " + p.string());
 	check(cx, p);
 
 	if (!fs::exists(p))
@@ -63,7 +63,7 @@ void delete_directory(const context& cx, const fs::path& p, flags f)
 
 void delete_file(const context& cx, const fs::path& p, flags f)
 {
-	cx.debug(context::fs, "deleting file " + p.string());
+	cx.trace(context::fs, "deleting file " + p.string());
 	check(cx, p);
 
 	if (!fs::exists(p))
@@ -92,7 +92,7 @@ void delete_file(const context& cx, const fs::path& p, flags f)
 
 void remove_readonly(const context& cx, const fs::path& first)
 {
-	cx.debug(context::fs, "removing read-only from " + first.string());
+	cx.trace(context::fs, "removing read-only from " + first.string());
 	check(cx, first);
 
 	if (!conf::dry())
@@ -194,7 +194,7 @@ void rename(const context& cx, const fs::path& src, const fs::path& dest)
 			"already exists");
 	}
 
-	cx.debug(context::fs, "renaming " + src.string() + " to " + dest.string());
+	cx.trace(context::fs, "renaming " + src.string() + " to " + dest.string());
 	do_rename(cx, src, dest);
 }
 
@@ -213,7 +213,7 @@ void move_to_directory(
 			src.filename().string() + " already exists");
 	}
 
-	cx.debug(context::fs, "moving " + src.string() + " to " + target.string());
+	cx.trace(context::fs, "moving " + src.string() + " to " + target.string());
 	do_rename(cx, src, target);
 }
 
@@ -252,7 +252,7 @@ void copy_file_to_dir_if_better(
 		const auto target = dir / file.filename();
 		if (is_source_better(cx, file, target))
 		{
-			cx.debug(context::fs, file.string() + " -> " + dir.string());
+			cx.trace(context::fs, file.string() + " -> " + dir.string());
 
 			if (!conf::dry())
 				do_copy_file_to_dir(cx, file, dir);
@@ -310,7 +310,7 @@ void do_delete_directory(const context& cx, const fs::path& p)
 	{
 		if (ec.value() == ERROR_ACCESS_DENIED)
 		{
-			cx.debug(
+			cx.trace(
 				context::fs,
 				"got access denied trying to delete dir " + p.string() + ", "
 				"trying to remove read-only flag recursively");

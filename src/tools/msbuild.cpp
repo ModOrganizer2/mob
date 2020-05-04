@@ -87,8 +87,8 @@ void msbuild::do_run()
 		.arg("-property:PlatformToolset=" + toolset)
 		.arg("-property:WindowsTargetPlatformVersion=" + versions::sdk())
 		.arg("-property:Platform=", plat, process::quote)
-		.arg("-verbosity:minimal", process::quiet)
-		.arg("-consoleLoggerParameters:ErrorsOnly", process::quiet);
+		.arg("-verbosity:minimal", process::log_quiet)
+		.arg("-consoleLoggerParameters:ErrorsOnly", process::log_quiet);
 
 	if (!projects_.empty())
 		process_.arg("-target:" + mob::join(projects_, ","));

@@ -47,10 +47,12 @@ public:
 	enum arg_flags
 	{
 		noargflags = 0x00,
-		verbose = 0x01,
-		quiet   = 0x02,
-		nospace = 0x04,
-		quote   = 0x08
+		log_debug  = 0x01,
+		log_trace  = 0x02,
+		log_dump   = 0x04,
+		log_quiet  = 0x08,
+		nospace    = 0x10,
+		quote      = 0x20
 	};
 
 	struct filter

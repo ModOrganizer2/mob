@@ -66,8 +66,8 @@ void cmake::do_run()
 	process_
 		.arg("-G", "\"" + g.name + "\"")
 		.arg("-DCMAKE_BUILD_TYPE=Release")
-		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", process::quiet)
-		.arg("--log-level", "WARNING", process::quiet)
+		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", process::log_quiet)
+		.arg("--log-level", "WARNING", process::log_quiet)
 		.arg(g.get_arch(arch_));
 
 	if (!prefix_.empty())

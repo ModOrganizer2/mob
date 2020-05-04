@@ -69,7 +69,7 @@ void downloader::do_run()
 	{
 		const fs::path file = path_for_url(u);
 
-		cx_->debug(context::net,
+		cx_->trace(context::net,
 			"trying " + u.string() + " into " + file.string());
 
 		dl_->start(u, file);

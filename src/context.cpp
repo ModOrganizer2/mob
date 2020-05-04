@@ -233,7 +233,7 @@ std::string context::make_log_string(reason r, level, std::string_view s) const
 			if (s.empty())
 				oss << "interrupted";
 			else
-				oss << s << " (interrupted)";
+				oss << s;
 
 			break;
 

@@ -60,8 +60,12 @@ void jom::do_run()
 			if (f.line.find("empower your cores") != std::string::npos)
 				f.lv = context::level::trace;
 		})
-		.arg("/C", process::quiet)
-		.arg("/S", process::quiet)
+		.arg("/C", process::log_quiet)
+		.arg("/S", process::log_quiet)
+		.arg("/L", process::log_quiet)
+		.arg("/D", process::log_dump)
+		.arg("/P", process::log_dump)
+		.arg("/W", process::log_dump)
 		.arg("/K");
 
 	if (flags_ & single_job)

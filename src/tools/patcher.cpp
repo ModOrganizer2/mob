@@ -90,7 +90,7 @@ void patcher::do_patch(const fs::path& patch_file)
 		.arg("--read-only", "ignore")
 		.arg("--strip", "0")
 		.arg("--directory", output_)
-		.arg("--quiet", process::quiet);
+		.arg("--quiet", process::log_quiet);
 
 	const auto check = process(base)
 		.flags(process::allow_failure)

@@ -413,7 +413,7 @@ void process::join()
 
 			GetExitCodeProcess(impl_.handle.get(), &code_);
 
-			cx_->debug(context::cmd,
+			cx_->trace(context::cmd,
 				"process completed, exit code " + std::to_string(code_));
 
 			if (impl_.interrupt)
@@ -423,7 +423,7 @@ void process::join()
 			{
 				if (flags_ & allow_failure)
 				{
-					cx_->debug(context::cmd,
+					cx_->trace(context::cmd,
 						"process failed but failure was allowed");
 				}
 				else
@@ -532,10 +532,16 @@ int process::exit_code() const
 
 void process::add_arg(const std::string& k, const std::string& v, arg_flags f)
 {
-	if ((f & verbose) && !conf::log_trace())
+	if ((f & log_debug) && !conf::log_debug())
 		return;
 
-	if ((f & quiet) && conf::log_trace())
+	if ((f & log_trace) && !conf::log_trace())
+		return;
+
+	if ((f & log_dump) && !conf::log_dump())
+		return;
+
+	if ((f & log_quiet) && conf::log_trace())
 		return;
 
 	if (k.empty() && v.empty())
