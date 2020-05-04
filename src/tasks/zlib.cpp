@@ -14,6 +14,11 @@ fs::path zlib::source_path()
 	return paths::build() / ("zlib-" + versions::zlib());
 }
 
+void zlib::do_clean_for_rebuild()
+{
+	cmake::clean(cx(), source_path());
+}
+
 void zlib::do_fetch()
 {
 	const auto file = run_tool(downloader(source_url()));

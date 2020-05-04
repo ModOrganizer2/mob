@@ -14,6 +14,13 @@ fs::path usvfs::source_path()
 	return paths::build() / "usvfs";
 }
 
+void usvfs::do_clean_for_rebuild()
+{
+	op::delete_directory(cx(), source_path() / "bin", op::optional);
+	op::delete_directory(cx(), source_path() / "lib", op::optional);
+	op::delete_directory(cx(), source_path() / "vsbuild" / "Release", op::optional);
+}
+
 void usvfs::do_fetch()
 {
 	run_tool(git_clone()
@@ -31,10 +38,12 @@ void usvfs::do_build_and_install()
 
 	run_tool(msbuild()
 		.platform("x64")
+		.projects({"usvfs_proxy"})
 		.solution(source_path() / "vsbuild" / "usvfs.sln"));
 
 	run_tool(msbuild()
 		.platform("x86")
+		.projects({"usvfs_proxy"})
 		.solution(source_path() / "vsbuild" / "usvfs.sln"));
 }
 
