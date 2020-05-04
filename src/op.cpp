@@ -283,6 +283,72 @@ void copy_file_to_dir_if_better(
 	}
 }
 
+std::string read_text_file(const context& cx, const fs::path& p, flags f)
+{
+	cx.trace(context::fs, "reading " + p.string());
+
+	std::string s;
+	std::ifstream in(p);
+
+	in.seekg(0, std::ios::end);
+	s.resize(static_cast<std::size_t>(in.tellg()));
+	in.seekg(0, std::ios::beg);
+	in.read(&s[0], static_cast<std::streamsize>(s.size()));
+
+	if (in.bad())
+	{
+		if (f & optional)
+		{
+			cx.debug(context::fs,
+				"can't read from " + p.string() + " (optional)");
+		}
+		else
+		{
+			cx.bail_out(context::fs, "can't read from " + p.string());
+		}
+	}
+	else
+	{
+		cx.trace(context::fs,
+			"finished reading " + p.string() + ", " +
+			std::to_string(s.size()) + " bytes");
+	}
+
+	return s;
+}
+
+void write_text_file(
+	const context& cx, const fs::path& p, std::string_view s, flags f)
+{
+	check(cx, p);
+
+	cx.trace(context::fs, "writing " + p.string());
+
+	{
+		std::ofstream out(p);
+		out << s;
+		out.close();
+
+		if (out.bad())
+		{
+			if (f & optional)
+			{
+				cx.debug(context::fs,
+					"can't write to " + p.string() + " (optional)");
+			}
+			else
+			{
+				cx.bail_out(context::fs, "can't write to " + p.string());
+			}
+		}
+	}
+
+	cx.trace(context::fs,
+		"finished writing " + p.string() + ", " +
+		std::to_string(s.size()) + " bytes");
+}
+
+
 void do_touch(const context& cx, const fs::path& p)
 {
 	op::create_directories(cx, p.parent_path());

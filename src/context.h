@@ -41,9 +41,6 @@ public:
 
 		// a network action
 		net,
-
-		// unrecoverable error, used by bail_out
-		bailing
 	};
 
 	enum class level

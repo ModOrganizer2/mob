@@ -45,12 +45,11 @@ std::string reason_string(context::reason r)
 		case context::reextract:     return "re-ex";
 		case context::interrupted:   return "int";
 		case context::cmd:			 return "cmd";
-		case context::std_out:		 return "sout";
-		case context::std_err:		 return "serr";
+		case context::std_out:		 return "stdout";
+		case context::std_err:		 return "stderr";
 		case context::fs:            return "fs";
 		case context::net:           return "net";
 		case context::generic:       return "";
-		case context::bailing:       return "bail";
 		default:                     return "?";
 	}
 }
@@ -173,10 +172,9 @@ void context::log(reason r, level lv, std::string_view s, const std::error_code&
 void context::bail_out(reason r, std::string_view s) const
 {
 	const auto ls = make_log_string(r, level::error, s);
-	do_log(level::error, ls);
+	do_log(level::error, ls + " (bailing out)");
 
-	if (r == bailing)
-		throw bailed(ls);
+	throw bailed(ls);
 }
 
 void context::bail_out(reason r, std::string_view s, DWORD e) const
@@ -191,13 +189,11 @@ void context::bail_out(reason r, std::string_view s, const std::error_code& ec) 
 
 void context::do_log(level lv, const std::string& s) const
 {
-	const auto ts = timestamp();
-
 	{
 		std::scoped_lock lock(g_mutex);
 		auto c = level_color(lv);
 
-		std::cout << timestamp() << " " << s << "\n";
+		std::cout << s << "\n";
 
 		if (lv == level::error)
 			g_errors.push_back(s);
@@ -243,14 +239,13 @@ std::string context::make_log_string(reason r, level, std::string_view s) const
 		case context::std_err:
 		case context::fs:
 		case context::net:
-		case context::bailing:
 		case context::generic:
 		default:
 			oss << s;
 			break;
 	}
 
-	return oss.str();
+	return std::string(timestamp()) + " " + oss.str();
 }
 
 void dump_logs()
@@ -261,7 +256,7 @@ void dump_logs()
 		std::cout << "\n\nthere were warnings:\n";
 
 		for (auto&& s : g_warnings)
-			std::cout << " - " << s << "\n";
+			std::cout << s << "\n";
 	}
 
 	if (!g_errors.empty())
@@ -270,7 +265,7 @@ void dump_logs()
 		std::cout << "\n\nthere were errors:\n";
 
 		for (auto&& s : g_errors)
-			std::cout << " - " << s << "\n";
+			std::cout << s << "\n";
 	}
 }
 

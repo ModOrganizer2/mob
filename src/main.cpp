@@ -103,6 +103,10 @@ int run(int argc, char** argv)
 int main(int argc, char** argv)
 {
 	int r = mob::run(argc, argv);
+
+	mob::gcx().debug(mob::context::generic,
+		"mob finished with exit code " + std::to_string(r));
+
 	mob::dump_logs();
 	//std::cin.get();
 	return r;

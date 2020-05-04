@@ -30,6 +30,10 @@ void boost::do_build_and_install()
 		build_and_install_from_source();
 }
 
+void boost::do_clean()
+{
+}
+
 void boost::fetch_prebuilt()
 {
 	const auto file = run_tool(downloader(prebuilt_url()));
@@ -53,25 +57,32 @@ void boost::fetch_from_source()
 	run_tool(extractor()
 		.file(file)
 		.output(source_path()));
+}
 
-	if (fs::exists(source_path() / "b2.exe"))
-	{
-		debug("boost already bootstraped");
-	}
-	else
-	{
-		write_config_jam();
+void boost::bootstrap()
+{
+	write_config_jam();
 
-		const auto bootstrap = source_path() / "bootstrap.bat";
+	const auto bootstrap = source_path() / "bootstrap.bat";
 
-		run_tool(process_runner(process()
-			.binary(bootstrap)
-			.cwd(source_path())));
-	}
+	run_tool(process_runner(process()
+		.binary(bootstrap)
+		.external_error_log(source_path() / "bootstrap.log")
+		.cwd(source_path())));
 }
 
 void boost::build_and_install_from_source()
 {
+	if (fs::exists(b2_exe()))
+	{
+		cx_.trace(context::bypass,
+			b2_exe().string() + " exists, boost already bootstrapped");
+	}
+	else
+	{
+		bootstrap();
+	}
+
 	do_b2(
 		{"thread", "date_time", "filesystem", "locale"},
 		"static", "static", arch::x64);
@@ -89,23 +100,12 @@ void boost::build_and_install_from_source()
 		paths::install_bin());
 }
 
-template <class F>
-std::vector<std::string> map(const std::vector<std::string>& v, F&& f)
-{
-	std::vector<std::string> out;
-
-	for (auto&& e : v)
-		out.push_back(f(e));
-
-	return out;
-}
-
 void boost::do_b2(
 	const std::vector<std::string>& components,
 	const std::string& link, const std::string& runtime_link, arch a)
 {
 	run_tool(process_runner(process()
-		.binary(source_path() / "b2")
+		.binary(b2_exe())
 		.arg("address-model=",  address_model_for_arch(a))
 		.arg("link=",           link)
 		.arg("runtime-link=",   runtime_link)
@@ -120,9 +120,9 @@ void boost::do_b2(
 
 void boost::write_config_jam()
 {
-	std::ofstream out(config_jam_file());
+	std::ostringstream oss;
 
-	out
+	oss
 		<< "using python\n"
 		<< "  : " << python_version_for_jam() << "\n"
 		<< "  : " << python::python_exe().generic_string() << "\n"
@@ -131,6 +131,17 @@ void boost::write_config_jam()
 		<< "  : <address-model>64\n"
 		<< "  : <define>BOOST_ALL_NO_LIB=1\n"
 		<< "  ;";
+
+	cx_.trace(context::generic,
+		"writing config file at " + config_jam_file().string() + ":");
+
+	for_each_line(oss.str(), [&](auto&& line)
+	{
+		cx_.trace(context::generic, std::string(8, ' ') + std::string(line));
+	});
+
+
+	op::write_text_file(cx_, config_jam_file(), oss.str());
 }
 
 
@@ -180,6 +191,11 @@ fs::path boost::lib_path(arch a)
 		"lib" + address_model_for_arch(a) + "-msvc-" + versions::boost_vs();
 
 	return source_path() / lib;
+}
+
+fs::path boost::b2_exe()
+{
+	return source_path() / "b2.exe";
 }
 
 std::string boost::python_dll()

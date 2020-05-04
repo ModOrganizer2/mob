@@ -37,4 +37,10 @@ void copy_file_to_dir_if_better(
 	const context& cx,
 	const fs::path& file, const fs::path& dest_dir, flags f=noflags);
 
+std::string read_text_file(
+	const context& cx, const fs::path& p, flags f=noflags);
+
+void write_text_file(
+	const context& cx, const fs::path& p, std::string_view s, flags f=noflags);
+
 }	// namespace

@@ -76,7 +76,7 @@ env get_vcvars_env(arch a)
 
 	gcx().trace(context::generic, "reading from " + tmp.string());
 
-	std::stringstream ss(read_text_file(gcx(), tmp));
+	std::stringstream ss(op::read_text_file(gcx(), tmp));
 	op::delete_file(gcx(), tmp);
 
 	env e;

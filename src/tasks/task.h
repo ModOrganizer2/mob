@@ -60,8 +60,8 @@ protected:
 	auto run_tool(Tool&& t)
 	{
 		{
-			tool_ = &t;
 			std::scoped_lock lock(tool_mutex_);
+			tool_ = &t;
 		}
 
 		run_current_tool();

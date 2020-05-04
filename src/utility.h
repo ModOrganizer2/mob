@@ -148,9 +148,6 @@ private:
 };
 
 
-
-std::string read_text_file(const context& cx, const fs::path& p);
-
 std::string replace_all(
 	std::string s, const std::string& from, const std::string& to);
 
@@ -325,6 +322,18 @@ template <
 		++itor1;
 		++itor2;
 	}
+
+	return out;
+}
+
+
+template <class F>
+std::vector<std::string> map(const std::vector<std::string>& v, F&& f)
+{
+	std::vector<std::string> out;
+
+	for (auto&& e : v)
+		out.push_back(f(e));
 
 	return out;
 }

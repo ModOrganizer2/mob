@@ -102,6 +102,8 @@ public:
 	process& stderr_level(context::level lv);
 	process& stderr_filter(filter_fun f);
 
+	process& external_error_log(const fs::path& p);
+
 	process& flags(flags_t f);
 	flags_t flags() const;
 
@@ -169,6 +171,7 @@ private:
 	mob::env env_;
 	std::string raw_;
 	std::string cmd_;
+	fs::path error_log_file_;
 
 	impl impl_;
 	DWORD code_;
@@ -179,6 +182,10 @@ private:
 
 	void do_run(const std::string& what);
 	void read_pipes();
+
+	void on_completed();
+	void on_timeout(bool& already_interrupted);
+	void dump_error_log_file() noexcept;
 
 	void add_arg(const std::string& k, const std::string& v, arg_flags f);
 

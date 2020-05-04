@@ -290,6 +290,12 @@ process& process::stderr_filter(filter_fun f)
 	return *this;
 }
 
+process& process::external_error_log(const fs::path& p)
+{
+	error_log_file_ = p;
+	return *this;
+}
+
 process& process::flags(flags_t f)
 {
 	flags_ = f;
@@ -344,6 +350,15 @@ void process::run()
 
 void process::do_run(const std::string& what)
 {
+	if (fs::exists(error_log_file_))
+	{
+		cx_->trace(context::cmd,
+			"external error log file " +
+			error_log_file_.string() + " exists, deleting");
+
+		op::delete_file(*cx_, error_log_file_, op::optional);
+	}
+
 	STARTUPINFOA si = { .cb=sizeof(si) };
 	PROCESS_INFORMATION pi = {};
 
@@ -399,6 +414,7 @@ void process::join()
 		return;
 
 	bool interrupted = false;
+	guard g([&] { impl_.handle = {}; });
 
 	cx_->trace(context::cmd, "joining");
 
@@ -408,92 +424,27 @@ void process::join()
 
 		if (r == WAIT_OBJECT_0)
 		{
-			// done
-			read_pipes();
-
-			GetExitCodeProcess(impl_.handle.get(), &code_);
-
-			cx_->trace(context::cmd,
-				"process completed, exit code " + std::to_string(code_));
-
-			if (impl_.interrupt)
-				break;
-
-			if (code_ != 0)
-			{
-				if (flags_ & allow_failure)
-				{
-					cx_->trace(context::cmd,
-						"process failed but failure was allowed");
-				}
-				else
-				{
-					impl_.handle = {};
-
-					cx_->bail_out(context::cmd,
-						make_name() + " returned " + std::to_string(code_));
-				}
-			}
-
+			on_completed();
 			break;
 		}
-
-		if (r == WAIT_TIMEOUT)
+		else if (r == WAIT_TIMEOUT)
 		{
-			read_pipes();
-
-			if (impl_.interrupt && !interrupted)
-			{
-				if (flags_ & terminate_on_interrupt)
-				{
-					cx_->trace(context::cmd,
-						"terminating process (flag is set)");
-
-					::TerminateProcess(impl_.handle.get(), 0xffff);
-
-					break;
-				}
-				else
-				{
-					const auto pid = GetProcessId(impl_.handle.get());
-
-					if (pid == 0)
-					{
-						cx_->error(context::cmd,
-							"process id is 0, terminating instead");
-
-						::TerminateProcess(impl_.handle.get(), 0xffff);
-
-						break;
-					}
-					else
-					{
-						cx_->error(context::cmd,
-							"sending sigint to " + std::to_string(pid));
-
-						GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
-					}
-				}
-
-				interrupted = true;
-			}
-
-			continue;
+			on_timeout(interrupted);
 		}
-
-		const auto e = GetLastError();
-		impl_.handle = {};
-		cx_->bail_out(context::cmd, "failed to wait on process", e);
+		else
+		{
+			const auto e = GetLastError();
+			cx_->bail_out(context::cmd, "failed to wait on process", e);
+		}
 	}
 
 	if (interrupted)
 		cx_->trace(context::cmd, "process interrupted and finished");
-
-	impl_.handle = {};
 }
 
 void process::read_pipes()
 {
+	// stdout
 	std::string_view s = impl_.stdout_pipe.read();
 	for_each_line(s, [&](auto&& line)
 	{
@@ -509,6 +460,8 @@ void process::read_pipes()
 		cx_->log(f.r, f.lv, f.line);
 	});
 
+
+	// stderr
 	s = impl_.stderr_pipe.read();
 	for_each_line(s, [&](auto&& line)
 	{
@@ -523,6 +476,113 @@ void process::read_pipes()
 
 		cx_->log(f.r, f.lv, f.line);
 	});
+}
+
+void process::on_completed()
+{
+	// one last time
+	read_pipes();
+
+	if (impl_.interrupt)
+		return;
+
+	if (!GetExitCodeProcess(impl_.handle.get(), &code_))
+	{
+		const auto e = GetLastError();
+		cx_->error(context::cmd, "failed to get exit code", e);
+		code_ = 0xffff;
+	}
+
+	// success
+	if (code_ == 0)
+		return;
+
+	if (flags_ & allow_failure)
+	{
+		cx_->trace(context::cmd,
+			"process failed but failure was allowed");
+	}
+	else
+	{
+		dump_error_log_file();
+
+		cx_->bail_out(context::cmd,
+			make_name() + " returned " + std::to_string(code_));
+	}
+}
+
+void process::on_timeout(bool& already_interrupted)
+{
+	read_pipes();
+
+	if (impl_.interrupt && !already_interrupted)
+	{
+		if (flags_ & terminate_on_interrupt)
+		{
+			cx_->trace(context::cmd,
+				"terminating process (flag is set)");
+
+			::TerminateProcess(impl_.handle.get(), 0xffff);
+		}
+		else
+		{
+			const auto pid = GetProcessId(impl_.handle.get());
+
+			if (pid == 0)
+			{
+				cx_->error(context::cmd,
+					"process id is 0, terminating instead");
+
+				::TerminateProcess(impl_.handle.get(), 0xffff);
+			}
+			else
+			{
+				cx_->error(context::cmd,
+					"sending sigint to " + std::to_string(pid));
+
+				GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
+			}
+		}
+
+		already_interrupted = true;
+	}
+}
+
+void process::dump_error_log_file() noexcept
+{
+	try
+	{
+		if (error_log_file_.empty())
+			return;
+
+		if (fs::exists(error_log_file_))
+		{
+			std::string log = op::read_text_file(
+				*cx_, error_log_file_, op::optional);
+
+			if (log.empty())
+				return;
+
+			cx_->error(context::cmd,
+				make_name() + " failed, "
+				"content of " + error_log_file_.string() + ":");
+
+			for_each_line(log, [&](auto&& line)
+			{
+				cx_->error(context::cmd, std::string(8, ' ') + std::string(line));
+			});
+		}
+		else
+		{
+			cx_->debug(context::cmd,
+				"external error log file " + error_log_file_.string() + " "
+				"doesn't exist");
+		}
+	}
+	catch(...)
+	{
+		// eat it
+	}
 }
 
 int process::exit_code() const

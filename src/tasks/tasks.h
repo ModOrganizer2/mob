@@ -19,6 +19,7 @@ public:
 protected:
 	void do_fetch() override;
 	void do_build_and_install() override;
+	void do_clean() override;
 
 private:
 	void fetch_prebuilt();
@@ -27,6 +28,8 @@ private:
 	void fetch_from_source();
 	void build_and_install_from_source();
 	void write_config_jam();
+
+	void bootstrap();
 
 	void do_b2(
 		const std::vector<std::string>& components,
@@ -38,6 +41,7 @@ private:
 	static url prebuilt_url();
 	static url source_url();
 	static fs::path lib_path(arch a);
+	static fs::path b2_exe();
 	static std::string python_dll();
 	static std::string python_version_for_dll();
 	static std::string python_version_for_jam();

@@ -9,24 +9,6 @@
 namespace mob
 {
 
-std::string read_text_file(const context& cx, const fs::path& p)
-{
-	cx.trace(context::fs, "reading " + p.string());
-
-	std::string s;
-
-	std::ifstream in(p);
-	if (!in)
-		cx.bail_out(context::fs, "can't read from " + p.string() + "'");
-
-	in.seekg(0, std::ios::end);
-	s.resize(static_cast<std::size_t>(in.tellg()));
-	in.seekg(0, std::ios::beg);
-	in.read(&s[0], static_cast<std::streamsize>(s.size()));
-
-	return s;
-}
-
 std::string replace_all(
 	std::string s, const std::string& from, const std::string& to)
 {
