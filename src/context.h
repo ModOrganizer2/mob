@@ -14,19 +14,22 @@ public:
 		// generic
 		generic,
 
-		// an action was bypassed because it was already done
+		// a configuration action
+		conf,
+
+		// something was bypassed because it was already done
 		bypass,
 
-		// an action was done because the --redownload option was set
+		// something was done because the --redownload option was set
 		redownload,
 
-		// an action was done because the --rebuild option was set
+		// something was done because the --rebuild option was set
 		rebuild,
 
-		// an action was done because the --reextract option was set
+		// something was done because the --reextract option was set
 		reextract,
 
-		// an action was done in case of interruption or because something
+		// something was done in case of interruption or because something
 		// was interrupted
 		interruption,
 

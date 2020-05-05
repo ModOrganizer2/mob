@@ -39,6 +39,26 @@ std::string join(const std::vector<std::string>& v, const std::string& sep)
 	return s;
 }
 
+void trim(std::string& s, const std::string& what)
+{
+	while (!s.empty())
+	{
+		if (what.find(s[0]) != std::string::npos)
+			s.erase(0, 1);
+		else if (what.find(s[s.size() - 1]) != std::string::npos)
+			s.erase(s.size() - 1, 1);
+		else
+			break;
+	}
+}
+
+std::string trim_copy(const std::string& s, const std::string& what)
+{
+	std::string c = s;
+	trim(c, what);
+	return c;
+}
+
 std::string pad_right(std::string s, std::size_t n, char c)
 {
 	if (s.size() < n)

@@ -9,6 +9,7 @@
 namespace mob
 {
 
+
 BOOL WINAPI signal_handler(DWORD) noexcept
 {
 	gcx().debug(context::generic, "caught sigint");
@@ -31,18 +32,74 @@ struct curl_init
 };
 
 
+std::string version()
+{
+	return "mob 1.0";
+}
+
+void show_help(const clipp::group& g)
+{
+	std::cout
+		<< clipp::make_man_page(
+			g, "mob", clipp::doc_formatting()
+			.first_column(4)
+			.doc_column(30));
+}
+
+
 int run(int argc, char** argv)
 {
+	struct
+	{
+		bool version = false;
+		bool help = false;
+	} cmd;
+
+	clipp::group g;
+
+	g.push_back(
+		(clipp::option("--version")
+			>> [&]{ cmd.version = true; })
+			% "shows the version",
+
+		(clipp::option("-h", "--help")
+			>> [&]{ cmd.help = true; })
+			% "shows this message"
+	);
+
+
+	conf_command_line_options(g);
+
 	try
 	{
+		const auto pr = clipp::parse(argc, argv, g);
+
+		if (!pr)
+			throw bad_command_line();
+
+
+		if (cmd.version)
+		{
+			std::cout << version() << "\n";
+			return 0;
+		}
+
+		if (cmd.help)
+		{
+			show_help(g);
+			return 0;
+		}
+
+
+		init_options();
+		dump_options();
+		return 0;
+
 		::SetConsoleCtrlHandler(signal_handler, TRUE);
 
 		curl_init curl;
 
-		this_env::set(
-			"PATH",
-			(find_third_party_directory() / "bin").string() + ";",
-			env::prepend);
+		//this_env::set("PATH", paths::third_party().string() + ";", env::prepend);
 
 		add_task<sevenz>();
 		add_task<zlib>();
@@ -63,7 +120,7 @@ int run(int argc, char** argv)
 		add_task<sip>();
 		add_task<pyqt>();
 
-		if (argc > 1)
+		/*if (argc > 1)
 		{
 			std::vector<std::string> tasks;
 
@@ -84,13 +141,22 @@ int run(int argc, char** argv)
 			}
 
 			return 0;
-		}
+		}*/
 
 		run_all_tasks();
 
 		return 0;
 	}
-	catch(bailed)
+	catch(bad_command_line&)
+	{
+		show_help(g);
+		return 1;
+	}
+	catch(bad_conf&)
+	{
+		return 1;
+	}
+	catch(bailed&)
 	{
 		error("bailing out");
 		return 1;

@@ -8,7 +8,7 @@ cmake::cmake()
 	: basic_process_runner("cmake"), gen_(jom), arch_(arch::def)
 {
 	process_
-		.binary(third_party::cmake());
+		.binary(tool_paths::cmake());
 }
 
 cmake& cmake::generator(generators g)

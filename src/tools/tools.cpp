@@ -64,7 +64,7 @@ devenv_upgrade::devenv_upgrade(fs::path sln)
 	: basic_process_runner("upgrade project"), sln_(std::move(sln))
 {
 	process_
-		.binary(third_party::devenv())
+		.binary(tool_paths::devenv())
 		.env(env::vs(arch::x64));
 }
 

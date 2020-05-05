@@ -8,41 +8,6 @@
 namespace mob
 {
 
-fs::path find_vcvars()
-{
-	const std::vector<std::string> editions =
-	{
-		"Community", "Preview", "Enterprise", "Professional"
-	};
-
-	const fs::path bat = "vcvarsall.bat";
-
-	gcx().trace(context::generic, "looking for " + bat.string());
-
-	for (auto&& edition : editions)
-	{
-		const auto dir =
-			paths::program_files_x86() /
-			"Microsoft Visual Studio" /
-			versions::vs_year() /
-			edition / "VC" / "Auxiliary" / "Build";
-
-		const auto f = dir / bat;
-
-		if (fs::exists(f))
-		{
-			gcx().trace(context::generic, "found " + f.string());
-			return f;
-		}
-		else
-		{
-			gcx().trace(context::generic, "not found in " + dir.string());
-		}
-	}
-
-	gcx().bail_out(context::generic, "couldn't find visual studio");
-}
-
 env get_vcvars_env(arch a)
 {
 	std::string arch_s;
@@ -64,11 +29,11 @@ env get_vcvars_env(arch a)
 
 	gcx().trace(context::generic, "looking for vcvars for " + arch_s);
 
-	const fs::path tmp = paths::temp_file();
+	const fs::path tmp = make_temp_file();
 
 	// "vcvarsall.bat" amd64 && set > temp_file
 	std::string cmd =
-		"\"" + find_vcvars().string() + "\" " + arch_s +
+		"\"" + paths::vcvars().string() + "\" " + arch_s +
 		" && set > \"" + tmp.string() + "\"";
 
 	process::raw(gcx(), cmd)

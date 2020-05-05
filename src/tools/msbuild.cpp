@@ -9,7 +9,7 @@ msbuild::msbuild()
 	: basic_process_runner("msbuild"), config_("Release"), arch_(arch::def)
 {
 	process_
-		.binary(third_party::msbuild());
+		.binary(tool_paths::msbuild());
 }
 
 msbuild& msbuild::solution(const fs::path& sln)

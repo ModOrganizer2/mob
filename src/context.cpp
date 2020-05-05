@@ -50,6 +50,7 @@ std::string reason_string(context::reason r)
 		case context::fs:            return "fs";
 		case context::net:           return "net";
 		case context::generic:       return "";
+		case context::conf:          return "conf";
 		default:                     return "?";
 	}
 }
@@ -252,6 +253,7 @@ std::string context::make_log_string(reason r, level, std::string_view s) const
 		case context::fs:
 		case context::net:
 		case context::generic:
+		case context::conf:
 		default:
 			oss << s;
 			break;

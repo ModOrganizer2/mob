@@ -8,7 +8,7 @@
 namespace mob
 {
 
-HANDLE bit_bucket()
+HANDLE get_bit_bucket()
 {
 	SECURITY_ATTRIBUTES sa { .nLength = sizeof(sa), .bInheritHandle = TRUE };
 	return ::CreateFileA("NUL", GENERIC_WRITE, 0, &sa, OPEN_EXISTING, 0, 0);
@@ -212,7 +212,9 @@ process::impl& process::impl::operator=(const impl& i)
 
 process::process() :
 	cx_(&gcx()), flags_(process::noflags),
+	stdout_flags_(process::forward_to_log),
 	stdout_level_(context::level::trace),
+	stderr_flags_(process::forward_to_log),
 	stderr_level_(context::level::error),
 	code_(0)
 {
@@ -279,6 +281,12 @@ const fs::path& process::cwd() const
 	return cwd_;
 }
 
+process& process::stdout_flags(stream_flags s)
+{
+	stdout_flags_ = s;
+	return *this;
+}
+
 process& process::stdout_level(context::level lv)
 {
 	stdout_level_ = lv;
@@ -288,6 +296,12 @@ process& process::stdout_level(context::level lv)
 process& process::stdout_filter(filter_fun f)
 {
 	stdout_filter_ = f;
+	return *this;
+}
+
+process& process::stderr_flags(stream_flags s)
+{
+	stderr_flags_ = s;
 	return *this;
 }
 
@@ -363,6 +377,9 @@ void process::run()
 
 void process::do_run(const std::string& what)
 {
+	if (raw_.empty() && bin_.empty())
+		cx_->bail_out(context::cmd, "process: nothing to run");
+
 	if (fs::exists(error_log_file_))
 	{
 		cx_->trace(context::cmd,
@@ -375,12 +392,55 @@ void process::do_run(const std::string& what)
 	STARTUPINFOA si = { .cb=sizeof(si) };
 	PROCESS_INFORMATION pi = {};
 
-	auto process_stderr = impl_.stderr_pipe.create();
-	auto process_stdout = impl_.stdout_pipe.create();
+	handle_ptr stdout_pipe, stderr_pipe;
 
-	si.hStdOutput = process_stdout.get();
-	si.hStdError = process_stderr.get();
-	si.hStdInput = bit_bucket();
+	switch (stdout_flags_)
+	{
+		case forward_to_log:
+		case keep_in_string:
+		{
+			stdout_pipe = impl_.stdout_pipe.create();
+			si.hStdOutput = stdout_pipe.get();
+			break;
+		}
+
+		case bit_bucket:
+		{
+			si.hStdOutput = get_bit_bucket();
+			break;
+		}
+
+		case inherit:
+		{
+			si.hStdOutput = ::GetStdHandle(STD_OUTPUT_HANDLE);
+			break;
+		}
+	}
+
+	switch (stderr_flags_)
+	{
+		case forward_to_log:
+		case keep_in_string:
+		{
+			stderr_pipe = impl_.stderr_pipe.create();
+			si.hStdError = stderr_pipe.get();
+			break;
+		}
+
+		case bit_bucket:
+		{
+			si.hStdError = get_bit_bucket();
+			break;
+		}
+
+		case inherit:
+		{
+			si.hStdError = ::GetStdHandle(STD_ERROR_HANDLE);
+			break;
+		}
+	}
+
+	si.hStdInput = get_bit_bucket();
 	si.dwFlags = STARTF_USESTDHANDLES;
 
 	const std::string cmd = this_env::get("COMSPEC");
@@ -458,37 +518,76 @@ void process::join()
 void process::read_pipes()
 {
 	// stdout
-	std::string_view s = impl_.stdout_pipe.read();
-	for_each_line(s, [&](auto&& line)
+	switch (stdout_flags_)
 	{
-		filter f = {line, context::std_out, stdout_level_, false};
-
-		if (stdout_filter_)
+		case forward_to_log:
 		{
-			stdout_filter_(f);
-			if (f.ignore)
-				return;
+			std::string_view s = impl_.stdout_pipe.read();
+
+			for_each_line(s, [&](auto&& line)
+			{
+				filter f = {line, context::std_out, stdout_level_, false};
+
+				if (stdout_filter_)
+				{
+					stdout_filter_(f);
+					if (f.ignore)
+						return;
+				}
+
+				cx_->log(f.r, f.lv, f.line);
+			});
+
+			break;
 		}
 
-		cx_->log(f.r, f.lv, f.line);
-	});
-
-
-	// stderr
-	s = impl_.stderr_pipe.read();
-	for_each_line(s, [&](auto&& line)
-	{
-		filter f = {line, context::std_err, stderr_level_, false};
-
-		if (stderr_filter_)
+		case keep_in_string:
 		{
-			stderr_filter_(f);
-			if (f.ignore)
-				return;
+			std::string_view s = impl_.stdout_pipe.read();
+			stdout_string_ += s;
+			break;
 		}
 
-		cx_->log(f.r, f.lv, f.line);
-	});
+		case bit_bucket:
+		case inherit:
+			break;
+	}
+
+
+	switch (stderr_flags_)
+	{
+		case forward_to_log:
+		{
+			std::string_view s = impl_.stderr_pipe.read();
+
+			for_each_line(s, [&](auto&& line)
+			{
+				filter f = {line, context::std_err, stderr_level_, false};
+
+				if (stderr_filter_)
+				{
+					stderr_filter_(f);
+					if (f.ignore)
+						return;
+				}
+
+				cx_->log(f.r, f.lv, f.line);
+			});
+
+			break;
+		}
+
+		case keep_in_string:
+		{
+			std::string_view s = impl_.stderr_pipe.read();
+			stderr_string_ += s;
+			break;
+		}
+
+		case bit_bucket:
+		case inherit:
+			break;
+	}
 }
 
 void process::on_completed()
@@ -601,6 +700,16 @@ void process::dump_error_log_file() noexcept
 int process::exit_code() const
 {
 	return static_cast<int>(code_);
+}
+
+std::string process::steal_stdout()
+{
+	return std::move(stdout_string_);
+}
+
+std::string process::steal_stderr()
+{
+	return std::move(stderr_string_);
 }
 
 void process::add_arg(const std::string& k, const std::string& v, arg_flags f)

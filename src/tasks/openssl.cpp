@@ -51,7 +51,7 @@ void openssl::do_build_and_install()
 void openssl::configure()
 {
 	run_tool(process_runner(process()
-		.binary(third_party::perl())
+		.binary(tool_paths::perl())
 		.arg("Configure")
 		.arg("--openssldir=", build_path())
 		.arg("--prefix=", build_path())

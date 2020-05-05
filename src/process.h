@@ -55,6 +55,14 @@ public:
 		quote      = 0x20
 	};
 
+	enum stream_flags
+	{
+		forward_to_log = 1,
+		bit_bucket,
+		keep_in_string,
+		inherit
+	};
+
 	struct filter
 	{
 		const std::string_view line;
@@ -96,9 +104,11 @@ public:
 	process& cwd(const fs::path& p);
 	const fs::path& cwd() const;
 
+	process& stdout_flags(stream_flags s);
 	process& stdout_level(context::level lv);
 	process& stdout_filter(filter_fun f);
 
+	process& stderr_flags(stream_flags s);
 	process& stderr_level(context::level lv);
 	process& stderr_filter(filter_fun f);
 
@@ -146,6 +156,8 @@ public:
 	void join();
 
 	int exit_code() const;
+	std::string steal_stdout();
+	std::string steal_stderr();
 
 private:
 	struct impl
@@ -164,10 +176,17 @@ private:
 	fs::path bin_;
 	fs::path cwd_;
 	flags_t flags_;
+
+	stream_flags stdout_flags_;
 	context::level stdout_level_;
 	filter_fun stdout_filter_;
+	std::string stdout_string_;
+
+	stream_flags stderr_flags_;
 	context::level stderr_level_;
 	filter_fun stderr_filter_;
+	std::string stderr_string_;
+
 	mob::env env_;
 	std::string raw_;
 	std::string cmd_;
