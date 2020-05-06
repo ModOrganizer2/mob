@@ -37,6 +37,7 @@ std::optional<int> handle_command_line(int argc, char** argv)
 		bool reextract = false;
 		bool rebuild = false;
 		bool clean = false;
+		bool list = false;
 		int log = 3;
 		std::vector<std::string> options;
 		std::vector<std::string> set;
@@ -85,6 +86,9 @@ std::optional<int> handle_command_line(int argc, char** argv)
 			%  "sets an option, such as 'versions/openssl=1.2'; -s with no "
 		       "arguments lists the available options",
 
+		(clipp::option("--list") >> cmd.list)
+			% "lists all the available tasks",
+
 		(clipp::opt_values(
 			clipp::match::prefix_not("-"), "task", g_tasks_to_run))
 			% "tasks to run; specify 'super' to only build modorganizer "
@@ -109,6 +113,12 @@ std::optional<int> handle_command_line(int argc, char** argv)
 	if (cmd.help)
 	{
 		show_help(g);
+		return 0;
+	}
+
+	if (cmd.list)
+	{
+		list_tasks();
 		return 0;
 	}
 
@@ -165,6 +175,7 @@ void add_tasks()
 	add_task<bzip2>();
 	add_task<python>();
 	add_task<boost>();
+	add_task<boost_di>();
 	add_task<lz4>();
 	add_task<nmm>();
 	add_task<ncc>();
@@ -216,14 +227,16 @@ void add_tasks()
 	add_task<modorganizer>("modorganizer-script_extender_plugin_checker");
 	add_task<modorganizer>("modorganizer-form43_checker");
 	add_task<modorganizer>("modorganizer-preview_dds");
-	//add_task<modorganizer>("githubpp");
-	//add_task<modorganizer>("modorganizer-bsapacker");
-	//add_task<modorganizer>("modorganizer-preview_bsa");
-	//add_task<modorganizer>("modorganizer");
+	add_task<modorganizer>("githubpp");
+	add_task<modorganizer>("modorganizer-preview_bsa");
+	add_task<modorganizer>("modorganizer-bsapacker");
+	add_task<modorganizer>("modorganizer");
 }
 
 int run(int argc, char** argv)
 {
+	add_tasks();
+
 	try
 	{
 		if (auto r=handle_command_line(argc, argv))
@@ -242,7 +255,6 @@ int run(int argc, char** argv)
 		::SetConsoleCtrlHandler(signal_handler, TRUE);
 
 		curl_init curl;
-		add_tasks();
 
 		if (!g_tasks_to_run.empty())
 			run_tasks(g_tasks_to_run);

@@ -17,6 +17,17 @@ void add_task(std::unique_ptr<task> t)
 	g_tasks.push_back(std::move(t));
 }
 
+void list_tasks(bool err)
+{
+	for (auto&& t : g_tasks)
+	{
+		if (err)
+			std::cerr << " - " << join(t->names(), ", ") << "\n";
+		else
+			std::cout << " - " << join(t->names(), ", ") << "\n";
+	}
+}
+
 task* find_task(const std::string& name)
 {
 	for (auto&& t : g_tasks)
@@ -28,13 +39,9 @@ task* find_task(const std::string& name)
 		}
 	}
 
-	std::cerr << "task " << name << " not found\n";
-	std::cerr << "valid tasks:\n";
-
-	for (auto&& t : g_tasks)
-	{
-		std::cerr << " - " << join(t->names(), ", ") << "\n";
-	}
+	std::cout << "task " << name << " not found\n";
+	std::cout << "valid tasks:\n";
+	list_tasks(true);
 
 	throw bailed("");
 }

@@ -18,8 +18,10 @@ std::string make_short_name(const std::string& name)
 
 
 modorganizer::modorganizer(std::string long_name)
-	: basic_task(make_short_name(long_name), long_name), repo_(long_name)
+	: basic_task(make_short_name(long_name)), repo_(long_name)
 {
+	if (long_name != name())
+		add_name(long_name);
 }
 
 bool modorganizer::is_super() const
@@ -91,6 +93,7 @@ void modorganizer::do_build_and_install()
 		.def("PYTHON_ROOT",        python::source_path())
 		.def("SEVENZ_ROOT",        sevenz::source_path())
 		.def("LIBBSARCH_ROOT",     libbsarch::source_path())
+		.def("BOOST_DI_ROOT",      boost_di::source_path())
 		.root(this_source_path()));
 
 	// run the project file instead of the .sln and giving INSTALL as a

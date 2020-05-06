@@ -134,6 +134,16 @@ void python::copy_files()
 	op::copy_file_to_dir_if_better(cx(),
 		build_path() / ("python" + version_for_dll() + ".pdb"),
 		paths::install_pdbs());
+
+	op::copy_glob_to_dir_if_better(cx(),
+		build_path() / "pythoncore/*.pyd",
+		paths::install_pythoncore(),
+		op::copy_files);
+
+	op::copy_file_to_file_if_better(cx(),
+		build_path() / "pythoncore" / ("python" + version_for_dll() + ".zip"),
+		paths::install_bin() / "pythoncore.zip",
+		op::copy_files);
 }
 
 void python::install_pip()

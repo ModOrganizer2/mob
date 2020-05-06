@@ -12,6 +12,7 @@ void do_create_directories(const context& cx, const fs::path& p);
 void do_delete_directory(const context& cx, const fs::path& p);
 void do_delete_file(const context& cx, const fs::path& p);
 void do_copy_file_to_dir(const context& cx, const fs::path& f, const fs::path& d);
+void do_copy_file_to_file(const context& cx, const fs::path& f, const fs::path& d);
 void do_remove_readonly(const context& cx, const fs::path& p);
 void do_rename(const context& cx, const fs::path& src, const fs::path& dest);
 void check(const context& cx, const fs::path& p);
@@ -270,6 +271,57 @@ void copy_file_to_dir_if_better(
 	}
 }
 
+void copy_file_to_file_if_better(
+	const context& cx, const fs::path& src, const fs::path& dest, flags f)
+{
+	if ((f & unsafe) == 0)
+	{
+		check(cx, src);
+		check(cx, dest);
+	}
+
+	if (src.string().find("*") != std::string::npos)
+		cx.bail_out(context::fs, src.string() + " contains a glob");
+
+	if (!conf::dry())
+	{
+		if (!fs::exists(src))
+		{
+			if (f & optional)
+			{
+				cx.trace(context::fs,
+					"not copying " + src.string() + ", "
+					"doesn't exist (optional)");
+
+				return;
+			}
+
+			cx.bail_out(context::fs,
+				"can't copy " + src.string() + ", doesn't exist");
+		}
+
+		if (fs::exists(dest) && fs::is_directory(dest))
+		{
+			cx.bail_out(context::fs,
+				"can't copy to " + dest.string() + ", already exists but is "
+				"a directory");
+		}
+	}
+
+	if (is_source_better(cx, src, dest))
+	{
+		cx.trace(context::fs, src.string() + " -> " + dest.string());
+
+		if (!conf::dry())
+			do_copy_file_to_file(cx, src, dest);
+	}
+	else
+	{
+		cx.trace(context::bypass,
+			"(skipped) " + src.string() + " -> " + dest.string());
+	}
+}
+
 void copy_glob_to_dir_if_better(
 	const context& cx,
 	const fs::path& src_glob, const fs::path& dest_dir, flags f)
@@ -453,6 +505,23 @@ void do_copy_file_to_dir(
 	{
 		cx.bail_out(context::fs,
 			"can't copy " + f.string() + " to " + d.string(), ec);
+	}
+}
+
+void do_copy_file_to_file(
+	const context& cx, const fs::path& src, const fs::path& dest)
+{
+	op::create_directories(cx, dest.parent_path());
+
+	std::error_code ec;
+	fs::copy_file(
+		src, dest,
+		fs::copy_options::overwrite_existing, ec);
+
+	if (ec)
+	{
+		cx.bail_out(context::fs,
+			"can't copy " + src.string() + " to " + dest.string(), ec);
 	}
 }
 

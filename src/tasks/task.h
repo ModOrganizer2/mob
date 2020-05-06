@@ -19,6 +19,7 @@ void add_task(Args&&... args)
 void run_task(const std::string& name);
 void run_tasks(const std::vector<std::string>& names);;
 void run_all_tasks();
+void list_tasks(bool err=false);
 
 
 class tool;

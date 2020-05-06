@@ -97,6 +97,7 @@ static path_map g_paths =
 	{"install_plugins",     ""},
 	{"install_stylesheets", ""},
 	{"install_licenses",    ""},
+	{"install_pythoncore",  ""},
 	{"patches",             ""},
 	{"licenses",            ""},
 	{"vs",                  ""},
@@ -849,6 +850,10 @@ void init_options(const fs::path& ini, const std::vector<std::string>& opts)
 	make_canonical_path("install_loot",     paths::install_bin(), "loot");
 	make_canonical_path("install_plugins",  paths::install_bin(), "plugins");
 	make_canonical_path("install_licenses", paths::install_bin(), "licenses");
+
+	make_canonical_path(
+		"install_pythoncore",
+		paths::install_bin(), "pythoncore");
 
 	make_canonical_path(
 		"install_stylesheets",

@@ -55,6 +55,19 @@ private:
 };
 
 
+// needed by bsapacker
+//
+class boost_di : public basic_task<boost_di>
+{
+public:
+	boost_di();
+	static fs::path source_path();
+
+protected:
+	void do_fetch() override;
+};
+
+
 class bzip2 : public basic_task<bzip2>
 {
 public:

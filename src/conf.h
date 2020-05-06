@@ -115,6 +115,7 @@ struct paths
 	VALUE(install_plugins);
 	VALUE(install_stylesheets);
 	VALUE(install_licenses);
+	VALUE(install_pythoncore);
 
 	VALUE(vs);
 	VALUE(qt_install);

@@ -43,6 +43,10 @@ void copy_file_to_dir_if_better(
 	const context& cx,
 	const fs::path& file, const fs::path& dest_dir, flags f=noflags);
 
+void copy_file_to_file_if_better(
+	const context& cx,
+	const fs::path& src_file, const fs::path& dest_file, flags f=noflags);
+
 void copy_glob_to_dir_if_better(
 	const context& cx,
 	const fs::path& src_glob, const fs::path& dest_dir, flags f);
