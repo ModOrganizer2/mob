@@ -185,6 +185,7 @@ void add_tasks()
 	add_task<pyqt>();
 	add_task<stylesheets>();
 	add_task<licenses>();
+	add_task<explorerpp>();
 
 	add_task<modorganizer>("cmake_common");
 	add_task<modorganizer>("modorganizer-uibase");

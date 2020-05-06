@@ -87,6 +87,7 @@ struct versions
 	VALUE(pyqt_builder);
 	VALUE(sip);
 	VALUE(pyqt_sip);
+	VALUE(explorerpp);
 
 	VALUE(ss_6788_paper_lad);
 	VALUE(ss_6788_paper_automata);

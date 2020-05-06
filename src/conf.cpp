@@ -75,6 +75,7 @@ static string_map g_versions =
 	{"pyqt_builder", ""},
 	{"sip",          ""},
 	{"pyqt_sip",     ""},
+	{"explorerpp",   ""},
 
 	{"ss_6788_paper_lad",      ""},
 	{"ss_6788_paper_automata", ""},

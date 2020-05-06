@@ -82,6 +82,20 @@ private:
 };
 
 
+class explorerpp : public basic_task<explorerpp>
+{
+public:
+	explorerpp();
+	static fs::path source_path();
+
+protected:
+	void do_fetch() override;
+
+private:
+	static url source_url();
+};
+
+
 class fmt : public basic_task<fmt>
 {
 public:
