@@ -181,9 +181,9 @@ int run(int argc, char** argv)
 		add_tasks();
 
 		if (!g_tasks_to_run.empty())
-			return run_tasks(g_tasks_to_run);
+			run_tasks(g_tasks_to_run);
 		else
-			return run_all_tasks();
+			run_all_tasks();
 
 		return 0;
 	}

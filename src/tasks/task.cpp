@@ -17,18 +17,14 @@ void add_task(std::unique_ptr<task> t)
 	g_tasks.push_back(std::move(t));
 }
 
-bool run_task(const std::string& name)
+task* find_task(const std::string& name)
 {
 	for (auto&& t : g_tasks)
 	{
 		for (auto&& n : t->names())
 		{
 			if (n == name)
-			{
-				t->run();
-				t->join();
-				return true;
-			}
+				return t.get();
 		}
 	}
 
@@ -38,37 +34,51 @@ bool run_task(const std::string& name)
 	for (auto&& t : g_tasks)
 		std::cerr << " - " << t->name() << "\n";
 
-	return false;
+	throw bailed("");
 }
 
-bool run_tasks(const std::vector<std::string>& names)
+void run_tasks(const std::vector<task*> tasks)
+{
+	for (auto* t : tasks)
+		t->fetch();
+
+	for (auto* t : tasks)
+	{
+		t->join();
+		t->build_and_install();
+		t->join();
+	}
+}
+
+void run_task(const std::string& name)
+{
+	run_tasks({find_task(name)});
+}
+
+void run_tasks(const std::vector<std::string>& names)
 {
 	if (names.empty())
-		return true;
+		return;
 
 	if (names.size() == 1)
 		gcx().debug(context::generic, "specified task: " + names[0]);
 	else
 		gcx().debug(context::generic, "specified tasks: " + join(names, " "));
 
-	for (auto&& t : names)
-	{
-		if (!run_task(t))
-			return false;
-	}
+	std::vector<task*> tasks;
+	for (auto&& name : names)
+		tasks.push_back(find_task(name));
 
-	return true;
+	run_tasks(tasks);
 }
 
-bool run_all_tasks()
+void run_all_tasks()
 {
+	std::vector<task*> tasks;
 	for (auto&& t : g_tasks)
-	{
-		t->run();
-		t->join();
-	}
+		tasks.push_back(t.get());
 
-	return true;
+	run_tasks(tasks);
 }
 
 
@@ -177,21 +187,13 @@ void task::run()
 {
 	cx().info(context::generic, "running task");
 
-	thread_ = std::thread([&]
-	{
-		threaded_run(name(), [&]
-		{
-			if (conf::rebuild())
-				clean_for_rebuild();
+	fetch();
+	join();
 
-			check_interrupted();
-			fetch();
-			check_interrupted();
-			build_and_install();
+	build_and_install();
+	join();
 
-			cx().debug(context::generic, "task completed");
-		});
-	});
+	cx().info(context::generic, "task completed");
 }
 
 void task::interrupt()
@@ -212,24 +214,49 @@ void task::join()
 
 void task::fetch()
 {
-	cx().debug(context::generic, "fetching");
-	do_fetch();
+	thread_ = std::thread([&]
+	{
+		threaded_run(name(), [&]
+		{
+			if (conf::rebuild())
+				clean_for_rebuild();
 
-	cx().debug(context::generic, "patching");
-	run_tool(patcher()
-		.task(name())
-		.root(get_source_path()));
+			check_interrupted();
+
+			cx().info(context::generic, "fetching");
+			do_fetch();
+
+			check_interrupted();
+
+			cx().info(context::generic, "patching");
+			run_tool(patcher()
+				.task(name())
+				.root(get_source_path()));
+
+			check_interrupted();
+		});
+	});
 }
 
 void task::build_and_install()
 {
-	cx().debug(context::generic, "build and install");
-	do_build_and_install();
+	thread_ = std::thread([&]
+	{
+		threaded_run(name(), [&]
+		{
+			check_interrupted();
+
+			cx().info(context::generic, "build and install");
+			do_build_and_install();
+
+			check_interrupted();
+		});
+	});
 }
 
 void task::clean_for_rebuild()
 {
-	cx().debug(context::rebuild, "cleaning");
+	cx().info(context::rebuild, "cleaning");
 	do_clean_for_rebuild();
 }
 

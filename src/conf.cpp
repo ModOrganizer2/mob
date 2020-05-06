@@ -672,13 +672,25 @@ void parse_ini(const fs::path& ini)
 void check_missing_options()
 {
 	if (conf::mo_org().empty())
-		gcx().bail_out(context::conf, "missing mo_org in [options]");
+	{
+		gcx().bail_out(context::conf,
+			"missing mo_org; either specify it the [options] section of "
+			"the ini or pass '-s options/mo_org=something'");
+	}
 
 	if (conf::mo_branch().empty())
-		gcx().bail_out(context::conf, "missing mo_branch in [options]");
+	{
+		gcx().bail_out(context::conf,
+			"missing mo_branch; either specify it the [options] section of "
+			"the ini or pass '-s options/mo_org=something'");
+	}
 
 	if (paths::prefix().empty())
-		gcx().bail_out(context::conf, "missing prefix in [paths]");
+	{
+		gcx().bail_out(context::conf,
+			"missing prefix; either specify it the [paths] section of "
+			"the ini or pass '-d path'");
+	}
 
 	for (auto&& [k, v] : g_versions)
 	{

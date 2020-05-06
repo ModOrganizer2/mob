@@ -16,9 +16,9 @@ void add_task()
 	add_task(std::make_unique<Task>());
 }
 
-bool run_task(const std::string& name);
-bool run_tasks(const std::vector<std::string>& names);;
-bool run_all_tasks();
+void run_task(const std::string& name);
+void run_tasks(const std::vector<std::string>& names);;
+void run_all_tasks();
 
 
 class tool;
@@ -43,7 +43,6 @@ public:
 
 	void fetch();
 	void build_and_install();
-	void clean_for_rebuild();
 
 protected:
 	task(const char* name);
@@ -106,6 +105,7 @@ private:
 
 	static std::mutex interrupt_mutex_;
 
+	void clean_for_rebuild();
 	void run_tool_impl(tool* t);
 	void threaded_run(std::string name, std::function<void ()> f);
 };
