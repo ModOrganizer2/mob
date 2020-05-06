@@ -9,6 +9,15 @@ class bad_conf {};
 #define VALUE(NAME) \
 	static decltype(auto) NAME() { return by_name(#NAME); }
 
+#define VALUE_BOOL(NAME) \
+	static bool NAME() \
+	{ \
+		bool b; \
+		std::istringstream iss(by_name(#NAME)); \
+		iss >> b; \
+		return b; \
+	}
+
 
 struct tools
 {
@@ -29,6 +38,8 @@ struct tools
 
 struct conf
 {
+	static void set_log_level(int i);
+
 	static bool log_dump();
 	static bool log_trace();
 	static bool log_debug();
@@ -36,15 +47,15 @@ struct conf
 	static bool log_warning();
 	static bool log_error();
 
-	static bool dry();
-	static bool redownload();
-	static bool reextract();
-	static bool rebuild();
-
 	static const std::string& by_name(const std::string& s);
 
 	VALUE(mo_org);
 	VALUE(mo_branch);
+
+	VALUE_BOOL(dry);
+	VALUE_BOOL(redownload);
+	VALUE_BOOL(reextract);
+	VALUE_BOOL(rebuild);
 };
 
 struct prebuilt
@@ -113,12 +124,13 @@ struct paths
 	VALUE(temp_dir);
 };
 
+#undef VALUE_BOOL
 #undef VALUE
 
 
-void init_options();
+void init_options(const fs::path& ini, const std::vector<std::string>& opts);
 void dump_options();
-void conf_command_line_options(clipp::group& g);
+void dump_available_options();
 
 fs::path make_temp_file();
 

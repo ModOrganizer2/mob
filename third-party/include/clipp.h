@@ -160,7 +160,7 @@ constexpr auto
 check_is_callable(int) -> decltype(
     std::declval<Fn>()(std::declval<Args>()...),
     std::integral_constant<bool,
-        std::is_same<Ret,decltype(Fn(Args...))>::value>{} );
+        std::is_same<Ret,decltype(std::declval<Fn>()(std::declval<Args>()...))>::value>{} );
 
 template<class,class,class...>
 constexpr auto
@@ -171,7 +171,7 @@ constexpr auto
 check_is_callable_without_arg(int) -> decltype(
     std::declval<Fn>()(),
     std::integral_constant<bool,
-        std::is_same<Ret,decltype(Fn())>::value>{} );
+        std::is_same<Ret,decltype(std::declval<Fn>()())>::value>{} );
 
 template<class,class>
 constexpr auto

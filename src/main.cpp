@@ -53,22 +53,59 @@ int run(int argc, char** argv)
 	{
 		bool version = false;
 		bool help = false;
+		bool clean = false;
+		int log = 3;
+		std::vector<std::string> options;
+		std::vector<std::string> set;
+		std::string ini;
+		std::string prefix;
 	} cmd;
 
 	clipp::group g;
 
 	g.push_back(
-		(clipp::option("--version")
-			>> [&]{ cmd.version = true; })
+		(clipp::option("--version") >> cmd.version)
 			% "shows the version",
 
-		(clipp::option("-h", "--help")
-			>> [&]{ cmd.help = true; })
-			% "shows this message"
+		(clipp::option("-h", "--help") >> cmd.help)
+			% "shows this message",
+
+		(clipp::option("-d", "--destination")
+			& clipp::value("DIR") >> cmd.prefix)
+			% ("base output directory, will contain build/, install/, etc."),
+
+		(clipp::option("-i", "--ini")
+			& clipp::value("FILE") >> cmd.ini)
+			% ("path to the ini file"),
+
+		(clipp::option("--dry")
+			>> [&]{ cmd.set.push_back("conf/dry=true"); })
+			%  "simulates filesystem operations",
+
+		(clipp::option("-l", "--log-level")
+			&  clipp::value("LEVEL") >> cmd.log)
+			%  "0 is silent, 6 is max",
+
+		(clipp::option("-g", "--redownload")
+			>> [&]{ cmd.set.push_back("conf/redownload=true"); })
+			% "redownloads archives, see --reextract",
+
+		(clipp::option("-e", "--reextract")
+			>> [&]{ cmd.set.push_back("conf/reextract=true"); })
+			% "deletes source directories and re-extracts archives",
+
+		(clipp::option("-b", "--rebuild")
+			>> [&]{ cmd.set.push_back("conf/rebuild=true"); })
+			%  "cleans and rebuilds projects",
+
+		(clipp::option("-c", "--clean") >> cmd.clean)
+			% "combines --redownload, --reextract and --rebuild",
+
+		(clipp::repeatable(clipp::option("-s", "--set") >> cmd.set
+			& clipp::opt_value("OPTION", cmd.options)))
+			%  "sets an option, such as 'versions/openssl=1.2'; -s with no "
+		       "arguments lists the available options"
 	);
-
-
-	conf_command_line_options(g);
 
 	try
 	{
@@ -90,11 +127,34 @@ int run(int argc, char** argv)
 			return 0;
 		}
 
+		conf::set_log_level(cmd.log);
 
-		init_options();
+		if (!cmd.set.empty())
+		{
+			if (cmd.set.size() != cmd.options.size())
+			{
+				dump_available_options();
+				return 0;
+			}
+		}
+
+		if (cmd.clean)
+		{
+			cmd.options.push_back("conf/redownload=true");
+			cmd.options.push_back("conf/reextract=true");
+			cmd.options.push_back("conf/rebuild=true");
+		}
+
+		if (!cmd.prefix.empty())
+			cmd.options.push_back("paths/prefix=" + cmd.prefix);
+
+		std::cout << cmd.ini << "\n";
+
+		init_options(cmd.ini, cmd.options);
 		dump_options();
-		return 0;
 
+		return 0;
+		/*
 		::SetConsoleCtrlHandler(signal_handler, TRUE);
 
 		curl_init curl;
@@ -118,7 +178,7 @@ int run(int argc, char** argv)
 		add_task<sip>();
 		add_task<pyqt>();
 
-		/*if (argc > 1)
+		if (argc > 1)
 		{
 			std::vector<std::string> tasks;
 
@@ -139,11 +199,11 @@ int run(int argc, char** argv)
 			}
 
 			return 0;
-		}*/
+		}
 
 		run_all_tasks();
 
-		return 0;
+		return 0;*/
 	}
 	catch(bad_command_line&)
 	{

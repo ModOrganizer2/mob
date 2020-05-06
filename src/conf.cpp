@@ -12,19 +12,19 @@ using path_map = std::map<std::string, fs::path>;
 using bool_map   = std::map<std::string, bool>;
 
 static fs::path g_ini;
-const std::string ini_filename = "mob.ini";
+const std::string default_ini_filename = "mob.ini";
 
-// special case for options that are used often to avoid string manipulations
-static bool g_dry = false;
-static int  g_log = 3;
-static bool g_redownload = false;
-static bool g_reextract = false;
-static bool g_rebuild = false;
+// special case to avoid string manipulations
+static int g_log = 3;
 
 static string_map g_options =
 {
-	{"mo_org",    "ModOrganizer2"},
-	{"mo_branch", "master"}
+	{"mo_org",     "ModOrganizer2"},
+	{"mo_branch",  "master"},
+	{"dry",        "false"},
+	{"redownload", "false"},
+	{"reextract",  "false"},
+	{"rebuild",    "false"}
 };
 
 static path_map g_tools =
@@ -142,6 +142,10 @@ const fs::path& paths::by_name(const std::string& s)
 	return get("path", g_paths, s);
 }
 
+void conf::set_log_level(int i)
+{
+	g_log = i;
+}
 
 bool conf::log_dump()         { return g_log > 5; }
 bool conf::log_trace() 		  { return g_log > 4; }
@@ -149,50 +153,110 @@ bool conf::log_debug() 		  { return g_log > 3; }
 bool conf::log_info() 		  { return g_log > 2; }
 bool conf::log_warning()      { return g_log > 1; }
 bool conf::log_error()        { return g_log > 0; }
-bool conf::dry()              { return g_dry; }
-bool conf::redownload()       { return g_redownload; }
-bool conf::reextract()        { return g_reextract; }
-bool conf::rebuild()          { return g_rebuild; }
 
-
-void conf_command_line_options(clipp::group& g)
+template <class T>
+bool parse_value(const std::string& s, T& out)
 {
-	g.push_back(
-		(clipp::option("-i", "--ini")
-			>> [&](auto&& v){ g_ini = v; })
-			% ("path to the ini file (defaults to ./" + ini_filename + ")"),
-
-		(clipp::option("--dry")
-			>> [&]{ g_dry = true; })
-			%  "simulates filesystem operations",
-
-		(clipp::option("-l", "--log-level")
-			&  clipp::value("level", g_log))
-			%  "0 is silent, 6 is max",
-
-		//(clipp::option("-o", "--option")
-		//	&  clipp::value("key=value")
-		//	>> [&](auto&& v){ set_opt(v); })
-		//	%  "sets an option",
-
-		(clipp::option("-g", "--redownload")
-			>> [&]{ g_redownload = true; })
-			% "redownloads archives, see --reextract",
-
-		(clipp::option("-e", "--reextract")
-			>> [&]{ g_reextract = true; })
-			% "deletes source directories and re-extracts archives",
-
-		(clipp::option("-b", "--rebuild")
-			>> [&]{ g_rebuild = true; })
-			%  "cleans and rebuilds projects",
-
-		(clipp::option("-c", "--clean")
-			>> [&]{ g_redownload=true; g_reextract=true; g_rebuild=true; })
-			% "combines --redownload, --reextract and --rebuild"
-	);
+	out = s;
+	return true;
 }
 
+template <>
+bool parse_value<bool>(const std::string& s, bool& out)
+{
+	std::istringstream iss(s);
+	iss >> out;
+	return !iss.bad();
+}
+
+template <class Map>
+bool set_option_impl(
+	Map& map, const std::string& key, const std::string& value)
+{
+	auto itor = map.find(key);
+	if (itor == map.end())
+	{
+		gcx().error(context::conf, "unknown key '" + key + "'");
+		return false;
+	}
+
+	if (!parse_value<typename Map::mapped_type>(value, itor->second))
+	{
+		gcx().error(context::conf, "bad value '" + value + "'");
+		return false;
+	}
+
+	return true;
+}
+
+bool set_option(
+	const std::string& section,
+	const std::string& key, const std::string& value)
+{
+	if (section == "options")
+		return set_option_impl(g_options, key, value);
+	else if (section == "tools")
+		return set_option_impl(g_tools, key, value);
+	else if (section == "prebuilt")
+		return set_option_impl(g_prebuilt, key, value);
+	else if (section == "versions")
+		return set_option_impl(g_versions, key, value);
+	else if (section == "paths")
+		return set_option_impl(g_paths, key, value);
+
+	gcx().error(context::conf, "bad section name '" + section + "'");
+	return false;
+}
+
+void set_option(const std::string& s)
+{
+	const auto slash = s.find("/");
+	if (slash == std::string::npos)
+	{
+		gcx().bail_out(context::conf,
+			"bad option " + s + ", must be section/key=value");
+	}
+
+	const auto equal = s.find("=", slash);
+	if (slash == std::string::npos)
+	{
+		gcx().bail_out(context::conf,
+			"bad option " + s + ", must be section/key=value");
+	}
+
+	const std::string section = s.substr(0, slash);
+	const std::string key = s.substr(slash + 1, equal - slash - 1);
+	const std::string value = s.substr(equal + 1);
+
+	if (set_option(section, key, value))
+	{
+		gcx().trace(context::conf,
+			"setting " + section + "/" + key + "=" + value);
+	}
+	else
+	{
+		gcx().bail_out(context::conf,
+			"failed to set " + section + "/" + key + "=" + value);
+	}
+}
+
+void dump_available_options()
+{
+	for (auto&& [k, v] : g_options)
+		std::cout << "options/" << k << "\n";
+
+	for (auto&& [k, v] : g_tools)
+		std::cout << "tools/" << k << "\n";
+
+	for (auto&& [k, v] : g_prebuilt)
+		std::cout << "prebuilt/" << k << "\n";
+
+	for (auto&& [k, v] : g_versions)
+		std::cout << "versions/" << k << "\n";
+
+	for (auto&& [k, v] : g_paths)
+		std::cout << "paths/" << k << "\n";
+}
 
 bool try_parts(fs::path& check, const std::vector<std::string>& parts)
 {
@@ -493,32 +557,6 @@ void find_vcvars()
 }
 
 
-template <class T>
-bool parse_value(const std::string& s, T& out) = delete;
-
-template <>
-bool parse_value<bool>(const std::string& s, bool& out)
-{
-	std::istringstream iss(s);
-	iss >> out;
-	return !iss.bad();
-}
-
-template <>
-bool parse_value<std::string>(const std::string& s, std::string& out)
-{
-	out = s;
-	return true;
-}
-
-template <>
-bool parse_value<fs::path>(const std::string& s, fs::path& out)
-{
-	out = s;
-	return true;
-}
-
-
 void ini_error(std::size_t line, const std::string& what)
 {
 	gcx().bail_out(context::conf,
@@ -527,22 +565,24 @@ void ini_error(std::size_t line, const std::string& what)
 		what);
 }
 
-fs::path find_ini()
+fs::path find_ini(const fs::path& ini)
 {
-	fs::path p = g_ini;
+	fs::path p = ini;
 
 	if (!p.empty())
 	{
 		if (fs::exists(p))
 			return fs::canonical(p);
+		else
+			gcx().bail_out(context::conf, "can't find ini at " + ini.string());
 	}
 
 	p = fs::current_path();
 
-	if (try_parts(p, {"..", "..", "..", ini_filename}))
+	if (try_parts(p, {"..", "..", "..", default_ini_filename}))
 		return p;
 
-	gcx().bail_out(context::conf, "can't find " + ini_filename);
+	gcx().bail_out(context::conf, "can't find " + default_ini_filename);
 }
 
 std::vector<std::string> read_ini(const fs::path& ini)
@@ -572,9 +612,9 @@ std::vector<std::string> read_ini(const fs::path& ini)
 	return lines;
 }
 
-template <class Map>
 void parse_section(
-	std::size_t& i, const std::vector<std::string>& lines, Map& map)
+	std::size_t& i, const std::vector<std::string>& lines,
+	const std::string& section)
 {
 	++i;
 
@@ -595,20 +635,16 @@ void parse_section(
 		if (k.empty())
 			ini_error(i, "bad line '" + line + "'");
 
-		auto itor = map.find(k);
-		if (itor == map.end())
-			ini_error(i, "unknown key '" + k + "'");
-
-		if (!parse_value<typename Map::mapped_type>(v, itor->second))
+		if (!set_option(section, k, v))
 			ini_error(i, "bad line '" + line + "'");
 
 		++i;
 	}
 }
 
-void parse_ini()
+void parse_ini(const fs::path& ini)
 {
-	g_ini = find_ini();
+	g_ini = find_ini(ini);
 	gcx().debug(context::conf, "using ini at " + g_ini.string());
 
 	const auto lines = read_ini(g_ini);
@@ -619,18 +655,17 @@ void parse_ini()
 		if (i >= lines.size())
 			break;
 
-		if (lines[i] == "[options]")
-			parse_section(i, lines, g_options);
-		else if (lines[i] == "[tools]")
-			parse_section(i, lines, g_tools);
-		else if (lines[i] == "[prebuilt]")
-			parse_section(i, lines, g_prebuilt);
-		else if (lines[i] == "[versions]")
-			parse_section(i, lines, g_versions);
-		else if (lines[i] == "[paths]")
-			parse_section(i, lines, g_paths);
+		const auto& line = lines[i];
+
+		if (line.starts_with("[") && line.ends_with("]"))
+		{
+			const std::string section = line.substr(1, line.size() - 2);
+			parse_section(i, lines, section);
+		}
 		else
-			ini_error(i, "bad section " + lines[i]);
+		{
+			ini_error(i, "bad line '" + line + "'");
+		}
 	}
 }
 
@@ -657,7 +692,7 @@ void set_path_if_empty(const std::string& k, F&& f)
 {
 	auto itor = g_paths.find(k);
 	if (itor == g_paths.end())
-		gcx().bail_out(context::conf, "unknown path party key " + k);
+		gcx().bail_out(context::conf, "unknown path key " + k);
 
 	if (!itor->second.empty())
 	{
@@ -689,9 +724,38 @@ void set_path_if_empty(const std::string& k, F&& f)
 	itor->second = fs::canonical(cp);
 }
 
-void init_options()
+void make_canonical_path(
+	const std::string& key,
+	const fs::path& default_parent, const std::string& default_dir)
 {
-	parse_ini();
+	auto itor = g_paths.find(key);
+	if (itor == g_paths.end())
+		gcx().bail_out(context::conf, "unknown path key " + key);
+
+	if (itor->second.empty())
+	{
+		itor->second = default_parent / default_dir;
+	}
+	else
+	{
+		if (itor->second.is_relative())
+			itor->second = default_parent / itor->second;
+	}
+
+	itor->second = fs::weakly_canonical(fs::absolute(itor->second));
+}
+
+void init_options(const fs::path& ini, const std::vector<std::string>& opts)
+{
+	parse_ini(ini);
+
+	if (!opts.empty())
+	{
+		gcx().debug(context::conf, "overriding from command line:");
+
+		for (auto&& o : opts)
+			set_option(o);
+	}
 
 	check_missing_options();
 
@@ -704,21 +768,21 @@ void init_options()
 	set_path_if_empty("pf_x86",          find_program_files_x86);
 	set_path_if_empty("pf_x64",          find_program_files_x64);
 	set_path_if_empty("temp_dir",        find_temp_dir);
-	set_path_if_empty("patches",         []{ return find_in_root("patches"); });
-
-	set_path_if_empty("cache",           paths::prefix() / "downloads");
-	set_path_if_empty("build",           paths::prefix() / "build");
-	set_path_if_empty("install",         paths::prefix() / "install");
-	set_path_if_empty("install_bin",     paths::install() / "bin");
-	set_path_if_empty("install_libs",    paths::install() / "libs");
-	set_path_if_empty("install_pdbs",    paths::install() / "pdbs");
-	set_path_if_empty("install_dlls",    paths::install_bin() / "dlls");
-	set_path_if_empty("install_loot",    paths::install_bin() / "loot");
-	set_path_if_empty("install_plugins", paths::install_bin() / "plugins");
+	set_path_if_empty("patches",         find_in_root("patches"));
 	set_path_if_empty("qt_bin",          paths::qt_install() / "bin");
 
 	find_vcvars();
 	validate_qt();
+
+	make_canonical_path("cache",           paths::prefix(), "downloads");
+	make_canonical_path("build",           paths::prefix(), "build");
+	make_canonical_path("install",         paths::prefix(), "install");
+	make_canonical_path("install_bin",     paths::install(), "bin");
+	make_canonical_path("install_libs",    paths::install(), "libs");
+	make_canonical_path("install_pdbs",    paths::install(), "pdbs");
+	make_canonical_path("install_dlls",    paths::install_bin(), "dlls");
+	make_canonical_path("install_loot",    paths::install_bin(), "loot");
+	make_canonical_path("install_plugins", paths::install_bin(), "plugins");
 }
 
 template <class Map>
@@ -735,18 +799,9 @@ void table(const std::string& caption, const Map& values)
 
 void dump_options()
 {
-	const string_map manual_opts =
-	{
-		{"dry",         g_dry ? "true" : "false"},
-		{"log",         std::to_string(g_log)},
-		{"redownload",  g_redownload ? "true" : "false"},
-		{"reextract",   g_reextract ? "true" : "false"},
-		{"rebuild",     g_rebuild ? "true" : "false"},
-	};
-
 	string_map opts = g_options;
-	opts.insert(manual_opts.begin(),  manual_opts.end());
-	table("options", g_options);
+	opts.insert({"log", std::to_string(g_log)});
+	table("options", opts);
 
 	string_map tools;
 	for (auto&& [k, v] : g_tools)
