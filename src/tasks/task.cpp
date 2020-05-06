@@ -395,6 +395,11 @@ void parallel_tasks::join()
 
 void parallel_tasks::fetch()
 {
+	// no-op
+}
+
+void parallel_tasks::build_and_install()
+{
 	for (auto& t : children_)
 	{
 		threads_.push_back(std::thread([&]
@@ -402,11 +407,6 @@ void parallel_tasks::fetch()
 			t->run();
 		}));
 	}
-}
-
-void parallel_tasks::build_and_install()
-{
-	// no-op
 }
 
 void parallel_tasks::do_fetch()

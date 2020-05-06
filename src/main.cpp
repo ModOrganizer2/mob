@@ -239,7 +239,8 @@ void add_tasks()
 		.add_task<modorganizer>("modorganizer-form43_checker")
 		.add_task<modorganizer>("modorganizer-preview_dds");
 
-	add_task<modorganizer>("modorganizer");
+	add_task<parallel_tasks>(true)
+		.add_task<modorganizer>("modorganizer");
 }
 
 int run(int argc, char** argv)

@@ -25,16 +25,45 @@ void sevenz::do_fetch()
 
 void sevenz::do_build_and_install()
 {
+	build();
+
+	op::copy_file_to_dir_if_better(cx(),
+		module_to_build() / "x64/7z.dll",
+		paths::install_dlls());
+}
+
+void sevenz::build()
+{
+	const int max_tries = 3;
+
+	for (int tries=0; tries<max_tries; ++tries)
+	{
+		const int exit_code = run_tool(jom()
+			.path(module_to_build())
+			.def("CPU=x64")
+			.def("NEW_COMPILER=1")
+			.def("MY_STATIC_LINK=1")
+			.def("NO_BUFFEROVERFLOWU=1"));
+
+		if (exit_code == 0)
+			return;
+
+		cx().debug(context::generic,
+			"jom /J regularly fails with 7z because of race conditions; "
+			"trying again");
+	}
+
+	cx().debug(context::generic,
+		"jom /J has failed more than " + std::to_string(max_tries) + " "
+		"times, restarting one last time without /J; that one should work");
+
 	run_tool(jom()
 		.path(module_to_build())
 		.def("CPU=x64")
 		.def("NEW_COMPILER=1")
 		.def("MY_STATIC_LINK=1")
-		.def("NO_BUFFEROVERFLOWU=1"));
-
-	op::copy_file_to_dir_if_better(cx(),
-		module_to_build() / "x64/7z.dll",
-		paths::install_dlls());
+		.def("NO_BUFFEROVERFLOWU=1")
+		.flag(jom::single_job));
 }
 
 void sevenz::do_clean_for_rebuild()

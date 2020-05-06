@@ -372,6 +372,8 @@ private:
 	static url source_url();
 	static std::string version_for_url();
 	static fs::path module_to_build();
+
+	void build();
 };
 
 
