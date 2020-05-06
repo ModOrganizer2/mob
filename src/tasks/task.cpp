@@ -41,13 +41,34 @@ bool run_task(const std::string& name)
 	return false;
 }
 
-void run_all_tasks()
+bool run_tasks(const std::vector<std::string>& names)
+{
+	if (names.empty())
+		return true;
+
+	if (names.size() == 1)
+		gcx().debug(context::generic, "specified task: " + names[0]);
+	else
+		gcx().debug(context::generic, "specified tasks: " + join(names, " "));
+
+	for (auto&& t : names)
+	{
+		if (!run_task(t))
+			return false;
+	}
+
+	return true;
+}
+
+bool run_all_tasks()
 {
 	for (auto&& t : g_tasks)
 	{
 		t->run();
 		t->join();
 	}
+
+	return true;
 }
 
 

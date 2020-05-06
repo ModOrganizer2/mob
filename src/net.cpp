@@ -8,6 +8,17 @@
 namespace mob
 {
 
+curl_init::curl_init()
+{
+	curl_global_init(CURL_GLOBAL_ALL );
+}
+
+curl_init::~curl_init()
+{
+	curl_global_cleanup();
+}
+
+
 url::url(const char* p)
 	: s_(p)
 {

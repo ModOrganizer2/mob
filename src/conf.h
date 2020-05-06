@@ -3,9 +3,6 @@
 namespace mob
 {
 
-class bad_command_line {};
-class bad_conf {};
-
 #define VALUE(NAME) \
 	static decltype(auto) NAME() { return by_name(#NAME); }
 

@@ -7,6 +7,15 @@ namespace mob
 
 class context;
 
+struct curl_init
+{
+	curl_init();
+	~curl_init();
+
+	curl_init(const curl_init&) = delete;
+	curl_init& operator=(const curl_init&) = delete;
+};
+
 
 class url
 {

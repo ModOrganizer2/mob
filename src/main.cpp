@@ -9,27 +9,7 @@
 namespace mob
 {
 
-
-BOOL WINAPI signal_handler(DWORD) noexcept
-{
-	gcx().debug(context::generic, "caught sigint");
-	task::interrupt_all();
-	return TRUE;
-}
-
-
-struct curl_init
-{
-	curl_init()
-	{
-		curl_global_init(CURL_GLOBAL_ALL );
-	}
-
-	~curl_init()
-	{
-		curl_global_cleanup();
-	}
-};
+static std::vector<std::string> g_tasks_to_run;
 
 
 std::string version()
@@ -46,8 +26,7 @@ void show_help(const clipp::group& g)
 			.doc_column(30));
 }
 
-
-int run(int argc, char** argv)
+std::optional<int> handle_command_line(int argc, char** argv)
 {
 	struct
 	{
@@ -104,115 +83,108 @@ int run(int argc, char** argv)
 		(clipp::repeatable(clipp::option("-s", "--set") >> cmd.set
 			& clipp::opt_value("OPTION", cmd.options)))
 			%  "sets an option, such as 'versions/openssl=1.2'; -s with no "
-		       "arguments lists the available options"
+		       "arguments lists the available options",
+
+		(clipp::opt_values("task", g_tasks_to_run))
+			% "tasks to run"
 	);
 
-	try
-	{
-		const auto pr = clipp::parse(argc, argv, g);
 
-		if (!pr)
-			throw bad_command_line();
+	const auto pr = clipp::parse(argc, argv, g);
 
-
-		if (cmd.version)
-		{
-			std::cout << version() << "\n";
-			return 0;
-		}
-
-		if (cmd.help)
-		{
-			show_help(g);
-			return 0;
-		}
-
-		conf::set_log_level(cmd.log);
-
-		if (!cmd.set.empty())
-		{
-			if (cmd.set.size() != cmd.options.size())
-			{
-				dump_available_options();
-				return 0;
-			}
-		}
-
-		if (cmd.clean)
-		{
-			cmd.options.push_back("conf/redownload=true");
-			cmd.options.push_back("conf/reextract=true");
-			cmd.options.push_back("conf/rebuild=true");
-		}
-
-		if (!cmd.prefix.empty())
-			cmd.options.push_back("paths/prefix=" + cmd.prefix);
-
-		std::cout << cmd.ini << "\n";
-
-		init_options(cmd.ini, cmd.options);
-		dump_options();
-
-		return 0;
-		/*
-		::SetConsoleCtrlHandler(signal_handler, TRUE);
-
-		curl_init curl;
-
-		add_task<sevenz>();
-		add_task<zlib>();
-		add_task<fmt>();
-		add_task<gtest>();
-		add_task<libbsarch>();
-		add_task<libloot>();
-		add_task<openssl>();
-		add_task<libffi>();
-		add_task<bzip2>();
-		add_task<python>();
-		add_task<boost>();
-		add_task<lz4>();
-		add_task<nmm>();
-		add_task<ncc>();
-		add_task<spdlog>();
-		add_task<usvfs>();
-		add_task<sip>();
-		add_task<pyqt>();
-
-		if (argc > 1)
-		{
-			std::vector<std::string> tasks;
-
-			conf::set(argc, argv);
-
-			for (int i=1; i<argc; ++i)
-			{
-				const std::string arg = argv[i];
-
-				if (!arg.starts_with("--"))
-					tasks.push_back(arg);
-			}
-
-			for (auto&& t : tasks)
-			{
-				if (!run_task(t))
-					return 1;
-			}
-
-			return 0;
-		}
-
-		run_all_tasks();
-
-		return 0;*/
-	}
-	catch(bad_command_line&)
+	if (!pr)
 	{
 		show_help(g);
 		return 1;
 	}
-	catch(bad_conf&)
+
+	if (cmd.version)
 	{
-		return 1;
+		std::cout << version() << "\n";
+		return 0;
+	}
+
+	if (cmd.help)
+	{
+		show_help(g);
+		return 0;
+	}
+
+	conf::set_log_level(cmd.log);
+
+	if (!cmd.set.empty())
+	{
+		if (cmd.set.size() != cmd.options.size())
+		{
+			dump_available_options();
+			return 0;
+		}
+	}
+
+	if (cmd.clean)
+	{
+		cmd.options.push_back("conf/redownload=true");
+		cmd.options.push_back("conf/reextract=true");
+		cmd.options.push_back("conf/rebuild=true");
+	}
+
+	if (!cmd.prefix.empty())
+		cmd.options.push_back("paths/prefix=" + cmd.prefix);
+
+	init_options(cmd.ini, cmd.options);
+	dump_options();
+
+	return {};
+}
+
+
+BOOL WINAPI signal_handler(DWORD) noexcept
+{
+	gcx().debug(context::generic, "caught sigint");
+	task::interrupt_all();
+	return TRUE;
+}
+
+void add_tasks()
+{
+	add_task<sevenz>();
+	add_task<zlib>();
+	add_task<fmt>();
+	add_task<gtest>();
+	add_task<libbsarch>();
+	add_task<libloot>();
+	add_task<openssl>();
+	add_task<libffi>();
+	add_task<bzip2>();
+	add_task<python>();
+	add_task<boost>();
+	add_task<lz4>();
+	add_task<nmm>();
+	add_task<ncc>();
+	add_task<spdlog>();
+	add_task<usvfs>();
+	add_task<sip>();
+	add_task<pyqt>();
+}
+
+int run(int argc, char** argv)
+{
+	try
+	{
+		if (auto r=handle_command_line(argc, argv))
+			return *r;
+
+		::SetConsoleCtrlHandler(signal_handler, TRUE);
+
+		curl_init curl;
+		add_tasks();
+
+		if (!g_tasks_to_run.empty())
+			return run_tasks(g_tasks_to_run);
+		else
+			return run_all_tasks();
+
+		return 0;
 	}
 	catch(bailed&)
 	{
@@ -232,6 +204,6 @@ int main(int argc, char** argv)
 		"mob finished with exit code " + std::to_string(r));
 
 	mob::dump_logs();
-	//std::cin.get();
+
 	return r;
 }
