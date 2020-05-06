@@ -56,18 +56,22 @@ void modorganizer::do_fetch()
 
 void modorganizer::do_build_and_install()
 {
-	run_tool(process_runner(process()
-		.binary(tools::git())
-		.arg("-c", "core.autocrlf=false")
-		.arg("submodule")
-		.arg("--quiet")
-		.arg("add")
-		.arg("-b", conf::mo_branch())
-		.arg("--force")
-		.arg("--name", name())
-		.arg(make_github_url(conf::mo_org(), repo_))
-		.arg(name())
-		.cwd(super_path())));
+	{
+		std::scoped_lock lock(g_super_mutex);
+
+		run_tool(process_runner(process()
+			.binary(tools::git())
+			.arg("-c", "core.autocrlf=false")
+			.arg("submodule")
+			.arg("--quiet")
+			.arg("add")
+			.arg("-b", conf::mo_branch())
+			.arg("--force")
+			.arg("--name", name())
+			.arg(make_github_url(conf::mo_org(), repo_))
+			.arg(name())
+			.cwd(super_path())));
+	}
 
 	if (!fs::exists(this_source_path() / "CMakeLists.txt"))
 	{

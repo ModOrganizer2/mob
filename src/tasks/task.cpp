@@ -9,7 +9,8 @@ namespace mob
 
 class interrupted {};
 
-std::vector<std::unique_ptr<task>> g_tasks;
+static std::vector<std::unique_ptr<task>> g_tasks;
+static std::vector<task*> g_all_tasks;
 std::mutex task::interrupt_mutex_;
 
 void add_task(std::unique_ptr<task> t)
@@ -19,7 +20,7 @@ void add_task(std::unique_ptr<task> t)
 
 void list_tasks(bool err)
 {
-	for (auto&& t : g_tasks)
+	for (auto&& t : g_all_tasks)
 	{
 		if (err)
 			std::cerr << " - " << join(t->names(), ", ") << "\n";
@@ -30,12 +31,12 @@ void list_tasks(bool err)
 
 task* find_task(const std::string& name)
 {
-	for (auto&& t : g_tasks)
+	for (auto&& t : g_all_tasks)
 	{
 		for (auto&& n : t->names())
 		{
 			if (n == name)
-				return t.get();
+				return t;
 		}
 	}
 
@@ -46,8 +47,14 @@ task* find_task(const std::string& name)
 	throw bailed("");
 }
 
-void run_tasks(const std::set<task*> tasks)
+void run_tasks(const std::vector<task*> tasks)
 {
+	{
+		std::set<task*> set(tasks.begin(), tasks.end());
+		if (set.size() != tasks.size())
+			DebugBreak();
+	}
+
 	for (auto* t : tasks)
 		t->fetch();
 
@@ -59,12 +66,18 @@ void run_tasks(const std::set<task*> tasks)
 	}
 }
 
-void gather_super_tasks(std::set<task*>& tasks)
+void gather_super_tasks(std::vector<task*>& tasks, std::set<task*>& seen)
 {
 	for (auto& t : g_tasks)
 	{
 		if (t->is_super())
-			tasks.insert(t.get());
+		{
+			if (!seen.contains(t.get()))
+			{
+				tasks.push_back(t.get());
+				seen.insert(t.get());
+			}
+		}
 	}
 }
 
@@ -83,13 +96,24 @@ void run_tasks(const std::vector<std::string>& names)
 	else
 		gcx().debug(context::generic, "specified tasks: " + join(names, " "));
 
-	std::set<task*> tasks;
+	std::vector<task*> tasks;
+	std::set<task*> seen;
 	for (auto&& name : names)
 	{
 		if (name == "super")
-			gather_super_tasks(tasks);
+		{
+			gather_super_tasks(tasks, seen);
+		}
 		else
-			tasks.insert(find_task(name));
+		{
+			auto* t = find_task(name);
+
+			if (!seen.contains(t))
+			{
+				tasks.push_back(t);
+				seen.insert(t);
+			}
+		}
 	}
 
 	run_tasks(tasks);
@@ -97,9 +121,10 @@ void run_tasks(const std::vector<std::string>& names)
 
 void run_all_tasks()
 {
-	std::set<task*> tasks;
+	std::vector<task*> tasks;
+
 	for (auto&& t : g_tasks)
-		tasks.insert(t.get());
+		tasks.push_back(t.get());
 
 	run_tasks(tasks);
 }
@@ -110,6 +135,8 @@ task::task(std::vector<std::string> names)
 {
 	contexts_.push_back(std::make_unique<thread_context>(
 		std::this_thread::get_id(), context(name())));
+
+	g_all_tasks.push_back(this);
 }
 
 task::~task()
@@ -326,6 +353,72 @@ void task::run_tool_impl(tool* t)
 	check_interrupted();
 	t->run(cxcopy);
 	check_interrupted();
+}
+
+
+parallel_tasks::parallel_tasks(bool super)
+	: task("parallel"), super_(super)
+{
+}
+
+bool parallel_tasks::is_super() const
+{
+	return super_;
+}
+
+void parallel_tasks::run()
+{
+	for (auto& t : children_)
+	{
+		threads_.push_back(std::thread([&]
+		{
+			t->run();
+		}));
+	}
+
+	join();
+}
+
+void parallel_tasks::interrupt()
+{
+	for (auto& t : children_)
+		t->interrupt();
+}
+
+void parallel_tasks::join()
+{
+	for (auto& t : threads_)
+		t.join();
+
+	threads_.clear();
+}
+
+void parallel_tasks::fetch()
+{
+	for (auto& t : children_)
+	{
+		threads_.push_back(std::thread([&]
+		{
+			t->run();
+		}));
+	}
+}
+
+void parallel_tasks::build_and_install()
+{
+	// no-op
+}
+
+void parallel_tasks::do_fetch()
+{
+}
+
+void parallel_tasks::do_build_and_install()
+{
+}
+
+void parallel_tasks::do_clean_for_rebuild()
+{
 }
 
 }	// namespace

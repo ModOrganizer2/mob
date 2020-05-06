@@ -11,9 +11,12 @@ class task;
 void add_task(std::unique_ptr<task> t);
 
 template <class Task, class... Args>
-void add_task(Args&&... args)
+Task& add_task(Args&&... args)
 {
-	add_task(std::make_unique<Task>(std::forward<Args>(args)...));
+	auto sp = std::make_unique<Task>(std::forward<Args>(args)...);
+	auto* p = sp.get();
+	add_task(std::move(sp));
+	return *p;
 }
 
 void run_task(const std::string& name);
@@ -39,12 +42,12 @@ public:
 	virtual fs::path get_source_path() const = 0;
 	virtual bool is_super() const;
 
-	void run();
-	void interrupt();
-	void join();
+	virtual void run();
+	virtual void interrupt();
+	virtual void join();
 
-	void fetch();
-	void build_and_install();
+	virtual void fetch();
+	virtual void build_and_install();
 
 protected:
 	template <class... Names>
@@ -129,6 +132,46 @@ public:
 	{
 		return Task::source_path();
 	}
+};
+
+
+class parallel_tasks : public task
+{
+public:
+	parallel_tasks(bool super);
+
+	template <class Task, class... Args>
+	parallel_tasks& add_task(Args&&... args)
+	{
+		children_.push_back(
+			std::make_unique<Task>(std::forward<Args>(args)...));
+
+		return *this;
+	}
+
+	fs::path get_source_path() const override
+	{
+		return {};
+	}
+
+	bool is_super() const override;
+
+	void run() override;
+	void interrupt() override;
+	void join() override;
+
+	void fetch() override;
+	void build_and_install() override;
+
+protected:
+	void do_fetch() override;
+	void do_build_and_install() override;
+	void do_clean_for_rebuild() override;
+
+private:
+	bool super_;
+	std::vector<std::unique_ptr<task>> children_;
+	std::vector<std::thread> threads_;
 };
 
 }	// namespace
