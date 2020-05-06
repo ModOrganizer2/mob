@@ -172,6 +172,7 @@ void add_tasks()
 	add_task<sip>();
 	add_task<pyqt>();
 	add_task<stylesheets>();
+	add_task<licenses>();
 }
 
 int run(int argc, char** argv)

@@ -126,6 +126,9 @@
     <ClCompile Include="..\src\tasks\stylesheets.cpp">
       <Filter>src\tasks</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\tasks\licenses.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">

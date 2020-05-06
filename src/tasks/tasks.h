@@ -96,6 +96,17 @@ protected:
 };
 
 
+class licenses : public basic_task<licenses>
+{
+public:
+	licenses();
+	static fs::path source_path();
+
+protected:
+	void do_build_and_install() override;
+};
+
+
 class libbsarch : public basic_task<libbsarch>
 {
 public:

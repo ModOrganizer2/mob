@@ -102,6 +102,7 @@ struct paths
 	VALUE(prefix);
 	VALUE(cache);
 	VALUE(patches);
+	VALUE(licenses);
 	VALUE(build);
 
 	VALUE(install);
@@ -113,6 +114,7 @@ struct paths
 	VALUE(install_loot);
 	VALUE(install_plugins);
 	VALUE(install_stylesheets);
+	VALUE(install_licenses);
 
 	VALUE(vs);
 	VALUE(qt_install);

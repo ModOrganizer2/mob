@@ -96,7 +96,9 @@ static path_map g_paths =
 	{"install_loot",        ""},
 	{"install_plugins",     ""},
 	{"install_stylesheets", ""},
+	{"install_licenses",    ""},
 	{"patches",             ""},
+	{"licenses",            ""},
 	{"vs",                  ""},
 	{"qt_install",          ""},
 	{"qt_bin",              ""},
@@ -820,20 +822,22 @@ void init_options(const fs::path& ini, const std::vector<std::string>& opts)
 	set_path_if_empty("pf_x64",          find_program_files_x64);
 	set_path_if_empty("temp_dir",        find_temp_dir);
 	set_path_if_empty("patches",         find_in_root("patches"));
+	set_path_if_empty("licenses",        find_in_root("licenses"));
 	set_path_if_empty("qt_bin",          paths::qt_install() / "bin");
 
 	find_vcvars();
 	validate_qt();
 
-	make_canonical_path("cache",           paths::prefix(), "downloads");
-	make_canonical_path("build",           paths::prefix(), "build");
-	make_canonical_path("install",         paths::prefix(), "install");
-	make_canonical_path("install_bin",     paths::install(), "bin");
-	make_canonical_path("install_libs",    paths::install(), "libs");
-	make_canonical_path("install_pdbs",    paths::install(), "pdbs");
-	make_canonical_path("install_dlls",    paths::install_bin(), "dlls");
-	make_canonical_path("install_loot",    paths::install_bin(), "loot");
-	make_canonical_path("install_plugins", paths::install_bin(), "plugins");
+	make_canonical_path("cache",            paths::prefix(), "downloads");
+	make_canonical_path("build",            paths::prefix(), "build");
+	make_canonical_path("install",          paths::prefix(), "install");
+	make_canonical_path("install_bin",      paths::install(), "bin");
+	make_canonical_path("install_libs",     paths::install(), "libs");
+	make_canonical_path("install_pdbs",     paths::install(), "pdbs");
+	make_canonical_path("install_dlls",     paths::install_bin(), "dlls");
+	make_canonical_path("install_loot",     paths::install_bin(), "loot");
+	make_canonical_path("install_plugins",  paths::install_bin(), "plugins");
+	make_canonical_path("install_licenses", paths::install_bin(), "licenses");
 
 	make_canonical_path(
 		"install_stylesheets",

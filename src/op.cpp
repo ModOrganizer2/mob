@@ -490,6 +490,9 @@ void check(const context& cx, const fs::path& p)
 	if (p.native().starts_with(paths::temp_dir().native()))
 		return;
 
+	if (p.native().starts_with(paths::licenses().native()))
+		return;
+
 	cx.bail_out(context::fs, "path " + p.string() + " is outside prefix");
 }
 
