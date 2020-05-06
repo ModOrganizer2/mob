@@ -84,11 +84,6 @@ void run_all_tasks()
 }
 
 
-task::task(const char* name)
-	: task(std::vector<std::string>{name})
-{
-}
-
 task::task(std::vector<std::string> names)
 	: names_(std::move(names)), interrupted_(false)
 {
@@ -123,6 +118,11 @@ const context& task::cx() const
 	}
 
 	return bad;
+}
+
+void task::add_name(std::string s)
+{
+	names_.push_back(s);
 }
 
 void task::interrupt_all()

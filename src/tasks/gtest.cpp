@@ -5,7 +5,7 @@ namespace mob
 {
 
 gtest::gtest()
-	: basic_task({"gtest", "googletest"})
+	: basic_task("gtest", "googletest")
 {
 }
 

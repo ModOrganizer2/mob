@@ -39,9 +39,19 @@ int basic_process_runner::exit_code() const
 }
 
 
-process_runner::process_runner(process p)
+process_runner::process_runner(process&& p)
+	: tool(p.name()), own_(std::move(p)), p_(nullptr)
 {
-	process_ = std::move(p);
+}
+
+process_runner::process_runner(process& p)
+	: tool(p.name()), p_(&p)
+{
+}
+
+void process_runner::do_run()
+{
+	execute_and_join();
 }
 
 int process_runner::result() const
@@ -49,9 +59,50 @@ int process_runner::result() const
 	return exit_code();
 }
 
-void process_runner::do_run()
+std::string process_runner::do_name() const
 {
-	execute_and_join();
+	return real_process().name();
+}
+
+void process_runner::do_interrupt()
+{
+	real_process().interrupt();
+}
+
+int process_runner::execute_and_join()
+{
+	real_process().set_context(cx_);
+	real_process().run();
+
+	join();
+
+	return real_process().exit_code();
+}
+
+void process_runner::join()
+{
+	real_process().join();
+}
+
+int process_runner::exit_code() const
+{
+	return real_process().exit_code();
+}
+
+process& process_runner::real_process()
+{
+	if (p_)
+		return *p_;
+	else
+		return own_;
+}
+
+const process& process_runner::real_process() const
+{
+	if (p_)
+		return *p_;
+	else
+		return own_;
 }
 
 }	// namespace

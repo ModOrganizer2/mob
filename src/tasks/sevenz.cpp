@@ -5,7 +5,7 @@ namespace mob
 {
 
 sevenz::sevenz()
-	: basic_task({"7z", "sevenz"})
+	: basic_task("7z", "sevenz")
 {
 }
 

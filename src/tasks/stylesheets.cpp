@@ -5,7 +5,7 @@ namespace mob
 {
 
 stylesheets::stylesheets()
-	: basic_task({"ss", "stylesheets"})
+	: basic_task("ss", "stylesheets")
 {
 }
 

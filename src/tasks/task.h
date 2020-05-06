@@ -10,10 +10,10 @@ class task;
 
 void add_task(std::unique_ptr<task> t);
 
-template <class Task>
-void add_task()
+template <class Task, class... Args>
+void add_task(Args&&... args)
 {
-	add_task(std::make_unique<Task>());
+	add_task(std::make_unique<Task>(std::forward<Args>(args)...));
 }
 
 void run_task(const std::string& name);
@@ -45,10 +45,16 @@ public:
 	void build_and_install();
 
 protected:
-	task(const char* name);
+	template <class... Names>
+	task(std::string name, Names&&... names)
+		: task(std::vector<std::string>{name, std::forward<Names>(names)...})
+	{
+	}
+
 	task(std::vector<std::string> names);
 
 	const context& cx() const;
+	void add_name(std::string s);
 
 	void check_interrupted();
 

@@ -35,6 +35,11 @@ void lz4::do_build_and_install()
 		.solution(solution_file())
 		.projects({"liblz4-dll"}));
 
+	op::copy_glob_to_dir_if_better(cx(),
+		out_dir() / "*",
+		source_path() / "bin",
+		op::copy_files);
+
 	op::copy_file_to_dir_if_better(cx(),
 		out_dir() / "liblz4.dll",
 		paths::install_dlls());

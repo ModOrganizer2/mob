@@ -84,15 +84,30 @@ protected:
 };
 
 
-class process_runner : public basic_process_runner
+class process_runner : public tool
 {
 public:
-	process_runner(process p);
+	process_runner(process&& p);
+	process_runner(process& p);
+
+	std::string do_name() const override;
+	void join();
+	int exit_code() const;
 
 	int result() const;
 
 protected:
 	void do_run() override;
+
+private:
+	process own_;
+	process* p_;
+
+	void do_interrupt() override;
+	int execute_and_join();
+
+	process& real_process();
+	const process& real_process() const;
 };
 
 
@@ -176,7 +191,9 @@ public:
 	cmake& generator(generators g);
 	cmake& root(const fs::path& p);
 	cmake& prefix(const fs::path& s);
-	cmake& def(const std::string& s);
+	cmake& def(const std::string& name, const std::string& value);
+	cmake& def(const std::string& name, const fs::path& p);
+	cmake& def(const std::string& name, const char* s);
 	cmake& architecture(arch a);
 
 	fs::path result() const;

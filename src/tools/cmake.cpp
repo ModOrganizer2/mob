@@ -29,9 +29,21 @@ cmake& cmake::prefix(const fs::path& s)
 	return *this;
 }
 
-cmake& cmake::def(const std::string& s)
+cmake& cmake::def(const std::string& name, const std::string& value)
 {
-	process_.arg("-D" + s);
+	process_.arg("-D" + name + "=" + value + "");
+	return *this;
+}
+
+cmake& cmake::def(const std::string& name, const fs::path& p)
+{
+	def(name, p.string());
+	return *this;
+}
+
+cmake& cmake::def(const std::string& name, const char* s)
+{
+	def(name, std::string(s));
 	return *this;
 }
 
@@ -62,6 +74,9 @@ void cmake::clean(const context& cx, const fs::path& root)
 
 void cmake::do_run()
 {
+	if (root_.empty())
+		cx_->bail_out(context::generic, "cmake output path is empty");
+
 	const auto& g = get_generator(gen_);
 	output_ = root_ / (g.output_dir(arch_));
 
@@ -128,7 +143,7 @@ std::string cmake::gen_info::get_arch(arch a) const
 			if (x64.empty())
 				return {};
 			else
-				return "-A" + x64;
+				return "-A " + x64;
 		}
 
 		case arch::dont_care:

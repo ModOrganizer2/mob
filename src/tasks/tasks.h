@@ -14,7 +14,10 @@ class boost : public basic_task<boost>
 {
 public:
 	boost();
+
 	static fs::path source_path();
+	static fs::path lib_path(arch a);
+	static fs::path root_lib_path(arch a);
 
 protected:
 	void do_fetch() override;
@@ -40,7 +43,6 @@ private:
 	static fs::path config_jam_file();
 	static url prebuilt_url();
 	static url source_url();
-	static fs::path lib_path(arch a);
 	static fs::path b2_exe();
 	static std::string python_dll();
 	static std::string python_version_for_dll();
@@ -168,6 +170,26 @@ private:
 	static fs::path solution_dir();
 	static fs::path solution_file();
 	static fs::path out_dir();
+};
+
+
+class modorganizer : public basic_task<modorganizer>
+{
+public:
+	modorganizer(std::string name);
+	static fs::path source_path();
+
+protected:
+	void do_fetch() override;
+	void do_build_and_install() override;
+
+private:
+	void initialize_super(const fs::path& super_root);
+
+	std::string short_name() const;
+	fs::path this_source_path() const;
+
+	static fs::path super_path();
 };
 
 

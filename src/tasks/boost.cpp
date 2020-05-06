@@ -14,6 +14,19 @@ fs::path boost::source_path()
 	return paths::build() / ("boost_" + boost_version_no_tags_underscores());
 }
 
+fs::path boost::lib_path(arch a)
+{
+	return root_lib_path(a) / "lib";
+}
+
+fs::path boost::root_lib_path(arch a)
+{
+	const std::string lib =
+		"lib" + address_model_for_arch(a) + "-msvc-" + versions::boost_vs();
+
+	return source_path() / lib;
+}
+
 void boost::do_fetch()
 {
 	//if (prebuilt::boost())
@@ -33,8 +46,8 @@ void boost::do_build_and_install()
 void boost::do_clean_for_rebuild()
 {
 	op::delete_directory(cx(), source_path() / "bin.v2", op::optional);
-	op::delete_directory(cx(), lib_path(arch::x86), op::optional);
-	op::delete_directory(cx(), lib_path(arch::x64), op::optional);
+	op::delete_directory(cx(), root_lib_path(arch::x86), op::optional);
+	op::delete_directory(cx(), root_lib_path(arch::x64), op::optional);
 	op::delete_file(cx(), config_jam_file(), op::optional);
 	op::delete_file(cx(), b2_exe(), op::optional);
 	op::delete_file(cx(), source_path() / "project-config.jam", op::optional);
@@ -52,7 +65,7 @@ void boost::fetch_prebuilt()
 void boost::build_and_install_prebuilt()
 {
 	op::copy_file_to_dir_if_better(cx(),
-		lib_path(arch::x64) / "lib" / python_dll(),
+		lib_path(arch::x64) / python_dll(),
 		paths::install_bin());
 }
 
@@ -98,11 +111,11 @@ void boost::build_and_install_from_source()
 		"static", "static", arch::x86);
 
 	do_b2(
-		{"python"},
+		{"thread", "python"},
 		"shared", "shared", arch::x64);
 
 	op::copy_file_to_dir_if_better(cx(),
-		lib_path(arch::x64) / "lib" / python_dll(),
+		lib_path(arch::x64) / python_dll(),
 		paths::install_bin());
 }
 
@@ -117,8 +130,8 @@ void boost::do_b2(
 		.arg("runtime-link=",   runtime_link)
 		.arg("toolset=",        "msvc-" + versions::vs_toolset())
 		.arg("--user-config=",  config_jam_file())
-		.arg("--stagedir=",     lib_path(a))
-		.arg("--libdir=",       lib_path(a))
+		.arg("--stagedir=",     root_lib_path(a))
+		.arg("--libdir=",       root_lib_path(a))
 		.args(map(components, [](auto&& c) { return "--with-" + c; }))
 		.env(env::vs(a))
 		.cwd(source_path())));
@@ -189,14 +202,6 @@ url boost::source_url()
 		"https://dl.bintray.com/boostorg/release/" +
 		boost_version_no_tags() + "/source/" +
 		boost_version_all_underscores() + ".zip";
-}
-
-fs::path boost::lib_path(arch a)
-{
-	const std::string lib =
-		"lib" + address_model_for_arch(a) + "-msvc-" + versions::boost_vs();
-
-	return source_path() / lib;
 }
 
 fs::path boost::b2_exe()

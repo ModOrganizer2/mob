@@ -173,6 +173,9 @@ void add_tasks()
 	add_task<pyqt>();
 	add_task<stylesheets>();
 	add_task<licenses>();
+
+	add_task<modorganizer>("cmake_common");
+	add_task<modorganizer>("modorganizer-uibase");
 }
 
 int run(int argc, char** argv)
