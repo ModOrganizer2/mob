@@ -8,8 +8,6 @@ namespace mob
 jom::jom()
 	: basic_process_runner("jom"), arch_(arch::def)
 {
-	process_
-		.binary(third_party::jom());
 }
 
 jom& jom::path(const fs::path& p)
@@ -57,6 +55,7 @@ void jom::do_run()
 	}
 
 	process_
+		.binary(tools::jom())
 		.stderr_filter([](process::filter& f)
 		{
 			if (f.line.find("empower your cores") != std::string::npos)

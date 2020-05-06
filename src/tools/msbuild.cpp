@@ -8,8 +8,6 @@ namespace mob
 msbuild::msbuild()
 	: basic_process_runner("msbuild"), config_("Release"), arch_(arch::def)
 {
-	process_
-		.binary(tool_paths::msbuild());
 }
 
 msbuild& msbuild::solution(const fs::path& sln)
@@ -77,8 +75,8 @@ void msbuild::do_run()
 		plat = platform_;
 	}
 
-
 	process_
+		.binary(tools::msbuild())
 		.arg("-nologo")
 		.arg("-maxCpuCount")
 		.arg("-property:UseMultiToolTask=true")

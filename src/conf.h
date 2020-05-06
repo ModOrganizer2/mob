@@ -10,13 +10,21 @@ class bad_conf {};
 	static decltype(auto) NAME() { return by_name(#NAME); }
 
 
-struct tool_paths
+struct tools
 {
-	static fs::path perl();
-	static fs::path msbuild();
-	static fs::path devenv();
-	static fs::path cmake();
-	static fs::path git();
+	static const fs::path& by_name(const std::string& s);
+
+	VALUE(perl);
+	VALUE(msbuild);
+	VALUE(devenv);
+	VALUE(cmake);
+	VALUE(git);
+	VALUE(sevenz);
+	VALUE(jom);
+	VALUE(patch);
+	VALUE(nuget);
+	VALUE(vswhere);
+	VALUE(vcvars);
 };
 
 struct conf
@@ -37,17 +45,6 @@ struct conf
 
 	VALUE(mo_org);
 	VALUE(mo_branch);
-};
-
-struct third_party
-{
-	static const fs::path& by_name(const std::string& s);
-
-	VALUE(sevenz);
-	VALUE(jom);
-	VALUE(patch);
-	VALUE(nuget);
-	VALUE(vswhere);
 };
 
 struct prebuilt
@@ -109,7 +106,6 @@ struct paths
 	VALUE(install_plugins);
 
 	VALUE(vs);
-	VALUE(vcvars);
 	VALUE(qt_install);
 	VALUE(qt_bin);
 	VALUE(pf_x86);

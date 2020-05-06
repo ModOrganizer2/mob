@@ -33,7 +33,7 @@ env get_vcvars_env(arch a)
 
 	// "vcvarsall.bat" amd64 && set > temp_file
 	std::string cmd =
-		"\"" + paths::vcvars().string() + "\" " + arch_s +
+		"\"" + tools::vcvars().string() + "\" " + arch_s +
 		" && set > \"" + tmp.string() + "\"";
 
 	process::raw(gcx(), cmd)
@@ -221,6 +221,12 @@ void this_env::set(const std::string& k, const std::string& v, env::flags f)
 			::SetEnvironmentVariableA(k.c_str(), (v + get(k)).c_str());
 			break;
 	}
+}
+
+void this_env::prepend_to_path(const fs::path& p)
+{
+	gcx().trace(context::generic, "prepending to PATH: " + p.string());
+	set("PATH", p.string() + ";", env::prepend);
 }
 
 std::string this_env::get(const std::string& name)

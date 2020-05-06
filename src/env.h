@@ -47,6 +47,8 @@ struct this_env
 		const std::string& v,
 		env::flags f=env::replace);
 
+	static void prepend_to_path(const fs::path& p);
+
 	static env get();
 	static std::string get(const std::string& k);
 };

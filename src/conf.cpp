@@ -27,13 +27,19 @@ static string_map g_options =
 	{"mo_branch", "master"}
 };
 
-static path_map g_third_party =
+static path_map g_tools =
 {
-	{"sevenz",  ""},
-	{"jom",     ""},
-	{"patch",   ""},
-	{"nuget",   ""},
-	{"vswhere", ""},
+	{"sevenz",  "7z.exe"},
+	{"jom",     "jom.exe"},
+	{"patch",   "patch.exe"},
+	{"nuget",   "nuget.exe"},
+	{"vswhere", "vswhere.exe"},
+	{"perl",    "perl.exe"},
+	{"msbuild", "msbuild.exe"},
+	{"devenv",  "devenv.exe"},
+	{"cmake",   "cmake.exe"},
+	{"git",     "git.exe"},
+	{"vcvars",   ""},
 };
 
 static bool_map g_prebuilt =
@@ -86,7 +92,6 @@ static path_map g_paths =
 	{"install_plugins", ""},
 	{"patches",         ""},
 	{"vs",              ""},
-	{"vcvars",          ""},
 	{"qt_install",      ""},
 	{"qt_bin",          ""},
 	{"pf_x86",          ""},
@@ -112,14 +117,14 @@ const typename Map::mapped_type& get(
 }
 
 
+const fs::path& tools::by_name(const std::string& name)
+{
+	return get("tool", g_tools, name);
+}
+
 const std::string& conf::by_name(const std::string& name)
 {
 	return get("option", g_options, name);
-}
-
-const fs::path& third_party::by_name(const std::string& s)
-{
-	return get("third party", g_third_party, s);
 }
 
 bool prebuilt::by_name(const std::string& s)
@@ -148,13 +153,6 @@ bool conf::dry()              { return g_dry; }
 bool conf::redownload()       { return g_redownload; }
 bool conf::reextract()        { return g_reextract; }
 bool conf::rebuild()          { return g_rebuild; }
-
-
-fs::path tool_paths::perl()    { return "perl.exe"; }
-fs::path tool_paths::msbuild() { return "msbuild.exe"; }
-fs::path tool_paths::devenv()  { return "devenv.exe"; }
-fs::path tool_paths::cmake()   { return "cmake.exe"; }
-fs::path tool_paths::git()     { return "git.exe"; }
 
 
 void conf_command_line_options(clipp::group& g)
@@ -441,7 +439,7 @@ fs::path find_temp_dir()
 fs::path find_vs()
 {
 	auto p = process()
-		.binary(third_party::vswhere())
+		.binary(tools::vswhere())
 		.arg("-prerelease")
 		.arg("-version", versions::vs())
 		.arg("-property", "installationPath")
@@ -465,20 +463,34 @@ fs::path find_vs()
 	return path;
 }
 
-fs::path find_vcvars()
+bool try_vcvars(fs::path& bat)
 {
-	const auto vcvars =
-		paths::vs() / "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
+	if (!fs::exists(bat))
+		return false;
 
-	if (!fs::exists(vcvars))
-	{
-		gcx().bail_out(context::conf,
-			"can't find vcvars batch file at " + vcvars.string());
-	}
-
-	return vcvars;
+	bat = fs::canonical(fs::absolute(bat));
+	return true;
 }
 
+void find_vcvars()
+{
+	fs::path& bat = g_tools["vcvars"];
+
+	if (!bat.empty())
+	{
+		if (!try_vcvars(bat))
+			gcx().bail_out(context::conf, "vcvars not found " + bat.string());
+	}
+	else
+	{
+		bat = paths::vs() / "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
+
+		if (!try_vcvars(bat))
+			gcx().bail_out(context::conf, "vcvars not found " + bat.string());
+	}
+
+	gcx().trace(context::conf, "using vcvars at " + bat.string());
+}
 
 
 template <class T>
@@ -609,8 +621,8 @@ void parse_ini()
 
 		if (lines[i] == "[options]")
 			parse_section(i, lines, g_options);
-		else if (lines[i] == "[third-party]")
-			parse_section(i, lines, g_third_party);
+		else if (lines[i] == "[tools]")
+			parse_section(i, lines, g_tools);
 		else if (lines[i] == "[prebuilt]")
 			parse_section(i, lines, g_prebuilt);
 		else if (lines[i] == "[versions]")
@@ -638,46 +650,6 @@ void check_missing_options()
 		if (v.empty())
 			gcx().bail_out(context::conf, "missing version for " + k);
 	}
-}
-
-
-void find_in_third_party(const std::string& k, const std::string& exe)
-{
-	auto itor = g_third_party.find(k);
-
-	if (itor == g_third_party.end())
-		gcx().bail_out(context::conf, "unknown third party key " + k);
-
-	if (!itor->second.empty())
-	{
-		if (fs::exists(itor->second))
-		{
-			itor->second = fs::canonical(itor->second);
-			return;
-		}
-		else
-		{
-			gcx().bail_out(context::conf,
-				"third party " + itor->second.string() + " not found");
-		}
-	}
-
-	auto p = paths::third_party() / "bin" / exe;
-
-	if (fs::exists(p))
-	{
-		itor->second  = fs::canonical(p);
-		return;
-	}
-
-	p = find_in_path(exe);
-	if (fs::exists(p))
-	{
-		itor->second = fs::canonical(p);
-		return;
-	}
-
-	gcx().bail_out(context::conf, "can't find " + exe);
 }
 
 template <class F>
@@ -717,23 +689,17 @@ void set_path_if_empty(const std::string& k, F&& f)
 	itor->second = fs::canonical(cp);
 }
 
-
 void init_options()
 {
 	parse_ini();
 
 	check_missing_options();
 
-	set_path_if_empty("third_party",      find_third_party_directory);
+	set_path_if_empty("third_party", find_third_party_directory);
 
-	find_in_third_party("sevenz",        "7z.exe");
-	find_in_third_party("jom",           "jom.exe");
-	find_in_third_party("patch",         "patch.exe");
-	find_in_third_party("vswhere",       "vswhere.exe");
-	find_in_third_party("nuget",         "nuget.exe");
+	this_env::prepend_to_path(paths::third_party() / "bin");
 
 	set_path_if_empty("vs",              find_vs);
-	set_path_if_empty("vcvars",          find_vcvars);
 	set_path_if_empty("qt_install",      find_qt);
 	set_path_if_empty("pf_x86",          find_program_files_x86);
 	set_path_if_empty("pf_x64",          find_program_files_x64);
@@ -751,6 +717,7 @@ void init_options()
 	set_path_if_empty("install_plugins", paths::install_bin() / "plugins");
 	set_path_if_empty("qt_bin",          paths::qt_install() / "bin");
 
+	find_vcvars();
 	validate_qt();
 }
 
@@ -781,10 +748,10 @@ void dump_options()
 	opts.insert(manual_opts.begin(),  manual_opts.end());
 	table("options", g_options);
 
-	string_map third_party;
-	for (auto&& [k, v] : g_third_party)
-		third_party[k] = v.string();
-	table("third-party", third_party);
+	string_map tools;
+	for (auto&& [k, v] : g_tools)
+		tools[k] = v.string();
+	table("tools", tools);
 
 	string_map prebuilt;
 	for (auto&& [k, v] : g_prebuilt)

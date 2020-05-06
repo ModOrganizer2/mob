@@ -99,8 +99,6 @@ int run(int argc, char** argv)
 
 		curl_init curl;
 
-		//this_env::set("PATH", paths::third_party().string() + ";", env::prepend);
-
 		add_task<sevenz>();
 		add_task<zlib>();
 		add_task<fmt>();

@@ -63,9 +63,6 @@ bool tool::interrupted() const
 devenv_upgrade::devenv_upgrade(fs::path sln)
 	: basic_process_runner("upgrade project"), sln_(std::move(sln))
 {
-	process_
-		.binary(tool_paths::devenv())
-		.env(env::vs(arch::x64));
 }
 
 void devenv_upgrade::do_run()
@@ -77,6 +74,8 @@ void devenv_upgrade::do_run()
 	}
 
 	process_
+		.binary(tools::devenv())
+		.env(env::vs(arch::x64))
 		.arg("/upgrade")
 		.arg(sln_);
 
@@ -88,7 +87,7 @@ nuget::nuget(fs::path sln)
 	: basic_process_runner("nuget"), sln_(std::move(sln))
 {
 	process_
-		.binary(third_party::nuget())
+		.binary(tools::nuget())
 		.arg("restore")
 		.arg(sln_)
 		.cwd(sln_.parent_path());
