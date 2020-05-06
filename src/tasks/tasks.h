@@ -179,14 +179,17 @@ public:
 	modorganizer(std::string name);
 	static fs::path source_path();
 
+	bool is_super() const override;
+
 protected:
 	void do_fetch() override;
 	void do_build_and_install() override;
 
 private:
+	std::string repo_;
+
 	void initialize_super(const fs::path& super_root);
 
-	std::string short_name() const;
 	fs::path this_source_path() const;
 
 	static fs::path super_path();

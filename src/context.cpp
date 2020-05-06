@@ -57,7 +57,7 @@ std::string reason_string(context::reason r)
 
 std::string task_name(const std::string& name)
 {
-	const std::size_t longest = 7;
+	const std::size_t longest = 15;
 	const std::size_t total = 1 + longest + 2; // '[x] '
 
 	if (!name.empty())

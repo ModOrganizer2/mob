@@ -36,6 +36,7 @@ public:
 	const std::vector<std::string>& names() const;
 
 	virtual fs::path get_source_path() const = 0;
+	virtual bool is_super() const;
 
 	void run();
 	void interrupt();

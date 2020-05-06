@@ -85,6 +85,7 @@ void cmake::do_run()
 		.arg("-DCMAKE_BUILD_TYPE=Release")
 		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", process::log_quiet)
 		.arg("--log-level", "WARNING", process::log_quiet)
+		.arg("--no-warn-unused-cli")
 		.arg(g.get_arch(arch_));
 
 	if (!prefix_.empty())

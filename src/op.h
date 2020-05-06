@@ -12,7 +12,8 @@ enum flags
 	noflags    = 0x00,
 	optional   = 0x01,
 	copy_files = 0x02,
-	copy_dirs  = 0x04
+	copy_dirs  = 0x04,
+	unsafe     = 0x08
 };
 
 MOB_ENUM_OPERATORS(flags);

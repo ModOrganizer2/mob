@@ -111,6 +111,10 @@ void boost::build_and_install_from_source()
 		"static", "static", arch::x86);
 
 	do_b2(
+		{"thread", "date_time", "locale"},
+		"static", "shared", arch::x64);
+
+	do_b2(
 		{"thread", "python"},
 		"shared", "shared", arch::x64);
 

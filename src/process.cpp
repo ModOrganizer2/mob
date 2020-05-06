@@ -8,6 +8,10 @@
 namespace mob
 {
 
+const DWORD pipe_timeout = 50;
+const DWORD process_wait_timeout = 50;
+
+
 HANDLE get_bit_bucket()
 {
 	SECURITY_ATTRIBUTES sa { .nLength = sizeof(sa), .bInheritHandle = TRUE };
@@ -131,7 +135,7 @@ std::string_view async_pipe::try_read()
 
 			case ERROR_BROKEN_PIPE:
 			{
-				// broken pipe probably means lootcli is finished
+				// broken pipe probably means the process is finished
 				break;
 			}
 
@@ -493,7 +497,8 @@ void process::join()
 
 	for (;;)
 	{
-		const auto r = WaitForSingleObject(impl_.handle.get(), 100);
+		const auto r = WaitForSingleObject(
+			impl_.handle.get(), process_wait_timeout);
 
 		if (r == WAIT_OBJECT_0)
 		{
@@ -515,14 +520,18 @@ void process::join()
 		cx_->trace(context::cmd, "process interrupted and finished");
 }
 
-void process::read_pipes()
+bool process::read_pipes()
 {
+	bool read_something = false;
+
 	// stdout
 	switch (stdout_flags_)
 	{
 		case forward_to_log:
 		{
 			std::string_view s = impl_.stdout_pipe.read();
+			if (!s.empty())
+				read_something = true;
 
 			for_each_line(s, [&](auto&& line)
 			{
@@ -544,6 +553,9 @@ void process::read_pipes()
 		case keep_in_string:
 		{
 			std::string_view s = impl_.stdout_pipe.read();
+			if (!s.empty())
+				read_something = true;
+
 			stdout_string_ += s;
 			break;
 		}
@@ -559,6 +571,8 @@ void process::read_pipes()
 		case forward_to_log:
 		{
 			std::string_view s = impl_.stderr_pipe.read();
+			if (!s.empty())
+				read_something = true;
 
 			for_each_line(s, [&](auto&& line)
 			{
@@ -580,6 +594,9 @@ void process::read_pipes()
 		case keep_in_string:
 		{
 			std::string_view s = impl_.stderr_pipe.read();
+			if (!s.empty())
+				read_something = true;
+
 			stderr_string_ += s;
 			break;
 		}
@@ -588,12 +605,18 @@ void process::read_pipes()
 		case inherit:
 			break;
 	}
+
+	return read_something;
 }
 
 void process::on_completed()
 {
 	// one last time
-	read_pipes();
+	for (;;)
+	{
+		if (!read_pipes())
+			break;
+	}
 
 	if (impl_.interrupt)
 		return;

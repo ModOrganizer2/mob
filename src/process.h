@@ -20,7 +20,6 @@ public:
 
 private:
     static const std::size_t buffer_size = 50000;
-	static const DWORD pipe_timeout = 500;
 
     handle_ptr stdout_;
     handle_ptr event_;
@@ -200,7 +199,7 @@ private:
 	void pipe_into(const process& p);
 
 	void do_run(const std::string& what);
-	void read_pipes();
+	bool read_pipes();
 
 	void on_completed();
 	void on_timeout(bool& already_interrupted);

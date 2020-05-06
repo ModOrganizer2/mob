@@ -7,12 +7,24 @@ namespace mob
 static std::mutex g_super_mutex;
 static std::atomic<bool> g_super_initialized = false;
 
-modorganizer::modorganizer(std::string long_name)
-	: basic_task(long_name)
+std::string make_short_name(const std::string& name)
 {
-	auto s = short_name();
-	if (s != name())
-		add_name(s);
+	const auto dash = name.find("-");
+	if (dash == std::string::npos)
+		return name;
+
+	return name.substr(dash + 1);
+}
+
+
+modorganizer::modorganizer(std::string long_name)
+	: basic_task(make_short_name(long_name), long_name), repo_(long_name)
+{
+}
+
+bool modorganizer::is_super() const
+{
+	return true;
 }
 
 fs::path modorganizer::source_path()
@@ -22,7 +34,7 @@ fs::path modorganizer::source_path()
 
 fs::path modorganizer::this_source_path() const
 {
-	return super_path() / short_name();
+	return super_path() / name();
 }
 
 fs::path modorganizer::super_path()
@@ -34,36 +46,31 @@ void modorganizer::do_fetch()
 {
 	initialize_super(super_path());
 
-	if (fs::exists(this_source_path() / ".git"))
-	{
-		run_tool(git_clone()
-			.url(make_github_url(conf::mo_org(), name()))
-			.branch(conf::mo_branch())
-			.output(this_source_path()));
-	}
-	else
-	{
-		run_tool(process_runner(process()
-			.binary(tools::git())
-			.arg("-c", "core.autocrlf=false")
-			.arg("submodule")
-			.arg("--quiet")
-			.arg("add")
-			.arg("-b", conf::mo_branch())
-			.arg("--force")
-			.arg("--name", short_name())
-			.arg(make_github_url(conf::mo_org(), name()))
-			.arg(short_name())
-			.cwd(super_path())));
-	}
+	run_tool(git_clone()
+		.url(make_github_url(conf::mo_org(), repo_))
+		.branch(conf::mo_branch())
+		.output(this_source_path()));
 }
 
 void modorganizer::do_build_and_install()
 {
+	run_tool(process_runner(process()
+		.binary(tools::git())
+		.arg("-c", "core.autocrlf=false")
+		.arg("submodule")
+		.arg("--quiet")
+		.arg("add")
+		.arg("-b", conf::mo_branch())
+		.arg("--force")
+		.arg("--name", name())
+		.arg(make_github_url(conf::mo_org(), repo_))
+		.arg(name())
+		.cwd(super_path())));
+
 	if (!fs::exists(this_source_path() / "CMakeLists.txt"))
 	{
 		cx().trace(context::generic,
-			name() + " has no CMakeLists.txt, not running cmake");
+			repo_ + " has no CMakeLists.txt, not building");
 
 		return;
 	}
@@ -135,15 +142,6 @@ void modorganizer::initialize_super(const fs::path& super_root)
 		.binary(tools::git())
 		.arg("init")
 		.cwd(super_root)));
-}
-
-std::string modorganizer::short_name() const
-{
-	const auto dash = name().find("-");
-	if (dash == std::string::npos)
-		return name();
-
-	return name().substr(dash + 1);
 }
 
 }	// namespace

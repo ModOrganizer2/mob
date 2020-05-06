@@ -156,6 +156,16 @@ void pyqt::copy_files(const std::vector<std::string>& modules)
 	op::copy_file_to_dir_if_better(cx(),
 		sip::module_source_path() / "sip.pyi",
 		pyqt_plugin);
+
+	op::copy_file_to_dir_if_better(cx(),
+		paths::qt_bin() / "Qt5Core.dll",
+		python::build_path(),
+		op::unsafe);   // source file is outside prefix
+
+	op::copy_file_to_dir_if_better(cx(),
+		paths::qt_bin() / "Qt5Xml.dll",
+		python::build_path(),
+		op::unsafe);   // source file is outside prefix
 }
 
 url pyqt::source_url()

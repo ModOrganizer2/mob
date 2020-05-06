@@ -222,8 +222,11 @@ void move_to_directory(
 void copy_file_to_dir_if_better(
 	const context& cx, const fs::path& file, const fs::path& dir, flags f)
 {
-	check(cx, file);
-	check(cx, dir);
+	if ((f & unsafe) == 0)
+	{
+		check(cx, file);
+		check(cx, dir);
+	}
 
 	if (file.string().find("*") != std::string::npos)
 		cx.bail_out(context::fs, file.string() + " contains a glob");

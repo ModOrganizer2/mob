@@ -39,7 +39,7 @@ task* find_task(const std::string& name)
 	throw bailed("");
 }
 
-void run_tasks(const std::vector<task*> tasks)
+void run_tasks(const std::set<task*> tasks)
 {
 	for (auto* t : tasks)
 		t->fetch();
@@ -49,6 +49,15 @@ void run_tasks(const std::vector<task*> tasks)
 		t->join();
 		t->build_and_install();
 		t->join();
+	}
+}
+
+void gather_super_tasks(std::set<task*>& tasks)
+{
+	for (auto& t : g_tasks)
+	{
+		if (t->is_super())
+			tasks.insert(t.get());
 	}
 }
 
@@ -67,18 +76,23 @@ void run_tasks(const std::vector<std::string>& names)
 	else
 		gcx().debug(context::generic, "specified tasks: " + join(names, " "));
 
-	std::vector<task*> tasks;
+	std::set<task*> tasks;
 	for (auto&& name : names)
-		tasks.push_back(find_task(name));
+	{
+		if (name == "super")
+			gather_super_tasks(tasks);
+		else
+			tasks.insert(find_task(name));
+	}
 
 	run_tasks(tasks);
 }
 
 void run_all_tasks()
 {
-	std::vector<task*> tasks;
+	std::set<task*> tasks;
 	for (auto&& t : g_tasks)
-		tasks.push_back(t.get());
+		tasks.insert(t.get());
 
 	run_tasks(tasks);
 }
@@ -101,6 +115,11 @@ task::~task()
 	{
 		// ignore
 	}
+}
+
+bool task::is_super() const
+{
+	return false;
 }
 
 const context& task::cx() const

@@ -87,7 +87,8 @@ std::optional<int> handle_command_line(int argc, char** argv)
 
 		(clipp::opt_values(
 			clipp::match::prefix_not("-"), "task", g_tasks_to_run))
-			% "tasks to run"
+			% "tasks to run; specify 'super' to only build modorganizer "
+		      "projects"
 	);
 
 
@@ -176,6 +177,49 @@ void add_tasks()
 
 	add_task<modorganizer>("cmake_common");
 	add_task<modorganizer>("modorganizer-uibase");
+	add_task<modorganizer>("modorganizer-game_features");
+	add_task<modorganizer>("modorganizer-archive");
+	add_task<modorganizer>("modorganizer-lootcli");
+	add_task<modorganizer>("modorganizer-esptk");
+	add_task<modorganizer>("modorganizer-bsatk");
+	add_task<modorganizer>("modorganizer-nxmhandler");
+	add_task<modorganizer>("modorganizer-helper");
+	add_task<modorganizer>("modorganizer-game_gamebryo");
+	add_task<modorganizer>("modorganizer-game_oblivion");
+	add_task<modorganizer>("modorganizer-game_fallout3");
+	add_task<modorganizer>("modorganizer-game_fallout4");
+	add_task<modorganizer>("modorganizer-game_fallout4vr");
+	add_task<modorganizer>("modorganizer-game_falloutnv");
+	add_task<modorganizer>("modorganizer-game_morrowind");
+	add_task<modorganizer>("modorganizer-game_skyrim");
+	add_task<modorganizer>("modorganizer-game_skyrimse");
+	add_task<modorganizer>("modorganizer-game_skyrimvr");
+	add_task<modorganizer>("modorganizer-game_ttw");
+	add_task<modorganizer>("modorganizer-game_enderal");
+
+	add_task<modorganizer>("modorganizer-tool_inieditor");
+	add_task<modorganizer>("modorganizer-tool_inibakery");
+	add_task<modorganizer>("modorganizer-preview_base");
+	add_task<modorganizer>("modorganizer-diagnose_basic");
+	add_task<modorganizer>("modorganizer-check_fnis");
+	add_task<modorganizer>("modorganizer-installer_bain");
+	add_task<modorganizer>("modorganizer-installer_manual");
+	add_task<modorganizer>("modorganizer-installer_bundle");
+	add_task<modorganizer>("modorganizer-installer_quick");
+	add_task<modorganizer>("modorganizer-installer_fomod");
+	add_task<modorganizer>("modorganizer-installer_ncc");
+	add_task<modorganizer>("modorganizer-bsa_extractor");
+	add_task<modorganizer>("modorganizer-plugin_python");
+
+	add_task<modorganizer>("modorganizer-tool_configurator");
+	add_task<modorganizer>("modorganizer-fnistool");
+	add_task<modorganizer>("modorganizer-script_extender_plugin_checker");
+	add_task<modorganizer>("modorganizer-form43_checker");
+	add_task<modorganizer>("modorganizer-preview_dds");
+	//add_task<modorganizer>("githubpp");
+	//add_task<modorganizer>("modorganizer-bsapacker");
+	//add_task<modorganizer>("modorganizer-preview_bsa");
+	//add_task<modorganizer>("modorganizer");
 }
 
 int run(int argc, char** argv)
