@@ -44,7 +44,7 @@ static path_map g_tools =
 
 static bool_map g_prebuilt =
 {
-	{"boost",   false}
+	//{"boost",   false}
 };
 
 static string_map g_versions =

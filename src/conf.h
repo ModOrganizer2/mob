@@ -59,7 +59,7 @@ struct prebuilt
 {
 	static bool by_name(const std::string& s);
 
-	VALUE(boost);
+	//VALUE(boost);
 };
 
 struct versions

@@ -43,7 +43,7 @@ std::optional<int> handle_command_line(int argc, char** argv)
 	clipp::group g;
 
 	g.push_back(
-		(clipp::option("--version") >> cmd.version)
+		(clipp::option("-v", "--version") >> cmd.version)
 			% "shows the version",
 
 		(clipp::option("-h", "--help") >> cmd.help)
@@ -85,7 +85,8 @@ std::optional<int> handle_command_line(int argc, char** argv)
 			%  "sets an option, such as 'versions/openssl=1.2'; -s with no "
 		       "arguments lists the available options",
 
-		(clipp::opt_values("task", g_tasks_to_run))
+		(clipp::opt_values(
+			clipp::match::prefix_not("-"), "task", g_tasks_to_run))
 			% "tasks to run"
 	);
 

@@ -16,17 +16,17 @@ fs::path boost::source_path()
 
 void boost::do_fetch()
 {
-	if (prebuilt::boost())
-		fetch_prebuilt();
-	else
+	//if (prebuilt::boost())
+	//	fetch_prebuilt();
+	//else
 		fetch_from_source();
 }
 
 void boost::do_build_and_install()
 {
-	if (prebuilt::boost())
-		build_and_install_prebuilt();
-	else
+	//if (prebuilt::boost())
+	//	build_and_install_prebuilt();
+	//else
 		build_and_install_from_source();
 }
 
