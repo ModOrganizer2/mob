@@ -136,9 +136,10 @@ void pyqt::copy_files(const std::vector<std::string>& modules)
 		site_packages_pyqt / "__init__.py",
 		pyqt_plugin);
 
-	op::copy_file_to_dir_if_better(cx(),
+	op::copy_glob_to_dir_if_better(cx(),
 		site_packages_pyqt / "sip*",
-		pyqt_plugin);
+		pyqt_plugin,
+		op::copy_files);
 
 	for (auto&& m : modules)
 	{

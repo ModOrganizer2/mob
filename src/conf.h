@@ -7,13 +7,7 @@ namespace mob
 	static decltype(auto) NAME() { return by_name(#NAME); }
 
 #define VALUE_BOOL(NAME) \
-	static bool NAME() \
-	{ \
-		bool b; \
-		std::istringstream iss(by_name(#NAME)); \
-		iss >> b; \
-		return b; \
-	}
+	static bool NAME() { return by_name_bool(#NAME); }
 
 
 struct tools
@@ -45,6 +39,7 @@ struct conf
 	static bool log_error();
 
 	static const std::string& by_name(const std::string& s);
+	static bool by_name_bool(const std::string& name);
 
 	VALUE(mo_org);
 	VALUE(mo_branch);
@@ -92,6 +87,11 @@ struct versions
 	VALUE(pyqt_builder);
 	VALUE(sip);
 	VALUE(pyqt_sip);
+
+	VALUE(ss_6788_paper_lad);
+	VALUE(ss_6788_paper_automata);
+	VALUE(ss_6788_paper_mono);
+	VALUE(ss_6788_1809_dark_mode);
 };
 
 struct paths
@@ -112,6 +112,7 @@ struct paths
 	VALUE(install_dlls);
 	VALUE(install_loot);
 	VALUE(install_plugins);
+	VALUE(install_stylesheets);
 
 	VALUE(vs);
 	VALUE(qt_install);

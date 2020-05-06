@@ -104,6 +104,7 @@
     <ClCompile Include="..\src\tasks\sevenz.cpp" />
     <ClCompile Include="..\src\tasks\sip.cpp" />
     <ClCompile Include="..\src\tasks\spdlog.cpp" />
+    <ClCompile Include="..\src\tasks\stylesheets.cpp" />
     <ClCompile Include="..\src\tasks\task.cpp" />
     <ClCompile Include="..\src\tasks\usvfs.cpp" />
     <ClCompile Include="..\src\tasks\zlib.cpp" />

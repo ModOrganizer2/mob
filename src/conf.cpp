@@ -75,28 +75,34 @@ static string_map g_versions =
 	{"pyqt_builder", ""},
 	{"sip",          ""},
 	{"pyqt_sip",     ""},
+
+	{"ss_6788_paper_lad",      ""},
+	{"ss_6788_paper_automata", ""},
+	{"ss_6788_paper_mono",     ""},
+	{"ss_6788_1809_dark_mode", ""}
 };
 
 static path_map g_paths =
 {
-	{"third_party" ,    ""},
-	{"prefix",          ""},
-	{"cache",           ""},
-	{"build",           ""},
-	{"install",         ""},
-	{"install_bin",     ""},
-	{"install_libs",    ""},
-	{"install_pdbs",    ""},
-	{"install_dlls",    ""},
-	{"install_loot",    ""},
-	{"install_plugins", ""},
-	{"patches",         ""},
-	{"vs",              ""},
-	{"qt_install",      ""},
-	{"qt_bin",          ""},
-	{"pf_x86",          ""},
-	{"pf_x64",          ""},
-	{"temp_dir",        ""},
+	{"third_party" ,        ""},
+	{"prefix",              ""},
+	{"cache",               ""},
+	{"build",               ""},
+	{"install",             ""},
+	{"install_bin",         ""},
+	{"install_libs",        ""},
+	{"install_pdbs",        ""},
+	{"install_dlls",        ""},
+	{"install_loot",        ""},
+	{"install_plugins",     ""},
+	{"install_stylesheets", ""},
+	{"patches",             ""},
+	{"vs",                  ""},
+	{"qt_install",          ""},
+	{"qt_bin",              ""},
+	{"pf_x86",              ""},
+	{"pf_x64",              ""},
+	{"temp_dir",            ""},
 };
 
 
@@ -126,6 +132,15 @@ const std::string& conf::by_name(const std::string& name)
 {
 	return get("option", g_options, name);
 }
+
+bool conf::by_name_bool(const std::string& name)
+{
+	bool b;
+	std::istringstream iss(by_name(name));
+	iss >> std::boolalpha >> b;
+	return b;
+}
+
 
 bool prebuilt::by_name(const std::string& s)
 {
@@ -165,7 +180,7 @@ template <>
 bool parse_value<bool>(const std::string& s, bool& out)
 {
 	std::istringstream iss(s);
-	iss >> out;
+	iss >> std::boolalpha >> out;
 	return !iss.bad();
 }
 
@@ -502,6 +517,9 @@ fs::path find_temp_dir()
 
 fs::path find_vs()
 {
+	if (conf::dry())
+		return tools::vswhere();
+
 	auto p = process()
 		.binary(tools::vswhere())
 		.arg("-prerelease")
@@ -540,15 +558,24 @@ void find_vcvars()
 {
 	fs::path& bat = g_tools["vcvars"];
 
-	if (!bat.empty())
+	if (conf::dry())
 	{
+		if (bat.empty())
+			bat = "vcvars.bat";
+
+		return;
+	}
+
+
+	if (bat.empty())
+	{
+		bat = paths::vs() / "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
+
 		if (!try_vcvars(bat))
 			gcx().bail_out(context::conf, "vcvars not found " + bat.string());
 	}
 	else
 	{
-		bat = paths::vs() / "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
-
 		if (!try_vcvars(bat))
 			gcx().bail_out(context::conf, "vcvars not found " + bat.string());
 	}
@@ -708,6 +735,9 @@ void set_path_if_empty(const std::string& k, F&& f)
 
 	if (!itor->second.empty())
 	{
+		if (conf::dry())
+			return;
+
 		if (fs::exists(itor->second))
 		{
 			itor->second = fs::canonical(itor->second);
@@ -723,9 +753,17 @@ void set_path_if_empty(const std::string& k, F&& f)
 	fs::path cp;
 
 	if constexpr (std::is_same_v<fs::path, std::decay_t<decltype(f)>>)
-		cp = fs::absolute(f);
+		cp = f;
 	else
-		cp = fs::absolute(f());
+		cp = f();
+
+	if (conf::dry())
+	{
+		itor->second = cp;
+		return;
+	}
+
+	cp = fs::absolute(cp);
 
 	if (!fs::exists(cp))
 	{
@@ -754,7 +792,8 @@ void make_canonical_path(
 			itor->second = default_parent / itor->second;
 	}
 
-	itor->second = fs::weakly_canonical(fs::absolute(itor->second));
+	if (!conf::dry())
+		itor->second = fs::weakly_canonical(fs::absolute(itor->second));
 }
 
 void init_options(const fs::path& ini, const std::vector<std::string>& opts)
@@ -795,6 +834,10 @@ void init_options(const fs::path& ini, const std::vector<std::string>& opts)
 	make_canonical_path("install_dlls",    paths::install_bin(), "dlls");
 	make_canonical_path("install_loot",    paths::install_bin(), "loot");
 	make_canonical_path("install_plugins", paths::install_bin(), "plugins");
+
+	make_canonical_path(
+		"install_stylesheets",
+		paths::install_bin(), "stylesheets");
 }
 
 template <class Map>

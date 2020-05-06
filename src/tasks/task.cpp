@@ -32,7 +32,9 @@ task* find_task(const std::string& name)
 	std::cerr << "valid tasks:\n";
 
 	for (auto&& t : g_tasks)
-		std::cerr << " - " << t->name() << "\n";
+	{
+		std::cerr << " - " << join(t->names(), ", ") << "\n";
+	}
 
 	throw bailed("");
 }
@@ -228,10 +230,13 @@ void task::fetch()
 
 			check_interrupted();
 
-			cx().info(context::generic, "patching");
-			run_tool(patcher()
-				.task(name())
-				.root(get_source_path()));
+			if (!get_source_path().empty())
+			{
+				cx().info(context::generic, "patching");
+				run_tool(patcher()
+					.task(name())
+					.root(get_source_path()));
+			}
 
 			check_interrupted();
 		});

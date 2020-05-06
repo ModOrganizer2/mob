@@ -225,66 +225,94 @@ void copy_file_to_dir_if_better(
 	check(cx, file);
 	check(cx, dir);
 
-	if (file.filename().string().find("*") == std::string::npos)
+	if (file.string().find("*") != std::string::npos)
+		cx.bail_out(context::fs, file.string() + " contains a glob");
+
+	if (!conf::dry())
 	{
+		if (!fs::exists(file) || !fs::is_regular_file(file))
+		{
+			if (f & optional)
+			{
+				cx.trace(context::fs,
+					"not copying " + file.string() + ", "
+					"doesn't exist (optional)");
+
+				return;
+			}
+
+			cx.bail_out(context::fs,
+				"can't copy " + file.string() + ", not a file");
+		}
+
+		if (fs::exists(dir) && !fs::is_directory(dir))
+		{
+			cx.bail_out(context::fs,
+				"can't copy to " + dir.string() + ", not a dir");
+		}
+	}
+
+	const auto target = dir / file.filename();
+	if (is_source_better(cx, file, target))
+	{
+		cx.trace(context::fs, file.string() + " -> " + dir.string());
+
 		if (!conf::dry())
-		{
-			if (!fs::exists(file) || !fs::is_regular_file(file))
-			{
-				if (f & optional)
-				{
-					cx.trace(context::fs,
-						"not copying " + file.string() + ", "
-						"doesn't exist (optional)");
-
-					return;
-				}
-
-				cx.bail_out(context::fs,
-					"can't copy " + file.string() + ", not a file");
-			}
-
-			if (fs::exists(dir) && !fs::is_directory(dir))
-			{
-				cx.bail_out(context::fs,
-					"can't copy to " + dir.string() + ", not a dir");
-			}
-		}
-
-		const auto target = dir / file.filename();
-		if (is_source_better(cx, file, target))
-		{
-			cx.trace(context::fs, file.string() + " -> " + dir.string());
-
-			if (!conf::dry())
-				do_copy_file_to_dir(cx, file, dir);
-		}
-		else
-		{
-			cx.trace(context::bypass,
-				"(skipped) " + file.string() + " -> " + dir.string());
-		}
+			do_copy_file_to_dir(cx, file, dir);
 	}
 	else
 	{
-		cx.trace(context::fs, file.filename().string() + " is a glob");
+		cx.trace(context::bypass,
+			"(skipped) " + file.string() + " -> " + dir.string());
+	}
+}
 
-		// wildcard
-		const auto file_parent = file.parent_path();
-		const auto wildcard = file.filename().string();
+void copy_glob_to_dir_if_better(
+	const context& cx,
+	const fs::path& src_glob, const fs::path& dest_dir, flags f)
+{
+	const auto file_parent = src_glob.parent_path();
+	const auto wildcard = src_glob.filename().string();
 
-		for (auto&& e : fs::directory_iterator(file_parent))
+	for (auto&& e : fs::directory_iterator(file_parent))
+	{
+		const auto name = e.path().filename().string();
+
+		if (!PathMatchSpecA(name.c_str(), wildcard.c_str()))
 		{
-			const auto name = e.path().filename().string();
+			cx.trace(context::fs,
+				name + " did not match " + wildcard + "; skipping");
 
-			if (PathMatchSpecA(name.c_str(), wildcard.c_str()))
+			continue;
+		}
+
+		if (e.is_regular_file())
+		{
+			if (f & copy_files)
 			{
-				copy_file_to_dir_if_better(cx, e.path(), dir);
+				copy_file_to_dir_if_better(cx, e.path(), dest_dir);
 			}
 			else
 			{
 				cx.trace(context::fs,
-					name + " did not match " + wildcard + "; skipping");
+					"file " + name + " matched " + wildcard + " "
+					"but files are not copied");
+			}
+		}
+		else if (e.is_directory())
+		{
+			if (f & copy_dirs)
+			{
+				const fs::path sub = dest_dir / e.path().filename();
+
+				create_directories(cx, sub);
+				copy_glob_to_dir_if_better(cx, e.path() / "*", sub, f);
+			}
+			else
+			{
+				cx.trace(context::fs,
+					"directory " + name + " matched " + wildcard + " "
+					"but directories are not copied");
 			}
 		}
 	}

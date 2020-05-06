@@ -117,13 +117,15 @@ void python::copy_files()
 		source_path() / "PC" / "pyconfig.h",
 		include_path());
 
-	op::copy_file_to_dir_if_better(cx(),
+	op::copy_glob_to_dir_if_better(cx(),
 		build_path() / "*.lib",
-		paths::install_libs());
+		paths::install_libs(),
+		op::copy_files);
 
-	op::copy_file_to_dir_if_better(cx(),
+	op::copy_glob_to_dir_if_better(cx(),
 		build_path() / "libffi*.dll",
-		paths::install_bin());
+		paths::install_bin(),
+		op::copy_files);
 
 	op::copy_file_to_dir_if_better(cx(),
 		build_path() / ("python" + version_for_dll() + ".dll"),

@@ -47,7 +47,7 @@ std::string reason_string(context::reason r)
 		case context::cmd:			 return "cmd";
 		case context::std_out:		 return "stdout";
 		case context::std_err:		 return "stderr";
-		case context::fs:            return "fs";
+		case context::fs:            return (conf::dry() ? "fs-dry" : "fs");
 		case context::net:           return "net";
 		case context::generic:       return "";
 		case context::conf:          return "conf";

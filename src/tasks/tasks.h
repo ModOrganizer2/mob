@@ -323,6 +323,29 @@ protected:
 };
 
 
+class stylesheets : public basic_task<stylesheets>
+{
+public:
+	stylesheets();
+	static fs::path source_path();
+
+protected:
+	void do_fetch() override;
+	void do_build_and_install() override;
+
+private:
+	struct release
+	{
+		std::string repo;
+		std::string name;
+		std::string version;
+		std::string file;
+	};
+
+	static std::vector<release> releases();
+};
+
+
 class usvfs : public basic_task<usvfs>
 {
 public:

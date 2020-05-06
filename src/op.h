@@ -9,9 +9,14 @@ namespace mob::op
 
 enum flags
 {
-	noflags = 0,
-	optional = 1
+	noflags    = 0x00,
+	optional   = 0x01,
+	copy_files = 0x02,
+	copy_dirs  = 0x04
 };
+
+MOB_ENUM_OPERATORS(flags);
+
 
 void touch(const context& cx, const fs::path& p);
 
@@ -36,6 +41,10 @@ void move_to_directory(
 void copy_file_to_dir_if_better(
 	const context& cx,
 	const fs::path& file, const fs::path& dest_dir, flags f=noflags);
+
+void copy_glob_to_dir_if_better(
+	const context& cx,
+	const fs::path& src_glob, const fs::path& dest_dir, flags f);
 
 std::string read_text_file(
 	const context& cx, const fs::path& p, flags f=noflags);

@@ -32,6 +32,10 @@ std::optional<int> handle_command_line(int argc, char** argv)
 	{
 		bool version = false;
 		bool help = false;
+		bool dry = false;
+		bool redownload = false;
+		bool reextract = false;
+		bool rebuild = false;
 		bool clean = false;
 		int log = 3;
 		std::vector<std::string> options;
@@ -57,24 +61,20 @@ std::optional<int> handle_command_line(int argc, char** argv)
 			& clipp::value("FILE") >> cmd.ini)
 			% ("path to the ini file"),
 
-		(clipp::option("--dry")
-			>> [&]{ cmd.set.push_back("conf/dry=true"); })
+		(clipp::option("--dry") >> cmd.dry)
 			%  "simulates filesystem operations",
 
 		(clipp::option("-l", "--log-level")
 			&  clipp::value("LEVEL") >> cmd.log)
 			%  "0 is silent, 6 is max",
 
-		(clipp::option("-g", "--redownload")
-			>> [&]{ cmd.set.push_back("conf/redownload=true"); })
+		(clipp::option("-g", "--redownload") >> cmd.redownload)
 			% "redownloads archives, see --reextract",
 
-		(clipp::option("-e", "--reextract")
-			>> [&]{ cmd.set.push_back("conf/reextract=true"); })
+		(clipp::option("-e", "--reextract") >> cmd.reextract)
 			% "deletes source directories and re-extracts archives",
 
-		(clipp::option("-b", "--rebuild")
-			>> [&]{ cmd.set.push_back("conf/rebuild=true"); })
+		(clipp::option("-b", "--rebuild") >> cmd.rebuild)
 			%  "cleans and rebuilds projects",
 
 		(clipp::option("-c", "--clean") >> cmd.clean)
@@ -122,12 +122,17 @@ std::optional<int> handle_command_line(int argc, char** argv)
 		}
 	}
 
-	if (cmd.clean)
-	{
-		cmd.options.push_back("conf/redownload=true");
-		cmd.options.push_back("conf/reextract=true");
-		cmd.options.push_back("conf/rebuild=true");
-	}
+	if (cmd.dry)
+		cmd.options.push_back("options/dry=true");
+
+	if (cmd.redownload || cmd.clean)
+		cmd.options.push_back("options/redownload=true");
+
+	if (cmd.reextract || cmd.clean)
+		cmd.options.push_back("options/reextract=true");
+
+	if (cmd.rebuild || cmd.clean)
+		cmd.options.push_back("options/rebuild=true");
 
 	if (!cmd.prefix.empty())
 		cmd.options.push_back("paths/prefix=" + cmd.prefix);
@@ -166,6 +171,7 @@ void add_tasks()
 	add_task<usvfs>();
 	add_task<sip>();
 	add_task<pyqt>();
+	add_task<stylesheets>();
 }
 
 int run(int argc, char** argv)
