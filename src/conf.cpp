@@ -277,12 +277,14 @@ void dump_available_options()
 
 bool try_parts(fs::path& check, const std::vector<std::string>& parts)
 {
-	for (std::size_t i=0; i<parts.size() - 1; ++i)
+	for (std::size_t i=0; i<parts.size(); ++i)
 	{
 		fs::path p = check;
 
 		for (std::size_t j=i; j<parts.size(); ++j)
 			p /= parts[j];
+
+		gcx().trace(context::conf, "trying parts " + p.string());
 
 		if (fs::exists(p))
 		{
@@ -702,29 +704,38 @@ void check_missing_options()
 {
 	if (conf::mo_org().empty())
 	{
-		gcx().bail_out(context::conf,
-			"missing mo_org; either specify it the [options] section of "
-			"the ini or pass '-s options/mo_org=something'");
+		std::cerr
+			<< "missing mo_org; either specify it the [options] section of "
+			<< "the ini or pass '-s options/mo_org=something'\n";
+
+		throw bailed("");
 	}
 
 	if (conf::mo_branch().empty())
 	{
-		gcx().bail_out(context::conf,
-			"missing mo_branch; either specify it the [options] section of "
-			"the ini or pass '-s options/mo_org=something'");
+		std::cerr
+			<< "missing mo_branch; either specify it the [options] section of "
+			<< "the ini or pass '-s options/mo_org=something'\n";
+
+		throw bailed("");
 	}
 
 	if (paths::prefix().empty())
 	{
-		gcx().bail_out(context::conf,
-			"missing prefix; either specify it the [paths] section of "
-			"the ini or pass '-d path'");
+		std::cerr
+			<< "missing prefix; either specify it the [paths] section of "
+			<< "the ini or pass '-d path'\n";
+
+		throw bailed("");
 	}
 
 	for (auto&& [k, v] : g_versions)
 	{
 		if (v.empty())
-			gcx().bail_out(context::conf, "missing version for " + k);
+		{
+			std::cerr << "missing version for " << k << "\n";
+			throw bailed("");
+		}
 	}
 }
 

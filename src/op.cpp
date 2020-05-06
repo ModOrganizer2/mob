@@ -484,13 +484,29 @@ void check(const context& cx, const fs::path& p)
 	if (p.empty())
 		cx.bail_out(context::fs, "path is empty");
 
-	if (p.native().starts_with(paths::prefix().native()))
+	auto is_inside = [](auto&& p, auto&& dir)
+	{
+		const std::string s = p.string();
+		const std::string prefix = dir.string();
+
+		if (s.size() < prefix.size())
+			return false;
+
+		const std::string scut = s.substr(0, prefix.size());
+
+		if (_stricmp(scut.c_str(), prefix.c_str()) != 0)
+			return false;
+
+		return true;
+	};
+
+	if (is_inside(p, paths::prefix()))
 		return;
 
-	if (p.native().starts_with(paths::temp_dir().native()))
+	if (is_inside(p, paths::temp_dir()))
 		return;
 
-	if (p.native().starts_with(paths::licenses().native()))
+	if (is_inside(p, paths::licenses()))
 		return;
 
 	cx.bail_out(context::fs, "path " + p.string() + " is outside prefix");

@@ -84,8 +84,15 @@ file_deleter::file_deleter(const context& cx, fs::path p)
 
 file_deleter::~file_deleter()
 {
-	if (delete_)
-		delete_now();
+	try
+	{
+		if (delete_)
+			delete_now();
+	}
+	catch(...)
+	{
+		// eat it
+	}
 }
 
 void file_deleter::delete_now()
@@ -109,8 +116,15 @@ directory_deleter::directory_deleter(const context& cx, fs::path p)
 
 directory_deleter::~directory_deleter()
 {
-	if (delete_)
-		delete_now();
+	try
+	{
+		if (delete_)
+			delete_now();
+	}
+	catch(...)
+	{
+		// eat it
+	}
 }
 
 void directory_deleter::delete_now()

@@ -47,11 +47,22 @@ void sip::do_clean_for_rebuild()
 
 void sip::do_fetch()
 {
+	// downloading uses python.exe and so has to wait until it's built
+}
+
+void sip::do_build_and_install()
+{
 	download();
 
 	run_tool(extractor()
 		.file(download_file())
 		.output(source_path()));
+
+	generate();
+
+	op::copy_file_to_dir_if_better(cx(),
+		source_path() / "sip.h",
+		python::include_path());
 }
 
 void sip::download()
@@ -82,15 +93,6 @@ void sip::download()
 		.arg("--no-deps")
 		.arg("-d", paths::cache())
 		.arg("sip==" + versions::sip())));
-}
-
-void sip::do_build_and_install()
-{
-	generate();
-
-	op::copy_file_to_dir_if_better(cx(),
-		source_path() / "sip.h",
-		python::include_path());
 }
 
 void sip::generate()

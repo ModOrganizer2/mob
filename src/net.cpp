@@ -72,7 +72,17 @@ void curl_downloader::start(const url& u, const fs::path& path)
 	if (conf::dry())
 		return;
 
-	thread_ = std::thread([&] { run(); });
+	thread_ = std::thread([&]
+	{
+		try
+		{
+			run();
+		}
+		catch(...)
+		{
+			// eat it
+		}
+	});
 }
 
 void curl_downloader::join()
@@ -104,6 +114,11 @@ void curl_downloader::run()
 	curl_easy_setopt(c, CURLOPT_URL, url_.c_str());
 	curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, on_write_static);
 	curl_easy_setopt(c, CURLOPT_WRITEDATA, this);
+	curl_easy_setopt(c, CURLOPT_PROGRESSFUNCTION, on_progress_static);
+	curl_easy_setopt(c, CURLOPT_PROGRESSDATA, this);
+	curl_easy_setopt(c, CURLOPT_XFERINFOFUNCTION, on_xfer_static);
+	curl_easy_setopt(c, CURLOPT_XFERINFODATA, this);
+	curl_easy_setopt(c, CURLOPT_NOPROGRESS, 0l);
 	curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1l);
 	curl_easy_setopt(c, CURLOPT_ERRORBUFFER, error_buffer);
 
@@ -120,7 +135,11 @@ void curl_downloader::run()
 	const auto r = curl_easy_perform(c);
 	cx_.trace(context::net, "curl: transfer finished " + url_.string());
 
-	file_.reset();
+	if (file_)
+	{
+		::FlushFileBuffers(file_.get());
+		file_.reset();
+	}
 
 	if (interrupt_)
 	{
@@ -152,8 +171,8 @@ void curl_downloader::run()
 	{
 		cx_.error(context::net,
 			std::string("curl: ") +
-			curl_easy_strerror(r) + ", " + error_buffer + ", " +
-			url_.string());
+			curl_easy_strerror(r) + ", " + trim_copy(error_buffer) + " " +
+			"(" + url_.string() + ")");
 	}
 }
 
@@ -169,6 +188,13 @@ size_t curl_downloader::on_write_static(
 	}
 
 	self->on_write(ptr, size * nmemb);
+
+	if (self->interrupt_)
+	{
+		debug("downloader: interrupting");
+		return (size * nmemb) + 1; // force failure
+	}
+
 	return size * nmemb;
 }
 
@@ -179,11 +205,59 @@ void curl_downloader::on_write(char* ptr, std::size_t n) noexcept
 		op::create_directories(cx_, path_.parent_path());
 
 		cx_.trace(context::net, "opening " + path_.string());
-		file_.reset(_wfopen(path_.native().c_str(), L"wb"));
+
+		HANDLE h = ::CreateFileA(
+			path_.string().c_str(), GENERIC_WRITE, FILE_SHARE_READ,
+			nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+
+		if (h == INVALID_HANDLE_VALUE)
+		{
+			const auto e = GetLastError();
+			cx_.error(context::net, "failed to open " + path_.string(), e);
+			interrupt_ = true;
+			return;
+		}
+
+		file_.reset(h);
 	}
 
 	bytes_ += n;
-	std::fwrite(ptr, n, 1, file_.get());
+
+	DWORD written = 0;
+	if (!::WriteFile(file_.get(), ptr, static_cast<DWORD>(n), &written, nullptr))
+	{
+		const auto e = GetLastError();
+		cx_.error(context::net, "failed to write to " + path_.string(), e);
+		interrupt_ = true;
+	}
+}
+
+int curl_downloader::on_progress_static(
+	void* user, double, double, double, double) noexcept
+{
+	auto* self = static_cast<curl_downloader*>(user);
+
+	if (self->interrupt_)
+	{
+		debug("downloader: interrupting");
+		return 1;
+	}
+
+	return 0;
+}
+
+int curl_downloader::on_xfer_static(
+	void* user, curl_off_t, curl_off_t, curl_off_t, curl_off_t) noexcept
+{
+	auto* self = static_cast<curl_downloader*>(user);
+
+	if (self->interrupt_)
+	{
+		debug("downloader: interrupting");
+		return 1;
+	}
+
+	return 0;
 }
 
 int curl_downloader::on_debug_static(

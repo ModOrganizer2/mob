@@ -48,7 +48,7 @@ private:
 	const context& cx_;
 	url url_;
 	fs::path path_;
-	file_ptr file_;
+	handle_ptr file_;
 	std::thread thread_;
 	std::size_t bytes_;
 	std::atomic<bool> interrupt_;
@@ -61,6 +61,13 @@ private:
 
 	void on_write(char* ptr, std::size_t n) noexcept;
 
+	static int on_progress_static(
+		void* user, double dltotal, double dlnow,
+		double ultotal, double ulnow) noexcept;
+
+	static int on_xfer_static(
+		void* user, curl_off_t dltotal, curl_off_t dlnow,
+		curl_off_t ultotal, curl_off_t ulnow) noexcept;
 
 	static int on_debug_static(
 		CURL* handle, curl_infotype type,

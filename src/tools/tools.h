@@ -49,6 +49,7 @@ public:
 	downloader(mob::url u);
 
 	downloader& url(const mob::url& u);
+	downloader& file(const fs::path& p);
 
 	fs::path result() const;
 
@@ -62,6 +63,7 @@ private:
 	std::vector<mob::url> urls_;
 
 	fs::path path_for_url(const mob::url& u) const;
+	bool try_picking(const fs::path& file);
 };
 
 

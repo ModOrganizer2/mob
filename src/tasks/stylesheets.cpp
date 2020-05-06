@@ -22,9 +22,11 @@ void stylesheets::do_fetch()
 
 	for (auto&& r : releases())
 	{
-		const auto file = run_tool(downloader(
-			"https://github.com/" + r.repo + "/" + r.name + "/releases/"
-			"download/v" + r.version + "/" + r.file + ".7z"));
+		const auto file = run_tool(downloader()
+			.url(
+				"https://github.com/" + r.repo + "/" + r.name + "/releases/"
+				"download/v" + r.version + "/" + r.file + ".7z")
+			.file(paths::cache() / (r.name + ".7z")));
 
 		run_tool(extractor()
 			.file(file)

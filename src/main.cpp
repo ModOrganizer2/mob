@@ -181,6 +181,16 @@ int run(int argc, char** argv)
 	{
 		if (auto r=handle_command_line(argc, argv))
 			return *r;
+	}
+	catch(bailed&)
+	{
+		// silent
+		return 1;
+	}
+
+
+	try
+	{
 
 		::SetConsoleCtrlHandler(signal_handler, TRUE);
 
@@ -208,8 +218,15 @@ int main(int argc, char** argv)
 {
 	int r = mob::run(argc, argv);
 
-	mob::gcx().debug(mob::context::generic,
-		"mob finished with exit code " + std::to_string(r));
+	if (r == 0)
+	{
+		mob::gcx().debug(mob::context::generic, "mob done");
+	}
+	else
+	{
+		mob::gcx().debug(mob::context::generic,
+			"mob finished with exit code " + std::to_string(r));
+	}
 
 	mob::dump_logs();
 

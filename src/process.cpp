@@ -607,7 +607,10 @@ void process::on_completed()
 
 	// success
 	if (code_ == 0)
+	{
+		cx_->trace(context::cmd, "process exit code is 0");
 		return;
+	}
 
 	if (flags_ & allow_failure)
 	{

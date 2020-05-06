@@ -17,9 +17,13 @@ downloader::downloader(mob::url u)
 
 downloader& downloader::url(const mob::url& u)
 {
-	cx_->trace(context::net, "adding url " + u.string());
 	urls_.push_back(u);
+	return *this;
+}
 
+downloader& downloader::file(const fs::path& p)
+{
+	file_ = p;
 	return *this;
 }
 
@@ -34,27 +38,22 @@ void downloader::do_run()
 
 	cx_->trace(context::net, "looking for already downloaded files");
 
-	for (auto&& u : urls_)
+	if (!file_.empty())
 	{
-		const auto file = path_for_url(u);
-
-		if (fs::exists(file))
+		if (try_picking(file_))
+			return;
+	}
+	else
+	{
+		for (auto&& u : urls_)
 		{
-			if (conf::redownload())
+			const auto file = path_for_url(u);
+
+			if (try_picking(file))
 			{
-				cx_->trace(context::redownload, "deleting " + file.string());
-				op::delete_file(*cx_, file, op::optional);
-			}
-			else
-			{
-				cx_->trace(context::bypass, "picking " + file_.string());
 				file_ = file;
 				return;
 			}
-		}
-		else
-		{
-			cx_->trace(context::net, "no " + file.string());
 		}
 	}
 
@@ -67,19 +66,19 @@ void downloader::do_run()
 	// try them in order
 	for (auto&& u : urls_)
 	{
-		const fs::path file = path_for_url(u);
+		if (file_.empty())
+			file_ = path_for_url(u);
 
 		cx_->trace(context::net,
-			"trying " + u.string() + " into " + file.string());
+			"trying " + u.string() + " into " + file_.string());
 
-		dl_->start(u, file);
+		dl_->start(u, file_);
 		cx_->trace(context::net, "waiting for download");
 		dl_->join();
 
 		if (dl_->ok())
 		{
-			cx_->trace(context::net, "file " + file.string() + " downloaded");
-			file_ = file;
+			cx_->trace(context::net, "file " + file_.string() + " downloaded");
 			return;
 		}
 
@@ -100,6 +99,29 @@ void downloader::do_interrupt()
 {
 	if (dl_)
 		dl_->interrupt();
+}
+
+bool downloader::try_picking(const fs::path& file)
+{
+	if (fs::exists(file))
+	{
+		if (conf::redownload())
+		{
+			cx_->trace(context::redownload, "deleting " + file.string());
+			op::delete_file(*cx_, file, op::optional);
+		}
+		else
+		{
+			cx_->trace(context::bypass, "picking " + file_.string());
+			return true;
+		}
+	}
+	else
+	{
+		cx_->trace(context::net, "no " + file.string());
+	}
+
+	return false;
 }
 
 fs::path downloader::path_for_url(const mob::url& u) const

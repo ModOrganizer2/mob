@@ -232,7 +232,8 @@ void task::fetch()
 
 			if (!get_source_path().empty())
 			{
-				cx().info(context::generic, "patching");
+				cx().debug(context::generic, "patching");
+
 				run_tool(patcher()
 					.task(name())
 					.root(get_source_path()));
