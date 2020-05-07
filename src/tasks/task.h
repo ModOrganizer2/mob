@@ -74,6 +74,8 @@ protected:
 		return t.result();
 	}
 
+	void threaded_run(std::string name, std::function<void ()> f);
+
 	void parallel(std::vector<std::pair<std::string, std::function<void ()>>> v)
 	{
 		std::vector<std::thread> ts;
@@ -118,7 +120,6 @@ private:
 
 	void clean_for_rebuild();
 	void run_tool_impl(tool* t);
-	void threaded_run(std::string name, std::function<void ()> f);
 };
 
 

@@ -240,15 +240,18 @@ void task::threaded_run(std::string thread_name, std::function<void ()> f)
 
 void task::run()
 {
-	cx().info(context::generic, "running task");
+	threaded_run(name(), [&]
+	{
+		cx().info(context::generic, "running task");
 
-	fetch();
-	join();
+		fetch();
+		join();
 
-	build_and_install();
-	join();
+		build_and_install();
+		join();
 
-	cx().info(context::generic, "task completed");
+		cx().info(context::generic, "task completed");
+	});
 }
 
 void task::interrupt()
@@ -379,6 +382,7 @@ void parallel_tasks::run()
 	join();
 }
 
+
 void parallel_tasks::interrupt()
 {
 	for (auto& t : children_)
@@ -400,13 +404,16 @@ void parallel_tasks::fetch()
 
 void parallel_tasks::build_and_install()
 {
-	for (auto& t : children_)
+	threaded_run(name(), [&]
 	{
-		threads_.push_back(std::thread([&]
+		for (auto& t : children_)
 		{
-			t->run();
-		}));
-	}
+			threads_.push_back(std::thread([&]
+			{
+				t->run();
+			}));
+		}
+	});
 }
 
 void parallel_tasks::do_fetch()
