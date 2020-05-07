@@ -69,6 +69,12 @@ void pyqt::fetch_prebuilt()
 
 void pyqt::build_and_install_prebuilt()
 {
+	copy_qt_dlls();
+
+	op::copy_glob_to_dir_if_better(cx(),
+		source_path() / "*",
+		python::source_path(),
+		op::copy_files|op::copy_dirs);
 }
 
 void pyqt::fetch_from_source()
@@ -94,6 +100,7 @@ void pyqt::build_and_install_from_source()
 	sip_build();
 	install_sip_file();
 	copy_files();
+	copy_qt_dlls();
 }
 
 void pyqt::sip_build()
@@ -118,7 +125,7 @@ void pyqt::sip_build()
 	else
 	{
 		// sip-install.exe has trouble with deleting the build/ directory and
-		// trying to recreate it to fast, giving an access denied error; do it
+		// trying to recreate it too fast, giving an access denied error; do it
 		// here instead
 		op::delete_directory(cx(), source_path() / "build", op::optional);
 
@@ -192,6 +199,11 @@ void pyqt::copy_files()
 	op::copy_file_to_dir_if_better(cx(),
 		sip::module_source_path() / "sip.pyi",
 		pyqt_plugin);
+}
+
+void pyqt::copy_qt_dlls()
+{
+	// these are needed by PyQt5 while building several projects
 
 	op::copy_file_to_dir_if_better(cx(),
 		tools::qt::bin_path() / "Qt5Core.dll",

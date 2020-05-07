@@ -100,6 +100,12 @@ void python::fetch_prebuilt()
 
 void python::build_and_install_prebuilt()
 {
+	op::copy_glob_to_dir_if_better(cx(),
+		openssl::bin_path() / "*.dll",
+		python::build_path(),
+		op::copy_files);
+
+	install_pip();
 	copy_files();
 }
 
@@ -202,6 +208,12 @@ void python::install_pip()
 	run_tool(process_runner(process()
 		.binary(python_exe())
 		.arg("-m", "ensurepip")));
+
+	run_tool(process_runner(process()
+		.binary(python_exe())
+		.arg("-m pip")
+		.arg("install")
+		.arg("--upgrade pip")));
 }
 
 fs::path python::python_exe()

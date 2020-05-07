@@ -29,6 +29,11 @@ fs::path openssl::build_path()
 	return source_path() / "build";
 }
 
+fs::path openssl::bin_path()
+{
+	return build_path() / "bin";
+}
+
 void openssl::do_clean_for_rebuild()
 {
 	if (prebuilt())
@@ -153,7 +158,7 @@ void openssl::copy_dlls_to(const fs::path& dir)
 	for (auto&& name : output_names())
 	{
 		op::copy_file_to_dir_if_better(cx(),
-			build_path() / "bin" / (name + ".dll"), dir);
+			bin_path() / (name + ".dll"), dir);
 	}
 }
 
@@ -162,7 +167,7 @@ void openssl::copy_pdbs_to(const fs::path& dir)
 	for (auto&& name : output_names())
 	{
 		op::copy_file_to_dir_if_better(cx(),
-			build_path() / "bin" / (name + ".pdb"), dir);
+			bin_path() / (name + ".pdb"), dir);
 	}
 }
 

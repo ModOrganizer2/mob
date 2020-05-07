@@ -52,6 +52,7 @@ void usvfs::do_build_and_install()
 
 void usvfs::fetch_prebuilt()
 {
+	fetch_from_source();
 	download_from_appveyor(arch::x64);
 	download_from_appveyor(arch::x86);
 }
