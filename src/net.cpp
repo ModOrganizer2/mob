@@ -46,12 +46,34 @@ bool url::empty() const
 
 std::string url::filename() const
 {
-	const auto pos = s_.find_last_of("/");
+	std::string path;
+
+	{
+		auto* h = curl_url();
+		guard g([&]{ curl_url_cleanup(h); });
+
+		auto r = curl_url_set(h, CURLUPART_URL, s_.c_str(), 0);
+
+		if (r != CURLUE_OK)
+			gcx().bail_out(context::net, "bad url '" + s_ + "'");
+
+		char* buffer = nullptr;
+		r = curl_url_get(h, CURLUPART_PATH, &buffer, 0);
+
+		if (r != CURLUE_OK)
+			gcx().bail_out(context::net, "bad url '" + s_ + "'");
+
+		guard g2([&]{ curl_free(buffer); });
+
+		path = buffer;
+	}
+
+	const auto pos = path.find_last_of("/");
 
 	if (pos == std::string::npos)
-		return s_;
+		return path;
 	else
-		return s_.substr(pos + 1);
+		return path.substr(pos + 1);
 }
 
 

@@ -163,8 +163,20 @@ private:
 };
 
 
+enum class arch
+{
+	x86 = 1,
+	x64,
+	dont_care,
+
+	def = x64
+};
+
+
 url make_github_url(const std::string& org, const std::string& repo);
 url make_prebuilt_url(const std::string& filename);
+url make_appveyor_artifact_url(
+	arch a, const std::string& project, const std::string& filename);
 
 std::string replace_all(
 	std::string s, const std::string& from, const std::string& to);
@@ -206,15 +218,6 @@ void for_each_line(std::string_view s, F&& f)
 	}
 }
 
-
-enum class arch
-{
-	x86 = 1,
-	x64,
-	dont_care,
-
-	def = x64
-};
 
 
 template <class T>
