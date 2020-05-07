@@ -740,16 +740,16 @@ std::string process::steal_stderr()
 
 void process::add_arg(const std::string& k, const std::string& v, arg_flags f)
 {
-	if ((f & log_debug) && !conf::log_debug())
+	if ((f & log_debug) && !context::enabled(context::level::debug))
 		return;
 
-	if ((f & log_trace) && !conf::log_trace())
+	if ((f & log_trace) && !context::enabled(context::level::trace))
 		return;
 
-	if ((f & log_dump) && !conf::log_dump())
+	if ((f & log_dump) && !context::enabled(context::level::dump))
 		return;
 
-	if ((f & log_quiet) && conf::log_trace())
+	if ((f & log_quiet) && context::enabled(context::level::trace))
 		return;
 
 	if (k.empty() && v.empty())

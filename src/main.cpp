@@ -38,7 +38,9 @@ std::optional<int> handle_command_line(int argc, char** argv)
 		bool rebuild = false;
 		bool clean = false;
 		bool list = false;
-		int log = 3;
+		int output_log_level = -1;
+		int file_log_level = -1;
+		std::string log_file;
 		std::vector<std::string> options;
 		std::vector<std::string> set;
 		std::string ini;
@@ -66,8 +68,16 @@ std::optional<int> handle_command_line(int argc, char** argv)
 			%  "simulates filesystem operations",
 
 		(clipp::option("-l", "--log-level")
-			&  clipp::value("LEVEL") >> cmd.log)
+			&  clipp::value("LEVEL") >> cmd.output_log_level)
 			%  "0 is silent, 6 is max",
+
+		(clipp::option("--file-log-level")
+			&  clipp::value("LEVEL") >> cmd.file_log_level)
+				%  "overrides --log-level for the log file",
+
+		(clipp::option("--log-file")
+			&  clipp::value("FILE") >> cmd.log_file)
+				%  "path to log file",
 
 		(clipp::option("-g", "--redownload") >> cmd.redownload)
 			% "redownloads archives, see --reextract",
@@ -122,8 +132,6 @@ std::optional<int> handle_command_line(int argc, char** argv)
 		return 0;
 	}
 
-	conf::set_log_level(cmd.log);
-
 	if (!cmd.set.empty())
 	{
 		if (cmd.set.size() != cmd.options.size())
@@ -132,6 +140,26 @@ std::optional<int> handle_command_line(int argc, char** argv)
 			return 0;
 		}
 	}
+
+	if (cmd.file_log_level == -1)
+		cmd.file_log_level = cmd.output_log_level;
+
+	if (cmd.output_log_level >= 0)
+	{
+		cmd.options.push_back(
+			"options/output_log_level=" +
+			std::to_string(cmd.output_log_level));
+	}
+
+	if (cmd.file_log_level > 0)
+	{
+		cmd.options.push_back(
+			"options/file_log_level=" +
+			std::to_string(cmd.file_log_level));
+	}
+
+	if (!cmd.log_file.empty())
+		cmd.options.push_back("options/log_file=" + cmd.log_file);
 
 	if (cmd.dry)
 		cmd.options.push_back("options/dry=true");

@@ -15,7 +15,9 @@ static fs::path g_ini;
 const std::string default_ini_filename = "mob.ini";
 
 // special case to avoid string manipulations
-static int g_log = 3;
+static int g_output_log_level = 3;
+static int g_file_log_level = 5;
+static fs::path g_log_file = "c:\\dev\\projects\\mob\\mob.log";
 
 static string_map g_options =
 {
@@ -24,7 +26,10 @@ static string_map g_options =
 	{"dry",        "false"},
 	{"redownload", "false"},
 	{"reextract",  "false"},
-	{"rebuild",    "false"}
+	{"rebuild",    "false"},
+	{"output_log_level", ""},
+	{"file_log_level", ""},
+	{"log_file", ""}
 };
 
 static path_map g_tools =
@@ -166,17 +171,47 @@ const fs::path& paths::by_name(const std::string& s)
 	return get("path", g_paths, s);
 }
 
-void conf::set_log_level(int i)
+void conf::set_output_log_level(int i)
 {
-	g_log = i;
+	if (i < 0 || i > 6)
+	{
+		gcx().bail_out(context::generic,
+			"bad output log level " + std::to_string(i));
+	}
+
+	g_output_log_level = i;
 }
 
-bool conf::log_dump()         { return g_log > 5; }
-bool conf::log_trace() 		  { return g_log > 4; }
-bool conf::log_debug() 		  { return g_log > 3; }
-bool conf::log_info() 		  { return g_log > 2; }
-bool conf::log_warning()      { return g_log > 1; }
-bool conf::log_error()        { return g_log > 0; }
+void conf::set_file_log_level(int i)
+{
+	if (i < 0 || i > 6)
+	{
+		gcx().bail_out(context::generic,
+			"bad file log level " + std::to_string(i));
+	}
+
+	g_file_log_level = i;
+}
+
+void conf::set_log_file(const fs::path& p)
+{
+	g_log_file = p;
+}
+
+int conf::output_log_level()
+{
+	return g_output_log_level;
+}
+
+int conf::file_log_level()
+{
+	return g_file_log_level;
+}
+
+const fs::path& conf::log_file()
+{
+	return g_log_file;
+}
 
 
 namespace tools
@@ -857,6 +892,30 @@ void init_options(const fs::path& ini, const std::vector<std::string>& opts)
 			set_option(o);
 	}
 
+	try
+	{
+		if (!g_options["output_log_level"].empty())
+			conf::set_output_log_level(std::stoi(g_options["output_log_level"]));
+	}
+	catch(std::exception&)
+	{
+		gcx().bail_out(context::generic, "bad output_log_level");
+	}
+
+	try
+	{
+		if (!g_options["file_log_level"].empty())
+			conf::set_file_log_level(std::stoi(g_options["file_log_level"]));
+	}
+	catch(std::exception&)
+	{
+		gcx().bail_out(context::generic, "bad file_log_level");
+	}
+
+	if (!g_options["log_file"].empty())
+		conf::set_log_file(g_options["log_file"]);
+
+	context::set_log_file(conf::log_file());
 	check_missing_options();
 
 	set_path_if_empty("third_party", find_third_party_directory);
@@ -910,7 +969,6 @@ void table(const std::string& caption, const Map& values)
 void dump_options()
 {
 	string_map opts = g_options;
-	opts.insert({"log", std::to_string(g_log)});
 	table("options", opts);
 
 	string_map tools;

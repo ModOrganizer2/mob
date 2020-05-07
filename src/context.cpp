@@ -12,6 +12,7 @@ using hr_clock = std::chrono::high_resolution_clock;
 
 static hr_clock::time_point g_start_time = hr_clock::now();
 static std::vector<std::string> g_errors, g_warnings;
+static handle_ptr g_log_file;
 static std::mutex g_mutex;
 
 console_color level_color(context::level lv)
@@ -136,36 +137,63 @@ const context* context::global()
 	return &c;
 }
 
-bool context::enabled(reason, level lv)
+static bool log_enabled(context::level lv, int conf_lv)
 {
 	switch (lv)
 	{
-		case level::dump:
-			return conf::log_dump();
+		case context::level::dump:
+			return conf_lv > 5;
 
-		case level::trace:
-			return conf::log_trace();
+		case context::level::trace:
+			return conf_lv > 4;
 
-		case level::debug:
-			return conf::log_debug();
+		case context::level::debug:
+			return conf_lv > 3;
 
-		case level::info:
-			return conf::log_info();
+		case context::level::info:
+			return conf_lv > 2;
 
-		case level::warning:
-			return conf::log_warning();
+		case context::level::warning:
+			return conf_lv > 1;
 
-		case level::error:
-			return conf::log_error();
+		case context::level::error:
+			return conf_lv > 0;
 
 		default:
 			return true;
 	}
 }
 
+bool context::enabled(level lv)
+{
+	const int minimum_log_level =
+		std::max(conf::output_log_level(), conf::file_log_level());
+
+	return log_enabled(lv, minimum_log_level);
+}
+
+void context::set_log_file(const fs::path& p)
+{
+	if (!p.empty())
+	{
+		HANDLE h = CreateFileA(
+			p.string().c_str(), GENERIC_WRITE, FILE_SHARE_READ,
+			nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+
+		if (h == INVALID_HANDLE_VALUE)
+		{
+			const auto e = GetLastError();
+			gcx().bail_out(
+				context::generic, "failed to open log file " + p.string(), e);
+		}
+
+		g_log_file.reset(h);
+	}
+}
+
 void context::log(reason r, level lv, std::string_view s) const
 {
-	if (!enabled(r, lv))
+	if (!enabled(lv))
 		return;
 
 	const auto ls = make_log_string(r, lv, s);
@@ -206,12 +234,24 @@ void context::do_log(level lv, const std::string& s) const
 		std::scoped_lock lock(g_mutex);
 		auto c = level_color(lv);
 
-		std::cout << s << "\n";
-
 		if (lv == level::error)
 			g_errors.push_back(s);
 		else if (lv == level::warning)
 			g_warnings.push_back(s);
+
+		if (log_enabled(lv, conf::output_log_level()))
+			std::cout << s << "\n";
+
+		if (g_log_file && log_enabled(lv, conf::file_log_level()))
+		{
+			DWORD written = 0;
+
+			::WriteFile(
+				g_log_file.get(), s.c_str(), static_cast<DWORD>(s.size()),
+				&written, nullptr);
+
+			::WriteFile(g_log_file.get(), "\r\n", 2, &written, nullptr);
+		}
 	}
 }
 

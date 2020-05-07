@@ -80,14 +80,13 @@ namespace tools
 
 struct conf
 {
-	static void set_log_level(int i);
+	static void set_output_log_level(int i);
+	static void set_file_log_level(int i);
+	static void set_log_file(const fs::path& p);
 
-	static bool log_dump();
-	static bool log_trace();
-	static bool log_debug();
-	static bool log_info();
-	static bool log_warning();
-	static bool log_error();
+	static int output_log_level();
+	static int file_log_level();
+	static const fs::path& log_file();
 
 	static const std::string& by_name(const std::string& s);
 	static bool by_name_bool(const std::string& name);

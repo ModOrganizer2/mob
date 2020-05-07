@@ -144,7 +144,7 @@ void curl_downloader::run()
 	curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1l);
 	curl_easy_setopt(c, CURLOPT_ERRORBUFFER, error_buffer);
 
-	if (conf::log_dump())
+	if (context::enabled(context::level::dump))
 	{
 		curl_easy_setopt(c, CURLOPT_DEBUGFUNCTION, on_debug_static);
 		curl_easy_setopt(c, CURLOPT_DEBUGDATA, this);

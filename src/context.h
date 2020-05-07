@@ -58,7 +58,8 @@ public:
 	};
 
 	static const context* global();
-	static bool enabled(reason r, level lv);
+	static bool enabled(level lv);
+	static void set_log_file(const fs::path& p);
 
 	context(std::string task_name);
 
