@@ -11,7 +11,8 @@ ncc::ncc()
 
 const std::string& ncc::version()
 {
-	return {};
+	static std::string s;
+	return s;
 }
 
 bool ncc::prebuilt()

@@ -11,7 +11,8 @@ libffi::libffi()
 
 const std::string& libffi::version()
 {
-	return {};
+	static std::string s;
+	return s;
 }
 
 bool libffi::prebuilt()

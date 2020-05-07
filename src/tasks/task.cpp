@@ -291,7 +291,7 @@ void task::fetch()
 				cx().debug(context::generic, "patching");
 
 				run_tool(patcher()
-					.task(name())
+					.task(name(), get_prebuilt())
 					.root(get_source_path()));
 			}
 

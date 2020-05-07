@@ -12,7 +12,8 @@ boost_di::boost_di()
 
 const std::string& boost_di::version()
 {
-	return {};
+	static std::string s;
+	return s;
 }
 
 bool boost_di::prebuilt()

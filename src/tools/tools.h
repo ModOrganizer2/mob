@@ -159,7 +159,7 @@ class patcher : public basic_process_runner
 public:
 	patcher();
 
-	patcher& task(const std::string& name);
+	patcher& task(const std::string& name, bool prebuilt=false);
 	patcher& file(const fs::path& p);
 	patcher& root(const fs::path& dir);
 

@@ -10,9 +10,9 @@ patcher::patcher()
 {
 }
 
-patcher& patcher::task(const std::string& name)
+patcher& patcher::task(const std::string& name, bool prebuilt)
 {
-	patches_ = paths::patches() / name;
+	patches_ = paths::patches() / name / (prebuilt ? "prebuilt" : "sources");
 	return *this;
 }
 

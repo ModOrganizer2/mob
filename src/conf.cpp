@@ -177,14 +177,14 @@ bool conf::log_error()        { return g_log > 0; }
 namespace tools
 {
 	fs::path perl::binary()           { return tool_by_name("perl"); }
-	fs::path msbuild::binary()        { return tool_by_name("perl"); }
-	fs::path devenv::binary() 	      { return tool_by_name("perl"); }
-	fs::path cmake::binary() 	      { return tool_by_name("perl"); }
-	fs::path git::binary() 		      { return tool_by_name("perl"); }
-	fs::path sevenz::binary() 	      { return tool_by_name("perl"); }
-	fs::path jom::binary() 		      { return tool_by_name("perl"); }
-	fs::path patch::binary() 	      { return tool_by_name("perl"); }
-	fs::path nuget::binary() 	      { return tool_by_name("perl"); }
+	fs::path msbuild::binary()        { return tool_by_name("msbuild"); }
+	fs::path devenv::binary() 	      { return tool_by_name("devenv"); }
+	fs::path cmake::binary() 	      { return tool_by_name("cmake"); }
+	fs::path git::binary() 		      { return tool_by_name("git"); }
+	fs::path sevenz::binary() 	      { return tool_by_name("sevenz"); }
+	fs::path jom::binary() 		      { return tool_by_name("jom"); }
+	fs::path patch::binary() 	      { return tool_by_name("patch"); }
+	fs::path nuget::binary() 	      { return tool_by_name("nuget"); }
 
 	fs::path vs::installation_path()  { return paths::by_name("vs"); }
 	fs::path vs::vswhere()            { return tool_by_name("vswhere"); }

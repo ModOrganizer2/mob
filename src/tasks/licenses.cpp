@@ -11,7 +11,8 @@ licenses::licenses()
 
 const std::string& licenses::version()
 {
-	return {};
+	static std::string s;
+	return s;
 }
 
 bool licenses::prebuilt()

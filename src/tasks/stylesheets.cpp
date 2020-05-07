@@ -11,7 +11,8 @@ stylesheets::stylesheets()
 
 const std::string& stylesheets::version()
 {
-	return {};
+	static std::string s;
+	return s;
 }
 
 bool stylesheets::prebuilt()

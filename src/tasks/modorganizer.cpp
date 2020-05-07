@@ -26,7 +26,8 @@ modorganizer::modorganizer(std::string long_name)
 
 const std::string& modorganizer::version()
 {
-	return {};
+	static std::string s;
+	return s;
 }
 
 bool modorganizer::prebuilt()
