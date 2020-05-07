@@ -9,9 +9,19 @@ fmt::fmt()
 {
 }
 
+const std::string& fmt::version()
+{
+	return versions::by_name("fmt");
+}
+
+bool fmt::prebuilt()
+{
+	return false;
+}
+
 fs::path fmt::source_path()
 {
-	return paths::build() / ("fmt-" + versions::fmt());
+	return paths::build() / ("fmt-" + version());
 }
 
 void fmt::do_fetch()
@@ -43,7 +53,7 @@ url fmt::source_url()
 {
 	return
 		"https://github.com/fmtlib/fmt/releases/download/" +
-		versions::fmt() + "/fmt-" + versions::fmt() + ".zip";
+		version() + "/fmt-" + version() + ".zip";
 }
 
 }	// namespace

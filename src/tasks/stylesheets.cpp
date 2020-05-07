@@ -9,6 +9,16 @@ stylesheets::stylesheets()
 {
 }
 
+const std::string& stylesheets::version()
+{
+	return {};
+}
+
+bool stylesheets::prebuilt()
+{
+	return false;
+}
+
 fs::path stylesheets::source_path()
 {
 	// all projects are dumped in the build directory; this also disables

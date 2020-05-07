@@ -9,9 +9,24 @@ sip::sip()
 {
 }
 
+const std::string& sip::version()
+{
+	return versions::by_name("sip");
+}
+
+const std::string& sip::version_for_pyqt()
+{
+	return versions::by_name("pyqt_sip");
+}
+
+bool sip::prebuilt()
+{
+	return false;
+}
+
 fs::path sip::source_path()
 {
-	return paths::build() / ("sip-" + versions::sip());
+	return paths::build() / ("sip-" + version());
 }
 
 fs::path sip::sip_module_exe()
@@ -31,8 +46,8 @@ fs::path sip::module_source_path()
 	std::regex re(R"((\d+)\.(\d+)(?:\.(\d+))?)");
 	std::smatch m;
 
-	if (!std::regex_match(versions::pyqt_sip(), m, re))
-		bail_out("bad pyqt sip version " + versions::pyqt_sip());
+	if (!std::regex_match(version_for_pyqt(), m, re))
+		bail_out("bad pyqt sip version " + version_for_pyqt());
 
 	// 12.7
 	const auto dir = m[1].str() + "." + m[2].str();
@@ -92,7 +107,7 @@ void sip::download()
 		.arg("--no-binary=:all:")
 		.arg("--no-deps")
 		.arg("-d", paths::cache())
-		.arg("sip==" + versions::sip())));
+		.arg("sip==" + version())));
 }
 
 void sip::generate()
@@ -134,7 +149,7 @@ void sip::generate()
 
 fs::path sip::download_file()
 {
-	return paths::cache() / ("sip-" + versions::sip() + ".tar.gz");
+	return paths::cache() / ("sip-" + version() + ".tar.gz");
 }
 
 }	// namespace

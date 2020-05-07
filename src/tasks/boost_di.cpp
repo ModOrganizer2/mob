@@ -10,6 +10,16 @@ boost_di::boost_di()
 {
 }
 
+const std::string& boost_di::version()
+{
+	return {};
+}
+
+bool boost_di::prebuilt()
+{
+	return false;
+}
+
 fs::path boost_di::source_path()
 {
 	return paths::build() / "di";

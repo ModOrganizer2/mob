@@ -9,6 +9,21 @@ boost::boost()
 {
 }
 
+const std::string& boost::version()
+{
+	return versions::by_name("boost");
+}
+
+const std::string& boost::version_vs()
+{
+	return versions::by_name("boost_vs");
+}
+
+bool boost::prebuilt()
+{
+	return prebuilt::by_name("boost");
+}
+
 fs::path boost::source_path()
 {
 	return paths::build() / ("boost_" + boost_version_no_tags_underscores());
@@ -22,14 +37,14 @@ fs::path boost::lib_path(arch a)
 fs::path boost::root_lib_path(arch a)
 {
 	const std::string lib =
-		"lib" + address_model_for_arch(a) + "-msvc-" + versions::boost_vs();
+		"lib" + address_model_for_arch(a) + "-msvc-" + version_vs();
 
 	return source_path() / lib;
 }
 
 void boost::do_fetch()
 {
-	if (prebuilt::boost())
+	if (prebuilt())
 		fetch_prebuilt();
 	else
 		fetch_from_source();
@@ -37,7 +52,7 @@ void boost::do_fetch()
 
 void boost::do_build_and_install()
 {
-	if (prebuilt::boost())
+	if (prebuilt())
 		build_and_install_prebuilt();
 	else
 		build_and_install_from_source();
@@ -134,7 +149,7 @@ void boost::do_b2(
 		.arg("address-model=",  address_model_for_arch(a))
 		.arg("link=",           link)
 		.arg("runtime-link=",   runtime_link)
-		.arg("toolset=",        "msvc-" + versions::vs_toolset())
+		.arg("toolset=",        "msvc-" + tools::vs::toolset())
 		.arg("--user-config=",  config_jam_file())
 		.arg("--stagedir=",     root_lib_path(a))
 		.arg("--libdir=",       root_lib_path(a))
@@ -177,8 +192,8 @@ std::smatch boost::parse_boost_version()
 	std::regex re(R"((\d+)\.(\d+)(?:\.(\d+)(?:-(\w+)(?:-(\w+))?)?)?)");
 	std::smatch m;
 
-	if (!std::regex_match(versions::boost(), m, re))
-		bail_out("bad boost version '" + versions::boost() + "'");
+	if (!std::regex_match(version(), m, re))
+		bail_out("bad boost version '" + version() + "'");
 
 	return m;
 }
@@ -195,7 +210,7 @@ fs::path boost::config_jam_file()
 
 url boost::prebuilt_url()
 {
-	const auto underscores = replace_all(versions::boost(), ".", "_");
+	const auto underscores = replace_all(version(), ".", "_");
 
 	return
 		"https://github.com/ModOrganizer2/modorganizer-umbrella/"
@@ -225,7 +240,7 @@ std::string boost::python_dll()
 	oss << "boost_python" << python_version_for_dll() + "-";
 
 	// vc142-
-	oss << "vc" + replace_all(versions::boost_vs(), ".", "") << "-";
+	oss << "vc" + replace_all(version_vs(), ".", "") << "-";
 
 	// mt-x64-1_72
 	oss << "mt-x64-" << boost_version_no_patch_underscores();
@@ -237,7 +252,7 @@ std::string boost::python_dll()
 
 std::string boost::python_version_for_dll()
 {
-	const auto v = python::version();
+	const auto v = python::parsed_version();
 
 	// 38
 	return v.major + v.minor;
@@ -245,7 +260,7 @@ std::string boost::python_version_for_dll()
 
 std::string boost::python_version_for_jam()
 {
-	const auto v = python::version();
+	const auto v = python::parsed_version();
 
 	// 3.8
 	return v.major + "." + v.minor;

@@ -9,6 +9,16 @@ libffi::libffi()
 {
 }
 
+const std::string& libffi::version()
+{
+	return {};
+}
+
+bool libffi::prebuilt()
+{
+	return false;
+}
+
 fs::path libffi::source_path()
 {
 	return paths::build() / "libffi";

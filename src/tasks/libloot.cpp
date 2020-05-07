@@ -9,6 +9,21 @@ libloot::libloot()
 {
 }
 
+const std::string& libloot::version()
+{
+	return versions::by_name("libloot");
+}
+
+const std::string& libloot::hash()
+{
+	return versions::by_name("libloot_hash");
+}
+
+bool libloot::prebuilt()
+{
+	return false;
+}
+
 fs::path libloot::source_path()
 {
 	return paths::build() / dir_name();
@@ -34,10 +49,8 @@ std::string libloot::dir_name()
 {
 	// libloot-0.15.1-0-gf725dd7_0.15.1-win64.7z, yeah
 	return
-		"libloot-" +
-		versions::libloot() + "-" +
-		"0-" +
-		versions::libloot_hash() + "_" + versions::libloot() + "-" +
+		"libloot-" + version() + "-" + "0-" +
+		hash() + "_" + version() + "-" +
 		"win64";
 }
 
@@ -45,7 +58,7 @@ url libloot::source_url()
 {
 	return
 		"https://github.com/loot/libloot/releases/download/" +
-		versions::libloot() + "/" + dir_name() + ".7z";
+		version() + "/" + dir_name() + ".7z";
 }
 
 }	// namespace

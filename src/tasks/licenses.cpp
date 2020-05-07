@@ -9,6 +9,16 @@ licenses::licenses()
 {
 }
 
+const std::string& licenses::version()
+{
+	return {};
+}
+
+bool licenses::prebuilt()
+{
+	return false;
+}
+
 fs::path licenses::source_path()
 {
 	return {};

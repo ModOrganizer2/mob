@@ -9,6 +9,16 @@ gtest::gtest()
 {
 }
 
+const std::string& gtest::version()
+{
+	return versions::by_name("gtest");
+}
+
+bool gtest::prebuilt()
+{
+	return false;
+}
+
 fs::path gtest::source_path()
 {
 	return paths::build() / "googletest";
@@ -23,7 +33,7 @@ void gtest::do_fetch()
 {
 	run_tool(git_clone()
 		.url(make_github_url("google", "googletest"))
-		.branch(versions::gtest())
+		.branch(version())
 		.output(source_path()));
 }
 

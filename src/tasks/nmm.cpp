@@ -9,6 +9,16 @@ nmm::nmm()
 {
 }
 
+const std::string& nmm::version()
+{
+	return versions::by_name("nmm");
+}
+
+bool nmm::prebuilt()
+{
+	return false;
+}
+
 fs::path nmm::source_path()
 {
 	return paths::build() / "Nexus-Mod-Manager";
@@ -23,7 +33,7 @@ void nmm::do_fetch()
 {
 	run_tool(git_clone()
 		.url(make_github_url("Nexus-Mods", "Nexus-Mod-Manager"))
-		.branch(versions::nmm())
+		.branch(version())
 		.output(source_path()));
 
 	run_tool(nuget(source_path() / "NexusClient.sln"));

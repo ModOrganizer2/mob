@@ -49,7 +49,7 @@ msbuild& msbuild::architecture(arch a)
 void msbuild::do_run()
 {
 	// 14.2 to v142
-	const auto toolset = "v" + replace_all(versions::vs_toolset(), ".", "");
+	const auto toolset = "v" + replace_all(tools::vs::toolset(), ".", "");
 
 	std::string plat;
 
@@ -76,14 +76,14 @@ void msbuild::do_run()
 	}
 
 	process_
-		.binary(tools::msbuild())
+		.binary(tools::msbuild::binary())
 		.arg("-nologo")
 		.arg("-maxCpuCount")
 		.arg("-property:UseMultiToolTask=true")
 		.arg("-property:EnforceProcessCountAcrossBuilds=true")
 		.arg("-property:Configuration=", config_, process::quote)
 		.arg("-property:PlatformToolset=" + toolset)
-		.arg("-property:WindowsTargetPlatformVersion=" + versions::sdk())
+		.arg("-property:WindowsTargetPlatformVersion=" + tools::vs::sdk())
 		.arg("-property:Platform=", plat, process::quote)
 		.arg("-verbosity:minimal", process::log_quiet)
 		.arg("-consoleLoggerParameters:ErrorsOnly", process::log_quiet);

@@ -9,9 +9,19 @@ bzip2::bzip2()
 {
 }
 
+const std::string& bzip2::version()
+{
+	return versions::by_name("bzip2");
+}
+
+bool bzip2::prebuilt()
+{
+	return false;
+}
+
 fs::path bzip2::source_path()
 {
-	return paths::build() / ("bzip2-" + versions::bzip2());
+	return paths::build() / ("bzip2-" + version());
 }
 
 void bzip2::do_fetch()
@@ -27,7 +37,7 @@ url bzip2::source_url()
 {
 	return
 		"https://sourceforge.net/projects/bzip2/files/"
-		"bzip2-" + versions::bzip2() + ".tar.gz/download";
+		"bzip2-" + version() + ".tar.gz/download";
 }
 
 }	// namespace

@@ -53,7 +53,7 @@ static string_map g_versions =
 	{"vs_year",      ""},
 	{"vs_toolset",   ""},
 	{"sdk",          ""},
-	{"sevenzip",     ""},
+	{"sevenz",       ""},
 	{"zlib",         ""},
 	{"boost",        ""},
 	{"boost_vs",     ""},
@@ -127,7 +127,7 @@ const typename Map::mapped_type& get(
 }
 
 
-const fs::path& tools::by_name(const std::string& name)
+const fs::path& tool_by_name(const std::string& name)
 {
 	return get("tool", g_tools, name);
 }
@@ -172,6 +172,34 @@ bool conf::log_debug() 		  { return g_log > 3; }
 bool conf::log_info() 		  { return g_log > 2; }
 bool conf::log_warning()      { return g_log > 1; }
 bool conf::log_error()        { return g_log > 0; }
+
+
+namespace tools
+{
+	fs::path perl::binary()           { return tool_by_name("perl"); }
+	fs::path msbuild::binary()        { return tool_by_name("perl"); }
+	fs::path devenv::binary() 	      { return tool_by_name("perl"); }
+	fs::path cmake::binary() 	      { return tool_by_name("perl"); }
+	fs::path git::binary() 		      { return tool_by_name("perl"); }
+	fs::path sevenz::binary() 	      { return tool_by_name("perl"); }
+	fs::path jom::binary() 		      { return tool_by_name("perl"); }
+	fs::path patch::binary() 	      { return tool_by_name("perl"); }
+	fs::path nuget::binary() 	      { return tool_by_name("perl"); }
+
+	fs::path vs::installation_path()  { return paths::by_name("vs"); }
+	fs::path vs::vswhere()            { return tool_by_name("vswhere"); }
+	fs::path vs::vcvars() 			  { return tool_by_name("vsvars"); }
+	std::string vs::version() 		  { return versions::by_name("vs"); }
+	std::string vs::year() 			  { return versions::by_name("vs_year"); }
+	std::string vs::toolset() 		  { return versions::by_name("vs_toolset"); }
+	std::string vs::sdk() 			  { return versions::by_name("sdk"); }
+
+	fs::path qt::installation_path()  { return paths::by_name("qt_install"); }
+	fs::path qt::bin_path() 		  { return paths::by_name("qt_bin"); }
+	std::string qt::version() 		  { return versions::by_name("qt"); }
+	std::string qt::vs_version() 	  { return versions::by_name("qt_vs"); }
+}
+
 
 template <class T>
 bool parse_value(const std::string& s, T& out)
@@ -355,8 +383,8 @@ bool find_qmake(fs::path& check)
 	// try Qt/Qt5.14.2/msvc*/bin/qmake.exe
 	if (try_parts(check, {
 		"Qt",
-		"Qt" + versions::qt(),
-		"msvc" + versions::qt_vs() + "_64",
+		"Qt" + tools::qt::version(),
+		"msvc" + tools::qt::vs_version() + "_64",
 		"bin",
 		"qmake.exe"}))
 	{
@@ -366,8 +394,8 @@ bool find_qmake(fs::path& check)
 	// try Qt/5.14.2/msvc*/bin/qmake.exe
 	if (try_parts(check, {
 		"Qt",
-		versions::qt(),
-		"msvc" + versions::qt_vs() + "_64",
+		tools::qt::version(),
+		"msvc" + tools::qt::vs_version() + "_64",
 		"bin",
 		"qmake.exe"}))
 	{
@@ -433,7 +461,7 @@ fs::path find_qt()
 
 void validate_qt()
 {
-	fs::path p = paths::qt_install();
+	fs::path p = tools::qt::installation_path();
 
 	if (!try_qt_location(p))
 	{
@@ -524,12 +552,12 @@ fs::path find_temp_dir()
 fs::path find_vs()
 {
 	if (conf::dry())
-		return tools::vswhere();
+		return tools::vs::vswhere();
 
 	auto p = process()
-		.binary(tools::vswhere())
+		.binary(tools::vs::vswhere())
 		.arg("-prerelease")
-		.arg("-version", versions::vs())
+		.arg("-version", tools::vs::version())
 		.arg("-property", "installationPath")
 		.stdout_flags(process::keep_in_string)
 		.stderr_flags(process::inherit);
@@ -575,7 +603,8 @@ void find_vcvars()
 
 	if (bat.empty())
 	{
-		bat = paths::vs() / "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
+		bat = tools::vs::installation_path()
+			/ "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
 
 		if (!try_vcvars(bat))
 			gcx().bail_out(context::conf, "vcvars not found " + bat.string());
@@ -829,14 +858,14 @@ void init_options(const fs::path& ini, const std::vector<std::string>& opts)
 
 	this_env::prepend_to_path(paths::third_party() / "bin");
 
-	set_path_if_empty("vs",              find_vs);
-	set_path_if_empty("qt_install",      find_qt);
-	set_path_if_empty("pf_x86",          find_program_files_x86);
-	set_path_if_empty("pf_x64",          find_program_files_x64);
-	set_path_if_empty("temp_dir",        find_temp_dir);
-	set_path_if_empty("patches",         find_in_root("patches"));
-	set_path_if_empty("licenses",        find_in_root("licenses"));
-	set_path_if_empty("qt_bin",          paths::qt_install() / "bin");
+	set_path_if_empty("vs",         find_vs);
+	set_path_if_empty("qt_install", find_qt);
+	set_path_if_empty("pf_x86",     find_program_files_x86);
+	set_path_if_empty("pf_x64",     find_program_files_x64);
+	set_path_if_empty("temp_dir",   find_temp_dir);
+	set_path_if_empty("patches",    find_in_root("patches"));
+	set_path_if_empty("licenses",   find_in_root("licenses"));
+	set_path_if_empty("qt_bin",     tools::qt::installation_path() / "bin");
 
 	find_vcvars();
 	validate_qt();

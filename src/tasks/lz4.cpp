@@ -9,9 +9,19 @@ lz4::lz4()
 {
 }
 
+const std::string& lz4::version()
+{
+	return versions::by_name("lz4");
+}
+
+bool lz4::prebuilt()
+{
+	return false;
+}
+
 fs::path lz4::source_path()
 {
-	return paths::build() / ("lz4-" + versions::lz4());
+	return paths::build() / ("lz4-" + version());
 }
 
 void lz4::do_clean_for_rebuild()
@@ -23,7 +33,7 @@ void lz4::do_fetch()
 {
 	run_tool(git_clone()
 		.url(make_github_url("lz4","lz4"))
-		.branch(versions::lz4())
+		.branch(version())
 		.output(source_path()));
 
 	run_tool(devenv_upgrade(solution_file()));

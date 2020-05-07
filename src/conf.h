@@ -10,22 +10,73 @@ namespace mob
 	static bool NAME() { return by_name_bool(#NAME); }
 
 
-struct tools
+namespace tools
 {
-	static const fs::path& by_name(const std::string& s);
+	struct perl
+	{
+		static fs::path binary();
+	};
 
-	VALUE(perl);
-	VALUE(msbuild);
-	VALUE(devenv);
-	VALUE(cmake);
-	VALUE(git);
-	VALUE(sevenz);
-	VALUE(jom);
-	VALUE(patch);
-	VALUE(nuget);
-	VALUE(vswhere);
-	VALUE(vcvars);
+	struct msbuild
+	{
+		static fs::path binary();
+	};
+
+	struct devenv
+	{
+		static fs::path binary();
+	};
+
+	struct cmake
+	{
+		static fs::path binary();
+	};
+
+	struct git
+	{
+		static fs::path binary();
+	};
+
+	struct sevenz
+	{
+		static fs::path binary();
+	};
+
+	struct jom
+	{
+		static fs::path binary();
+	};
+
+	struct patch
+	{
+		static fs::path binary();
+	};
+
+	struct nuget
+	{
+		static fs::path binary();
+	};
+
+	struct vs
+	{
+		static fs::path installation_path();
+		static fs::path vswhere();
+		static fs::path vcvars();
+		static std::string version();
+		static std::string year();
+		static std::string toolset();
+		static std::string sdk();
+	};
+
+	struct qt
+	{
+		static fs::path installation_path();
+		static fs::path bin_path();
+		static std::string version();
+		static std::string vs_version();
+	};
 };
+
 
 struct conf
 {
@@ -53,41 +104,11 @@ struct conf
 struct prebuilt
 {
 	static bool by_name(const std::string& s);
-
-	VALUE(boost);
 };
 
 struct versions
 {
 	static const std::string& by_name(const std::string& s);
-
-	VALUE(vs);
-	VALUE(vs_year);
-	VALUE(vs_toolset);
-	VALUE(sdk);
-	VALUE(sevenzip);
-	VALUE(zlib);
-	VALUE(boost);
-	VALUE(boost_vs);
-	VALUE(python);
-	VALUE(fmt);
-	VALUE(gtest);
-	VALUE(libbsarch);
-	VALUE(libloot);
-	VALUE(libloot_hash);
-	VALUE(openssl);
-	VALUE(bzip2);
-	VALUE(lz4);
-	VALUE(nmm);
-	VALUE(spdlog);
-	VALUE(usvfs);
-	VALUE(qt);
-	VALUE(qt_vs);
-	VALUE(pyqt);
-	VALUE(pyqt_builder);
-	VALUE(sip);
-	VALUE(pyqt_sip);
-	VALUE(explorerpp);
 
 	VALUE(ss_6788_paper_lad);
 	VALUE(ss_6788_paper_automata);
@@ -118,9 +139,6 @@ struct paths
 	VALUE(install_licenses);
 	VALUE(install_pythoncore);
 
-	VALUE(vs);
-	VALUE(qt_install);
-	VALUE(qt_bin);
 	VALUE(pf_x86);
 	VALUE(pf_x64);
 	VALUE(temp_dir);

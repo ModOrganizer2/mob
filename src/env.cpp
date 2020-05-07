@@ -33,7 +33,7 @@ env get_vcvars_env(arch a)
 
 	// "vcvarsall.bat" amd64 && set > temp_file
 	std::string cmd =
-		"\"" + tools::vcvars().string() + "\" " + arch_s +
+		"\"" + tools::vs::vcvars().string() + "\" " + arch_s +
 		" && set > \"" + tmp.string() + "\"";
 
 	process::raw(gcx(), cmd)

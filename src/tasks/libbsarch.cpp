@@ -9,6 +9,16 @@ libbsarch::libbsarch()
 {
 }
 
+const std::string& libbsarch::version()
+{
+	return versions::by_name("libbsarch");
+}
+
+bool libbsarch::prebuilt()
+{
+	return false;
+}
+
 fs::path libbsarch::source_path()
 {
 	return paths::build() / dir_name();
@@ -32,14 +42,14 @@ void libbsarch::do_build_and_install()
 
 std::string libbsarch::dir_name()
 {
-	return "libbsarch-" + versions::libbsarch() + "-release-x64";
+	return "libbsarch-" + version() + "-release-x64";
 }
 
 url libbsarch::source_url()
 {
 	return
 		"https://github.com/ModOrganizer2/libbsarch/releases/download/" +
-		versions::libbsarch() + "/" + dir_name() + ".7z";
+		version() + "/" + dir_name() + ".7z";
 }
 
 }	// namespace

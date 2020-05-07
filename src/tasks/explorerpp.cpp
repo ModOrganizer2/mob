@@ -9,6 +9,16 @@ explorerpp::explorerpp()
 {
 }
 
+const std::string& explorerpp::version()
+{
+	return versions::by_name("explorerpp");
+}
+
+bool explorerpp::prebuilt()
+{
+	return false;
+}
+
 fs::path explorerpp::source_path()
 {
 	return paths::build() / "explorer++";
@@ -32,7 +42,7 @@ url explorerpp::source_url()
 {
 	return
 		"https://explorerplusplus.com/software/"
-		"explorer++_" + versions::explorerpp() + "_x64.zip";
+		"explorer++_" + version() + "_x64.zip";
 }
 
 }	// namespace

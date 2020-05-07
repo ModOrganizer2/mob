@@ -74,7 +74,7 @@ void devenv_upgrade::do_run()
 	}
 
 	process_
-		.binary(tools::devenv())
+		.binary(tools::devenv::binary())
 		.env(env::vs(arch::x64))
 		.arg("/upgrade")
 		.arg(sln_);
@@ -87,7 +87,7 @@ nuget::nuget(fs::path sln)
 	: basic_process_runner("nuget"), sln_(std::move(sln))
 {
 	process_
-		.binary(tools::nuget())
+		.binary(tools::nuget::binary())
 		.arg("restore")
 		.arg(sln_)
 		.cwd(sln_.parent_path());

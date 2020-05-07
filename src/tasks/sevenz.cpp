@@ -9,9 +9,19 @@ sevenz::sevenz()
 {
 }
 
+const std::string& sevenz::version()
+{
+	return versions::by_name("sevenz");
+}
+
+bool sevenz::prebuilt()
+{
+	return false;
+}
+
 fs::path sevenz::source_path()
 {
-	return paths::build() / ("7zip-" + versions::sevenzip());
+	return paths::build() / ("7zip-" + version());
 }
 
 void sevenz::do_fetch()
@@ -78,7 +88,7 @@ url sevenz::source_url()
 
 std::string sevenz::version_for_url()
 {
-	return replace_all(versions::sevenzip(), ".", "");
+	return replace_all(version(), ".", "");
 }
 
 fs::path sevenz::module_to_build()

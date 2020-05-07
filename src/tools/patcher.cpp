@@ -86,7 +86,7 @@ void patcher::do_run()
 void patcher::do_patch(const fs::path& patch_file)
 {
 	const auto base = process()
-		.binary(tools::patch())
+		.binary(tools::patch::binary())
 		.arg("--read-only", "ignore")
 		.arg("--strip", "0")
 		.arg("--directory", output_)

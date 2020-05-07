@@ -55,7 +55,7 @@ void jom::do_run()
 	}
 
 	process_
-		.binary(tools::jom())
+		.binary(tools::jom::binary())
 		.stderr_filter([](process::filter& f)
 		{
 			if (f.line.find("empower your cores") != std::string::npos)

@@ -9,6 +9,16 @@ ncc::ncc()
 {
 }
 
+const std::string& ncc::version()
+{
+	return {};
+}
+
+bool ncc::prebuilt()
+{
+	return false;
+}
+
 fs::path ncc::source_path()
 {
 	return paths::build() / "NexusClientCli";

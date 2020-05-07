@@ -9,9 +9,24 @@ pyqt::pyqt()
 {
 }
 
+const std::string& pyqt::version()
+{
+	return versions::by_name("pyqt");
+}
+
+const std::string& pyqt::builder_version()
+{
+	return versions::by_name("pyqt_builder");
+}
+
+bool pyqt::prebuilt()
+{
+	return false;
+}
+
 fs::path pyqt::source_path()
 {
-	return paths::build() / ("PyQt5-" + versions::pyqt());
+	return paths::build() / ("PyQt5-" + version());
 }
 
 fs::path pyqt::build_path()
@@ -48,7 +63,7 @@ void pyqt::do_build_and_install()
 
 	run_tool(pip_install()
 		.package("PyQt-builder")
-		.version(versions::pyqt_builder()));
+		.version(builder_version()));
 
 	run_tool(patcher()
 		.task(name())
@@ -64,7 +79,7 @@ void pyqt::sip_build(const std::vector<std::string>& modules)
 {
 	auto pyqt_env = env::vs_x64()
 		.append_path({
-			paths::qt_bin(),
+			tools::qt::bin_path(),
 			python::build_path(),
 			python::source_path(),
 			python::scripts_path()})
@@ -158,12 +173,12 @@ void pyqt::copy_files(const std::vector<std::string>& modules)
 		pyqt_plugin);
 
 	op::copy_file_to_dir_if_better(cx(),
-		paths::qt_bin() / "Qt5Core.dll",
+		tools::qt::bin_path() / "Qt5Core.dll",
 		python::build_path(),
 		op::unsafe);   // source file is outside prefix
 
 	op::copy_file_to_dir_if_better(cx(),
-		paths::qt_bin() / "Qt5Xml.dll",
+		tools::qt::bin_path() / "Qt5Xml.dll",
 		python::build_path(),
 		op::unsafe);   // source file is outside prefix
 }
@@ -172,12 +187,12 @@ url pyqt::source_url()
 {
 	return
 		"https://pypi.io/packages/source/P/PyQt5/"
-		"PyQt5-" + versions::pyqt() + ".tar.gz";
+		"PyQt5-" + version() + ".tar.gz";
 }
 
 fs::path pyqt::sip_install_file()
 {
-	return "PyQt5_sip-" + versions::pyqt_sip() + ".tar.gz";
+	return "PyQt5_sip-" + sip::version_for_pyqt() + ".tar.gz";
 }
 
 }	// namespace

@@ -9,6 +9,16 @@ usvfs::usvfs()
 {
 }
 
+const std::string& usvfs::version()
+{
+	return versions::by_name("usvfs");
+}
+
+bool usvfs::prebuilt()
+{
+	return false;
+}
+
 fs::path usvfs::source_path()
 {
 	return paths::build() / "usvfs";
@@ -25,7 +35,7 @@ void usvfs::do_fetch()
 {
 	run_tool(git_clone()
 		.url(make_github_url(conf::mo_org(), "usvfs"))
-		.branch(versions::usvfs())
+		.branch(version())
 		.output(source_path()));
 }
 

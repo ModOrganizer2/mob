@@ -9,15 +9,25 @@ python::python()
 {
 }
 
-python::version_info python::version()
+const std::string& python::version()
+{
+	return versions::by_name("python");
+}
+
+bool python::prebuilt()
+{
+	return false;
+}
+
+python::version_info python::parsed_version()
 {
 	// v3.8.1
 	// v and .1 are optional
 	std::regex re(R"(v?(\d+)\.(\d+)(?:\.(\d+))?)");
 	std::smatch m;
 
-	if (!std::regex_match(versions::python(), m, re))
-		bail_out("bad python version '" + versions::python() + "'");
+	if (!std::regex_match(version(), m, re))
+		bail_out("bad python version '" + version() + "'");
 
 	version_info v;
 
@@ -32,7 +42,7 @@ python::version_info python::version()
 
 fs::path python::source_path()
 {
-	const auto v = version();
+	const auto v = parsed_version();
 
 	// 3.8.1
 	std::string s = v.major + "." + v.minor;
@@ -59,7 +69,7 @@ void python::do_fetch()
 {
 	run_tool(git_clone()
 		.url(make_github_url("python", "cpython"))
-		.branch(versions::python())
+		.branch(version())
 		.output(source_path()));
 
 	run_tool(devenv_upgrade(solution_file()));
@@ -182,7 +192,7 @@ fs::path python::solution_file()
 
 std::string python::version_for_dll()
 {
-	const auto v = version();
+	const auto v = parsed_version();
 
 	// 38
 	return v.major + v.minor;

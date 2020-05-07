@@ -9,9 +9,19 @@ zlib::zlib()
 {
 }
 
+const std::string& zlib::version()
+{
+	return versions::by_name("zlib");
+}
+
+bool zlib::prebuilt()
+{
+	return false;
+}
+
 fs::path zlib::source_path()
 {
-	return paths::build() / ("zlib-" + versions::zlib());
+	return paths::build() / ("zlib-" + version());
 }
 
 void zlib::do_clean_for_rebuild()
@@ -46,7 +56,7 @@ void zlib::do_build_and_install()
 
 url zlib::source_url()
 {
-	return "https://zlib.net/zlib-" + versions::zlib() + ".tar.gz";
+	return "https://zlib.net/zlib-" + version() + ".tar.gz";
 }
 
 }	// namespace

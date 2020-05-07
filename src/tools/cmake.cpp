@@ -8,7 +8,7 @@ cmake::cmake()
 	: basic_process_runner("cmake"), gen_(jom), arch_(arch::def)
 {
 	process_
-		.binary(tools::cmake());
+		.binary(tools::cmake::binary());
 }
 
 cmake& cmake::generator(generators g)
@@ -107,7 +107,7 @@ const std::map<cmake::generators, cmake::gen_info>& cmake::all_generators()
 
 		{ generators::vs, {
 			"vsbuild",
-			"Visual Studio " + versions::vs() + " " + versions::vs_year(),
+			"Visual Studio " + tools::vs::version() + " " + tools::vs::year(),
 			"Win32",
 			"x64"
 	}}
