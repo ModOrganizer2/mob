@@ -50,6 +50,7 @@ void sevenz::build()
 	{
 		const int exit_code = run_tool(jom()
 			.path(module_to_build())
+			.flag(jom::allow_failure)
 			.def("CPU=x64")
 			.def("NEW_COMPILER=1")
 			.def("MY_STATIC_LINK=1")

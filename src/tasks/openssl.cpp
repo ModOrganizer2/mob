@@ -123,7 +123,7 @@ void openssl::install_engines()
 
 	for (int tries=0; tries<max_tries; ++tries)
 	{
-		int exit_code = run_tool(jom()
+		const int exit_code = run_tool(jom()
 			.path(source_path())
 			.target("install_engines")
 			.flag(jom::allow_failure));

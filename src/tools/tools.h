@@ -224,7 +224,7 @@ private:
 class jom : public basic_process_runner
 {
 public:
-	enum flags
+	enum flags_t
 	{
 		noflags        = 0x00,
 		single_job     = 0x01,
@@ -236,7 +236,7 @@ public:
 	jom& path(const fs::path& p);
 	jom& target(const std::string& s);
 	jom& def(const std::string& s);
-	jom& flag(flags f);
+	jom& flag(flags_t f);
 	jom& architecture(arch a);
 
 	int result() const;
@@ -246,7 +246,7 @@ protected:
 
 private:
 	std::string target_;
-	flags flags_;
+	flags_t flags_;
 	arch arch_;
 };
 
@@ -254,6 +254,13 @@ private:
 class msbuild : public basic_process_runner
 {
 public:
+	enum flags_t
+	{
+		noflags        = 0x00,
+		single_job     = 0x01,
+		allow_failure  = 0x02
+	};
+
 	msbuild();
 
 	msbuild& solution(const fs::path& sln);
@@ -262,6 +269,9 @@ public:
 	msbuild& config(const std::string& s);
 	msbuild& platform(const std::string& s);
 	msbuild& architecture(arch a);
+	msbuild& flags(flags_t f);
+
+	int result() const;
 
 protected:
 	void do_run() override;
@@ -273,6 +283,7 @@ private:
 	std::string config_;
 	std::string platform_;
 	arch arch_;
+	flags_t flags_;
 };
 
 

@@ -3,7 +3,7 @@ Setlocal EnableDelayedExpansion
 
 set "vswhere_cmd=third-party\bin\vswhere.exe -nologo -prerelease -latest -property installationPath"
 
-for /F "tokens=* USEBACKQ" %%F in (`%vswhere_cmd%`) do (
+for /F "tokens=* USEBACKQ" %%A in (`%vswhere_cmd%`) do (
 	set ret=%errorlevel%
 	if %errorlevel% neq 0 (
 		echo %%F
@@ -11,7 +11,7 @@ for /F "tokens=* USEBACKQ" %%F in (`%vswhere_cmd%`) do (
 		exit /b 1
 	)
 
-	set installation_path=%%F
+	set "installation_path=%%A"
 
 	if "%installation_path%" == "" (
 		echo empty installation path
@@ -30,4 +30,4 @@ set "opts=%opts% -clp:ErrorsOnly;Verbosity=minimal"
 
 set "vcvars=%installation_path%\VC\Auxiliary\Build\vcvarsall.bat"
 cmd /c ""%vcvars%" amd64 > NUL && msbuild %opts%"
-echo run `mob` to start building
+echo run `mob -d path` to start building

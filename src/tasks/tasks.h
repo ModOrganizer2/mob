@@ -377,7 +377,6 @@ private:
 	void sip_build();
 	void install_sip_file();
 	void copy_files();
-	void copy_qt_dlls();
 
 	static url source_url();
 	static url prebuilt_url();

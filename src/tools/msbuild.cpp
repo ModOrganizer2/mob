@@ -5,8 +5,9 @@
 namespace mob
 {
 
-msbuild::msbuild()
-	: basic_process_runner("msbuild"), config_("Release"), arch_(arch::def)
+msbuild::msbuild() :
+	basic_process_runner("msbuild"), config_("Release"), arch_(arch::def),
+	flags_(noflags)
 {
 }
 
@@ -46,6 +47,17 @@ msbuild& msbuild::architecture(arch a)
 	return *this;
 }
 
+msbuild& msbuild::flags(flags_t f)
+{
+	flags_ = f;
+	return *this;
+}
+
+int msbuild::result() const
+{
+	return exit_code();
+}
+
 void msbuild::do_run()
 {
 	// 14.2 to v142
@@ -75,12 +87,26 @@ void msbuild::do_run()
 		plat = platform_;
 	}
 
+	process::flags_t pflags = process::noflags;
+	if (flags_ & allow_failure)
+	{
+		process_.stderr_level(context::level::trace);
+		pflags |= process::allow_failure;
+	}
+
 	process_
 		.binary(tools::msbuild::binary())
-		.arg("-nologo")
-		.arg("-maxCpuCount")
-		.arg("-property:UseMultiToolTask=true")
-		.arg("-property:EnforceProcessCountAcrossBuilds=true")
+		.arg("-nologo");
+
+	if ((flags_ & single_job) == 0)
+	{
+		process_
+			.arg("-maxCpuCount")
+			.arg("-property:UseMultiToolTask=true")
+			.arg("-property:EnforceProcessCountAcrossBuilds=true");
+	}
+
+	process_
 		.arg("-property:Configuration=", config_, process::quote)
 		.arg("-property:PlatformToolset=" + toolset)
 		.arg("-property:WindowsTargetPlatformVersion=" + tools::vs::sdk())
@@ -96,6 +122,7 @@ void msbuild::do_run()
 
 	process_
 		.arg(sln_)
+		.flags(pflags)
 		.cwd(sln_.parent_path())
 		.env(env::vs(arch_));
 

@@ -69,7 +69,7 @@ void pyqt::fetch_prebuilt()
 
 void pyqt::build_and_install_prebuilt()
 {
-	copy_qt_dlls();
+	copy_files();
 
 	op::copy_glob_to_dir_if_better(cx(),
 		source_path() / "*",
@@ -100,7 +100,6 @@ void pyqt::build_and_install_from_source()
 	sip_build();
 	install_sip_file();
 	copy_files();
-	copy_qt_dlls();
 }
 
 void pyqt::sip_build()
@@ -199,10 +198,7 @@ void pyqt::copy_files()
 	op::copy_file_to_dir_if_better(cx(),
 		sip::module_source_path() / "sip.pyi",
 		pyqt_plugin);
-}
 
-void pyqt::copy_qt_dlls()
-{
 	// these are needed by PyQt5 while building several projects
 
 	op::copy_file_to_dir_if_better(cx(),

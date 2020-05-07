@@ -28,7 +28,7 @@ jom& jom::def(const std::string& s)
 	return *this;
 }
 
-jom& jom::flag(flags f)
+jom& jom::flag(flags_t f)
 {
 	flags_ = f;
 	return *this;
@@ -47,11 +47,11 @@ int jom::result() const
 
 void jom::do_run()
 {
-	process::flags_t flags = process::terminate_on_interrupt;
+	process::flags_t pflags = process::terminate_on_interrupt;
 	if (flags_ & allow_failure)
 	{
 		process_.stderr_level(context::level::trace);
-		flags |= process::allow_failure;
+		pflags |= process::allow_failure;
 	}
 
 	process_
@@ -74,7 +74,7 @@ void jom::do_run()
 
 	process_
 		.arg(target_)
-		.flags(flags)
+		.flags(pflags)
 		.env(env::vs(arch_));
 
 	execute_and_join();

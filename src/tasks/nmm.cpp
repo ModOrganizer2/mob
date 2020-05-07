@@ -41,9 +41,33 @@ void nmm::do_fetch()
 
 void nmm::do_build_and_install()
 {
+	// nmm sometimes fails with files being locked
+	const int max_tries = 3;
+
+	for (int tries=0; tries<max_tries; ++tries)
+	{
+		const int exit_code = run_tool(msbuild()
+			.solution(source_path() / "NexusClient.sln")
+			.platform("Any CPU")
+			.flags(msbuild::allow_failure));
+
+		if (exit_code == 0)
+			return;
+
+		cx().debug(context::generic,
+			"msbuild multiprocess sometimes fails with nmm because of race "
+			"conditions; trying again");
+	}
+
+	cx().debug(context::generic,
+		"msbuild multiprocess has failed more than " +
+		std::to_string(max_tries) + " times for nmm, restarting one last "
+		"time single process; that one should work");
+
 	run_tool(msbuild()
 		.solution(source_path() / "NexusClient.sln")
-		.platform("Any CPU"));
+		.platform("Any CPU")
+		.flags(msbuild::single_job));
 }
 
 }	// namespace
