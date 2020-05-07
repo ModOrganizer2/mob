@@ -9,6 +9,7 @@ namespace mob
 
 
 class context;
+class url;
 
 class bailed
 {
@@ -161,6 +162,9 @@ private:
 	WORD old_atts_;
 };
 
+
+url make_github_url(const std::string& org, const std::string& repo);
+url make_prebuilt_url(const std::string& filename);
 
 std::string replace_all(
 	std::string s, const std::string& from, const std::string& to);

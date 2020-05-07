@@ -44,7 +44,8 @@ static path_map g_tools =
 
 static bool_map g_prebuilt =
 {
-	{"boost",   false}
+	{"boost",   false},
+	{"lz4",     false}
 };
 
 static string_map g_versions =
@@ -188,7 +189,7 @@ namespace tools
 
 	fs::path vs::installation_path()  { return paths::by_name("vs"); }
 	fs::path vs::vswhere()            { return tool_by_name("vswhere"); }
-	fs::path vs::vcvars() 			  { return tool_by_name("vsvars"); }
+	fs::path vs::vcvars() 			  { return tool_by_name("vcvars"); }
 	std::string vs::version() 		  { return versions::by_name("vs"); }
 	std::string vs::year() 			  { return versions::by_name("vs_year"); }
 	std::string vs::toolset() 		  { return versions::by_name("vs_toolset"); }

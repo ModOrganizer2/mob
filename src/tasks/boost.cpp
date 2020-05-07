@@ -211,10 +211,7 @@ fs::path boost::config_jam_file()
 url boost::prebuilt_url()
 {
 	const auto underscores = replace_all(version(), ".", "_");
-
-	return
-		"https://github.com/ModOrganizer2/modorganizer-umbrella/"
-		"releases/download/1.1/boost_prebuilt_" + underscores + ".7z";
+	return make_prebuilt_url("boost_prebuilt_" + underscores + ".7z");
 }
 
 url boost::source_url()

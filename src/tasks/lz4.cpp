@@ -16,7 +16,7 @@ const std::string& lz4::version()
 
 bool lz4::prebuilt()
 {
-	return false;
+	return prebuilt::by_name("lz4");
 }
 
 fs::path lz4::source_path()
@@ -31,6 +31,44 @@ void lz4::do_clean_for_rebuild()
 
 void lz4::do_fetch()
 {
+	if (prebuilt())
+		fetch_prebuilt();
+	else
+		fetch_from_source();
+}
+
+void lz4::do_build_and_install()
+{
+	if (prebuilt())
+		build_and_install_prebuilt();
+	else
+		build_and_install_from_source();
+}
+
+void lz4::fetch_prebuilt()
+{
+	cx().trace(context::generic, "using prebuilt lz4");
+
+	const auto file = run_tool(downloader(prebuilt_url()));
+
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
+}
+
+void lz4::build_and_install_prebuilt()
+{
+	op::copy_file_to_dir_if_better(cx(),
+		source_path() / "bin" / "liblz4.pdb",
+		paths::install_pdbs());
+
+	op::copy_file_to_dir_if_better(cx(),
+		source_path() / "bin" / "liblz4.dll",
+		paths::install_dlls());
+}
+
+void lz4::fetch_from_source()
+{
 	run_tool(git_clone()
 		.url(make_github_url("lz4","lz4"))
 		.branch(version())
@@ -39,7 +77,7 @@ void lz4::do_fetch()
 	run_tool(devenv_upgrade(solution_file()));
 }
 
-void lz4::do_build_and_install()
+void lz4::build_and_install_from_source()
 {
 	run_tool(msbuild()
 		.solution(solution_file())
@@ -72,6 +110,11 @@ fs::path lz4::solution_file()
 fs::path lz4::out_dir()
 {
 	return solution_dir() / "bin" / "x64_Release";
+}
+
+url lz4::prebuilt_url()
+{
+	return make_prebuilt_url("lz4_prebuilt_" + version() + ".7z");
 }
 
 }	// namespace

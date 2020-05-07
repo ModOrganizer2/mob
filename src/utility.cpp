@@ -9,6 +9,19 @@
 namespace mob
 {
 
+url make_github_url(const std::string& org, const std::string& repo)
+{
+	return "https://github.com/" + org + "/" + repo + ".git";
+}
+
+url make_prebuilt_url(const std::string& filename)
+{
+	return
+		"https://github.com/ModOrganizer2/modorganizer-umbrella/"
+		"releases/download/1.1/" + filename;
+}
+
+
 std::string replace_all(
 	std::string s, const std::string& from, const std::string& to)
 {

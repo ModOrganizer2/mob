@@ -111,9 +111,6 @@ private:
 };
 
 
-url make_github_url(const std::string& org, const std::string& repo);
-
-
 class git_clone : public basic_process_runner
 {
 public:

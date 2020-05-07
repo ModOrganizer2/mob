@@ -241,6 +241,14 @@ private:
 	static fs::path solution_dir();
 	static fs::path solution_file();
 	static fs::path out_dir();
+
+	void fetch_prebuilt();
+	void build_and_install_prebuilt();
+
+	void fetch_from_source();
+	void build_and_install_from_source();
+
+	static url prebuilt_url();
 };
 
 

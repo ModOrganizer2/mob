@@ -5,11 +5,6 @@
 namespace mob
 {
 
-url make_github_url(const std::string& org, const std::string& repo)
-{
-	return "https://github.com/" + org + "/" + repo + ".git";
-}
-
 
 git_clone::git_clone()
 	: basic_process_runner("git")
