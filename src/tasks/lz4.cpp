@@ -26,6 +26,9 @@ fs::path lz4::source_path()
 
 void lz4::do_clean_for_rebuild()
 {
+	if (prebuilt())
+		return;
+
 	op::delete_directory(cx(), solution_dir() / "bin", op::optional);
 }
 

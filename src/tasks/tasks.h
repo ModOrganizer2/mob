@@ -414,10 +414,17 @@ protected:
 	void do_clean_for_rebuild() override;
 
 private:
+	void fetch_prebuilt();
+	void fetch_from_source();
+	void build_and_install_prebuilt();
+	void build_and_install_from_source();
+
 	void package();
 	void install_pip();
 	void copy_files();
 
+	static std::string version_without_v();
+	static url prebuilt_url();
 	static fs::path solution_file();
 	static std::string version_for_dll();
 };

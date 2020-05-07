@@ -16,7 +16,7 @@ const std::string& python::version()
 
 bool python::prebuilt()
 {
-	return false;
+	return prebuilt::by_name("python");
 }
 
 python::version_info python::parsed_version()
@@ -40,7 +40,7 @@ python::version_info python::parsed_version()
 	return v;
 }
 
-fs::path python::source_path()
+std::string python::version_without_v()
 {
 	const auto v = parsed_version();
 
@@ -49,7 +49,12 @@ fs::path python::source_path()
 	if (v.patch != "")
 		s += "." + v.patch;
 
-	return paths::build() / ("python-" + s);
+	return s;
+}
+
+fs::path python::source_path()
+{
+	return paths::build() / ("python-" + version_without_v());
 }
 
 fs::path python::build_path()
@@ -59,6 +64,9 @@ fs::path python::build_path()
 
 void python::do_clean_for_rebuild()
 {
+	if (prebuilt())
+		return;
+
 	const fs::path pcbuild = source_path() / "PCBuild";
 
 	op::delete_directory(cx(), pcbuild / "amd64", op::optional);
@@ -66,6 +74,36 @@ void python::do_clean_for_rebuild()
 }
 
 void python::do_fetch()
+{
+	if (prebuilt())
+		fetch_prebuilt();
+	else
+		fetch_from_source();
+}
+
+void python::do_build_and_install()
+{
+	if (prebuilt())
+		build_and_install_prebuilt();
+	else
+		build_and_install_from_source();
+}
+
+void python::fetch_prebuilt()
+{
+	const auto file = run_tool(downloader(prebuilt_url()));
+
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
+}
+
+void python::build_and_install_prebuilt()
+{
+	copy_files();
+}
+
+void python::fetch_from_source()
 {
 	run_tool(git_clone()
 		.url(make_github_url("python", "cpython"))
@@ -75,7 +113,7 @@ void python::do_fetch()
 	run_tool(devenv_upgrade(solution_file()));
 }
 
-void python::do_build_and_install()
+void python::build_and_install_from_source()
 {
 	run_tool(msbuild()
 		.solution(solution_file())
@@ -92,6 +130,11 @@ void python::do_build_and_install()
 
 	package();
 	install_pip();
+
+	op::copy_file_to_dir_if_better(cx(),
+		source_path() / "PC" / "pyconfig.h",
+		include_path());
+
 	copy_files();
 }
 
@@ -123,10 +166,6 @@ void python::package()
 
 void python::copy_files()
 {
-	op::copy_file_to_dir_if_better(cx(),
-		source_path() / "PC" / "pyconfig.h",
-		include_path());
-
 	op::copy_glob_to_dir_if_better(cx(),
 		build_path() / "*.lib",
 		paths::install_libs(),
@@ -183,6 +222,11 @@ fs::path python::scripts_path()
 fs::path python::site_packages_path()
 {
 	return source_path() / "Lib" / "site-packages";
+}
+
+url python::prebuilt_url()
+{
+	return make_prebuilt_url("python-prebuilt-" + version_without_v() + ".7z");
 }
 
 fs::path python::solution_file()

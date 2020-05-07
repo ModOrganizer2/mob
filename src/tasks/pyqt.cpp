@@ -36,6 +36,9 @@ fs::path pyqt::build_path()
 
 void pyqt::do_clean_for_rebuild()
 {
+	if (prebuilt())
+		return;
+
 	op::delete_file(cx(), paths::cache() / sip_install_file(), op::optional);
 }
 

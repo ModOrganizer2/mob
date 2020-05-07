@@ -60,6 +60,9 @@ void boost::do_build_and_install()
 
 void boost::do_clean_for_rebuild()
 {
+	if (prebuilt())
+		return;
+
 	op::delete_directory(cx(), source_path() / "bin.v2", op::optional);
 	op::delete_directory(cx(), root_lib_path(arch::x86), op::optional);
 	op::delete_directory(cx(), root_lib_path(arch::x64), op::optional);
