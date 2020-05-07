@@ -475,8 +475,8 @@ fs::path find_qt()
 	std::vector<fs::path> locations =
 	{
 		paths::pf_x64(),
-		"C:",
-		"D:"
+		"C:\\",
+		"D:\\"
 	};
 
 	// look for qmake, which is in %qt%/version/msvc.../bin
@@ -922,10 +922,10 @@ void init_options(const fs::path& ini, const std::vector<std::string>& opts)
 
 	this_env::prepend_to_path(paths::third_party() / "bin");
 
-	set_path_if_empty("vs",         find_vs);
-	set_path_if_empty("qt_install", find_qt);
 	set_path_if_empty("pf_x86",     find_program_files_x86);
 	set_path_if_empty("pf_x64",     find_program_files_x64);
+	set_path_if_empty("vs",         find_vs);
+	set_path_if_empty("qt_install", find_qt);
 	set_path_if_empty("temp_dir",   find_temp_dir);
 	set_path_if_empty("patches",    find_in_root("patches"));
 	set_path_if_empty("licenses",   find_in_root("licenses"));

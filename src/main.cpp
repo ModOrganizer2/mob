@@ -313,19 +313,32 @@ int run(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-	int r = mob::run(argc, argv);
-
-	if (r == 0)
+	try
 	{
-		mob::gcx().debug(mob::context::generic, "mob done");
+		int r = mob::run(argc, argv);
+
+		if (r == 0)
+		{
+			mob::gcx().debug(mob::context::generic, "mob done");
+		}
+		else
+		{
+			mob::gcx().debug(mob::context::generic,
+				"mob finished with exit code " + std::to_string(r));
+		}
+
+		mob::dump_logs();
+
+		return r;
 	}
-	else
+	catch(std::exception& e)
 	{
-		mob::gcx().debug(mob::context::generic,
-			"mob finished with exit code " + std::to_string(r));
+		std::cerr << "unhandled exception: " << e.what() << "\n";
+	}
+	catch(...)
+	{
+		std::cerr << "unknown unhandled exception\n";
 	}
 
-	mob::dump_logs();
-
-	return r;
+	return 1;
 }
