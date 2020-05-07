@@ -16,7 +16,7 @@ const std::string& openssl::version()
 
 bool openssl::prebuilt()
 {
-	return false;
+	return prebuilt::by_name("openssl");
 }
 
 fs::path openssl::source_path()
@@ -31,6 +31,9 @@ fs::path openssl::build_path()
 
 void openssl::do_clean_for_rebuild()
 {
+	if (prebuilt())
+		return;
+
 	cx().debug(context::rebuild,
 		"openssl puts object files everywhere, so the whole tree will be "
 		"deleted for a rebuild");
@@ -40,6 +43,33 @@ void openssl::do_clean_for_rebuild()
 
 void openssl::do_fetch()
 {
+	if (prebuilt())
+		fetch_prebuilt();
+	else
+		fetch_from_source();
+}
+
+void openssl::do_build_and_install()
+{
+	if (prebuilt())
+		build_and_install_prebuilt();
+	else
+		build_and_install_from_source();
+}
+
+void openssl::fetch_prebuilt()
+{
+	cx().trace(context::generic, "using prebuilt openssl");
+
+	const auto file = run_tool(downloader(prebuilt_url()));
+
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
+}
+
+void openssl::fetch_from_source()
+{
 	const auto file = run_tool(downloader(source_url()));
 
 	run_tool(extractor()
@@ -47,7 +77,12 @@ void openssl::do_fetch()
 		.output(source_path()));
 }
 
-void openssl::do_build_and_install()
+void openssl::build_and_install_prebuilt()
+{
+	copy_files();
+}
+
+void openssl::build_and_install_from_source()
 {
 	if (fs::exists(source_path() / "makefile"))
 		cx().trace(context::bypass, "openssl already configured");
@@ -55,6 +90,11 @@ void openssl::do_build_and_install()
 		configure();
 
 	install_engines();
+
+	op::copy_file_to_dir_if_better(cx(),
+		source_path() / "ms" / "applink.c",
+		include_path());
+
 	copy_files();
 }
 
@@ -103,10 +143,6 @@ void openssl::install_engines()
 
 void openssl::copy_files()
 {
-	op::copy_file_to_dir_if_better(cx(),
-		source_path() / "ms" / "applink.c",
-		include_path());
-
 	copy_dlls_to(paths::install_bin());
 	copy_dlls_to(paths::install_dlls());
 	copy_pdbs_to(paths::install_pdbs());
@@ -140,6 +176,11 @@ url openssl::source_url()
 	return
 		"https://www.openssl.org/source/"
 		"openssl-" + version() + ".tar.gz";
+}
+
+url openssl::prebuilt_url()
+{
+	return make_prebuilt_url("openssl-prebuilt-" + version() + ".7z");
 }
 
 std::vector<std::string> openssl::output_names()

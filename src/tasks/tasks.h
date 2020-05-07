@@ -330,6 +330,11 @@ protected:
 	void do_clean_for_rebuild() override;
 
 private:
+	void fetch_prebuilt();
+	void fetch_from_source();
+	void build_and_install_prebuilt();
+	void build_and_install_from_source();
+
 	void configure();
 	void install_engines();
 	void copy_files();
@@ -337,6 +342,7 @@ private:
 	void copy_pdbs_to(const fs::path& dir);
 
 	static url source_url();
+	static url prebuilt_url();
 	static fs::path build_path();
 	static std::vector<std::string> output_names();
 	static std::smatch parse_version();
@@ -361,13 +367,21 @@ protected:
 	void do_build_and_install() override;
 	void do_clean_for_rebuild() override;
 
-	void sip_build(const std::vector<std::string>& modules);
+private:
+	void fetch_prebuilt();
+	void fetch_from_source();
+	void build_and_install_prebuilt();
+	void build_and_install_from_source();
+
+	void sip_build();
 	void install_sip_file();
-	void copy_files(const std::vector<std::string>& modules);
+	void copy_files();
 
 	static url source_url();
+	static url prebuilt_url();
 	static fs::path sip_install_file();
 	static fs::path build_path();
+	static std::vector<std::string> modules();
 };
 
 

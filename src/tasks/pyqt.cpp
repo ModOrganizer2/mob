@@ -21,7 +21,7 @@ const std::string& pyqt::builder_version()
 
 bool pyqt::prebuilt()
 {
-	return false;
+	return prebuilt::by_name("pyqt");
 }
 
 fs::path pyqt::source_path()
@@ -41,6 +41,35 @@ void pyqt::do_clean_for_rebuild()
 
 void pyqt::do_fetch()
 {
+	if (prebuilt())
+		fetch_prebuilt();
+	else
+		fetch_from_source();
+}
+
+void pyqt::do_build_and_install()
+{
+	if (prebuilt())
+		build_and_install_prebuilt();
+	else
+		build_and_install_from_source();
+}
+
+void pyqt::fetch_prebuilt()
+{
+	const auto file = run_tool(downloader(prebuilt_url()));
+
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
+}
+
+void pyqt::build_and_install_prebuilt()
+{
+}
+
+void pyqt::fetch_from_source()
+{
 	const auto file = run_tool(downloader(source_url()));
 
 	run_tool(extractor()
@@ -48,19 +77,8 @@ void pyqt::do_fetch()
 		.output(source_path()));
 }
 
-void pyqt::do_build_and_install()
+void pyqt::build_and_install_from_source()
 {
-	const std::vector<std::string> modules =
-	{
-		"QtCore",
-		"QtGui",
-		"QtWidgets",
-		"QtOpenGL",
-		"_QOpenGLFunctions_2_0",
-		"_QOpenGLFunctions_2_1",
-		"_QOpenGLFunctions_4_1_Core"
-	};
-
 	run_tool(pip_install()
 		.package("PyQt-builder")
 		.version(builder_version()));
@@ -70,12 +88,12 @@ void pyqt::do_build_and_install()
 		.file("builder.py.manual_patch")
 		.root(python::site_packages_path() / "pyqtbuild"));
 
-	sip_build(modules);
+	sip_build();
 	install_sip_file();
-	copy_files(modules);
+	copy_files();
 }
 
-void pyqt::sip_build(const std::vector<std::string>& modules)
+void pyqt::sip_build()
 {
 	auto pyqt_env = env::vs_x64()
 		.append_path({
@@ -110,7 +128,7 @@ void pyqt::sip_build(const std::vector<std::string>& modules)
 			.arg("--build-dir", build_path())
 			.arg("--enable", "pylupdate")  // these are not in modules so they
 			.arg("--enable", "pyrcc")      // don't get copied below
-			.args(zip(repeat("--enable"), modules))
+			.args(zip(repeat("--enable"), modules()))
 			.cwd(source_path())
 			.env(pyqt_env)));
 
@@ -142,7 +160,7 @@ void pyqt::install_sip_file()
 	}
 }
 
-void pyqt::copy_files(const std::vector<std::string>& modules)
+void pyqt::copy_files()
 {
 	const fs::path site_packages_pyqt = python::site_packages_path() / "PyQt5";
 	const fs::path pyqt_plugin = paths::install_plugins() / "data" / "PyQt5";
@@ -156,7 +174,7 @@ void pyqt::copy_files(const std::vector<std::string>& modules)
 		pyqt_plugin,
 		op::copy_files);
 
-	for (auto&& m : modules)
+	for (auto&& m : modules())
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			site_packages_pyqt / (m + ".pyd"),
@@ -190,9 +208,28 @@ url pyqt::source_url()
 		"PyQt5-" + version() + ".tar.gz";
 }
 
+url pyqt::prebuilt_url()
+{
+	return make_prebuilt_url("PyQt5_gpl-prebuilt-" + version() + ".7z");
+}
+
 fs::path pyqt::sip_install_file()
 {
 	return "PyQt5_sip-" + sip::version_for_pyqt() + ".tar.gz";
+}
+
+std::vector<std::string> pyqt::modules()
+{
+	return
+	{
+		"QtCore",
+		"QtGui",
+		"QtWidgets",
+		"QtOpenGL",
+		"_QOpenGLFunctions_2_0",
+		"_QOpenGLFunctions_2_1",
+		"_QOpenGLFunctions_4_1_Core"
+	};
 }
 
 }	// namespace

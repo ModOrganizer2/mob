@@ -45,7 +45,9 @@ static path_map g_tools =
 static bool_map g_prebuilt =
 {
 	{"boost",   false},
-	{"lz4",     false}
+	{"lz4",     false},
+	{"openssl", false},
+	{"pyqt",    false}
 };
 
 static string_map g_versions =
