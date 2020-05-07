@@ -69,12 +69,12 @@ void pyqt::fetch_prebuilt()
 
 void pyqt::build_and_install_prebuilt()
 {
-	copy_files();
-
 	op::copy_glob_to_dir_if_better(cx(),
 		source_path() / "*",
 		python::source_path(),
 		op::copy_files|op::copy_dirs);
+
+	copy_files();
 }
 
 void pyqt::fetch_from_source()
