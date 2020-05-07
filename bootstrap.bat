@@ -13,7 +13,7 @@ for /F "tokens=* USEBACKQ" %%A in (`%vswhere_cmd%`) do (
 
 	set "installation_path=%%A"
 
-	if "%installation_path%" == "" (
+	if "!installation_path!" == "" (
 		echo empty installation path
 		exit /b 1
 	)
