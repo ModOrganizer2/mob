@@ -29,17 +29,17 @@ fs::path boost::root_lib_path(arch a)
 
 void boost::do_fetch()
 {
-	//if (prebuilt::boost())
-	//	fetch_prebuilt();
-	//else
+	if (prebuilt::boost())
+		fetch_prebuilt();
+	else
 		fetch_from_source();
 }
 
 void boost::do_build_and_install()
 {
-	//if (prebuilt::boost())
-	//	build_and_install_prebuilt();
-	//else
+	if (prebuilt::boost())
+		build_and_install_prebuilt();
+	else
 		build_and_install_from_source();
 }
 
@@ -55,6 +55,8 @@ void boost::do_clean_for_rebuild()
 
 void boost::fetch_prebuilt()
 {
+	cx().trace(context::generic, "using prebuilt boost");
+
 	const auto file = run_tool(downloader(prebuilt_url()));
 
 	run_tool(extractor()
