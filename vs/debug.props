@@ -7,6 +7,9 @@
     <Link>
       <AdditionalDependencies>libcurl-d.lib;zlibd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>
