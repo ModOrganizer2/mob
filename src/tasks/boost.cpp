@@ -115,7 +115,7 @@ void boost::build_and_install_from_source()
 	if (fs::exists(b2_exe()))
 	{
 		cx().trace(context::bypass,
-			b2_exe().string() + " exists, boost already bootstrapped");
+			"{} exists, boost already bootstrapped", b2_exe());
 	}
 	else
 	{
@@ -176,11 +176,11 @@ void boost::write_config_jam()
 		<< "  ;";
 
 	cx().trace(context::generic,
-		"writing config file at " + config_jam_file().string() + ":");
+		"writing config file at {}:", config_jam_file());
 
 	for_each_line(oss.str(), [&](auto&& line)
 	{
-		cx().trace(context::generic, std::string(8, ' ') + std::string(line));
+		cx().trace(context::generic, "        {}", line);
 	});
 
 
@@ -196,7 +196,7 @@ std::smatch boost::parse_boost_version()
 	std::smatch m;
 
 	if (!std::regex_match(version(), m, re))
-		bail_out("bad boost version '" + version() + "'");
+		bail_out("bad boost version '{}'", version());
 
 	return m;
 }

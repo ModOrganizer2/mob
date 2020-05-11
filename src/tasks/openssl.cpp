@@ -137,8 +137,9 @@ void openssl::install_engines()
 	}
 
 	cx().debug(context::generic,
-		"jom /J has failed more than " + std::to_string(max_tries) + " "
-		"times, restarting one last time without /J; that one should work");
+		"jom /J has failed more than {} times, "
+		"restarting one last time without /J; that one should work",
+		max_tries);
 
 	run_tool(jom()
 		.path(source_path())
@@ -205,7 +206,7 @@ std::smatch openssl::parse_version()
 	std::smatch m;
 
 	if (!std::regex_match(version(), m, re))
-		bail_out("bad openssl version '" + version() + "'");
+		bail_out("bad openssl version '{}'", version());
 
 	return m;
 }

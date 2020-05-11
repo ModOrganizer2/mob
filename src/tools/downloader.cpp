@@ -60,7 +60,7 @@ void downloader::do_run()
 
 	cx_->trace(context::net, "no cached downloads were found, will try:");
 	for (auto&& u : urls_)
-		cx_->trace(context::net, "  . " + u.string());
+		cx_->trace(context::net, "  . {}", u);
 
 
 	// try them in order
@@ -69,8 +69,7 @@ void downloader::do_run()
 		if (file_.empty())
 			file_ = path_for_url(u);
 
-		cx_->trace(context::net,
-			"trying " + u.string() + " into " + file_.string());
+		cx_->trace(context::net, "trying {} into {}", u, file_);
 
 		dl_->start(u, file_);
 		cx_->trace(context::net, "waiting for download");
@@ -78,7 +77,7 @@ void downloader::do_run()
 
 		if (dl_->ok())
 		{
-			cx_->trace(context::net, "file " + file_.string() + " downloaded");
+			cx_->trace(context::net, "file {} downloaded", file_);
 			return;
 		}
 
@@ -107,18 +106,18 @@ bool downloader::try_picking(const fs::path& file)
 	{
 		if (conf::redownload())
 		{
-			cx_->trace(context::redownload, "deleting " + file.string());
+			cx_->trace(context::redownload, "deleting {}", file);
 			op::delete_file(*cx_, file, op::optional);
 		}
 		else
 		{
-			cx_->trace(context::bypass, "picking " + file_.string());
+			cx_->trace(context::bypass, "picking {}", file_);
 			return true;
 		}
 	}
 	else
 	{
-		cx_->trace(context::net, "no " + file.string());
+		cx_->trace(context::net, "no {}", file);
 	}
 
 	return false;
@@ -136,13 +135,12 @@ fs::path downloader::path_for_url(const mob::url& u) const
 		const std::string strip = "/download";
 
 		cx_->trace(context::net,
-			"url " + u.string() + " is sourceforge, "
-			"stripping " + strip + " for filename");
+			"url {} is sourceforge, stripping {} for filename", u, strip);
 
 		if (url_string.ends_with(strip))
 			url_string = url_string.substr(0, url_string.size() - strip.size());
 		else
-			cx_->trace(context::net, "no need to strip " + u.string());
+			cx_->trace(context::net, "no need to strip {}", u);
 
 		filename = mob::url(url_string).filename();
 	}

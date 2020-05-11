@@ -27,7 +27,7 @@ env get_vcvars_env(arch a)
 			gcx().bail_out(context::generic, "get_vcvars_env: bad arch");
 	}
 
-	gcx().trace(context::generic, "looking for vcvars for " + arch_s);
+	gcx().trace(context::generic, "looking for vcvars for {}", arch_s);
 
 	const fs::path tmp = make_temp_file();
 
@@ -39,7 +39,7 @@ env get_vcvars_env(arch a)
 	process::raw(gcx(), cmd)
 		.run();
 
-	gcx().trace(context::generic, "reading from " + tmp.string());
+	gcx().trace(context::generic, "reading from {}", tmp);
 
 	std::stringstream ss(op::read_text_file(gcx(), tmp));
 	op::delete_file(gcx(), tmp);
@@ -63,7 +63,7 @@ env get_vcvars_env(arch a)
 		std::string name = line.substr(0, sep);
 		std::string value = line.substr(sep + 1);
 
-		gcx().trace(context::generic, name + " = " + value);
+		gcx().trace(context::generic, "{} = {}", name, value);
 		e.set(std::move(name), std::move(value));
 	}
 
@@ -225,7 +225,7 @@ void this_env::set(const std::string& k, const std::string& v, env::flags f)
 
 void this_env::prepend_to_path(const fs::path& p)
 {
-	gcx().trace(context::generic, "prepending to PATH: " + p.string());
+	gcx().trace(context::generic, "prepending to PATH: {}", p);
 	set("PATH", p.string() + ";", env::prepend);
 }
 
@@ -235,7 +235,7 @@ std::string this_env::get(const std::string& name)
 		name.c_str(), nullptr, 0);
 
 	if (buffer_size == 0)
-		bail_out("environment variable " + name + " doesn't exist");
+		bail_out("environment variable {} doesn't exist", name);
 
 	auto buffer = std::make_unique<char[]>(buffer_size + 1);
 	std::fill(buffer.get(), buffer.get() + buffer_size + 1, 0);

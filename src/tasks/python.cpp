@@ -27,7 +27,7 @@ python::version_info python::parsed_version()
 	std::smatch m;
 
 	if (!std::regex_match(version(), m, re))
-		bail_out("bad python version '" + version() + "'");
+		bail_out("bad python version '{}'", version());
 
 	version_info v;
 

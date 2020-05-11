@@ -325,7 +325,7 @@ int main(int argc, char** argv)
 		else
 		{
 			mob::gcx().debug(mob::context::generic,
-				"mob finished with exit code " + std::to_string(r));
+				"mob finished with exit code {}", r);
 		}
 
 		mob::dump_logs();

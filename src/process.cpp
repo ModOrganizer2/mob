@@ -40,7 +40,7 @@ handle_ptr async_pipe::create()
 	if (ov_.hEvent == NULL)
 	{
 		const auto e = GetLastError();
-		bail_out("CreateEvent failed", e);
+		bail_out("CreateEvent failed", error_message(e));
 	}
 
 	event_.reset(ov_.hEvent);
@@ -74,12 +74,12 @@ HANDLE async_pipe::create_pipe()
 		HANDLE pipe_handle = ::CreateNamedPipeA(
 			pipe_name.c_str(), PIPE_ACCESS_DUPLEX|FILE_FLAG_OVERLAPPED,
 			PIPE_TYPE_BYTE|PIPE_READMODE_BYTE|PIPE_WAIT,
-			1, 50'000, 50'000, pipe_timeout, &sa);
+			1, buffer_size, buffer_size, pipe_timeout, &sa);
 
 		if (pipe_handle == INVALID_HANDLE_VALUE)
 		{
 			const auto e = GetLastError();
-			bail_out("CreateNamedPipe failed", e);
+			bail_out("CreateNamedPipe failed", error_message(e));
 		}
 
 		pipe.reset(pipe_handle);
@@ -96,7 +96,7 @@ HANDLE async_pipe::create_pipe()
 		if (!r)
 		{
 			const auto e = GetLastError();
-			bail_out("DuplicateHandle for pipe", e);
+			bail_out("DuplicateHandle for pipe", error_message(e));
 		}
 
 		stdout_.reset(output_read);
@@ -111,7 +111,7 @@ HANDLE async_pipe::create_pipe()
 	if (output_write == INVALID_HANDLE_VALUE)
 	{
 		const auto e = GetLastError();
-		bail_out("CreateFileW for pipe failed", e);
+		bail_out("CreateFileW for pipe failed", error_message(e));
 	}
 
 	return output_write;
@@ -141,13 +141,15 @@ std::string_view async_pipe::try_read()
 
 			default:
 			{
-				bail_out("async_pipe read failed", e);
+				bail_out("async_pipe read failed", error_message(e));
 				break;
 			}
 		}
 
 		return {};
 	}
+
+	MOB_ASSERT(bytes_read <= buffer_size);
 
 	return {buffer_.get(), bytes_read};
 }
@@ -160,7 +162,7 @@ std::string_view async_pipe::check_pending()
 
 	if (r == WAIT_FAILED) {
 		const auto e = GetLastError();
-		bail_out("WaitForSingleObject in async_pipe failed", e);
+		bail_out("WaitForSingleObject in async_pipe failed", error_message(e));
 	}
 
 	if (!::GetOverlappedResult(stdout_.get(), &ov_, &bytes_read, FALSE))
@@ -187,13 +189,18 @@ std::string_view async_pipe::check_pending()
 
 			default:
 			{
-				bail_out("GetOverlappedResult failed in async_pipe", e);
+				bail_out(
+					"GetOverlappedResult failed in async_pipe",
+					error_message(e));
+
 				break;
 			}
 		}
 
 		return {};
 	}
+
+	MOB_ASSERT(bytes_read <= buffer_size);
 
 	::ResetEvent(event_.get());
 	pending_ = false;
@@ -214,13 +221,8 @@ process::impl& process::impl::operator=(const impl& i)
 }
 
 
-process::process() :
-	cx_(&gcx()), flags_(process::noflags),
-	stdout_flags_(process::forward_to_log),
-	stdout_level_(context::level::trace),
-	stderr_flags_(process::forward_to_log),
-	stderr_level_(context::level::error),
-	code_(0)
+process::process()
+	: cx_(&gcx()), flags_(process::noflags), code_(0)
 {
 }
 
@@ -287,37 +289,37 @@ const fs::path& process::cwd() const
 
 process& process::stdout_flags(stream_flags s)
 {
-	stdout_flags_ = s;
+	stdout_.flags = s;
 	return *this;
 }
 
 process& process::stdout_level(context::level lv)
 {
-	stdout_level_ = lv;
+	stdout_.level = lv;
 	return *this;
 }
 
 process& process::stdout_filter(filter_fun f)
 {
-	stdout_filter_ = f;
+	stdout_.filter = f;
 	return *this;
 }
 
 process& process::stderr_flags(stream_flags s)
 {
-	stderr_flags_ = s;
+	stderr_.flags = s;
 	return *this;
 }
 
 process& process::stderr_level(context::level lv)
 {
-	stderr_level_ = lv;
+	stderr_.level = lv;
 	return *this;
 }
 
 process& process::stderr_filter(filter_fun f)
 {
-	stderr_filter_ = f;
+	stderr_.filter = f;
 	return *this;
 }
 
@@ -368,10 +370,10 @@ void process::pipe_into(const process& p)
 void process::run()
 {
 	if (!cwd_.empty())
-		cx_->debug(context::cmd, "> cd " + cwd_.string());
+		cx_->debug(context::cmd, "> cd {}", cwd_);
 
 	const auto what = make_cmd();
-	cx_->debug(context::cmd, "> " + what);
+	cx_->debug(context::cmd, "> {}", what);
 
 	if (conf::dry())
 		return;
@@ -387,8 +389,7 @@ void process::do_run(const std::string& what)
 	if (fs::exists(error_log_file_))
 	{
 		cx_->trace(context::cmd,
-			"external error log file " +
-			error_log_file_.string() + " exists, deleting");
+			"external error log file {} exists, deleting", error_log_file_);
 
 		op::delete_file(*cx_, error_log_file_, op::optional);
 	}
@@ -398,7 +399,7 @@ void process::do_run(const std::string& what)
 
 	handle_ptr stdout_pipe, stderr_pipe;
 
-	switch (stdout_flags_)
+	switch (stdout_.flags)
 	{
 		case forward_to_log:
 		case keep_in_string:
@@ -421,7 +422,7 @@ void process::do_run(const std::string& what)
 		}
 	}
 
-	switch (stderr_flags_)
+	switch (stderr_.flags)
 	{
 		case forward_to_log:
 		case keep_in_string:
@@ -470,10 +471,11 @@ void process::do_run(const std::string& what)
 	if (!r)
 	{
 		const auto e = GetLastError();
-		cx_->bail_out(context::cmd, "failed to start '" + cmd + "'", e);
+		cx_->bail_out(context::cmd,
+			"failed to start '{}', {}", cmd, error_message(e));
 	}
 
-	cx_->trace(context::cmd, "pid " + std::to_string(pi.dwProcessId));
+	cx_->trace(context::cmd, "pid {}", pi.dwProcessId);
 
 	::CloseHandle(pi.hThread);
 	impl_.handle.reset(pi.hProcess);
@@ -512,7 +514,8 @@ void process::join()
 		else
 		{
 			const auto e = GetLastError();
-			cx_->bail_out(context::cmd, "failed to wait on process", e);
+			cx_->bail_out(context::cmd,
+				"failed to wait on process", error_message(e));
 		}
 	}
 
@@ -524,27 +527,39 @@ bool process::read_pipes()
 {
 	bool read_something = false;
 
-	// stdout
-	switch (stdout_flags_)
+	if (read_pipe(stdout_, impl_.stdout_pipe, context::std_out))
+		read_something = true;
+
+	if (read_pipe(stderr_, impl_.stderr_pipe, context::std_err))
+		read_something = true;
+
+	return read_something;
+}
+
+bool process::read_pipe(stream& s, async_pipe& pipe, context::reason r)
+{
+	bool read_something = false;
+
+	switch (s.flags)
 	{
 		case forward_to_log:
 		{
-			std::string_view s = impl_.stdout_pipe.read();
-			if (!s.empty())
+			const std::string_view buffer = pipe.read();
+			if (!buffer.empty())
 				read_something = true;
 
-			for_each_line(s, [&](auto&& line)
+			for_each_line(buffer, [&](auto&& line)
 			{
-				filter f = {line, context::std_out, stdout_level_, false};
+				filter f = {line, r, s.level, false};
 
-				if (stdout_filter_)
+				if (s.filter)
 				{
-					stdout_filter_(f);
+					s.filter(f);
 					if (f.ignore)
 						return;
 				}
 
-				cx_->log(f.r, f.lv, f.line);
+				cx_->log(f.r, f.lv, "{}", f.line);
 			});
 
 			break;
@@ -552,52 +567,11 @@ bool process::read_pipes()
 
 		case keep_in_string:
 		{
-			std::string_view s = impl_.stdout_pipe.read();
-			if (!s.empty())
+			const std::string_view buffer = pipe.read();
+			if (!buffer.empty())
 				read_something = true;
 
-			stdout_string_ += s;
-			break;
-		}
-
-		case bit_bucket:
-		case inherit:
-			break;
-	}
-
-
-	switch (stderr_flags_)
-	{
-		case forward_to_log:
-		{
-			std::string_view s = impl_.stderr_pipe.read();
-			if (!s.empty())
-				read_something = true;
-
-			for_each_line(s, [&](auto&& line)
-			{
-				filter f = {line, context::std_err, stderr_level_, false};
-
-				if (stderr_filter_)
-				{
-					stderr_filter_(f);
-					if (f.ignore)
-						return;
-				}
-
-				cx_->log(f.r, f.lv, f.line);
-			});
-
-			break;
-		}
-
-		case keep_in_string:
-		{
-			std::string_view s = impl_.stderr_pipe.read();
-			if (!s.empty())
-				read_something = true;
-
-			stderr_string_ += s;
+			s.string.append(buffer.begin(), buffer.end());
 			break;
 		}
 
@@ -624,7 +598,10 @@ void process::on_completed()
 	if (!GetExitCodeProcess(impl_.handle.get(), &code_))
 	{
 		const auto e = GetLastError();
-		cx_->error(context::cmd, "failed to get exit code", e);
+
+		cx_->error(context::cmd,
+			"failed to get exit code, ", error_message(e));
+
 		code_ = 0xffff;
 	}
 
@@ -643,9 +620,7 @@ void process::on_completed()
 	else
 	{
 		dump_error_log_file();
-
-		cx_->bail_out(context::cmd,
-			make_name() + " returned " + std::to_string(code_));
+		cx_->bail_out(context::cmd, "{} returned {}", make_name(), code_);
 	}
 }
 
@@ -675,9 +650,7 @@ void process::on_timeout(bool& already_interrupted)
 			}
 			else
 			{
-				cx_->trace(context::cmd,
-					"sending sigint to " + std::to_string(pid));
-
+				cx_->trace(context::cmd, "sending sigint to {}", pid);
 				GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
 			}
 		}
@@ -702,19 +675,17 @@ void process::dump_error_log_file() noexcept
 				return;
 
 			cx_->error(context::cmd,
-				make_name() + " failed, "
-				"content of " + error_log_file_.string() + ":");
+				"{} failed, content of {}:", make_name(), error_log_file_);
 
 			for_each_line(log, [&](auto&& line)
 			{
-				cx_->error(context::cmd, std::string(8, ' ') + std::string(line));
+				cx_->error(context::cmd, "        {}", line);
 			});
 		}
 		else
 		{
 			cx_->debug(context::cmd,
-				"external error log file " + error_log_file_.string() + " "
-				"doesn't exist");
+				"external error log file {} doesn't exist", error_log_file_);
 		}
 	}
 	catch(...)
@@ -728,14 +699,14 @@ int process::exit_code() const
 	return static_cast<int>(code_);
 }
 
-std::string process::steal_stdout()
+std::string process::stdout_string()
 {
-	return std::move(stdout_string_);
+	return stdout_.string;
 }
 
-std::string process::steal_stderr()
+std::string process::stderr_string()
 {
-	return std::move(stderr_string_);
+	return stderr_.string;
 }
 
 void process::add_arg(const std::string& k, const std::string& v, arg_flags f)

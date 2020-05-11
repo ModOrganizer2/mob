@@ -13,6 +13,33 @@ extern u8stream u8cout(std::wcout);
 extern u8stream u8cerr(std::wcerr);
 
 
+void u8stream::do_output(const std::string& s)
+{
+	out_ << utf8_to_utf16(s);
+}
+
+
+void mob_assertion_failed(
+	const char* message,
+	const char* exp, const char* file, int line, const char* func)
+{
+	if (message)
+	{
+		gcx().error(context::generic,
+			"assertion failed: {}:{} {}: {} ({})",
+			file, line, func, message, exp);
+	}
+	else
+	{
+		gcx().error(context::generic,
+			"assertion failed: {}:{} {}: '{}'",
+			file, line, func, exp);
+	}
+
+	if (IsDebuggerPresent())
+		DebugBreak();
+}
+
 url make_github_url(const std::string& org, const std::string& repo)
 {
 	return "https://github.com/" + org + "/" + repo + ".git";
@@ -120,7 +147,7 @@ std::string pad_left(std::string s, std::size_t n, char c)
 file_deleter::file_deleter(const context& cx, fs::path p)
 	: cx_(cx), p_(std::move(p)), delete_(true)
 {
-	cx_.trace(context::fs, "will delete " + p_.string() + " if things go bad");
+	cx_.trace(context::fs, "will delete {} if things go bad", p_);
 }
 
 file_deleter::~file_deleter()
@@ -138,13 +165,13 @@ file_deleter::~file_deleter()
 
 void file_deleter::delete_now()
 {
-	cx_.debug(context::fs, "something went bad, deleting " + p_.string());
+	cx_.debug(context::fs, "something went bad, deleting {}", p_);
 	op::delete_file(cx_, p_, op::optional);
 }
 
 void file_deleter::cancel()
 {
-	cx_.trace(context::fs, "everything okay, keeping " + p_.string());
+	cx_.trace(context::fs, "everything okay, keeping {}", p_);
 	delete_ = false;
 }
 
@@ -152,7 +179,7 @@ void file_deleter::cancel()
 directory_deleter::directory_deleter(const context& cx, fs::path p)
 	: cx_(cx), p_(std::move(p)), delete_(true)
 {
-	cx_.trace(context::fs, "will delete " + p_.string() + " if things go bad");
+	cx_.trace(context::fs, "will delete {} if things go bad", p_);
 }
 
 directory_deleter::~directory_deleter()
@@ -170,13 +197,13 @@ directory_deleter::~directory_deleter()
 
 void directory_deleter::delete_now()
 {
-	cx_.debug(context::fs, "something went bad, deleting " + p_.string());
+	cx_.debug(context::fs, "something went bad, deleting {}", p_);
 	op::delete_directory(cx_, p_, op::optional);
 }
 
 void directory_deleter::cancel()
 {
-	cx_.trace(context::fs, "everything okay, keeping " + p_.string());
+	cx_.trace(context::fs, "everything okay, keeping {}", p_);
 	delete_ = false;
 }
 
@@ -186,10 +213,7 @@ interruption_file::interruption_file(
 		: cx_(cx), dir_(std::move(dir)), name_(std::move(name))
 {
 	if (fs::exists(file()))
-	{
-		cx_.trace(context::interruption,
-			"found interrupt file " + file().string());
-	}
+		cx_.trace(context::interruption, "found interrupt file {}", file());
 }
 
 bool interruption_file::exists() const
@@ -204,17 +228,13 @@ fs::path interruption_file::file() const
 
 void interruption_file::create()
 {
-	cx_.trace(context::interruption,
-		"creating interrupt file " + file().string());
-
+	cx_.trace(context::interruption, "creating interrupt file {}", file());
 	op::touch(cx_, file());
 }
 
 void interruption_file::remove()
 {
-	cx_.trace(context::interruption,
-		"removing interrupt file " + file().string());
-
+	cx_.trace(context::interruption, "removing interrupt file {}", file());
 	op::delete_file(cx_, file());
 }
 
@@ -230,8 +250,8 @@ bool bypass_file::exists() const
 	{
 		if (conf::rebuild())
 		{
-			cx_.trace(context::bypass,
-				"bypass file " + file_.string() + " exists, deleting");
+			cx_.trace(context::rebuild,
+				"bypass file {} exists, deleting", file_);
 
 			op::delete_file(cx_, file_, op::optional);
 
@@ -239,26 +259,20 @@ bool bypass_file::exists() const
 		}
 		else
 		{
-			cx_.trace(context::bypass,
-				"bypass file " + file_.string() + " exists");
-
+			cx_.trace(context::bypass, "bypass file {} exists", file_);
 			return true;
 		}
 	}
 	else
 	{
-		cx_.trace(context::bypass,
-			"bypass file " + file_.string() + " not found");
-
+		cx_.trace(context::bypass, "bypass file {} not found", file_);
 		return false;
 	}
 }
 
 void bypass_file::create()
 {
-	cx_.trace(context::bypass,
-		"create bypass file " + file_.string());
-
+	cx_.trace(context::bypass, "create bypass file {}", file_);
 	op::touch(cx_, file_);
 }
 
@@ -383,10 +397,12 @@ std::optional<std::wstring> to_utf16(UINT from, std::string_view s)
 		from, 0, s.data(), static_cast<int>(s.size()),
 		buffer.get(), wsize);
 
-	if (wsize == 0)
+	if (written == 0)
 		return {};
 
-	return std::wstring(buffer.get(), buffer.get() + wsize);
+	MOB_ASSERT(written == wsize);
+
+	return std::wstring(buffer.get(), buffer.get() + written);
 }
 
 std::optional<std::string> to_utf8(std::wstring_view ws)
@@ -408,10 +424,12 @@ std::optional<std::string> to_utf8(std::wstring_view ws)
 		CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()),
 		buffer.get(), size, nullptr, nullptr);
 
-	if (size == 0)
+	if (written == 0)
 		return {};
 
-	return std::string(buffer.get(), buffer.get() + size);
+	MOB_ASSERT(written == size);
+
+	return std::string(buffer.get(), buffer.get() + written);
 }
 
 
@@ -470,16 +488,4 @@ std::string path_to_utf8(const fs::path& p)
 	return utf16_to_utf8(p.native());
 }
 
-
-void output_to_stdout(std::string_view utf8)
-{
-	std::wcout << utf8_to_utf16(utf8);
-}
-
-void output_to_stderr(std::string_view utf8)
-{
-	std::wcerr << utf8_to_utf16(utf8);
-}
-
 }	// namespace
-

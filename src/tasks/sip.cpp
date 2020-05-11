@@ -47,7 +47,7 @@ fs::path sip::module_source_path()
 	std::smatch m;
 
 	if (!std::regex_match(version_for_pyqt(), m, re))
-		bail_out("bad pyqt sip version " + version_for_pyqt());
+		bail_out("bad pyqt sip version {}", version_for_pyqt());
 
 	// 12.7
 	const auto dir = m[1].str() + "." + m[2].str();
@@ -86,15 +86,13 @@ void sip::download()
 	{
 		if (conf::redownload())
 		{
-			cx().trace(context::redownload,
-				"deleting " + download_file().string());
-
+			cx().trace(context::redownload, "deleting {}", download_file());
 			op::delete_file(cx(), download_file(), op::optional);
 		}
 		else
 		{
 			cx().trace(context::bypass,
-				"sip: " + download_file().string() + " already exists");
+				"sip: {} already exists", download_file());
 
 			return;
 		}
@@ -118,11 +116,11 @@ void sip::generate()
 	{
 		if (conf::rebuild())
 		{
-			cx().trace(context::rebuild, "ignoring " + header.string());
+			cx().trace(context::rebuild, "ignoring {}", header);
 		}
 		else
 		{
-			cx().trace(context::bypass, header.string() + " already exists");
+			cx().trace(context::bypass, "{} already exists", header);
 			return;
 		}
 	}

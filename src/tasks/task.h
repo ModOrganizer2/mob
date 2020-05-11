@@ -85,7 +85,7 @@ protected:
 
 		for (auto&& [name, f] : v)
 		{
-			cx().trace(context::generic, "running in parallel: " + name);
+			cx().trace(context::generic, "running in parallel: {}", name);
 
 			ts.push_back(std::thread([this, name, f]
 			{

@@ -1,10 +1,67 @@
 #pragma once
 
+#include "utility.h"
+
+namespace mob
+{
+	class url;
+}
+
+
+namespace mob::details
+{
+
+// T to std::string converters
+//
+// those are kept in this namespace so they don't leak all over the place;
+// they're used directly by doLog() below
+
+template <class T, class=void>
+struct converter
+{
+	static const T& convert(const T& t)
+	{
+		return t;
+	}
+};
+
+template <>
+struct converter<std::wstring>
+{
+	static std::string convert(const std::wstring& s);
+};
+
+template <>
+struct converter<fs::path>
+{
+	static std::string convert(const fs::path& s);
+};
+
+template <>
+struct converter<url>
+{
+	static std::string convert(const url& u);
+};
+
+template <class T>
+struct converter<T, std::enable_if_t<std::is_enum_v<T>>>
+{
+	static std::string convert(T e)
+	{
+		return std::to_string(static_cast<std::underlying_type_t<T>>(e));
+	}
+};
+
+}	// namespace
+
+
 namespace mob
 {
 
 class task;
 class tool;
+
+std::string error_message(DWORD e);
 
 class context
 {
@@ -65,56 +122,79 @@ public:
 
 	void set_tool(tool* t);
 
-	void log(reason r, level lv, std::string_view s) const;
-	void log(reason r, level lv, std::string_view s, DWORD e) const;
-	void log(reason r, level lv, std::string_view s, const std::error_code& ec) const;
-
 	template <class... Args>
-	void dump(reason r, std::string_view s, Args&&... args) const
+	void log(reason r, level lv, const char* f, Args&&... args) const
 	{
-		log(r, level::dump, s, std::forward<Args>(args)...);
+		do_log(false, r, lv, f, std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
-	void trace(reason r, std::string_view s, Args&&... args) const
+	void dump(reason r, const char* f, Args&&... args) const
 	{
-		log(r, level::trace, s, std::forward<Args>(args)...);
+		do_log(false, r, level::dump, f, std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
-	void debug(reason r, std::string_view s, Args&&... args) const
+	void trace(reason r, const char* f, Args&&... args) const
 	{
-		log(r, level::debug, s, std::forward<Args>(args)...);
+		do_log(false, r, level::trace, f, std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
-	void info(reason r, std::string_view s, Args&&... args) const
+	void debug(reason r, const char* f, Args&&... args) const
 	{
-		log(r, level::info, s, std::forward<Args>(args)...);
+		do_log(false, r, level::debug, f, std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
-	void warning(reason r, std::string_view s, Args&&... args) const
+	void info(reason r, const char* f, Args&&... args) const
 	{
-		log(r, level::warning, s, std::forward<Args>(args)...);
+		do_log(false, r, level::info, f, std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
-	void error(reason r, std::string_view s, Args&&... args) const
+	void warning(reason r, const char* f, Args&&... args) const
 	{
-		log(r, level::error, s, std::forward<Args>(args)...);
+		do_log(false, r, level::warning, f, std::forward<Args>(args)...);
 	}
 
-	[[noreturn]] void bail_out(reason r, std::string_view s) const;
-	[[noreturn]] void bail_out(reason r, std::string_view s, DWORD e) const;
-	[[noreturn]] void bail_out(reason r, std::string_view s, const std::error_code& ec) const;
+	template <class... Args>
+	void error(reason r, const char* f, Args&&... args) const
+	{
+		do_log(false, r, level::error, f, std::forward<Args>(args)...);
+	}
+
+	template <class... Args>
+	[[noreturn]] void bail_out(reason r, const char* f, Args&&... args) const
+	{
+		do_log(true, r, level::error, f, std::forward<Args>(args)...);
+	}
 
 private:
 	std::string task_;
 	const tool* tool_;
 
+	template <class... Args>
+	void do_log(bool bail, reason r, level lv, const char* f, Args&&... args) const
+	{
+		try
+		{
+			const std::string utf8 = fmt::format(
+				f,
+				details::converter<std::decay_t<Args>>::convert(
+					std::forward<Args>(args))...);
+
+			do_log_impl(bail, r, lv, utf8);
+		}
+		catch(std::exception&)
+		{
+			MOB_ASSERT(false, "bad format string");
+		}
+	}
+
 	std::string make_log_string(reason r, level lv, std::string_view s) const;
-	void do_log(level lv, const std::string& s) const;
+	void do_log_impl(bool bail, reason r, level lv, const std::string& utf8) const;
+	void emit_log(level lv, const std::string& utf8) const;
 };
 
 
@@ -130,17 +210,17 @@ void dump_logs();
 
 inline void out(context::level lv, const std::string& s)
 {
-	gcx().log(context::generic, lv, s);
+	gcx().log(context::generic, lv, "{}", s);
 }
 
 inline void out(context::level lv, const std::string& s, DWORD e)
 {
-	gcx().log(context::generic, lv, s, e);
+	gcx().log(context::generic, lv, "{}, {}", s, error_message(e));
 }
 
 inline void out(context::level lv, const std::string& s, const std::error_code& ec)
 {
-	gcx().log(context::generic, lv, s, ec);
+	gcx().log(context::generic, lv, "{}, {}", s, ec.message());
 }
 
 template <class... Args>

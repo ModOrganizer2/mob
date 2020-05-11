@@ -19,7 +19,7 @@ public:
     std::string_view read();
 
 private:
-    static const std::size_t buffer_size = 50000;
+    static const std::size_t buffer_size = 50'000;
 
     handle_ptr stdout_;
     handle_ptr event_;
@@ -155,8 +155,8 @@ public:
 	void join();
 
 	int exit_code() const;
-	std::string steal_stdout();
-	std::string steal_stderr();
+	std::string stdout_string();
+	std::string stderr_string();
 
 private:
 	struct impl
@@ -170,22 +170,21 @@ private:
 		impl& operator=(const impl&);
 	};
 
+	struct stream
+	{
+		stream_flags flags = forward_to_log;
+		context::level level = context::level::trace;
+		filter_fun filter;
+		std::string string;
+	};
+
 	const context* cx_;
 	std::string name_;
 	fs::path bin_;
 	fs::path cwd_;
 	flags_t flags_;
-
-	stream_flags stdout_flags_;
-	context::level stdout_level_;
-	filter_fun stdout_filter_;
-	std::string stdout_string_;
-
-	stream_flags stderr_flags_;
-	context::level stderr_level_;
-	filter_fun stderr_filter_;
-	std::string stderr_string_;
-
+	stream stdout_;
+	stream stderr_;
 	mob::env env_;
 	std::string raw_;
 	std::string cmd_;
@@ -200,6 +199,7 @@ private:
 
 	void do_run(const std::string& what);
 	bool read_pipes();
+	bool read_pipe(stream& s, async_pipe& pipe, context::reason r);
 
 	void on_completed();
 	void on_timeout(bool& already_interrupted);

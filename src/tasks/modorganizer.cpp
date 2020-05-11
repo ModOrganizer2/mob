@@ -87,7 +87,7 @@ void modorganizer::do_build_and_install()
 	if (!fs::exists(this_source_path() / "CMakeLists.txt"))
 	{
 		cx().trace(context::generic,
-			repo_ + " has no CMakeLists.txt, not building");
+			"{} has no CMakeLists.txt, not building", repo_);
 
 		return;
 	}
