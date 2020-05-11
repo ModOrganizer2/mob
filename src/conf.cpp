@@ -330,19 +330,19 @@ void set_option(const std::string& s)
 void dump_available_options()
 {
 	for (auto&& [k, v] : g_options)
-		std::cout << "options/" << k << "\n";
+		u8cout << "options/" << k << "\n";
 
 	for (auto&& [k, v] : g_tools)
-		std::cout << "tools/" << k << "\n";
+		u8cout << "tools/" << k << "\n";
 
 	for (auto&& [k, v] : g_prebuilt)
-		std::cout << "prebuilt/" << k << "\n";
+		u8cout << "prebuilt/" << k << "\n";
 
 	for (auto&& [k, v] : g_versions)
-		std::cout << "versions/" << k << "\n";
+		u8cout << "versions/" << k << "\n";
 
 	for (auto&& [k, v] : g_paths)
-		std::cout << "paths/" << k << "\n";
+		u8cout << "paths/" << k << "\n";
 }
 
 bool try_parts(fs::path& check, const std::vector<std::string>& parts)
@@ -775,7 +775,7 @@ void check_missing_options()
 {
 	if (conf::mo_org().empty())
 	{
-		std::cerr
+		u8cerr
 			<< "missing mo_org; either specify it the [options] section of "
 			<< "the ini or pass '-s options/mo_org=something'\n";
 
@@ -784,7 +784,7 @@ void check_missing_options()
 
 	if (conf::mo_branch().empty())
 	{
-		std::cerr
+		u8cerr
 			<< "missing mo_branch; either specify it the [options] section of "
 			<< "the ini or pass '-s options/mo_org=something'\n";
 
@@ -793,7 +793,7 @@ void check_missing_options()
 
 	if (paths::prefix().empty())
 	{
-		std::cerr
+		u8cerr
 			<< "missing prefix; either specify it the [paths] section of "
 			<< "the ini or pass '-d path'\n";
 
@@ -804,7 +804,7 @@ void check_missing_options()
 	{
 		if (v.empty())
 		{
-			std::cerr << "missing version for " << k << "\n";
+			u8cerr << "missing version for " << k << "\n";
 			throw bailed("");
 		}
 	}

@@ -232,7 +232,6 @@ void context::do_log(level lv, const std::string& s) const
 {
 	{
 		std::scoped_lock lock(g_mutex);
-		auto c = level_color(lv);
 
 		if (lv == level::error)
 			g_errors.push_back(s);
@@ -240,7 +239,10 @@ void context::do_log(level lv, const std::string& s) const
 			g_warnings.push_back(s);
 
 		if (log_enabled(lv, conf::output_log_level()))
-			std::cout << s << "\n";
+		{
+			auto c = level_color(lv);
+			u8cout << s << "\n";
+		}
 
 		if (g_log_file && log_enabled(lv, conf::file_log_level()))
 		{
@@ -307,19 +309,19 @@ void dump_logs()
 	if (!g_warnings.empty())
 	{
 		auto c = level_color(context::level::warning);
-		std::cout << "\n\nthere were warnings:\n";
+		u8cout << "\n\nthere were warnings:\n";
 
 		for (auto&& s : g_warnings)
-			std::cout << s << "\n";
+			u8cout << s << "\n";
 	}
 
 	if (!g_errors.empty())
 	{
 		auto c = level_color(context::level::error);
-		std::cout << "\n\nthere were errors:\n";
+		u8cout << "\n\nthere were errors:\n";
 
 		for (auto&& s : g_errors)
-			std::cout << s << "\n";
+			u8cout << s << "\n";
 	}
 }
 

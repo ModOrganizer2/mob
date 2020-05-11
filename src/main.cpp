@@ -19,11 +19,10 @@ std::string version()
 
 void show_help(const clipp::group& g)
 {
-	std::cout
-		<< clipp::make_man_page(
-			g, "mob", clipp::doc_formatting()
-			.first_column(4)
-			.doc_column(30));
+	u8cout << clipp::make_man_page(
+		g, "mob", clipp::doc_formatting()
+		.first_column(4)
+		.doc_column(30));
 }
 
 std::optional<int> handle_command_line(int argc, char** argv)
@@ -116,7 +115,7 @@ std::optional<int> handle_command_line(int argc, char** argv)
 
 	if (cmd.version)
 	{
-		std::cout << version() << "\n";
+		u8cout << version() << "\n";
 		return 0;
 	}
 
@@ -313,6 +312,8 @@ int run(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
+	_setmode(_fileno(stdout), _O_U16TEXT);
+
 	try
 	{
 		int r = mob::run(argc, argv);
@@ -333,11 +334,11 @@ int main(int argc, char** argv)
 	}
 	catch(std::exception& e)
 	{
-		std::cerr << "unhandled exception: " << e.what() << "\n";
+		mob::u8cerr << "unhandled exception: " << e.what() << "\n";
 	}
 	catch(...)
 	{
-		std::cerr << "unknown unhandled exception\n";
+		mob::u8cerr << "unknown unhandled exception\n";
 	}
 
 	return 1;

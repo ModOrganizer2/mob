@@ -188,6 +188,42 @@ std::string pad_left(std::string s, std::size_t n, char c=' ');
 void trim(std::string& s, const std::string& what=" \t\r\n");
 std::string trim_copy(const std::string& s, const std::string& what=" \t\r\n");
 
+std::wstring utf8_to_utf16(std::string_view s);
+std::string utf16_to_utf8(std::wstring_view ws);
+std::string path_to_utf8(const fs::path& p);
+
+
+class u8stream
+{
+public:
+	u8stream(std::wostream& out)
+		: out_(out)
+	{
+	}
+
+	template <class... Args>
+	u8stream& operator<<(Args&&... args)
+	{
+		std::ostringstream oss;
+		((oss << std::forward<Args>(args)), ...);
+
+		out_ << utf8_to_utf16(oss.str());
+
+		return *this;
+	}
+
+private:
+	std::wostream& out_;
+};
+
+
+extern u8stream u8cout;
+extern u8stream u8cerr;
+
+
+void output_to_stdout(std::string_view utf8);
+void output_to_stderr(std::string_view utf8);
+
 
 template <class F>
 void for_each_line(std::string_view s, F&& f)

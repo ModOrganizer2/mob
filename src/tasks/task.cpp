@@ -23,9 +23,9 @@ void list_tasks(bool err)
 	for (auto&& t : g_all_tasks)
 	{
 		if (err)
-			std::cerr << " - " << join(t->names(), ", ") << "\n";
+			u8cerr << " - " << join(t->names(), ", ") << "\n";
 		else
-			std::cout << " - " << join(t->names(), ", ") << "\n";
+			u8cout << " - " << join(t->names(), ", ") << "\n";
 	}
 }
 
@@ -40,8 +40,8 @@ task* find_task(const std::string& name)
 		}
 	}
 
-	std::cout << "task " << name << " not found\n";
-	std::cout << "valid tasks:\n";
+	u8cout << "task " << name << " not found\n";
+	u8cout << "valid tasks:\n";
 	list_tasks(true);
 
 	throw bailed("");

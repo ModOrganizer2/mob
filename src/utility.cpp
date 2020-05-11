@@ -9,6 +9,10 @@
 namespace mob
 {
 
+extern u8stream u8cout(std::wcout);
+extern u8stream u8cerr(std::wcerr);
+
+
 url make_github_url(const std::string& org, const std::string& repo)
 {
 	return "https://github.com/" + org + "/" + repo + ".git";
@@ -297,17 +301,17 @@ console_color::console_color(colors c)
 
 			case colors::grey:
 				reset_ = true;
-				std::cout << "\033[38;2;150;150;150m";
+				u8cout << "\033[38;2;150;150;150m";
 				break;
 
 			case colors::yellow:
 				reset_ = true;
-				std::cout << "\033[38;2;240;240;50m";
+				u8cout << "\033[38;2;240;240;50m";
 				break;
 
 			case colors::red:
 				reset_ = true;
-				std::cout << "\033[38;2;240;50;50m";
+				u8cout << "\033[38;2;240;50;50m";
 				break;
 		}
 	}
@@ -352,12 +356,129 @@ console_color::~console_color()
 
 	if (g_color_method == color_methods::ansi)
 	{
-		std::cout << "\033[39m\033[49m";
+		u8cout << "\033[39m\033[49m";
 	}
 	else if (g_color_method == color_methods::console)
 	{
 		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), old_atts_);
 	}
+}
+
+
+std::optional<std::wstring> to_utf16(UINT from, std::string_view s)
+{
+	if (s.empty())
+		return std::wstring();
+
+	const int wsize = MultiByteToWideChar(
+		from, 0, s.data(), static_cast<int>(s.size()), nullptr, 0);
+
+	if (wsize == 0)
+		return {};
+
+	auto buffer = std::make_unique<wchar_t[]>(
+		static_cast<std::size_t>(wsize + 1));
+
+	const int written = MultiByteToWideChar(
+		from, 0, s.data(), static_cast<int>(s.size()),
+		buffer.get(), wsize);
+
+	if (wsize == 0)
+		return {};
+
+	return std::wstring(buffer.get(), buffer.get() + wsize);
+}
+
+std::optional<std::string> to_utf8(std::wstring_view ws)
+{
+	if (ws.empty())
+		return std::string();
+
+	const int size = WideCharToMultiByte(
+		CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()), nullptr, 0,
+		nullptr, nullptr);
+
+	if (size == 0)
+		return {};
+
+	auto buffer = std::make_unique<char[]>(
+		static_cast<std::size_t>(size + 1));
+
+	const int written = WideCharToMultiByte(
+		CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()),
+		buffer.get(), size, nullptr, nullptr);
+
+	if (size == 0)
+		return {};
+
+	return std::string(buffer.get(), buffer.get() + size);
+}
+
+
+std::wstring utf8_to_utf16(std::string_view s)
+{
+	auto ws = to_utf16(CP_UTF8, s);
+	if (!ws)
+	{
+		std::cerr << "can't convert from utf8 to utf16\n";
+		return L"???";
+	}
+
+	return *ws;
+}
+
+std::string utf16_to_utf8(std::wstring_view ws)
+{
+	auto s = to_utf8(ws);
+	if (!s)
+	{
+		std::cerr << "can't convert from utf16 to utf8\n";
+		return "???";
+	}
+
+	return *s;
+}
+
+std::wstring cp_to_utf16(std::string_view s)
+{
+	auto ws = to_utf16(CP_ACP, s);
+	if (!ws)
+	{
+		std::cerr << "can't convert from acp to utf16\n";
+		return L"???";
+	}
+
+	return *ws;
+}
+
+std::string cp_to_utf8(std::string_view s)
+{
+	auto ws = cp_to_utf16(s);
+	auto s8 = to_utf8(ws);
+
+	if (!s8)
+	{
+		std::cerr << "can't convert from acp to utf8\n";
+		return "???";
+	}
+
+	return *s8;
+}
+
+std::string path_to_utf8(const fs::path& p)
+{
+	return utf16_to_utf8(p.native());
+}
+
+
+void output_to_stdout(std::string_view utf8)
+{
+	std::wcout << utf8_to_utf16(utf8);
+}
+
+void output_to_stderr(std::string_view utf8)
+{
+	std::wcerr << utf8_to_utf16(utf8);
 }
 
 }	// namespace

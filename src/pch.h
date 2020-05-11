@@ -64,9 +64,12 @@
 
 #include <Shlobj.h>
 #include <shlwapi.h>
+#include <io.h>
+#include <fcntl.h>
 
 #include <curl/curl.h>
 #include <clipp.h>
+#include <fmt/format.h>
 
 #pragma warning(pop)
 
