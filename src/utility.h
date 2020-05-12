@@ -7,17 +7,21 @@ namespace mob
 	inline E operator|(E e1, E e2) { return (E)((int)e1 | (int)e2); } \
 	inline E operator|=(E& e1, E e2) { e1 = e1 | e2; return e1; }
 
+#define MOB_WIDEN2(x) L ## x
+#define MOB_WIDEN(x) MOB_WIDEN2(x)
+#define MOB_FILE_UTF16 MOB_WIDEN(__FILE__)
+
 #define MOB_ASSERT(x, ...) \
-	mob_assert(x, __VA_ARGS__, #x, __FILE__, __LINE__, __FUNCSIG__);
+	mob_assert(x, __VA_ARGS__, #x, MOB_FILE_UTF16, __LINE__, __FUNCSIG__);
 
 void mob_assertion_failed(
 	const char* message,
-	const char* exp, const char* file, int line, const char* func);
+	const char* exp, const wchar_t* file, int line, const char* func);
 
 template <class X>
 inline void mob_assert(
 	X&& x, const char* message,
-	const char* exp, const char* file, int line, const char* func)
+	const char* exp, const wchar_t* file, int line, const char* func)
 {
 	if (!(x))
 		mob_assertion_failed(message, exp, file, line, func);
@@ -25,7 +29,7 @@ inline void mob_assert(
 
 template <class X>
 inline void mob_assert(
-	X&& x, const char* exp, const char* file, int line, const char* func)
+	X&& x, const char* exp, const wchar_t* file, int line, const char* func)
 {
 	if (!(x))
 		mob_assertion_failed(nullptr, exp, file, line, func);
@@ -36,7 +40,9 @@ enum class encodings
 {
 	dont_know = 0,
 	utf8,
-	utf16
+	utf16,
+	acp,
+	oem
 };
 
 
@@ -222,6 +228,7 @@ std::string trim_copy(const std::string& s, const std::string& what=" \t\r\n");
 
 std::wstring utf8_to_utf16(std::string_view s);
 std::string utf16_to_utf8(std::wstring_view ws);
+std::string bytes_to_utf8(encodings e, std::string_view s);
 
 template <class T>
 std::string path_to_utf8(T&&) = delete;

@@ -391,30 +391,9 @@ std::string read_text_file(
 	if (bytes.empty())
 		return bytes;
 
-	std::string utf8;
-
-	switch (e)
-	{
-		case encodings::utf16:
-		{
-			const auto* wbuf = reinterpret_cast<const wchar_t*>(bytes.data());
-			const std::size_t n = bytes.size() / sizeof(wchar_t);
-			const std::wstring ws(wbuf, wbuf + n);
-
-			utf8 = utf16_to_utf8(ws);
-			break;
-		}
-
-		case encodings::utf8:
-		case encodings::dont_know:
-		default:
-		{
-			utf8 = std::move(bytes);
-			break;
-		}
-	}
-
+	std::string utf8 = bytes_to_utf8(e, bytes);
 	utf8 = replace_all(utf8, "\r\n", "\n");
+
 	return utf8;
 }
 

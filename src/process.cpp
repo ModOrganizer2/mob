@@ -55,6 +55,9 @@ handle_ptr async_pipe::create()
 
 std::string_view async_pipe::read()
 {
+	if (closed_)
+		return {};
+
 	if (pending_)
 		return check_pending();
 	else
@@ -229,7 +232,7 @@ process::impl& process::impl::operator=(const impl& i)
 
 
 process::process()
-	: cx_(&gcx()), unicode_(false), flags_(process::noflags), code_(0)
+	: cx_(&gcx()), unicode_(false), chcp_(-1), flags_(process::noflags), code_(0)
 {
 }
 
@@ -312,6 +315,12 @@ process& process::stdout_filter(filter_fun f)
 	return *this;
 }
 
+process& process::stdout_encoding(encodings e)
+{
+	stdout_.encoding = e;
+	return *this;
+}
+
 process& process::stderr_flags(stream_flags s)
 {
 	stderr_.flags = s;
@@ -330,9 +339,28 @@ process& process::stderr_filter(filter_fun f)
 	return *this;
 }
 
+process& process::stderr_encoding(encodings e)
+{
+	stderr_.encoding = e;
+	return *this;
+}
+
 process& process::cmd_unicode(bool b)
 {
 	unicode_ = b;
+
+	if (b)
+	{
+		stdout_.encoding = encodings::utf16;
+		stderr_.encoding = encodings::utf16;
+	}
+
+	return *this;
+}
+
+process& process::chcp(int i)
+{
+	chcp_ = i;
 	return *this;
 }
 
@@ -406,6 +434,9 @@ void process::do_run(const std::string& what)
 
 		op::delete_file(*cx_, error_log_file_, op::optional);
 	}
+
+	stdout_.buffer = encoded_buffer(stdout_.encoding);
+	stderr_.buffer = encoded_buffer(stderr_.encoding);
 
 	STARTUPINFOW si = { .cb=sizeof(si) };
 	PROCESS_INFORMATION pi = {};
@@ -488,7 +519,7 @@ void process::do_run(const std::string& what)
 	{
 		const auto e = GetLastError();
 		cx_->bail_out(context::cmd,
-			"failed to start '{}', {}", cmd, error_message(e));
+			"failed to start '{}', {}", args, error_message(e));
 	}
 
 	cx_->trace(context::cmd, "pid {}", pi.dwProcessId);
@@ -504,7 +535,12 @@ std::wstring process::make_cmd_args(const std::string& what) const
 	if (unicode_)
 		s += L"/U ";
 
-	s += L"/C \"" + utf8_to_utf16(what) + L"\"";
+	s += L"/C \"";
+
+	if (chcp_ != -1)
+		s += L"chcp " + std::to_wstring(chcp_) + L" && ";
+
+	s += utf8_to_utf16(what) + L"\"";
 
 	return s;
 }
@@ -551,21 +587,22 @@ void process::join()
 		cx_->trace(context::cmd, "process interrupted and finished");
 }
 
-void process::read_pipes()
+void process::read_pipes(bool finish)
 {
-	read_pipe(stdout_, impl_.stdout_pipe, context::std_out);
-	read_pipe(stderr_, impl_.stderr_pipe, context::std_err);
+	read_pipe(finish, stdout_, impl_.stdout_pipe, context::std_out);
+	read_pipe(finish, stderr_, impl_.stderr_pipe, context::std_err);
 }
 
-void process::read_pipe(stream& s, async_pipe& pipe, context::reason r)
+void process::read_pipe(
+	bool finish, stream& s, async_pipe& pipe, context::reason r)
 {
 	switch (s.flags)
 	{
 		case forward_to_log:
 		{
-			const std::string_view buffer = pipe.read();
+			s.buffer.add(pipe.read());
 
-			for_each_line(buffer, [&](auto&& line)
+			s.buffer.next_utf8_lines(finish, [&](auto&& line)
 			{
 				filter f = {line, r, s.level, false};
 
@@ -579,15 +616,12 @@ void process::read_pipe(stream& s, async_pipe& pipe, context::reason r)
 				cx_->log(f.r, f.lv, "{}", f.line);
 			});
 
-			s.string.append(buffer.begin(), buffer.end());
-
 			break;
 		}
 
 		case keep_in_string:
 		{
-			const std::string_view buffer = pipe.read();
-			s.string.append(buffer.begin(), buffer.end());
+			s.buffer.add(pipe.read());
 			break;
 		}
 
@@ -602,11 +636,14 @@ void process::on_completed()
 	// one last time
 	for (;;)
 	{
-		read_pipes();
+		read_pipes(false);
 
 		if (impl_.stdout_pipe.closed() && impl_.stderr_pipe.closed())
 			break;
 	}
+
+	read_pipes(true);
+
 
 	if (impl_.interrupt)
 		return;
@@ -643,7 +680,7 @@ void process::on_completed()
 
 void process::on_timeout(bool& already_interrupted)
 {
-	read_pipes();
+	read_pipes(false);
 
 	if (impl_.interrupt && !already_interrupted)
 	{
@@ -715,12 +752,14 @@ void process::dump_stderr() noexcept
 {
 	try
 	{
-		if (!stderr_.string.empty())
+		const std::string s = stderr_.buffer.utf8_string();
+
+		if (!s.empty())
 		{
 			cx_->error(context::cmd,
 				"{} failed, content of stderr:", make_name());
 
-			for_each_line(stderr_.string, [&](auto&& line)
+			for_each_line(s, [&](auto&& line)
 			{
 				cx_->error(context::cmd, "        {}", line);
 			});
@@ -744,12 +783,12 @@ int process::exit_code() const
 
 std::string process::stdout_string()
 {
-	return stdout_.string;
+	return stdout_.buffer.utf8_string();
 }
 
 std::string process::stderr_string()
 {
-	return stderr_.string;
+	return stderr_.buffer.utf8_string();
 }
 
 void process::add_arg(const std::string& k, const std::string& v, arg_flags f)
@@ -804,6 +843,102 @@ std::string process::arg_to_string(const url& u, bool force_quote)
 		return "\"" + u.string() + "\"";
 	else
 		return u.string();
+}
+
+
+encoded_buffer::encoded_buffer(encodings e, std::string bytes)
+	: e_(e), bytes_(std::move(bytes)), last_(0)
+{
+}
+
+void encoded_buffer::add(std::string_view bytes)
+{
+	bytes_.append(bytes.begin(), bytes.end());
+}
+
+std::string encoded_buffer::utf8_string() const
+{
+	return bytes_to_utf8(e_, bytes_);
+}
+
+template <class CharT>
+std::basic_string<CharT> next_line(
+	bool finished, std::string_view bytes, std::size_t& byte_offset)
+{
+	std::size_t size = bytes.size();
+	if ((size & 1) == 1)
+		--size;
+
+	const CharT* start = reinterpret_cast<const CharT*>(bytes.data() + byte_offset);
+	const CharT* end = reinterpret_cast<const CharT*>(bytes.data() + size);
+	const CharT* p = start;
+
+	std::basic_string<CharT> line;
+
+	while (p != end)
+	{
+		if (*p == CharT('\n') || *p == CharT('\r'))
+		{
+			line.assign(start, static_cast<std::size_t>(p - start));
+
+			while (p != end && (*p == CharT('\n') || *p == CharT('\r')))
+				++p;
+
+			if (!line.empty())
+				break;
+
+			start = p;
+		}
+		else
+		{
+			++p;
+		}
+	}
+
+	if (line.empty() && finished)
+	{
+		line = {
+			reinterpret_cast<const wchar_t*>(bytes.data() + byte_offset),
+			reinterpret_cast<const wchar_t*>(bytes.data() + size)
+		};
+
+		byte_offset = bytes.size();
+	}
+	else
+	{
+		byte_offset = static_cast<std::size_t>(
+			reinterpret_cast<const char*>(p) - bytes.data());
+
+		MOB_ASSERT(byte_offset <= bytes.size());
+	}
+
+	return line;
+}
+
+std::string encoded_buffer::next_utf8_line(bool finished)
+{
+	switch (e_)
+	{
+		case encodings::utf16:
+		{
+			const std::wstring utf16 = next_line<wchar_t>(finished, bytes_, last_);
+			return utf16_to_utf8(utf16);
+		}
+
+		case encodings::acp:
+		case encodings::oem:
+		{
+			const std::string cp = next_line<char>(finished, bytes_, last_);
+			return bytes_to_utf8(e_, cp);
+		}
+
+		case encodings::utf8:
+		case encodings::dont_know:
+		default:
+		{
+			return next_line<char>(finished, bytes_, last_);
+		}
+	}
 }
 
 }	// namespace

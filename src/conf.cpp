@@ -247,6 +247,13 @@ bool parse_value<bool>(const std::string& s, bool& out)
 	return !iss.bad();
 }
 
+template <>
+bool parse_value<fs::path>(const std::string& s, fs::path& out)
+{
+	out = utf8_to_utf16(s);
+	return true;
+}
+
 template <class Map>
 bool set_option_impl(
 	Map& map, const std::string& key, const std::string& value)
@@ -913,6 +920,7 @@ void init_options(const fs::path& ini, const std::vector<std::string>& opts)
 	find_vcvars();
 	validate_qt();
 
+	make_canonical_path("prefix",           fs::current_path(), "");
 	make_canonical_path("cache",            paths::prefix(), "downloads");
 	make_canonical_path("build",            paths::prefix(), "build");
 	make_canonical_path("install",          paths::prefix(), "install");

@@ -21,19 +21,19 @@ void u8stream::do_output(const std::string& s)
 
 void mob_assertion_failed(
 	const char* message,
-	const char* exp, const char* file, int line, const char* func)
+	const char* exp, const wchar_t* file, int line, const char* func)
 {
 	if (message)
 	{
 		gcx().error(context::generic,
 			"assertion failed: {}:{} {}: {} ({})",
-			file, line, func, message, exp);
+			std::wstring(file), line, func, message, exp);
 	}
 	else
 	{
 		gcx().error(context::generic,
 			"assertion failed: {}:{} {}: '{}'",
-			file, line, func, exp);
+			std::wstring(file), line, func, exp);
 	}
 
 	if (IsDebuggerPresent())
@@ -457,9 +457,9 @@ std::string utf16_to_utf8(std::wstring_view ws)
 	return *s;
 }
 
-std::wstring cp_to_utf16(std::string_view s)
+std::wstring cp_to_utf16(UINT from, std::string_view s)
 {
-	auto ws = to_utf16(CP_ACP, s);
+	auto ws = to_utf16(from, s);
 	if (!ws)
 	{
 		std::cerr << "can't convert from acp to utf16\n";
@@ -469,19 +469,38 @@ std::wstring cp_to_utf16(std::string_view s)
 	return *ws;
 }
 
-std::string cp_to_utf8(std::string_view s)
+std::string bytes_to_utf8(encodings e, std::string_view s)
 {
-	auto ws = cp_to_utf16(s);
-	auto s8 = to_utf8(ws);
-
-	if (!s8)
+	switch (e)
 	{
-		std::cerr << "can't convert from acp to utf8\n";
-		return "???";
-	}
+		case encodings::utf16:
+		{
+			const auto* ws = reinterpret_cast<const wchar_t*>(s.data());
+			const auto chars = s.size() / sizeof(wchar_t);
+			return utf16_to_utf8({ws, chars});
+		}
 
-	return *s8;
+		case encodings::acp:
+		{
+			const std::wstring utf16 = cp_to_utf16(CP_ACP, s);
+			return utf16_to_utf8(utf16);
+		}
+
+		case encodings::oem:
+		{
+			const std::wstring utf16 = cp_to_utf16(CP_OEMCP, s);
+			return utf16_to_utf8(utf16);
+		}
+
+		case encodings::utf8:
+		case encodings::dont_know:
+		default:
+		{
+			return {s.begin(), s.end()};
+		}
+	}
 }
+
 
 std::string path_to_utf8(fs::path p)
 {

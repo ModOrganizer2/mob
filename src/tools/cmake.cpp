@@ -81,6 +81,8 @@ void cmake::do_run()
 	output_ = root_ / (g.output_dir(arch_));
 
 	process_
+		.stdout_encoding(encodings::utf8)
+		.stderr_encoding(encodings::utf8)
 		.arg("-G", "\"" + g.name + "\"")
 		.arg("-DCMAKE_BUILD_TYPE=Release")
 		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", process::log_quiet)

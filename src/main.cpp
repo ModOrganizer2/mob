@@ -25,7 +25,7 @@ void show_help(const clipp::group& g)
 		.doc_column(30));
 }
 
-std::optional<int> handle_command_line(int argc, char** argv)
+std::optional<int> handle_command_line(const std::vector<std::string>& args)
 {
 	struct
 	{
@@ -105,7 +105,7 @@ std::optional<int> handle_command_line(int argc, char** argv)
 	);
 
 
-	const auto pr = clipp::parse(argc, argv, g);
+	const auto pr = clipp::parse(args, g);
 
 	if (!pr)
 	{
@@ -270,13 +270,13 @@ void add_tasks()
 		.add_task<modorganizer>("modorganizer");
 }
 
-int run(int argc, char** argv)
+int run(const std::vector<std::string>& args)
 {
 	add_tasks();
 
 	try
 	{
-		if (auto r=handle_command_line(argc, argv))
+		if (auto r=handle_command_line(args))
 			return *r;
 	}
 	catch(bailed&)
@@ -310,13 +310,17 @@ int run(int argc, char** argv)
 } // namespace
 
 
-int main(int argc, char** argv)
+int wmain(int argc, wchar_t** argv)
 {
 	_setmode(_fileno(stdout), _O_U16TEXT);
 
 	try
 	{
-		int r = mob::run(argc, argv);
+		std::vector<std::string> args;
+		for (int i=1; i<argc; ++i)
+			args.push_back(mob::utf16_to_utf8(argv[i]));
+
+		int r = mob::run(args);
 
 		if (r == 0)
 		{

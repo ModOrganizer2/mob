@@ -32,7 +32,7 @@ env get_vcvars_env(arch a)
 	const fs::path tmp = make_temp_file();
 
 	// "vcvarsall.bat" amd64 && set > temp_file
-	std::string cmd =
+	const std::string cmd =
 		"\"" + path_to_utf8(tools::vs::vcvars()) + "\" " + arch_s +
 		" && set > \"" + path_to_utf8(tmp) + "\"";
 
