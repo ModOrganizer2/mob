@@ -33,15 +33,16 @@ env get_vcvars_env(arch a)
 
 	// "vcvarsall.bat" amd64 && set > temp_file
 	std::string cmd =
-		"\"" + tools::vs::vcvars().string() + "\" " + arch_s +
-		" && set > \"" + tmp.string() + "\"";
+		"\"" + path_to_utf8(tools::vs::vcvars()) + "\" " + arch_s +
+		" && set > \"" + path_to_utf8(tmp) + "\"";
 
 	process::raw(gcx(), cmd)
+		.cmd_unicode(true)
 		.run();
 
 	gcx().trace(context::generic, "reading from {}", tmp);
 
-	std::stringstream ss(op::read_text_file(gcx(), tmp));
+	std::stringstream ss(op::read_text_file(gcx(), encodings::utf16, tmp));
 	op::delete_file(gcx(), tmp);
 
 	env e;
@@ -119,7 +120,7 @@ env& env::append_path(const std::vector<fs::path>& v)
 		if (!path.empty())
 			path += ";";
 
-		path += p.string();
+		path += path_to_utf8(p);
 	}
 
 	set("PATH", path, replace);
@@ -172,13 +173,15 @@ void env::set_from(const env& e)
 
 void env::create() const
 {
+	sys_.clear();
+
 	for (auto&& v : vars_)
 	{
-		string_ += v.first + "=" + v.second;
-		string_.append(1, '\0');
+		sys_ += utf8_to_utf16(v.first + "=" + v.second);
+		sys_.append(1, L'\0');
 	}
 
-	string_.append(1, '\0');
+	sys_.append(1, L'\0');
 }
 
 env::map::const_iterator env::find(const std::string& name) const
@@ -192,79 +195,102 @@ env::map::const_iterator env::find(const std::string& name) const
 	return vars_.end();
 }
 
-void* env::get_pointers() const
+void* env::get_unicode_pointers() const
 {
 	if (vars_.empty())
 		return nullptr;
 
-	if (string_.empty())
+	if (sys_.empty())
 		create();
 
-	return (void*)string_.c_str();
+	return (void*)sys_.c_str();
 }
 
 
 
 void this_env::set(const std::string& k, const std::string& v, env::flags f)
 {
+	const std::wstring wk = utf8_to_utf16(k);
+	const std::wstring wv = utf8_to_utf16(v);
+
 	switch (f)
 	{
 		case env::replace:
-			::SetEnvironmentVariableA(k.c_str(), v.c_str());
+		{
+			::SetEnvironmentVariableW(wk.c_str(), wv.c_str());
 			break;
+		}
 
 		case env::append:
-			::SetEnvironmentVariableA(k.c_str(), (get(k) + v).c_str());
+		{
+			const std::wstring current = get_impl(k);
+			::SetEnvironmentVariableW(wk.c_str(), (current + wv).c_str());
 			break;
+		}
 
 		case env::prepend:
-			::SetEnvironmentVariableA(k.c_str(), (v + get(k)).c_str());
+		{
+			const std::wstring current = get_impl(k);
+			::SetEnvironmentVariableW(wk.c_str(), (wv + current).c_str());
 			break;
+		}
 	}
 }
 
 void this_env::prepend_to_path(const fs::path& p)
 {
 	gcx().trace(context::generic, "prepending to PATH: {}", p);
-	set("PATH", p.string() + ";", env::prepend);
+	set("PATH", path_to_utf8(p) + ";", env::prepend);
 }
 
 std::string this_env::get(const std::string& name)
 {
-	const std::size_t buffer_size = GetEnvironmentVariableA(
-		name.c_str(), nullptr, 0);
+	return utf16_to_utf8(get_impl(name));
+}
+
+std::wstring this_env::get_impl(const std::string& k)
+{
+	const std::wstring wk = utf8_to_utf16(k);
+
+	const std::size_t buffer_size = GetEnvironmentVariableW(
+		wk.c_str(), nullptr, 0);
 
 	if (buffer_size == 0)
-		bail_out("environment variable {} doesn't exist", name);
+		bail_out("environment variable {} doesn't exist", k);
 
-	auto buffer = std::make_unique<char[]>(buffer_size + 1);
+	auto buffer = std::make_unique<wchar_t[]>(buffer_size + 1);
 	std::fill(buffer.get(), buffer.get() + buffer_size + 1, 0);
 
-	GetEnvironmentVariableA(
-		name.c_str(), buffer.get(), static_cast<DWORD>(buffer_size));
+	const std::size_t written = GetEnvironmentVariableW(
+		wk.c_str(), buffer.get(), static_cast<DWORD>(buffer_size));
 
-	return buffer.get();
+	if (written == 0)
+		bail_out("environment variable {} doesn't exist", k);
+
+	MOB_ASSERT((written + 1) == buffer_size);
+
+	return {buffer.get(), buffer.get() + written};
 }
 
 env this_env::get()
 {
 	env e;
 
-	auto free = [](char* p) { FreeEnvironmentStrings(p); };
+	auto free = [](wchar_t* p) { FreeEnvironmentStringsW(p); };
 
-	auto env_block = std::unique_ptr<char, decltype(free)>{
-		GetEnvironmentStrings(), free};
+	auto env_block = std::unique_ptr<wchar_t, decltype(free)>{
+		GetEnvironmentStringsW(), free};
 
-	for (const char* name = env_block.get(); *name != '\0'; )
+	for (const wchar_t* name = env_block.get(); *name != L'\0'; )
 	{
-		const char* equal = std::strchr(name, '=');
-		std::string key(name, static_cast<std::size_t>(equal - name));
+		const wchar_t* equal = std::wcschr(name, '=');
+		std::wstring key(name, static_cast<std::size_t>(equal - name));
 
-		const char* pValue = equal + 1;
-		std::string value(pValue);
+		const wchar_t* pValue = equal + 1;
+		std::wstring value(pValue);
 
 		if (!key.empty())
-			e.set(key, value);
+			e.set(utf16_to_utf8(key), utf16_to_utf8(value));
 
 		name = pValue + value.length() + 1;
 	}

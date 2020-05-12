@@ -32,6 +32,14 @@ inline void mob_assert(
 }
 
 
+enum class encodings
+{
+	dont_know = 0,
+	utf8,
+	utf16
+};
+
+
 class context;
 class url;
 
@@ -214,7 +222,11 @@ std::string trim_copy(const std::string& s, const std::string& what=" \t\r\n");
 
 std::wstring utf8_to_utf16(std::string_view s);
 std::string utf16_to_utf8(std::wstring_view ws);
-std::string path_to_utf8(const fs::path& p);
+
+template <class T>
+std::string path_to_utf8(T&&) = delete;
+
+std::string path_to_utf8(fs::path p);
 
 
 class u8stream

@@ -16,7 +16,8 @@ public:
     async_pipe();
 
     handle_ptr create();
-    std::string_view read();
+	std::string_view read();
+	bool closed() const;
 
 private:
     static const std::size_t buffer_size = 50'000;
@@ -26,6 +27,7 @@ private:
     std::unique_ptr<char[]> buffer_;
     OVERLAPPED ov_;
     bool pending_;
+	bool closed_;
 
     HANDLE create_pipe();
     std::string_view try_read();
@@ -111,6 +113,8 @@ public:
 	process& stderr_level(context::level lv);
 	process& stderr_filter(filter_fun f);
 
+	process& cmd_unicode(bool b);
+
 	process& external_error_log(const fs::path& p);
 
 	process& flags(flags_t f);
@@ -182,6 +186,7 @@ private:
 	std::string name_;
 	fs::path bin_;
 	fs::path cwd_;
+	bool unicode_;
 	flags_t flags_;
 	stream stdout_;
 	stream stderr_;
@@ -195,15 +200,17 @@ private:
 
 	std::string make_name() const;
 	std::string make_cmd() const;
+	std::wstring make_cmd_args(const std::string& what) const;
 	void pipe_into(const process& p);
 
 	void do_run(const std::string& what);
-	bool read_pipes();
-	bool read_pipe(stream& s, async_pipe& pipe, context::reason r);
+	void read_pipes();
+	void read_pipe(stream& s, async_pipe& pipe, context::reason r);
 
 	void on_completed();
 	void on_timeout(bool& already_interrupted);
 	void dump_error_log_file() noexcept;
+	void dump_stderr() noexcept;
 
 	void add_arg(const std::string& k, const std::string& v, arg_flags f);
 

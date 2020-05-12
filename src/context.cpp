@@ -197,8 +197,8 @@ void context::set_log_file(const fs::path& p)
 {
 	if (!p.empty())
 	{
-		HANDLE h = CreateFileA(
-			p.string().c_str(), GENERIC_WRITE, FILE_SHARE_READ,
+		HANDLE h = CreateFileW(
+			p.native().c_str(), GENERIC_WRITE, FILE_SHARE_READ,
 			nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 
 		if (h == INVALID_HANDLE_VALUE)
@@ -242,8 +242,8 @@ void context::emit_log(level lv, const std::string& utf8) const
 
 	if (log_enabled(lv, conf::output_log_level()))
 	{
-		u8cout << utf8 << "\n";
 		auto c = level_color(lv);
+		u8cout << utf8 << "\n";
 	}
 
 	if (g_log_file && log_enabled(lv, conf::file_log_level()))

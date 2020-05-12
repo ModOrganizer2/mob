@@ -67,7 +67,7 @@ void extractor::do_run()
 	// so the handling of a duplicate directory is done manually in
 	// check_duplicate_directory() below
 
-	if (file_.string().ends_with(".tar.gz"))
+	if (file_.u8string().ends_with(u8".tar.gz"))
 	{
 		cx_->trace(context::generic, "this is a tar.gz, piping");
 
@@ -109,7 +109,7 @@ void extractor::do_run()
 
 void extractor::check_duplicate_directory(const fs::path& ifile)
 {
-	const auto dir_name = where_.filename().string();
+	const auto dir_name = where_.filename();
 
 	// check for a folder with the same name
 	if (!fs::exists(where_ / dir_name))
@@ -160,7 +160,7 @@ void extractor::check_duplicate_directory(const fs::path& ifile)
 
 	// give it a temp name in case there's yet another directory with the
 	// same name in it
-	const auto temp_dir = where_ / ("_mob_" + dir_name );
+	const auto temp_dir = where_ / (u8"_mob_" + dir_name.u8string());
 
 	cx_->trace(context::generic,
 		"renaming dir to {} to avoid clashes", temp_dir);

@@ -221,7 +221,7 @@ void copy_file_to_dir_if_better(
 		check(cx, dir);
 	}
 
-	if (file.string().find("*") != std::string::npos)
+	if (file.u8string().find(u8"*") != std::string::npos)
 		cx.bail_out(context::fs, "{} contains a glob", file);
 
 	if (!conf::dry())
@@ -266,7 +266,7 @@ void copy_file_to_file_if_better(
 		check(cx, dest);
 	}
 
-	if (src.string().find("*") != std::string::npos)
+	if (src.u8string().find(u8"*") != std::string::npos)
 		cx.bail_out(context::fs, "{} contains a glob", src);
 
 	if (!conf::dry())
@@ -309,13 +309,13 @@ void copy_glob_to_dir_if_better(
 	const fs::path& src_glob, const fs::path& dest_dir, flags f)
 {
 	const auto file_parent = src_glob.parent_path();
-	const auto wildcard = src_glob.filename().string();
+	const auto wildcard = src_glob.filename().native();
 
 	for (auto&& e : fs::directory_iterator(file_parent))
 	{
-		const auto name = e.path().filename().string();
+		const auto name = e.path().filename().native();
 
-		if (!PathMatchSpecA(name.c_str(), wildcard.c_str()))
+		if (!PathMatchSpecW(name.c_str(), wildcard.c_str()))
 		{
 			cx.trace(context::fs,
 				"{} did not match {}; skipping", name, wildcard);
@@ -355,12 +355,12 @@ void copy_glob_to_dir_if_better(
 	}
 }
 
-std::string read_text_file(const context& cx, const fs::path& p, flags f)
+std::string read_text_file_impl(const context& cx, const fs::path& p, flags f)
 {
 	cx.trace(context::fs, "reading {}", p);
 
 	std::string s;
-	std::ifstream in(p);
+	std::ifstream in(p, std::ios::binary);
 
 	in.seekg(0, std::ios::end);
 	s.resize(static_cast<std::size_t>(in.tellg()));
@@ -380,6 +380,42 @@ std::string read_text_file(const context& cx, const fs::path& p, flags f)
 	}
 
 	return s;
+}
+
+std::string read_text_file(
+	const context& cx, encodings e, const fs::path& p, flags f)
+{
+	cx.trace(context::fs, "reading {}", p);
+
+	std::string bytes = read_text_file_impl(cx, p, f);
+	if (bytes.empty())
+		return bytes;
+
+	std::string utf8;
+
+	switch (e)
+	{
+		case encodings::utf16:
+		{
+			const auto* wbuf = reinterpret_cast<const wchar_t*>(bytes.data());
+			const std::size_t n = bytes.size() / sizeof(wchar_t);
+			const std::wstring ws(wbuf, wbuf + n);
+
+			utf8 = utf16_to_utf8(ws);
+			break;
+		}
+
+		case encodings::utf8:
+		case encodings::dont_know:
+		default:
+		{
+			utf8 = std::move(bytes);
+			break;
+		}
+	}
+
+	utf8 = replace_all(utf8, "\r\n", "\n");
+	return utf8;
 }
 
 void write_text_file(
@@ -531,8 +567,8 @@ void check(const context& cx, const fs::path& p)
 
 	auto is_inside = [](auto&& p, auto&& dir)
 	{
-		const std::string s = p.string();
-		const std::string prefix = dir.string();
+		const std::string s = path_to_utf8(p);
+		const std::string prefix = path_to_utf8(dir);
 
 		if (s.size() < prefix.size())
 			return false;

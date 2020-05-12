@@ -27,13 +27,13 @@ public:
 
 	std::string get(const std::string& k) const;
 
-	void* get_pointers() const;
+	void* get_unicode_pointers() const;
 
 private:
 	using map = std::map<std::string, std::string>;
 
 	map vars_;
-	mutable std::string string_;
+	mutable std::wstring sys_;
 
 	void create() const;
 	map::const_iterator find(const std::string& name) const;
@@ -51,6 +51,9 @@ struct this_env
 
 	static env get();
 	static std::string get(const std::string& k);
+
+private:
+	static std::wstring get_impl(const std::string& k);
 };
 
 }	// namespace

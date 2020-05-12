@@ -25,6 +25,7 @@ int basic_process_runner::execute_and_join()
 	process_.set_context(cx_);
 	process_.run();
 	join();
+
 	return process_.exit_code();
 }
 

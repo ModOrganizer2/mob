@@ -320,11 +320,11 @@ int main(int argc, char** argv)
 
 		if (r == 0)
 		{
-			mob::gcx().debug(mob::context::generic, "mob done");
+			mob::gcx().info(mob::context::generic, "mob done");
 		}
 		else
 		{
-			mob::gcx().debug(mob::context::generic,
+			mob::gcx().info(mob::context::generic,
 				"mob finished with exit code {}", r);
 		}
 

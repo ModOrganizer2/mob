@@ -483,7 +483,7 @@ std::string cp_to_utf8(std::string_view s)
 	return *s8;
 }
 
-std::string path_to_utf8(const fs::path& p)
+std::string path_to_utf8(fs::path p)
 {
 	return utf16_to_utf8(p.native());
 }

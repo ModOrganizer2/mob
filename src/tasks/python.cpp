@@ -127,12 +127,12 @@ void python::build_and_install_from_source()
 			"python", "pythonw", "python3dll", "select", "pyexpat",
 			"unicodedata", "_queue", "_bz2", "_ssl"})
 			.parameters({
-			"bz2Dir=" + bzip2::source_path().string(),
-			"zlibDir=" + zlib::source_path().string(),
-			"opensslIncludeDir=" + openssl::include_path().string(),
-			"opensslOutDir=" + openssl::source_path().string(),
-			"libffiIncludeDir=" + libffi::include_path().string(),
-			"libffiOutDir=" + libffi::lib_path().string()}));
+			"bz2Dir=" + path_to_utf8(bzip2::source_path()),
+			"zlibDir=" + path_to_utf8(zlib::source_path()),
+			"opensslIncludeDir=" + path_to_utf8(openssl::include_path()),
+			"opensslOutDir=" + path_to_utf8(openssl::source_path()),
+			"libffiIncludeDir=" + path_to_utf8(libffi::include_path()),
+			"libffiOutDir=" + path_to_utf8(libffi::lib_path())}));
 
 	package();
 	install_pip();

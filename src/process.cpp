@@ -15,17 +15,21 @@ const DWORD process_wait_timeout = 50;
 HANDLE get_bit_bucket()
 {
 	SECURITY_ATTRIBUTES sa { .nLength = sizeof(sa), .bInheritHandle = TRUE };
-	return ::CreateFileA("NUL", GENERIC_WRITE, 0, &sa, OPEN_EXISTING, 0, 0);
+	return ::CreateFileW(L"NUL", GENERIC_WRITE, 0, &sa, OPEN_EXISTING, 0, 0);
 }
 
-
 async_pipe::async_pipe()
-	: pending_(false)
+	:  pending_(false), closed_(true)
 {
 	buffer_ = std::make_unique<char[]>(buffer_size);
 	std::memset(buffer_.get(), 0, buffer_size);
 
 	std::memset(&ov_, 0, sizeof(ov_));
+}
+
+bool async_pipe::closed() const
+{
+	return closed_;
 }
 
 handle_ptr async_pipe::create()
@@ -44,6 +48,7 @@ handle_ptr async_pipe::create()
 	}
 
 	event_.reset(ov_.hEvent);
+	closed_ = false;
 
 	return out;
 }
@@ -60,8 +65,8 @@ HANDLE async_pipe::create_pipe()
 {
 	static std::atomic<int> pipe_id(0);
 
-	const std::string pipe_name_prefix = "\\\\.\\pipe\\mob_pipe";
-	const std::string pipe_name = pipe_name_prefix + std::to_string(++pipe_id);
+	const std::wstring pipe_name =
+		L"\\\\.\\pipe\\mob_pipe" + std::to_wstring(++pipe_id);
 
 	SECURITY_ATTRIBUTES sa = {};
 	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -71,7 +76,7 @@ HANDLE async_pipe::create_pipe()
 
 	// creating pipe
 	{
-		HANDLE pipe_handle = ::CreateNamedPipeA(
+		HANDLE pipe_handle = ::CreateNamedPipeW(
 			pipe_name.c_str(), PIPE_ACCESS_DUPLEX|FILE_FLAG_OVERLAPPED,
 			PIPE_TYPE_BYTE|PIPE_READMODE_BYTE|PIPE_WAIT,
 			1, buffer_size, buffer_size, pipe_timeout, &sa);
@@ -79,7 +84,7 @@ HANDLE async_pipe::create_pipe()
 		if (pipe_handle == INVALID_HANDLE_VALUE)
 		{
 			const auto e = GetLastError();
-			bail_out("CreateNamedPipe failed", error_message(e));
+			bail_out("CreateNamedPipeW failed", error_message(e));
 		}
 
 		pipe.reset(pipe_handle);
@@ -104,7 +109,7 @@ HANDLE async_pipe::create_pipe()
 
 
 	// creating handle to pipe which is passed to CreateProcess()
-	HANDLE output_write = ::CreateFileA(
+	HANDLE output_write = ::CreateFileW(
 		pipe_name.c_str(), FILE_WRITE_DATA|SYNCHRONIZE, 0,
 		&sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 
@@ -135,7 +140,8 @@ std::string_view async_pipe::try_read()
 
 			case ERROR_BROKEN_PIPE:
 			{
-				// broken pipe probably means the process is finished
+				// broken pipe means the process is finished
+				closed_ = true;
 				break;
 			}
 
@@ -183,7 +189,8 @@ std::string_view async_pipe::check_pending()
 
 			case ERROR_BROKEN_PIPE:
 			{
-				// broken pipe probably means lootcli is finished
+				// broken pipe means the process is finished
+				closed_ = true;
 				break;
 			}
 
@@ -222,7 +229,7 @@ process::impl& process::impl::operator=(const impl& i)
 
 
 process::process()
-	: cx_(&gcx()), flags_(process::noflags), code_(0)
+	: cx_(&gcx()), unicode_(false), flags_(process::noflags), code_(0)
 {
 }
 
@@ -260,7 +267,7 @@ process& process::name(const std::string& name)
 std::string process::name() const
 {
 	if (name_.empty())
-		return bin_.stem().string();
+		return path_to_utf8(bin_.stem());
 	else
 		return name_;
 }
@@ -323,6 +330,12 @@ process& process::stderr_filter(filter_fun f)
 	return *this;
 }
 
+process& process::cmd_unicode(bool b)
+{
+	unicode_ = b;
+	return *this;
+}
+
 process& process::external_error_log(const fs::path& p)
 {
 	error_log_file_ = p;
@@ -359,7 +372,7 @@ std::string process::make_cmd() const
 	if (!raw_.empty())
 		return raw_;
 
-	return "\"" + bin_.string() + "\"" + cmd_;
+	return "\"" + path_to_utf8(bin_) + "\"" + cmd_;
 }
 
 void process::pipe_into(const process& p)
@@ -394,10 +407,10 @@ void process::do_run(const std::string& what)
 		op::delete_file(*cx_, error_log_file_, op::optional);
 	}
 
-	STARTUPINFOA si = { .cb=sizeof(si) };
+	STARTUPINFOW si = { .cb=sizeof(si) };
 	PROCESS_INFORMATION pi = {};
 
-	handle_ptr stdout_pipe, stderr_pipe;
+	handle_ptr stdout_pipe, stderr_pipe, stdin_pipe;
 
 	switch (stdout_.flags)
 	{
@@ -445,28 +458,31 @@ void process::do_run(const std::string& what)
 		}
 	}
 
-	si.hStdInput = get_bit_bucket();
+	stdin_pipe.reset(get_bit_bucket());
+	si.hStdInput = stdin_pipe.get();
+
 	si.dwFlags = STARTF_USESTDHANDLES;
 
-	const std::string cmd = this_env::get("COMSPEC");
-	const std::string args = "/C \"" + what + "\"";
+	const std::wstring cmd = utf8_to_utf16(this_env::get("COMSPEC"));
+	std::wstring args = make_cmd_args(what);
 
-	const char* cwd_p = nullptr;
-	std::string cwd_s;
+	const wchar_t* cwd_p = nullptr;
+	std::wstring cwd_s;
 
 	if (!cwd_.empty())
 	{
 		op::create_directories(*cx_, cwd_);
-		cwd_s = cwd_.string();
+		cwd_s = cwd_.native();
 		cwd_p = (cwd_s.empty() ? nullptr : cwd_s.c_str());
 	}
 
 	cx_->trace(context::cmd, "creating process");
 
-	const auto r = ::CreateProcessA(
-		cmd.c_str(), const_cast<char*>(args.c_str()),
-		nullptr, nullptr, TRUE, CREATE_NEW_PROCESS_GROUP,
-		env_.get_pointers(), cwd_p, &si, &pi);
+	const auto r = ::CreateProcessW(
+		cmd.c_str(), args.data(),
+		nullptr, nullptr, TRUE,
+		CREATE_NEW_PROCESS_GROUP|CREATE_UNICODE_ENVIRONMENT,
+		env_.get_unicode_pointers(), cwd_p, &si, &pi);
 
 	if (!r)
 	{
@@ -479,6 +495,18 @@ void process::do_run(const std::string& what)
 
 	::CloseHandle(pi.hThread);
 	impl_.handle.reset(pi.hProcess);
+}
+
+std::wstring process::make_cmd_args(const std::string& what) const
+{
+	std::wstring s;
+
+	if (unicode_)
+		s += L"/U ";
+
+	s += L"/C \"" + utf8_to_utf16(what) + L"\"";
+
+	return s;
 }
 
 void process::interrupt()
@@ -523,30 +551,19 @@ void process::join()
 		cx_->trace(context::cmd, "process interrupted and finished");
 }
 
-bool process::read_pipes()
+void process::read_pipes()
 {
-	bool read_something = false;
-
-	if (read_pipe(stdout_, impl_.stdout_pipe, context::std_out))
-		read_something = true;
-
-	if (read_pipe(stderr_, impl_.stderr_pipe, context::std_err))
-		read_something = true;
-
-	return read_something;
+	read_pipe(stdout_, impl_.stdout_pipe, context::std_out);
+	read_pipe(stderr_, impl_.stderr_pipe, context::std_err);
 }
 
-bool process::read_pipe(stream& s, async_pipe& pipe, context::reason r)
+void process::read_pipe(stream& s, async_pipe& pipe, context::reason r)
 {
-	bool read_something = false;
-
 	switch (s.flags)
 	{
 		case forward_to_log:
 		{
 			const std::string_view buffer = pipe.read();
-			if (!buffer.empty())
-				read_something = true;
 
 			for_each_line(buffer, [&](auto&& line)
 			{
@@ -562,15 +579,14 @@ bool process::read_pipe(stream& s, async_pipe& pipe, context::reason r)
 				cx_->log(f.r, f.lv, "{}", f.line);
 			});
 
+			s.string.append(buffer.begin(), buffer.end());
+
 			break;
 		}
 
 		case keep_in_string:
 		{
 			const std::string_view buffer = pipe.read();
-			if (!buffer.empty())
-				read_something = true;
-
 			s.string.append(buffer.begin(), buffer.end());
 			break;
 		}
@@ -579,8 +595,6 @@ bool process::read_pipe(stream& s, async_pipe& pipe, context::reason r)
 		case inherit:
 			break;
 	}
-
-	return read_something;
 }
 
 void process::on_completed()
@@ -588,7 +602,9 @@ void process::on_completed()
 	// one last time
 	for (;;)
 	{
-		if (!read_pipes())
+		read_pipes();
+
+		if (impl_.stdout_pipe.closed() && impl_.stderr_pipe.closed())
 			break;
 	}
 
@@ -620,6 +636,7 @@ void process::on_completed()
 	else
 	{
 		dump_error_log_file();
+		dump_stderr();
 		cx_->bail_out(context::cmd, "{} returned {}", make_name(), code_);
 	}
 }
@@ -669,7 +686,7 @@ void process::dump_error_log_file() noexcept
 		if (fs::exists(error_log_file_))
 		{
 			std::string log = op::read_text_file(
-				*cx_, error_log_file_, op::optional);
+				*cx_, encodings::dont_know, error_log_file_, op::optional);
 
 			if (log.empty())
 				return;
@@ -686,6 +703,32 @@ void process::dump_error_log_file() noexcept
 		{
 			cx_->debug(context::cmd,
 				"external error log file {} doesn't exist", error_log_file_);
+		}
+	}
+	catch(...)
+	{
+		// eat it
+	}
+}
+
+void process::dump_stderr() noexcept
+{
+	try
+	{
+		if (!stderr_.string.empty())
+		{
+			cx_->error(context::cmd,
+				"{} failed, content of stderr:", make_name());
+
+			for_each_line(stderr_.string, [&](auto&& line)
+			{
+				cx_->error(context::cmd, "        {}", line);
+			});
+		}
+		else
+		{
+			cx_->error(context::cmd,
+				"{} failed, stderr was empty", make_name());
 		}
 	}
 	catch(...)
@@ -752,7 +795,7 @@ std::string process::arg_to_string(const std::string& s, bool force_quote)
 
 std::string process::arg_to_string(const fs::path& p, bool)
 {
-	return "\"" + p.string() + "\"";
+	return "\"" + path_to_utf8(p) + "\"";
 }
 
 std::string process::arg_to_string(const url& u, bool force_quote)

@@ -225,8 +225,8 @@ void curl_downloader::on_write(char* ptr, std::size_t n) noexcept
 
 		cx_.trace(context::net, "opening {}", path_);
 
-		HANDLE h = ::CreateFileA(
-			path_.string().c_str(), GENERIC_WRITE, FILE_SHARE_READ,
+		HANDLE h = ::CreateFileW(
+			path_.native().c_str(), GENERIC_WRITE, FILE_SHARE_READ,
 			nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 
 		if (h == INVALID_HANDLE_VALUE)

@@ -399,10 +399,12 @@ fs::path find_third_party_directory()
 
 fs::path find_in_path(const std::string& exe)
 {
-	const std::size_t buffer_size = MAX_PATH;
-	char buffer[buffer_size + 1] = {};
+	const std::wstring wexe = utf8_to_utf16(exe);
 
-	if (SearchPathA(nullptr, exe.c_str(), nullptr, buffer_size, buffer, nullptr))
+	const std::size_t size = MAX_PATH;
+	wchar_t buffer[size + 1] = {};
+
+	if (SearchPathW(nullptr, wexe.c_str(), nullptr, size, buffer, nullptr))
 		return buffer;
 	else
 		return {};
@@ -950,7 +952,7 @@ void dump_options()
 
 	string_map tools;
 	for (auto&& [k, v] : g_tools)
-		tools[k] = v.string();
+		tools[k] = path_to_utf8(v);
 	table("tools", tools);
 
 	string_map prebuilt;
@@ -962,7 +964,7 @@ void dump_options()
 
 	string_map paths;
 	for (auto&& [k, v] : g_paths)
-		paths[k] = v.string();
+		paths[k] = path_to_utf8(v);
 	table("paths", paths);
 }
 

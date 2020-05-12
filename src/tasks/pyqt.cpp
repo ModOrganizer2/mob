@@ -111,8 +111,8 @@ void pyqt::sip_build()
 			python::source_path(),
 			python::scripts_path()})
 		.set("CL", " /MP")
-		.set("LIB", ";" + paths::install_libs().string(), env::append)
-		.set("PYTHONHOME", python::source_path().string());
+		.set("LIB", ";" + path_to_utf8(paths::install_libs()), env::append)
+		.set("PYTHONHOME", path_to_utf8(python::source_path()));
 
 
 	bypass_file built_bypass(cx(), source_path(), "built");
