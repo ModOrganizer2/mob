@@ -30,4 +30,11 @@ set "opts=%opts% -clp:ErrorsOnly;Verbosity=minimal"
 
 set "vcvars=%installation_path%\VC\Auxiliary\Build\vcvarsall.bat"
 cmd /c ""%vcvars%" amd64 > NUL && msbuild %opts%"
+
+if %errorlevel% neq 0 (
+	echo build failed
+	exit /b 1
+)
+
+copy "build\Release\x64\mob.exe" .\mob.exe > NUL
 echo run `mob -d path` to start building
