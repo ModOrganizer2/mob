@@ -43,7 +43,6 @@
 #pragma warning(disable: 4242)  // possible loss of data
 #pragma warning(disable: 4244)  // possible loss of data
 #pragma warning(disable: 4275)  // non dll-interface base
-#pragma warning(disable: 4566)  // character cannot be represented in CP
 
 
 #include <string>
