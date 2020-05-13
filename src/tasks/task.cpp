@@ -23,9 +23,9 @@ void list_tasks(bool err)
 	for (auto&& t : g_all_tasks)
 	{
 		if (err)
-			std::cerr << " - " << join(t->names(), ", ") << "\n";
+			u8cerr << " - " << join(t->names(), ", ") << "\n";
 		else
-			std::cout << " - " << join(t->names(), ", ") << "\n";
+			u8cout << " - " << join(t->names(), ", ") << "\n";
 	}
 }
 
@@ -40,8 +40,8 @@ task* find_task(const std::string& name)
 		}
 	}
 
-	std::cout << "task " << name << " not found\n";
-	std::cout << "valid tasks:\n";
+	u8cout << "task " << name << " not found\n";
+	u8cout << "valid tasks:\n";
 	list_tasks(true);
 
 	throw bailed("");
@@ -51,8 +51,7 @@ void run_tasks(const std::vector<task*> tasks)
 {
 	{
 		std::set<task*> set(tasks.begin(), tasks.end());
-		if (set.size() != tasks.size())
-			DebugBreak();
+		MOB_ASSERT(set.size() == tasks.size());
 	}
 
 	for (auto* t : tasks)
@@ -92,9 +91,9 @@ void run_tasks(const std::vector<std::string>& names)
 		return;
 
 	if (names.size() == 1)
-		gcx().debug(context::generic, "specified task: " + names[0]);
+		gcx().debug(context::generic, "specified task: {}", names[0]);
 	else
-		gcx().debug(context::generic, "specified tasks: " + join(names, " "));
+		gcx().debug(context::generic, "specified tasks: {}", join(names, " "));
 
 	std::vector<task*> tasks;
 	std::set<task*> seen;
@@ -224,7 +223,7 @@ void task::threaded_run(std::string thread_name, std::function<void ()> f)
 	}
 	catch(bailed e)
 	{
-		error(name() + " bailed out, interrupting all tasks");
+		error("{} bailed out, interrupting all tasks", name());
 		interrupt_all();
 	}
 	catch(interrupted)
@@ -233,7 +232,7 @@ void task::threaded_run(std::string thread_name, std::function<void ()> f)
 	}
 	catch(std::exception& e)
 	{
-		error(name() + " uncaught exception: " + e.what());
+		error("uncaught exception in task {}: {}", name(), e.what());
 		interrupt_all();
 	}
 }
@@ -349,7 +348,7 @@ void task::run_tool_impl(tool* t)
 		}
 	});
 
-	cx().debug(context::generic, "running tool " + t->name());
+	cx().debug(context::generic, "running tool {}", t->name());
 
 	context cxcopy(cx());
 

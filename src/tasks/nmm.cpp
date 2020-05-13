@@ -60,9 +60,9 @@ void nmm::do_build_and_install()
 	}
 
 	cx().debug(context::generic,
-		"msbuild multiprocess has failed more than " +
-		std::to_string(max_tries) + " times for nmm, restarting one last "
-		"time single process; that one should work");
+		"msbuild multiprocess has failed more than {} times for nmm, "
+		"restarting one last time single process; that one should work",
+		max_tries);
 
 	run_tool(msbuild()
 		.solution(source_path() / "NexusClient.sln")

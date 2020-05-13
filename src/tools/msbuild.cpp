@@ -96,6 +96,9 @@ void msbuild::do_run()
 
 	process_
 		.binary(tools::msbuild::binary())
+		.chcp(65001)
+		.stdout_encoding(encodings::utf8)
+		.stderr_encoding(encodings::utf8)
 		.arg("-nologo");
 
 	if ((flags_ & single_job) == 0)

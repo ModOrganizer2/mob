@@ -47,7 +47,7 @@ fs::path sip::module_source_path()
 	std::smatch m;
 
 	if (!std::regex_match(version_for_pyqt(), m, re))
-		bail_out("bad pyqt sip version " + version_for_pyqt());
+		bail_out("bad pyqt sip version {}", version_for_pyqt());
 
 	// 12.7
 	const auto dir = m[1].str() + "." + m[2].str();
@@ -86,15 +86,13 @@ void sip::download()
 	{
 		if (conf::redownload())
 		{
-			cx().trace(context::redownload,
-				"deleting " + download_file().string());
-
+			cx().trace(context::redownload, "deleting {}", download_file());
 			op::delete_file(cx(), download_file(), op::optional);
 		}
 		else
 		{
 			cx().trace(context::bypass,
-				"sip: " + download_file().string() + " already exists");
+				"sip: {} already exists", download_file());
 
 			return;
 		}
@@ -102,12 +100,18 @@ void sip::download()
 
 	run_tool(process_runner(process()
 		.binary(python::python_exe())
+		.chcp(65001)
+		.stdout_encoding(encodings::utf8)
+		.stderr_encoding(encodings::utf8)
+		.arg("-X", "utf8")
 		.arg("-m", "pip")
 		.arg("download")
 		.arg("--no-binary=:all:")
 		.arg("--no-deps")
 		.arg("-d", paths::cache())
-		.arg("sip==" + version())));
+		.arg("sip==" + version())
+		.env(this_env::get()
+			.set("PYTHONUTF8", "1"))));
 }
 
 void sip::generate()
@@ -118,17 +122,20 @@ void sip::generate()
 	{
 		if (conf::rebuild())
 		{
-			cx().trace(context::rebuild, "ignoring " + header.string());
+			cx().trace(context::rebuild, "ignoring {}", header);
 		}
 		else
 		{
-			cx().trace(context::bypass, header.string() + " already exists");
+			cx().trace(context::bypass, "{} already exists", header);
 			return;
 		}
 	}
 
 	run_tool(process_runner(process()
 		.binary(python::python_exe())
+		.chcp(65001)
+		.stdout_encoding(encodings::utf8)
+		.stderr_encoding(encodings::utf8)
 		.stderr_filter([&](process::filter& f)
 		{
 			if (f.line.find("zip_safe flag not set") != std::string::npos)
@@ -136,9 +143,12 @@ void sip::generate()
 			else if (f.line.find("module references __file__") != std::string::npos)
 				f.lv = context::level::trace;
 		})
+		.arg("-X", "utf8")
 		.arg("setup.py")
 		.arg("install")
-		.cwd(source_path())));
+		.cwd(source_path())
+		.env(this_env::get()
+			.set("PYTHONUTF8", "1"))));
 
 	run_tool(process_runner(process()
 		.binary(sip_module_exe())

@@ -20,7 +20,7 @@ void check(const context& cx, const fs::path& p);
 
 void touch(const context& cx, const fs::path& p)
 {
-	cx.trace(context::fs, "touching " + p.string());
+	cx.trace(context::fs, "touching {}", p);
 	check(cx, p);
 
 	if (!conf::dry())
@@ -29,7 +29,7 @@ void touch(const context& cx, const fs::path& p)
 
 void create_directories(const context& cx, const fs::path& p)
 {
-	cx.trace(context::fs, "creating dir " + p.string());
+	cx.trace(context::fs, "creating dir {}", p);
 	check(cx, p);
 
 	if (!conf::dry())
@@ -38,7 +38,7 @@ void create_directories(const context& cx, const fs::path& p)
 
 void delete_directory(const context& cx, const fs::path& p, flags f)
 {
-	cx.trace(context::fs, "deleting dir " + p.string());
+	cx.trace(context::fs, "deleting dir {}", p);
 	check(cx, p);
 
 	if (!fs::exists(p))
@@ -46,18 +46,16 @@ void delete_directory(const context& cx, const fs::path& p, flags f)
 		if (f & optional)
 		{
 			cx.trace(context::fs,
-				"not deleting dir " + p.string() + ", "
-				"doesn't exist (optional)");
+				"not deleting dir {}, doesn't exist (optional)", p);
 
 			return;
 		}
 
-		cx.bail_out(context::fs,
-			"can't delete dir " + p.string() + ", doesn't exist");
+		cx.bail_out(context::fs, "can't delete dir {}, doesn't exist", p);
 	}
 
 	if (fs::exists(p) && !fs::is_directory(p))
-		cx.bail_out(context::fs, p.string() + " is not a dir");
+		cx.bail_out(context::fs, "{} is not a dir", p);
 
 	if (!conf::dry())
 		do_delete_directory(cx, p);
@@ -65,7 +63,7 @@ void delete_directory(const context& cx, const fs::path& p, flags f)
 
 void delete_file(const context& cx, const fs::path& p, flags f)
 {
-	cx.trace(context::fs, "deleting file " + p.string());
+	cx.trace(context::fs, "deleting file {}", p);
 	check(cx, p);
 
 	if (!fs::exists(p))
@@ -73,21 +71,16 @@ void delete_file(const context& cx, const fs::path& p, flags f)
 		if (f & optional)
 		{
 			cx.trace(context::fs,
-				"not deleting file " + p.string() + ", "
-				"doesn't exist (optional)");
+				"not deleting file {}, doesn't exist (optional)", p);
 
 			return;
 		}
 
-		cx.bail_out(context::fs,
-			"can't delete file " + p.string() + ", doesn't exist");
+		cx.bail_out(context::fs, "can't delete file {}, doesn't exist", p);
 	}
 
 	if (fs::exists(p) && !fs::is_regular_file(p))
-	{
-		cx.bail_out(context::fs,
-			"can't delete " + p.string() + ", not a file");
-	}
+		cx.bail_out(context::fs, "can't delete {}, not a file", p);
 
 	if (!conf::dry())
 		do_delete_file(cx, p);
@@ -95,7 +88,7 @@ void delete_file(const context& cx, const fs::path& p, flags f)
 
 void remove_readonly(const context& cx, const fs::path& first)
 {
-	cx.trace(context::fs, "removing read-only from " + first.string());
+	cx.trace(context::fs, "removing read-only from {}", first);
 	check(cx, first);
 
 	if (!conf::dry())
@@ -116,9 +109,7 @@ bool is_source_better(
 {
 	if (!fs::exists(dest))
 	{
-		cx.trace(context::fs,
-			"target " + dest.string() + " doesn't exist; copying");
-
+		cx.trace(context::fs, "target {} doesn't exist; copying", dest);
 		return true;
 	}
 
@@ -128,7 +119,8 @@ bool is_source_better(
 	if (ec)
 	{
 		cx.warning(context::fs,
-			"failed to get size of " + src.string() + "; forcing copy");
+			"failed to get size of {}, {}; forcing copy",
+			src, ec.message());
 
 		return true;
 	}
@@ -137,18 +129,17 @@ bool is_source_better(
 	if (ec)
 	{
 		cx.warning(context::fs,
-			"failed to get size of " + dest.string() + "; forcing copy");
+			"failed to get size of {}, {}; forcing copy",
+			dest, ec.message());
 
 		return true;
 	}
 
 	if (src_size != dest_size)
 	{
-		cx.trace(
-			context::fs,
-			"src " + src.string() + " is " + std::to_string(src_size) + "), "
-			"dest " + dest.string() + " is " + std::to_string(dest_size) + "); "
-			"sizes different, copying");
+		cx.trace(context::fs,
+			"src {} bytes, dest {} bytes; different, copying",
+			src, src_size, dest, dest_size);
 
 		return true;
 	}
@@ -158,7 +149,8 @@ bool is_source_better(
 	if (ec)
 	{
 		cx.warning(context::fs,
-			"failed to get time of " + src.string() + "; forcing copy");
+			"failed to get time of {}, {}; forcing copy",
+			src, ec.message());
 
 		return true;
 	}
@@ -167,7 +159,8 @@ bool is_source_better(
 	if (ec)
 	{
 		cx.warning(context::fs,
-			"failed to get time of " + dest.string() + "; forcing copy");
+			"failed to get time of {}, {}; forcing copy",
+			dest, ec.message());
 
 		return true;
 	}
@@ -175,8 +168,8 @@ bool is_source_better(
 	if (src_time > dest_time)
 	{
 		cx.trace(context::fs,
-			"src " + src.string() + " is newer than " + dest.string() + "; "
-			"copying");
+			"src {} is newer than dest {}; copying",
+			src, dest);
 
 		return true;
 	}
@@ -193,11 +186,10 @@ void rename(const context& cx, const fs::path& src, const fs::path& dest)
 	if (fs::exists(dest))
 	{
 		cx.bail_out(context::fs,
-			"can't rename " + src.string() + " to " + dest.string() + ", "
-			"already exists");
+			"can't rename {} to {}, already exists", src, dest);
 	}
 
-	cx.trace(context::fs, "renaming " + src.string() + " to " + dest.string());
+	cx.trace(context::fs, "renaming {} to {}", src, dest);
 	do_rename(cx, src, dest);
 }
 
@@ -212,11 +204,11 @@ void move_to_directory(
 	if (fs::exists(target))
 	{
 		cx.bail_out(context::fs,
-			"can't move " + src.string() + " to " + dest_dir.string() + ", " +
-			src.filename().string() + " already exists");
+			"can't move {} to directory {}, {} already exists",
+			src, dest_dir, target);
 	}
 
-	cx.trace(context::fs, "moving " + src.string() + " to " + target.string());
+	cx.trace(context::fs, "moving {} to {}", src, target);
 	do_rename(cx, src, target);
 }
 
@@ -229,8 +221,8 @@ void copy_file_to_dir_if_better(
 		check(cx, dir);
 	}
 
-	if (file.string().find("*") != std::string::npos)
-		cx.bail_out(context::fs, file.string() + " contains a glob");
+	if (file.u8string().find(u8"*") != std::string::npos)
+		cx.bail_out(context::fs, "{} contains a glob", file);
 
 	if (!conf::dry())
 	{
@@ -239,35 +231,29 @@ void copy_file_to_dir_if_better(
 			if (f & optional)
 			{
 				cx.trace(context::fs,
-					"not copying " + file.string() + ", "
-					"doesn't exist (optional)");
+					"not copying {}, doesn't exist (optional)", file);
 
 				return;
 			}
 
-			cx.bail_out(context::fs,
-				"can't copy " + file.string() + ", not a file");
+			cx.bail_out(context::fs, "can't copy {}, not a file", file);
 		}
 
 		if (fs::exists(dir) && !fs::is_directory(dir))
-		{
-			cx.bail_out(context::fs,
-				"can't copy to " + dir.string() + ", not a dir");
-		}
+			cx.bail_out(context::fs, "can't copy to {}, not a dir", dir);
 	}
 
 	const auto target = dir / file.filename();
 	if (is_source_better(cx, file, target))
 	{
-		cx.trace(context::fs, file.string() + " -> " + dir.string());
+		cx.trace(context::fs, "{} -> {}", file, dir);
 
 		if (!conf::dry())
 			do_copy_file_to_dir(cx, file, dir);
 	}
 	else
 	{
-		cx.trace(context::bypass,
-			"(skipped) " + file.string() + " -> " + dir.string());
+		cx.trace(context::bypass, "(skipped) {} -> {}", file, dir);
 	}
 }
 
@@ -280,8 +266,8 @@ void copy_file_to_file_if_better(
 		check(cx, dest);
 	}
 
-	if (src.string().find("*") != std::string::npos)
-		cx.bail_out(context::fs, src.string() + " contains a glob");
+	if (src.u8string().find(u8"*") != std::string::npos)
+		cx.bail_out(context::fs, "{} contains a glob", src);
 
 	if (!conf::dry())
 	{
@@ -290,35 +276,31 @@ void copy_file_to_file_if_better(
 			if (f & optional)
 			{
 				cx.trace(context::fs,
-					"not copying " + src.string() + ", "
-					"doesn't exist (optional)");
+					"not copying {}, doesn't exist (optional)", src);
 
 				return;
 			}
 
-			cx.bail_out(context::fs,
-				"can't copy " + src.string() + ", doesn't exist");
+			cx.bail_out(context::fs, "can't copy {}, doesn't exist", src);
 		}
 
 		if (fs::exists(dest) && fs::is_directory(dest))
 		{
 			cx.bail_out(context::fs,
-				"can't copy to " + dest.string() + ", already exists but is "
-				"a directory");
+				"can't copy to {}, already exists but is a directory", dest);
 		}
 	}
 
 	if (is_source_better(cx, src, dest))
 	{
-		cx.trace(context::fs, src.string() + " -> " + dest.string());
+		cx.trace(context::fs, "{} -> {}", src, dest);
 
 		if (!conf::dry())
 			do_copy_file_to_file(cx, src, dest);
 	}
 	else
 	{
-		cx.trace(context::bypass,
-			"(skipped) " + src.string() + " -> " + dest.string());
+		cx.trace(context::bypass, "(skipped) {} -> {}", src, dest);
 	}
 }
 
@@ -327,16 +309,16 @@ void copy_glob_to_dir_if_better(
 	const fs::path& src_glob, const fs::path& dest_dir, flags f)
 {
 	const auto file_parent = src_glob.parent_path();
-	const auto wildcard = src_glob.filename().string();
+	const auto wildcard = src_glob.filename().native();
 
 	for (auto&& e : fs::directory_iterator(file_parent))
 	{
-		const auto name = e.path().filename().string();
+		const auto name = e.path().filename().native();
 
-		if (!PathMatchSpecA(name.c_str(), wildcard.c_str()))
+		if (!PathMatchSpecW(name.c_str(), wildcard.c_str()))
 		{
 			cx.trace(context::fs,
-				name + " did not match " + wildcard + "; skipping");
+				"{} did not match {}; skipping", name, wildcard);
 
 			continue;
 		}
@@ -350,8 +332,8 @@ void copy_glob_to_dir_if_better(
 			else
 			{
 				cx.trace(context::fs,
-					"file " + name + " matched " + wildcard + " "
-					"but files are not copied");
+					"file {} matched {} but files are not copied",
+					name, wildcard);
 			}
 		}
 		else if (e.is_directory())
@@ -366,19 +348,19 @@ void copy_glob_to_dir_if_better(
 			else
 			{
 				cx.trace(context::fs,
-					"directory " + name + " matched " + wildcard + " "
-					"but directories are not copied");
+					"directory {} matched {} but directories are not copied",
+					name, wildcard);
 			}
 		}
 	}
 }
 
-std::string read_text_file(const context& cx, const fs::path& p, flags f)
+std::string read_text_file_impl(const context& cx, const fs::path& p, flags f)
 {
-	cx.trace(context::fs, "reading " + p.string());
+	cx.trace(context::fs, "reading {}", p);
 
 	std::string s;
-	std::ifstream in(p);
+	std::ifstream in(p, std::ios::binary);
 
 	in.seekg(0, std::ios::end);
 	s.resize(static_cast<std::size_t>(in.tellg()));
@@ -388,23 +370,31 @@ std::string read_text_file(const context& cx, const fs::path& p, flags f)
 	if (in.bad())
 	{
 		if (f & optional)
-		{
-			cx.debug(context::fs,
-				"can't read from " + p.string() + " (optional)");
-		}
+			cx.debug(context::fs, "can't read from {} (optional)", p);
 		else
-		{
-			cx.bail_out(context::fs, "can't read from " + p.string());
-		}
+			cx.bail_out(context::fs, "can't read from {}", p);
 	}
 	else
 	{
-		cx.trace(context::fs,
-			"finished reading " + p.string() + ", " +
-			std::to_string(s.size()) + " bytes");
+		cx.trace(context::fs, "finished reading {}, {} bytes", p, s.size());
 	}
 
 	return s;
+}
+
+std::string read_text_file(
+	const context& cx, encodings e, const fs::path& p, flags f)
+{
+	cx.trace(context::fs, "reading {}", p);
+
+	std::string bytes = read_text_file_impl(cx, p, f);
+	if (bytes.empty())
+		return bytes;
+
+	std::string utf8 = bytes_to_utf8(e, bytes);
+	utf8 = replace_all(utf8, "\r\n", "\n");
+
+	return utf8;
 }
 
 void write_text_file(
@@ -412,7 +402,7 @@ void write_text_file(
 {
 	check(cx, p);
 
-	cx.trace(context::fs, "writing " + p.string());
+	cx.trace(context::fs, "writing {} bytes to {}", s.size(), p);
 
 	{
 		std::ofstream out(p);
@@ -423,19 +413,17 @@ void write_text_file(
 		{
 			if (f & optional)
 			{
-				cx.debug(context::fs,
-					"can't write to " + p.string() + " (optional)");
+				cx.debug(context::fs, "can't write to {} (optional)", p);
 			}
 			else
 			{
-				cx.bail_out(context::fs, "can't write to " + p.string());
+				cx.bail_out(context::fs, "can't write to {}", p);
 			}
 		}
 	}
 
 	cx.trace(context::fs,
-		"finished writing " + p.string() + ", " +
-		std::to_string(s.size()) + " bytes");
+		"finished writing {} bytes to {}", s.size(), p);
 }
 
 
@@ -445,7 +433,7 @@ void do_touch(const context& cx, const fs::path& p)
 
 	std::ofstream out(p);
 	if (!out)
-		cx.bail_out(context::fs, "failed to touch " + p.string());
+		cx.bail_out(context::fs, "failed to touch {}", p);
 }
 
 void do_create_directories(const context& cx, const fs::path& p)
@@ -454,7 +442,7 @@ void do_create_directories(const context& cx, const fs::path& p)
 	fs::create_directories(p, ec);
 
 	if (ec)
-		cx.bail_out(context::fs, "can't create " + p.string(), ec);
+		cx.bail_out(context::fs, "can't create {}, {}", p, ec.message());
 }
 
 void do_delete_directory(const context& cx, const fs::path& p)
@@ -468,8 +456,8 @@ void do_delete_directory(const context& cx, const fs::path& p)
 		{
 			cx.trace(
 				context::fs,
-				"got access denied trying to delete dir " + p.string() + ", "
-				"trying to remove read-only flag recursively");
+				"got access denied trying to delete dir {}, "
+				"trying to remove read-only flag recursively", p);
 
 			remove_readonly(cx, p);
 			fs::remove_all(p, ec);
@@ -478,7 +466,7 @@ void do_delete_directory(const context& cx, const fs::path& p)
 				return;
 		}
 
-		cx.bail_out(context::fs, "failed to delete " + p.string(), ec);
+		cx.bail_out(context::fs, "failed to delete {}, {}", p, ec.message());
 	}
 }
 
@@ -488,7 +476,7 @@ void do_delete_file(const context& cx, const fs::path& p)
 	fs::remove(p, ec);
 
 	if (ec)
-		cx.bail_out(context::fs, "can't delete " + p.string(), ec);
+		cx.bail_out(context::fs, "can't delete {}, {}", p, ec.message());
 }
 
 void do_copy_file_to_dir(
@@ -504,7 +492,7 @@ void do_copy_file_to_dir(
 	if (ec)
 	{
 		cx.bail_out(context::fs,
-			"can't copy " + f.string() + " to " + d.string(), ec);
+			"can't copy {} to {}, {}", f, d, ec.message());
 	}
 }
 
@@ -521,13 +509,13 @@ void do_copy_file_to_file(
 	if (ec)
 	{
 		cx.bail_out(context::fs,
-			"can't copy " + src.string() + " to " + dest.string(), ec);
+			"can't copy {} to {}, {}", src, dest, ec.message());
 	}
 }
 
 void do_remove_readonly(const context& cx, const fs::path& p)
 {
-	cx.trace(context::fs, "chmod +x " + p.string());
+	cx.trace(context::fs, "chmod +x {}", p);
 
 	std::error_code ec;
 	fs::permissions(p, fs::perms::owner_write, fs::perm_options::add, ec);
@@ -535,7 +523,7 @@ void do_remove_readonly(const context& cx, const fs::path& p)
 	if (ec)
 	{
 		cx.bail_out(context::fs,
-			"can't remove read-only flag on " + p.string(), ec);
+			"can't remove read-only flag on {}, {}", p, ec.message());
 	}
 }
 
@@ -547,7 +535,7 @@ void do_rename(const context& cx, const fs::path& src, const fs::path& dest)
 	if (ec)
 	{
 		cx.bail_out(context::fs,
-			"can't rename " + src.string() + " to " + dest.string(), ec);
+			"can't rename {} to {}, {}", src, dest, ec.message());
 	}
 }
 
@@ -558,8 +546,8 @@ void check(const context& cx, const fs::path& p)
 
 	auto is_inside = [](auto&& p, auto&& dir)
 	{
-		const std::string s = p.string();
-		const std::string prefix = dir.string();
+		const std::string s = path_to_utf8(p);
+		const std::string prefix = path_to_utf8(dir);
 
 		if (s.size() < prefix.size())
 			return false;
@@ -581,7 +569,7 @@ void check(const context& cx, const fs::path& p)
 	if (is_inside(p, paths::licenses()))
 		return;
 
-	cx.bail_out(context::fs, "path " + p.string() + " is outside prefix");
+	cx.bail_out(context::fs, "path {} is outside prefix", p);
 }
 
 }	// namespace

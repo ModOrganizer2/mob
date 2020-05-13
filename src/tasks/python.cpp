@@ -27,15 +27,13 @@ python::version_info python::parsed_version()
 	std::smatch m;
 
 	if (!std::regex_match(version(), m, re))
-		bail_out("bad python version '" + version() + "'");
+		bail_out("bad python version '{}'", version());
 
 	version_info v;
 
 	v.major = m[1];
 	v.minor = m[2];
-
-	if (m.size() > 3)
-		v.patch = m[3];
+	v.patch = m[3];
 
 	return v;
 }
@@ -126,13 +124,13 @@ void python::build_and_install_from_source()
 		.projects({
 			"python", "pythonw", "python3dll", "select", "pyexpat",
 			"unicodedata", "_queue", "_bz2", "_ssl"})
-			.parameters({
-			"bz2Dir=" + bzip2::source_path().string(),
-			"zlibDir=" + zlib::source_path().string(),
-			"opensslIncludeDir=" + openssl::include_path().string(),
-			"opensslOutDir=" + openssl::source_path().string(),
-			"libffiIncludeDir=" + libffi::include_path().string(),
-			"libffiOutDir=" + libffi::lib_path().string()}));
+		.parameters({
+			"bz2Dir=" + path_to_utf8(bzip2::source_path()),
+			"zlibDir=" + path_to_utf8(zlib::source_path()),
+			"opensslIncludeDir=" + path_to_utf8(openssl::include_path()),
+			"opensslOutDir=" + path_to_utf8(openssl::source_path()),
+			"libffiIncludeDir=" + path_to_utf8(libffi::include_path()),
+			"libffiOutDir=" + path_to_utf8(libffi::lib_path())}));
 
 	package();
 	install_pip();

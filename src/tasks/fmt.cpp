@@ -41,12 +41,14 @@ void fmt::do_clean_for_rebuild()
 void fmt::do_build_and_install()
 {
 	const auto build_path = run_tool(cmake()
-		.generator(cmake::jom)
+		.generator(cmake::vs)
 		.root(source_path())
+		.prefix(source_path() / "build")
 		.def("FMT_TEST", "OFF")
 		.def("FMT_DOC", "OFF"));
 
-	run_tool(jom().path(build_path));
+	run_tool(msbuild()
+		.solution(build_path / "INSTALL.vcxproj"));
 }
 
 url fmt::source_url()

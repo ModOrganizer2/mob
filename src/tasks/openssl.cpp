@@ -108,11 +108,12 @@ void openssl::configure()
 	run_tool(process_runner(process()
 		.binary(tools::perl::binary())
 		.arg("Configure")
+		.arg("VC-WIN64A")
 		.arg("--openssldir=", build_path())
 		.arg("--prefix=", build_path())
 		.arg("-FS")
 		.arg("-MP1")
-		.arg("VC-WIN64A")
+		.arg("-wd4566")
 		.cwd(source_path())
 		.env(env::vs(arch::x64))));
 }
@@ -137,8 +138,9 @@ void openssl::install_engines()
 	}
 
 	cx().debug(context::generic,
-		"jom /J has failed more than " + std::to_string(max_tries) + " "
-		"times, restarting one last time without /J; that one should work");
+		"jom /J has failed more than {} times, "
+		"restarting one last time without /J; that one should work",
+		max_tries);
 
 	run_tool(jom()
 		.path(source_path())
@@ -205,7 +207,7 @@ std::smatch openssl::parse_version()
 	std::smatch m;
 
 	if (!std::regex_match(version(), m, re))
-		bail_out("bad openssl version '" + version() + "'");
+		bail_out("bad openssl version '{}'", version());
 
 	return m;
 }
@@ -233,7 +235,7 @@ std::string openssl::version_no_minor_underscores()
 {
 	auto m = parse_version();
 
-	if (m.size() == 2)
+	if (m[2] == "")
 		return m[1].str();
 	else
 		return m[1].str() + "_" + m[2].str();

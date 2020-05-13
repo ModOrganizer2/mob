@@ -16,20 +16,53 @@ public:
     async_pipe();
 
     handle_ptr create();
-    std::string_view read();
+	std::string_view read();
+	bool closed() const;
 
 private:
-    static const std::size_t buffer_size = 50000;
+    static const std::size_t buffer_size = 50'000;
 
     handle_ptr stdout_;
     handle_ptr event_;
     std::unique_ptr<char[]> buffer_;
     OVERLAPPED ov_;
     bool pending_;
+	bool closed_;
 
     HANDLE create_pipe();
     std::string_view try_read();
     std::string_view check_pending();
+};
+
+
+class encoded_buffer
+{
+public:
+	encoded_buffer(encodings e=encodings::dont_know, std::string bytes={});
+
+	void add(std::string_view bytes);
+
+	std::string utf8_string() const;
+
+	template <class F>
+	void next_utf8_lines(bool finished, F&& f)
+	{
+		for (;;)
+		{
+			std::string line = next_utf8_line(finished);
+			if (line.empty())
+				break;
+
+			f(line);
+		}
+	}
+
+private:
+	encodings e_;
+	std::string bytes_;
+	std::size_t last_;
+
+	std::string next_utf8_line(bool finished);
 };
 
 
@@ -106,10 +139,15 @@ public:
 	process& stdout_flags(stream_flags s);
 	process& stdout_level(context::level lv);
 	process& stdout_filter(filter_fun f);
+	process& stdout_encoding(encodings e);
 
 	process& stderr_flags(stream_flags s);
 	process& stderr_level(context::level lv);
 	process& stderr_filter(filter_fun f);
+	process& stderr_encoding(encodings e);
+
+	process& chcp(int cp);
+	process& cmd_unicode(bool b);
 
 	process& external_error_log(const fs::path& p);
 
@@ -155,13 +193,14 @@ public:
 	void join();
 
 	int exit_code() const;
-	std::string steal_stdout();
-	std::string steal_stderr();
+	std::string stdout_string();
+	std::string stderr_string();
 
 private:
 	struct impl
 	{
 		handle_ptr handle;
+		handle_ptr job;
 		std::atomic<bool> interrupt{false};
 		async_pipe stdout_pipe, stderr_pipe;
 
@@ -170,22 +209,24 @@ private:
 		impl& operator=(const impl&);
 	};
 
+	struct stream
+	{
+		stream_flags flags = forward_to_log;
+		context::level level = context::level::trace;
+		filter_fun filter;
+		encodings encoding = encodings::dont_know;
+		encoded_buffer buffer;
+	};
+
 	const context* cx_;
 	std::string name_;
 	fs::path bin_;
 	fs::path cwd_;
+	bool unicode_;
+	int chcp_;
 	flags_t flags_;
-
-	stream_flags stdout_flags_;
-	context::level stdout_level_;
-	filter_fun stdout_filter_;
-	std::string stdout_string_;
-
-	stream_flags stderr_flags_;
-	context::level stderr_level_;
-	filter_fun stderr_filter_;
-	std::string stderr_string_;
-
+	stream stdout_;
+	stream stderr_;
 	mob::env env_;
 	std::string raw_;
 	std::string cmd_;
@@ -196,14 +237,19 @@ private:
 
 	std::string make_name() const;
 	std::string make_cmd() const;
+	std::wstring make_cmd_args(const std::string& what) const;
 	void pipe_into(const process& p);
 
 	void do_run(const std::string& what);
-	bool read_pipes();
+	void read_pipes(bool finish);
+	void read_pipe(bool finish, stream& s, async_pipe& pipe, context::reason r);
 
 	void on_completed();
 	void on_timeout(bool& already_interrupted);
+	void terminate();
+
 	void dump_error_log_file() noexcept;
+	void dump_stderr() noexcept;
 
 	void add_arg(const std::string& k, const std::string& v, arg_flags f);
 

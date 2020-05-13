@@ -7,6 +7,44 @@ namespace mob
 	inline E operator|(E e1, E e2) { return (E)((int)e1 | (int)e2); } \
 	inline E operator|=(E& e1, E e2) { e1 = e1 | e2; return e1; }
 
+#define MOB_WIDEN2(x) L ## x
+#define MOB_WIDEN(x) MOB_WIDEN2(x)
+#define MOB_FILE_UTF16 MOB_WIDEN(__FILE__)
+
+#define MOB_ASSERT(x, ...) \
+	mob_assert(x, __VA_ARGS__, #x, MOB_FILE_UTF16, __LINE__, __FUNCSIG__);
+
+void mob_assertion_failed(
+	const char* message,
+	const char* exp, const wchar_t* file, int line, const char* func);
+
+template <class X>
+inline void mob_assert(
+	X&& x, const char* message,
+	const char* exp, const wchar_t* file, int line, const char* func)
+{
+	if (!(x))
+		mob_assertion_failed(message, exp, file, line, func);
+}
+
+template <class X>
+inline void mob_assert(
+	X&& x, const char* exp, const wchar_t* file, int line, const char* func)
+{
+	if (!(x))
+		mob_assertion_failed(nullptr, exp, file, line, func);
+}
+
+
+enum class encodings
+{
+	dont_know = 0,
+	utf8,
+	utf16,
+	acp,
+	oem
+};
+
 
 class context;
 class url;
@@ -188,23 +226,80 @@ std::string pad_left(std::string s, std::size_t n, char c=' ');
 void trim(std::string& s, const std::string& what=" \t\r\n");
 std::string trim_copy(const std::string& s, const std::string& what=" \t\r\n");
 
+std::wstring utf8_to_utf16(std::string_view s);
+std::string utf16_to_utf8(std::wstring_view ws);
+std::string bytes_to_utf8(encodings e, std::string_view s);
+
+template <class T>
+std::string path_to_utf8(T&&) = delete;
+
+std::string path_to_utf8(fs::path p);
+
+
+class u8stream
+{
+public:
+	u8stream(std::wostream& out)
+		: out_(out)
+	{
+	}
+
+	template <class... Args>
+	u8stream& operator<<(Args&&... args)
+	{
+		std::ostringstream oss;
+		((oss << std::forward<Args>(args)), ...);
+
+		do_output(oss.str());
+
+		return *this;
+	}
+
+private:
+	std::wostream& out_;
+
+	void do_output(const std::string& s);
+};
+
+
+extern u8stream u8cout;
+extern u8stream u8cerr;
+
+
 
 template <class F>
 void for_each_line(std::string_view s, F&& f)
 {
-	const char* start = s.data();
-	const char* end = s.data() + s.size();
-	const char* p = start;
+	if (s.empty())
+		return;
+
+	const char* const begin = s.data();
+	const char* const end = s.data() + s.size();
+
+	const char* start = begin;
+	const char* p = begin;
 
 	for (;;)
 	{
+		MOB_ASSERT(p && p >= begin && p <= end);
+		MOB_ASSERT(start && start >= begin && start <= end);
+
 		if (p == end || *p == '\n' || *p == '\r')
 		{
 			if (p != start)
-				f(std::string_view(start, static_cast<std::size_t>(p - start)));
+			{
+				MOB_ASSERT(p >= start);
+
+				const auto n = static_cast<std::size_t>(p - start);
+				MOB_ASSERT(n <= s.size());
+
+				f(std::string_view(start, n));
+			}
 
 			while (p != end && (*p == '\n' || *p == '\r'))
 				++p;
+
+			MOB_ASSERT(p && p >= begin && p <= end);
 
 			if (p == end)
 				break;

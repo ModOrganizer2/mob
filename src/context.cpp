@@ -5,6 +5,27 @@
 #include "tasks/task.h"
 #include "tools/tools.h"
 
+namespace mob::details
+{
+
+std::string converter<std::wstring>::convert(const std::wstring& s)
+{
+	return utf16_to_utf8(s);
+}
+
+std::string converter<fs::path>::convert(const fs::path& s)
+{
+	return utf16_to_utf8(s.native());
+}
+
+std::string converter<url>::convert(const url& u)
+{
+	return u.string();
+}
+
+}	// namespace
+
+
 namespace mob
 {
 
@@ -176,82 +197,64 @@ void context::set_log_file(const fs::path& p)
 {
 	if (!p.empty())
 	{
-		HANDLE h = CreateFileA(
-			p.string().c_str(), GENERIC_WRITE, FILE_SHARE_READ,
+		HANDLE h = CreateFileW(
+			p.native().c_str(), GENERIC_WRITE, FILE_SHARE_READ,
 			nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 
 		if (h == INVALID_HANDLE_VALUE)
 		{
 			const auto e = GetLastError();
-			gcx().bail_out(
-				context::generic, "failed to open log file " + p.string(), e);
+			gcx().bail_out(context::generic,
+				"failed to open log file {}, {}", p, error_message(e));
 		}
 
 		g_log_file.reset(h);
 	}
 }
 
-void context::log(reason r, level lv, std::string_view s) const
+void context::do_log_impl(
+	bool bail, reason r, level lv, const std::string& utf8) const
 {
-	if (!enabled(lv))
+	if (!bail && !enabled(lv))
 		return;
 
-	const auto ls = make_log_string(r, lv, s);
-	do_log(lv, ls);
-}
+	const auto ls = make_log_string(r, lv, utf8);
 
-void context::log(reason r, level lv, std::string_view s, DWORD e) const
-{
-	log(r, lv, std::string(s) + ", " + error_message(e));
-}
-
-void context::log(reason r, level lv, std::string_view s, const std::error_code& ec) const
-{
-	log(r, lv, std::string(s) + ", " + ec.message());
-}
-
-void context::bail_out(reason r, std::string_view s) const
-{
-	const auto ls = make_log_string(r, level::error, s);
-	do_log(level::error, ls + " (bailing out)");
-
-	throw bailed(ls);
-}
-
-void context::bail_out(reason r, std::string_view s, DWORD e) const
-{
-	bail_out(r, std::string(s) + ", " + error_message(e));
-}
-
-void context::bail_out(reason r, std::string_view s, const std::error_code& ec) const
-{
-	bail_out(r, std::string(s) + ", " + ec.message());
-}
-
-void context::do_log(level lv, const std::string& s) const
-{
+	if (bail)
 	{
-		std::scoped_lock lock(g_mutex);
+		emit_log(lv, ls + " (bailing out)");
+		throw bailed(ls);
+	}
+	else
+	{
+		emit_log(lv, ls);
+	}
+}
+
+void context::emit_log(level lv, const std::string& utf8) const
+{
+	std::scoped_lock lock(g_mutex);
+
+	if (lv == level::error)
+		g_errors.push_back(utf8);
+	else if (lv == level::warning)
+		g_warnings.push_back(utf8);
+
+	if (log_enabled(lv, conf::output_log_level()))
+	{
 		auto c = level_color(lv);
+		u8cout << utf8 << "\n";
+	}
 
-		if (lv == level::error)
-			g_errors.push_back(s);
-		else if (lv == level::warning)
-			g_warnings.push_back(s);
+	if (g_log_file && log_enabled(lv, conf::file_log_level()))
+	{
+		DWORD written = 0;
 
-		if (log_enabled(lv, conf::output_log_level()))
-			std::cout << s << "\n";
+		::WriteFile(
+			g_log_file.get(), utf8.c_str(), static_cast<DWORD>(utf8.size()),
+			&written, nullptr);
 
-		if (g_log_file && log_enabled(lv, conf::file_log_level()))
-		{
-			DWORD written = 0;
-
-			::WriteFile(
-				g_log_file.get(), s.c_str(), static_cast<DWORD>(s.size()),
-				&written, nullptr);
-
-			::WriteFile(g_log_file.get(), "\r\n", 2, &written, nullptr);
-		}
+		::WriteFile(g_log_file.get(), "\r\n", 2, &written, nullptr);
 	}
 }
 
@@ -307,19 +310,19 @@ void dump_logs()
 	if (!g_warnings.empty())
 	{
 		auto c = level_color(context::level::warning);
-		std::cout << "\n\nthere were warnings:\n";
+		u8cout << "\n\nthere were warnings:\n";
 
 		for (auto&& s : g_warnings)
-			std::cout << s << "\n";
+			u8cout << s << "\n";
 	}
 
 	if (!g_errors.empty())
 	{
 		auto c = level_color(context::level::error);
-		std::cout << "\n\nthere were errors:\n";
+		u8cout << "\n\nthere were errors:\n";
 
 		for (auto&& s : g_errors)
-			std::cout << s << "\n";
+			u8cout << s << "\n";
 	}
 }
 

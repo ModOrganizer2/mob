@@ -65,8 +65,9 @@ void sevenz::build()
 	}
 
 	cx().debug(context::generic,
-		"jom /J has failed more than " + std::to_string(max_tries) + " "
-		"times, restarting one last time without /J; that one should work");
+		"jom /J has failed more than {} times, "
+		"restarting one last time without /J; that one should work",
+		max_tries);
 
 	run_tool(jom()
 		.path(module_to_build())

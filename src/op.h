@@ -52,7 +52,7 @@ void copy_glob_to_dir_if_better(
 	const fs::path& src_glob, const fs::path& dest_dir, flags f);
 
 std::string read_text_file(
-	const context& cx, const fs::path& p, flags f=noflags);
+	const context& cx, encodings e, const fs::path& p, flags f=noflags);
 
 void write_text_file(
 	const context& cx, const fs::path& p, std::string_view s, flags f=noflags);

@@ -55,13 +55,13 @@ std::string url::filename() const
 		auto r = curl_url_set(h, CURLUPART_URL, s_.c_str(), 0);
 
 		if (r != CURLUE_OK)
-			gcx().bail_out(context::net, "bad url '" + s_ + "'");
+			gcx().bail_out(context::net, "bad url '{}'", s_);
 
 		char* buffer = nullptr;
 		r = curl_url_get(h, CURLUPART_PATH, &buffer, 0);
 
 		if (r != CURLUE_OK)
-			gcx().bail_out(context::net, "bad url '" + s_ + "'");
+			gcx().bail_out(context::net, "bad url '{}'", s_);
 
 		guard g2([&]{ curl_free(buffer); });
 
@@ -88,8 +88,7 @@ void curl_downloader::start(const url& u, const fs::path& path)
 	path_ = path;
 	ok_ = false;
 
-	cx_.debug(context::net,
-		"downloading " + url_.string() + " to " + path_.string());
+	cx_.debug(context::net, "downloading {} to {}", url_, path_);
 
 	if (conf::dry())
 		return;
@@ -126,7 +125,7 @@ bool curl_downloader::ok() const
 
 void curl_downloader::run()
 {
-	cx_.trace(context::net, "curl: initializing " + url_.string());
+	cx_.trace(context::net, "curl: initializing {}", url_);
 
 	auto* c = curl_easy_init();
 	guard g([&]{ curl_easy_cleanup(c); });
@@ -153,9 +152,9 @@ void curl_downloader::run()
 
 	file_deleter output_deleter(cx_, path_);
 
-	cx_.trace(context::net, "curl: performing " + url_.string());
+	cx_.trace(context::net, "curl: performing {}", url_);
 	const auto r = curl_easy_perform(c);
-	cx_.trace(context::net, "curl: transfer finished " + url_.string());
+	cx_.trace(context::net, "curl: transfer finished {}", url_);
 
 	if (file_)
 	{
@@ -165,7 +164,7 @@ void curl_downloader::run()
 
 	if (interrupt_)
 	{
-		cx_.trace(context::net, "curl: " + url_.string() + " interrupted");
+		cx_.trace(context::net, "curl: {} interrupted", url_);
 		return;
 	}
 
@@ -177,24 +176,22 @@ void curl_downloader::run()
 		if (h == 200)
 		{
 			cx_.trace(context::net,
-				"curl: http 200 " + url_.string() + ", "
-				"transferred " + std::to_string(bytes_) + " bytes");
+				"curl: http 200 {}, transferred {} bytes",
+				url_, bytes_);
 
 			ok_ = true;
 			output_deleter.cancel();
 		}
 		else
 		{
-			cx_.error(context::net,
-				"curl: http " + std::to_string(h) + " " + url_.string());
+			cx_.error(context::net, "curl: http {} {}", h, url_);
 		}
 	}
 	else
 	{
 		cx_.error(context::net,
-			std::string("curl: ") +
-			curl_easy_strerror(r) + ", " + trim_copy(error_buffer) + " " +
-			"(" + url_.string() + ")");
+			"curl: {}, {} {}",
+			curl_easy_strerror(r), trim_copy(error_buffer), url_);
 	}
 }
 
@@ -226,16 +223,19 @@ void curl_downloader::on_write(char* ptr, std::size_t n) noexcept
 	{
 		op::create_directories(cx_, path_.parent_path());
 
-		cx_.trace(context::net, "opening " + path_.string());
+		cx_.trace(context::net, "opening {}", path_);
 
-		HANDLE h = ::CreateFileA(
-			path_.string().c_str(), GENERIC_WRITE, FILE_SHARE_READ,
+		HANDLE h = ::CreateFileW(
+			path_.native().c_str(), GENERIC_WRITE, FILE_SHARE_READ,
 			nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 
 		if (h == INVALID_HANDLE_VALUE)
 		{
 			const auto e = GetLastError();
-			cx_.error(context::net, "failed to open " + path_.string(), e);
+
+			cx_.error(context::net,
+				"failed to open {}, {}", path_, error_message(e));
+
 			interrupt_ = true;
 			return;
 		}
@@ -249,7 +249,10 @@ void curl_downloader::on_write(char* ptr, std::size_t n) noexcept
 	if (!::WriteFile(file_.get(), ptr, static_cast<DWORD>(n), &written, nullptr))
 	{
 		const auto e = GetLastError();
-		cx_.error(context::net, "failed to write to " + path_.string(), e);
+
+		cx_.error(context::net,
+			"failed to write to {}, {}", path_, error_message(e));
+
 		interrupt_ = true;
 	}
 }
@@ -336,7 +339,7 @@ void curl_downloader::on_debug(curl_infotype type, std::string_view s)
 				buffer.append(line);
 			}
 
-			cx_.dump(context::net, buffer);
+			cx_.dump(context::net, "{}", buffer);
 		});
 	};
 

@@ -44,6 +44,7 @@ static path_map g_tools =
 	{"devenv",  "devenv.exe"},
 	{"cmake",   "cmake.exe"},
 	{"git",     "git.exe"},
+	{"nasm",    "nasm.exe"},
 	{"vcvars",   ""},
 };
 
@@ -128,10 +129,7 @@ const typename Map::mapped_type& get(
 	auto itor = map.find(name);
 
 	if (itor == map.end())
-	{
-		gcx().bail_out(context::conf,
-			map_name + " '" + name + "' doesn't exist");
-	}
+		gcx().bail_out(context::conf, "{} '{}' doesn't exist", map_name, name);
 
 	return itor->second;
 }
@@ -174,10 +172,7 @@ const fs::path& paths::by_name(const std::string& s)
 void conf::set_output_log_level(int i)
 {
 	if (i < 0 || i > 6)
-	{
-		gcx().bail_out(context::generic,
-			"bad output log level " + std::to_string(i));
-	}
+		gcx().bail_out(context::generic, "bad output log level {}", i);
 
 	g_output_log_level = i;
 }
@@ -185,10 +180,7 @@ void conf::set_output_log_level(int i)
 void conf::set_file_log_level(int i)
 {
 	if (i < 0 || i > 6)
-	{
-		gcx().bail_out(context::generic,
-			"bad file log level " + std::to_string(i));
-	}
+		gcx().bail_out(context::generic, "bad file log level {}", i);
 
 	g_file_log_level = i;
 }
@@ -223,6 +215,7 @@ namespace tools
 	fs::path git::binary() 		      { return tool_by_name("git"); }
 	fs::path sevenz::binary() 	      { return tool_by_name("sevenz"); }
 	fs::path jom::binary() 		      { return tool_by_name("jom"); }
+	fs::path nasm::binary()           { return tool_by_name("nasm"); }
 	fs::path patch::binary() 	      { return tool_by_name("patch"); }
 	fs::path nuget::binary() 	      { return tool_by_name("nuget"); }
 
@@ -256,6 +249,13 @@ bool parse_value<bool>(const std::string& s, bool& out)
 	return !iss.bad();
 }
 
+template <>
+bool parse_value<fs::path>(const std::string& s, fs::path& out)
+{
+	out = utf8_to_utf16(s);
+	return true;
+}
+
 template <class Map>
 bool set_option_impl(
 	Map& map, const std::string& key, const std::string& value)
@@ -263,13 +263,13 @@ bool set_option_impl(
 	auto itor = map.find(key);
 	if (itor == map.end())
 	{
-		gcx().error(context::conf, "unknown key '" + key + "'");
+		gcx().error(context::conf, "unknown key '{}'", key);
 		return false;
 	}
 
 	if (!parse_value<typename Map::mapped_type>(value, itor->second))
 	{
-		gcx().error(context::conf, "bad value '" + value + "'");
+		gcx().error(context::conf, "bad value '{}'", value);
 		return false;
 	}
 
@@ -291,7 +291,7 @@ bool set_option(
 	else if (section == "paths")
 		return set_option_impl(g_paths, key, value);
 
-	gcx().error(context::conf, "bad section name '" + section + "'");
+	gcx().error(context::conf, "bad section name '{}'", section);
 	return false;
 }
 
@@ -301,14 +301,14 @@ void set_option(const std::string& s)
 	if (slash == std::string::npos)
 	{
 		gcx().bail_out(context::conf,
-			"bad option " + s + ", must be section/key=value");
+			"bad option {}, must be section/key=value", s);
 	}
 
 	const auto equal = s.find("=", slash);
 	if (slash == std::string::npos)
 	{
 		gcx().bail_out(context::conf,
-			"bad option " + s + ", must be section/key=value");
+			"bad option {}, must be section/key=value", s);
 	}
 
 	const std::string section = s.substr(0, slash);
@@ -317,32 +317,31 @@ void set_option(const std::string& s)
 
 	if (set_option(section, key, value))
 	{
-		gcx().trace(context::conf,
-			"setting " + section + "/" + key + "=" + value);
+		gcx().trace(context::conf, "setting {}/{}={}", section, key, value);
 	}
 	else
 	{
 		gcx().bail_out(context::conf,
-			"failed to set " + section + "/" + key + "=" + value);
+			"failed to set {}/{}={}", section, key, value);
 	}
 }
 
 void dump_available_options()
 {
 	for (auto&& [k, v] : g_options)
-		std::cout << "options/" << k << "\n";
+		u8cout << "options/" << k << "\n";
 
 	for (auto&& [k, v] : g_tools)
-		std::cout << "tools/" << k << "\n";
+		u8cout << "tools/" << k << "\n";
 
 	for (auto&& [k, v] : g_prebuilt)
-		std::cout << "prebuilt/" << k << "\n";
+		u8cout << "prebuilt/" << k << "\n";
 
 	for (auto&& [k, v] : g_versions)
-		std::cout << "versions/" << k << "\n";
+		u8cout << "versions/" << k << "\n";
 
 	for (auto&& [k, v] : g_paths)
-		std::cout << "paths/" << k << "\n";
+		u8cout << "paths/" << k << "\n";
 }
 
 bool try_parts(fs::path& check, const std::vector<std::string>& parts)
@@ -354,7 +353,7 @@ bool try_parts(fs::path& check, const std::vector<std::string>& parts)
 		for (std::size_t j=i; j<parts.size(); ++j)
 			p /= parts[j];
 
-		gcx().trace(context::conf, "trying parts " + p.string());
+		gcx().trace(context::conf, "trying parts {}", p);
 
 		if (fs::exists(p))
 		{
@@ -382,7 +381,7 @@ fs::path find_root()
 {
 	const auto p = find_root_impl().parent_path();
 
-	gcx().trace(context::conf, "found root directory at " + p.string());
+	gcx().trace(context::conf, "found root directory at {}", p);
 
 	return p;
 }
@@ -393,9 +392,9 @@ fs::path find_in_root(const fs::path& file)
 
 	fs::path p = root / file;
 	if (!fs::exists(p))
-		gcx().bail_out(context::conf, p.string() + " not found");
+		gcx().bail_out(context::conf, "{} not found", p);
 
-	gcx().trace(context::conf, "found " + p.string());
+	gcx().trace(context::conf, "found {}", p);
 	return p;
 }
 
@@ -409,10 +408,12 @@ fs::path find_third_party_directory()
 
 fs::path find_in_path(const std::string& exe)
 {
-	const std::size_t buffer_size = MAX_PATH;
-	char buffer[buffer_size + 1] = {};
+	const std::wstring wexe = utf8_to_utf16(exe);
 
-	if (SearchPathA(nullptr, exe.c_str(), nullptr, buffer_size, buffer, nullptr))
+	const std::size_t size = MAX_PATH;
+	wchar_t buffer[size + 1] = {};
+
+	if (SearchPathW(nullptr, wexe.c_str(), nullptr, size, buffer, nullptr))
 		return buffer;
 	else
 		return {};
@@ -463,10 +464,7 @@ fs::path find_qt()
 		p = fs::absolute(p);
 
 		if (!try_qt_location(p))
-		{
-			gcx().bail_out(context::conf,
-				"no qt install in " + p.string());
-		}
+			gcx().bail_out(context::conf, "no qt install in {}", p);
 
 		return p;
 	}
@@ -504,10 +502,7 @@ void validate_qt()
 	fs::path p = tools::qt::installation_path();
 
 	if (!try_qt_location(p))
-	{
-		gcx().bail_out(context::conf,
-			"qt path " + p.string() + " doesn't exist\n");
-	}
+		gcx().bail_out(context::conf, "qt path {} doesn't exist", p);
 
 	g_paths["qt_install"] = p;
 }
@@ -537,13 +532,12 @@ fs::path find_program_files_x86()
 		p = fs::path(R"(C:\Program Files (x86))");
 
 		gcx().warning(context::conf,
-			"failed to get x86 program files folder, defaulting to " +
-			p.string(), e);
+			"failed to get x86 program files folder, defaulting to {}, {}",
+			p, error_message(e));
 	}
 	else
 	{
-		gcx().trace(context::conf,
-			"x86 program files is " + p.string());
+		gcx().trace(context::conf, "x86 program files is {}", p);
 	}
 
 	return p;
@@ -560,13 +554,12 @@ fs::path find_program_files_x64()
 		p = fs::path(R"(C:\Program Files)");
 
 		gcx().warning(context::conf,
-			"failed to get x64 program files folder, defaulting to " +
-			p.string(), e);
+			"failed to get x64 program files folder, defaulting to {}, {}",
+			p, error_message(e));
 	}
 	else
 	{
-		gcx().trace(context::conf,
-			"x64 program files is " + p.string());
+		gcx().trace(context::conf, "x64 program files is {}", p);
 	}
 
 	return p;
@@ -580,11 +573,11 @@ fs::path find_temp_dir()
 	if (GetTempPathW(static_cast<DWORD>(buffer_size), buffer) == 0)
 	{
 		const auto e = GetLastError();
-		gcx().bail_out(context::conf, "can't get temp path", e);
+		gcx().bail_out(context::conf, "can't get temp path", error_message(e));
 	}
 
 	fs::path p(buffer);
-	gcx().trace(context::conf, "temp dir is " + p.string());
+	gcx().trace(context::conf, "temp dir is {}", p);
 
 	return p;
 }
@@ -608,12 +601,12 @@ fs::path find_vs()
 	if (p.exit_code() != 0)
 		gcx().bail_out(context::conf, "vswhere failed");
 
-	fs::path path = trim_copy(p.steal_stdout());
+	fs::path path = trim_copy(p.stdout_string());
 
 	if (!fs::exists(path))
 	{
 		gcx().bail_out(context::conf,
-			"the path given by vswhere doesn't exist: " + path.string());
+			"the path given by vswhere doesn't exist: {}", path);
 	}
 
 	return path;
@@ -647,24 +640,23 @@ void find_vcvars()
 			/ "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
 
 		if (!try_vcvars(bat))
-			gcx().bail_out(context::conf, "vcvars not found " + bat.string());
+			gcx().bail_out(context::conf, "vcvars not found at {}", bat);
 	}
 	else
 	{
 		if (!try_vcvars(bat))
-			gcx().bail_out(context::conf, "vcvars not found " + bat.string());
+			gcx().bail_out(context::conf, "vcvars not found at {}", bat);
 	}
 
-	gcx().trace(context::conf, "using vcvars at " + bat.string());
+	gcx().trace(context::conf, "using vcvars at {}", bat);
 }
 
 
 void ini_error(std::size_t line, const std::string& what)
 {
 	gcx().bail_out(context::conf,
-		g_ini.filename().string() + ":" +
-		std::to_string(line + 1) + ": " +
-		what);
+		"{}:{}: {}",
+		g_ini.filename(), (line + 1), what);
 }
 
 fs::path find_ini(const fs::path& ini)
@@ -676,7 +668,7 @@ fs::path find_ini(const fs::path& ini)
 		if (fs::exists(p))
 			return fs::canonical(p);
 		else
-			gcx().bail_out(context::conf, "can't find ini at " + ini.string());
+			gcx().bail_out(context::conf, "can't find ini at {}", ini);
 	}
 
 	p = fs::current_path();
@@ -684,7 +676,7 @@ fs::path find_ini(const fs::path& ini)
 	if (try_parts(p, {"..", "..", "..", default_ini_filename}))
 		return p;
 
-	gcx().bail_out(context::conf, "can't find " + default_ini_filename);
+	gcx().bail_out(context::conf, "can't find {}", default_ini_filename);
 }
 
 std::vector<std::string> read_ini(const fs::path& ini)
@@ -709,7 +701,7 @@ std::vector<std::string> read_ini(const fs::path& ini)
 	}
 
 	if (in.bad())
-		gcx().bail_out(context::conf, "failed to read ini " + ini.string());
+		gcx().bail_out(context::conf, "failed to read ini {}", ini);
 
 	return lines;
 }
@@ -747,7 +739,7 @@ void parse_section(
 void parse_ini(const fs::path& ini)
 {
 	g_ini = find_ini(ini);
-	gcx().debug(context::conf, "using ini at " + g_ini.string());
+	gcx().debug(context::conf, "using ini at {}", g_ini);
 
 	const auto lines = read_ini(g_ini);
 	std::size_t i = 0;
@@ -775,7 +767,7 @@ void check_missing_options()
 {
 	if (conf::mo_org().empty())
 	{
-		std::cerr
+		u8cerr
 			<< "missing mo_org; either specify it the [options] section of "
 			<< "the ini or pass '-s options/mo_org=something'\n";
 
@@ -784,7 +776,7 @@ void check_missing_options()
 
 	if (conf::mo_branch().empty())
 	{
-		std::cerr
+		u8cerr
 			<< "missing mo_branch; either specify it the [options] section of "
 			<< "the ini or pass '-s options/mo_org=something'\n";
 
@@ -793,7 +785,7 @@ void check_missing_options()
 
 	if (paths::prefix().empty())
 	{
-		std::cerr
+		u8cerr
 			<< "missing prefix; either specify it the [paths] section of "
 			<< "the ini or pass '-d path'\n";
 
@@ -804,7 +796,7 @@ void check_missing_options()
 	{
 		if (v.empty())
 		{
-			std::cerr << "missing version for " << k << "\n";
+			u8cerr << "missing version for " << k << "\n";
 			throw bailed("");
 		}
 	}
@@ -815,7 +807,7 @@ void set_path_if_empty(const std::string& k, F&& f)
 {
 	auto itor = g_paths.find(k);
 	if (itor == g_paths.end())
-		gcx().bail_out(context::conf, "unknown path key " + k);
+		gcx().bail_out(context::conf, "unknown path key {}", k);
 
 	if (!itor->second.empty())
 	{
@@ -829,8 +821,7 @@ void set_path_if_empty(const std::string& k, F&& f)
 		}
 		else
 		{
-			gcx().bail_out(context::conf,
-				"path " + itor->second.string() + " not found");
+			gcx().bail_out(context::conf, "path {} not found", itor->second);
 		}
 	}
 
@@ -850,10 +841,7 @@ void set_path_if_empty(const std::string& k, F&& f)
 	cp = fs::absolute(cp);
 
 	if (!fs::exists(cp))
-	{
-		gcx().bail_out(context::conf,
-			"path " + cp.string() + " not found");
-	}
+		gcx().bail_out(context::conf, "path {} not found", cp);
 
 	itor->second = fs::canonical(cp);
 }
@@ -864,7 +852,7 @@ void make_canonical_path(
 {
 	auto itor = g_paths.find(key);
 	if (itor == g_paths.end())
-		gcx().bail_out(context::conf, "unknown path key " + key);
+		gcx().bail_out(context::conf, "unknown path key {}", key);
 
 	if (itor->second.empty())
 	{
@@ -934,6 +922,7 @@ void init_options(const fs::path& ini, const std::vector<std::string>& opts)
 	find_vcvars();
 	validate_qt();
 
+	make_canonical_path("prefix",           fs::current_path(), "");
 	make_canonical_path("cache",            paths::prefix(), "downloads");
 	make_canonical_path("build",            paths::prefix(), "build");
 	make_canonical_path("install",          paths::prefix(), "install");
@@ -961,9 +950,9 @@ void table(const std::string& caption, const Map& values)
 	for (auto&& [k, v] : values)
 		longest = std::max(longest, k.size());
 
-	gcx().trace(context::conf, caption + ":");
+	gcx().trace(context::conf, "{}:", caption);
 	for (auto&& [k, v] : values)
-		gcx().trace(context::conf, " . " + pad_right(k, longest) + " = " + v);
+		gcx().trace(context::conf, " . {} = {}", pad_right(k, longest), v);
 }
 
 void dump_options()
@@ -973,7 +962,7 @@ void dump_options()
 
 	string_map tools;
 	for (auto&& [k, v] : g_tools)
-		tools[k] = v.string();
+		tools[k] = path_to_utf8(v);
 	table("tools", tools);
 
 	string_map prebuilt;
@@ -985,7 +974,7 @@ void dump_options()
 
 	string_map paths;
 	for (auto&& [k, v] : g_paths)
-		paths[k] = v.string();
+		paths[k] = path_to_utf8(v);
 	table("paths", paths);
 }
 
@@ -1000,7 +989,7 @@ fs::path make_temp_file()
 		const auto e = GetLastError();
 
 		gcx().bail_out(context::conf,
-			"can't create temp file in " + dir.string(), e);
+			"can't create temp file in {}, {}", dir, error_message(e));
 	}
 
 	return dir / name;

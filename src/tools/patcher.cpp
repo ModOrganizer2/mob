@@ -6,13 +6,14 @@ namespace mob
 {
 
 patcher::patcher()
-	: basic_process_runner("patch")
+	: basic_process_runner("patch"), prebuilt_(false)
 {
 }
 
 patcher& patcher::task(const std::string& name, bool prebuilt)
 {
-	patches_ = paths::patches() / name / (prebuilt ? "prebuilt" : "sources");
+	task_ = name;
+	prebuilt_ = prebuilt;
 	return *this;
 }
 
@@ -30,26 +31,39 @@ patcher& patcher::root(const fs::path& dir)
 
 void patcher::do_run()
 {
-	if (!fs::exists(patches_))
+	const fs::path patches_root = paths::patches() / task_;
+
+	if (!fs::exists(patches_root))
 	{
 		cx_->trace(context::generic,
-			"patch directory " + patches_.string() + " doesn't exist, "
-			"assuming no patches");
+			"patch directory {} doesn't exist, assuming no patches",
+			patches_root);
 
 		return;
 	}
 
 	if (file_.empty())
 	{
-		cx_->trace(context::generic,
-			"looking for patches in " + patches_.string());
+		const fs::path patches =
+			patches_root / (prebuilt_ ? "prebuilt" : "sources");
 
-		for (auto e : fs::directory_iterator(patches_))
+		cx_->trace(context::generic, "looking for patches in {}", patches);
+
+		if (!fs::exists(patches))
+		{
+			cx_->trace(context::generic,
+				"patch directory {} doesn't exist, assuming no patches",
+				patches);
+
+			return;
+		}
+
+		for (auto e : fs::directory_iterator(patches))
 		{
 			if (!e.is_regular_file())
 			{
 				cx_->trace(context::generic,
-					"skipping " + e.path().string() + ", not a file");
+					"skipping {}, not a file", e.path());
 
 				continue;
 			}
@@ -59,14 +73,14 @@ void patcher::do_run()
 			if (p.extension() == ".manual_patch")
 			{
 				cx_->trace(context::generic,
-					"skipping manual patch " + e.path().string());
+					"skipping manual patch {}", e.path());
 
 				continue;
 			}
 			else if (p.extension() != ".patch")
 			{
 				cx_->warning(context::generic,
-					"file with unknown extension " + p.string());
+					"file with unknown extension {}", p);
 
 				continue;
 			}
@@ -76,10 +90,8 @@ void patcher::do_run()
 	}
 	else
 	{
-		cx_->trace(context::generic,
-			"doing manual patch from " + file_.string());
-
-		do_patch(patches_ / file_);
+		cx_->trace(context::generic, "doing manual patch from {}", file_);
+		do_patch(patches_root / file_);
 	}
 }
 
@@ -104,8 +116,7 @@ void patcher::do_patch(const fs::path& patch_file)
 		.arg("--batch")
 		.arg("--input", patch_file);
 
-	cx_->trace(context::generic,
-		"trying to patch using " + patch_file.string());
+	cx_->trace(context::generic, "trying to patch using {}", patch_file);
 
 	{
 		// check
@@ -119,7 +130,7 @@ void patcher::do_patch(const fs::path& patch_file)
 		if (ret == 0)
 		{
 			cx_->trace(context::generic,
-				"patch " + patch_file.string() + " already applied");
+				"patch {} already applied", patch_file);
 
 			return;
 		}
@@ -130,15 +141,14 @@ void patcher::do_patch(const fs::path& patch_file)
 		}
 		else
 		{
-			cx_->bail_out(context::generic,
-				"patch returned " + std::to_string(ret));
+			cx_->bail_out(context::generic, "patch returned {}", ret);
 		}
 	}
 
 	{
 		// apply
 
-		cx_->trace(context::generic, "applying patch " + patch_file.string());
+		cx_->trace(context::generic, "applying patch {}", patch_file);
 		process_ = apply;
 		execute_and_join();
 	}

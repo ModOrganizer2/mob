@@ -48,7 +48,7 @@ void tool::interrupt()
 {
 	if (!interrupted_)
 	{
-		cx_->debug(context::interruption, "interrupting " + name_);
+		cx_->debug(context::interruption, "interrupting {}", name_);
 		interrupted_ = true;
 		do_interrupt();
 	}
@@ -126,6 +126,10 @@ void pip_install::do_run()
 {
 	process_
 		.binary(python::python_exe())
+		.chcp(65001)
+		.stdout_encoding(encodings::utf8)
+		.stderr_encoding(encodings::utf8)
+		.arg("-X", "utf8")
 		.arg("-m", "pip")
 		.arg("install")
 		.arg("--no-warn-script-location")
@@ -135,6 +139,10 @@ void pip_install::do_run()
 		process_.arg(package_ + "==" + version_);
 	else if (!file_.empty())
 		process_.arg(file_);
+
+	process_
+		.env(this_env::get()
+			.set("PYTHONUTF8", "1"));
 
 	execute_and_join();
 }

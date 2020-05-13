@@ -15,17 +15,21 @@ const DWORD process_wait_timeout = 50;
 HANDLE get_bit_bucket()
 {
 	SECURITY_ATTRIBUTES sa { .nLength = sizeof(sa), .bInheritHandle = TRUE };
-	return ::CreateFileA("NUL", GENERIC_WRITE, 0, &sa, OPEN_EXISTING, 0, 0);
+	return ::CreateFileW(L"NUL", GENERIC_WRITE, 0, &sa, OPEN_EXISTING, 0, 0);
 }
 
-
 async_pipe::async_pipe()
-	: pending_(false)
+	:  pending_(false), closed_(true)
 {
 	buffer_ = std::make_unique<char[]>(buffer_size);
 	std::memset(buffer_.get(), 0, buffer_size);
 
 	std::memset(&ov_, 0, sizeof(ov_));
+}
+
+bool async_pipe::closed() const
+{
+	return closed_;
 }
 
 handle_ptr async_pipe::create()
@@ -40,16 +44,20 @@ handle_ptr async_pipe::create()
 	if (ov_.hEvent == NULL)
 	{
 		const auto e = GetLastError();
-		bail_out("CreateEvent failed", e);
+		bail_out("CreateEvent failed", error_message(e));
 	}
 
 	event_.reset(ov_.hEvent);
+	closed_ = false;
 
 	return out;
 }
 
 std::string_view async_pipe::read()
 {
+	if (closed_)
+		return {};
+
 	if (pending_)
 		return check_pending();
 	else
@@ -60,8 +68,8 @@ HANDLE async_pipe::create_pipe()
 {
 	static std::atomic<int> pipe_id(0);
 
-	const std::string pipe_name_prefix = "\\\\.\\pipe\\mob_pipe";
-	const std::string pipe_name = pipe_name_prefix + std::to_string(++pipe_id);
+	const std::wstring pipe_name =
+		L"\\\\.\\pipe\\mob_pipe" + std::to_wstring(++pipe_id);
 
 	SECURITY_ATTRIBUTES sa = {};
 	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -71,15 +79,15 @@ HANDLE async_pipe::create_pipe()
 
 	// creating pipe
 	{
-		HANDLE pipe_handle = ::CreateNamedPipeA(
+		HANDLE pipe_handle = ::CreateNamedPipeW(
 			pipe_name.c_str(), PIPE_ACCESS_DUPLEX|FILE_FLAG_OVERLAPPED,
 			PIPE_TYPE_BYTE|PIPE_READMODE_BYTE|PIPE_WAIT,
-			1, 50'000, 50'000, pipe_timeout, &sa);
+			1, buffer_size, buffer_size, pipe_timeout, &sa);
 
 		if (pipe_handle == INVALID_HANDLE_VALUE)
 		{
 			const auto e = GetLastError();
-			bail_out("CreateNamedPipe failed", e);
+			bail_out("CreateNamedPipeW failed", error_message(e));
 		}
 
 		pipe.reset(pipe_handle);
@@ -96,7 +104,7 @@ HANDLE async_pipe::create_pipe()
 		if (!r)
 		{
 			const auto e = GetLastError();
-			bail_out("DuplicateHandle for pipe", e);
+			bail_out("DuplicateHandle for pipe", error_message(e));
 		}
 
 		stdout_.reset(output_read);
@@ -104,14 +112,14 @@ HANDLE async_pipe::create_pipe()
 
 
 	// creating handle to pipe which is passed to CreateProcess()
-	HANDLE output_write = ::CreateFileA(
+	HANDLE output_write = ::CreateFileW(
 		pipe_name.c_str(), FILE_WRITE_DATA|SYNCHRONIZE, 0,
 		&sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 
 	if (output_write == INVALID_HANDLE_VALUE)
 	{
 		const auto e = GetLastError();
-		bail_out("CreateFileW for pipe failed", e);
+		bail_out("CreateFileW for pipe failed", error_message(e));
 	}
 
 	return output_write;
@@ -135,19 +143,22 @@ std::string_view async_pipe::try_read()
 
 			case ERROR_BROKEN_PIPE:
 			{
-				// broken pipe probably means the process is finished
+				// broken pipe means the process is finished
+				closed_ = true;
 				break;
 			}
 
 			default:
 			{
-				bail_out("async_pipe read failed", e);
+				bail_out("async_pipe read failed", error_message(e));
 				break;
 			}
 		}
 
 		return {};
 	}
+
+	MOB_ASSERT(bytes_read <= buffer_size);
 
 	return {buffer_.get(), bytes_read};
 }
@@ -160,7 +171,7 @@ std::string_view async_pipe::check_pending()
 
 	if (r == WAIT_FAILED) {
 		const auto e = GetLastError();
-		bail_out("WaitForSingleObject in async_pipe failed", e);
+		bail_out("WaitForSingleObject in async_pipe failed", error_message(e));
 	}
 
 	if (!::GetOverlappedResult(stdout_.get(), &ov_, &bytes_read, FALSE))
@@ -181,19 +192,25 @@ std::string_view async_pipe::check_pending()
 
 			case ERROR_BROKEN_PIPE:
 			{
-				// broken pipe probably means lootcli is finished
+				// broken pipe means the process is finished
+				closed_ = true;
 				break;
 			}
 
 			default:
 			{
-				bail_out("GetOverlappedResult failed in async_pipe", e);
+				bail_out(
+					"GetOverlappedResult failed in async_pipe",
+					error_message(e));
+
 				break;
 			}
 		}
 
 		return {};
 	}
+
+	MOB_ASSERT(bytes_read <= buffer_size);
 
 	::ResetEvent(event_.get());
 	pending_ = false;
@@ -214,13 +231,8 @@ process::impl& process::impl::operator=(const impl& i)
 }
 
 
-process::process() :
-	cx_(&gcx()), flags_(process::noflags),
-	stdout_flags_(process::forward_to_log),
-	stdout_level_(context::level::trace),
-	stderr_flags_(process::forward_to_log),
-	stderr_level_(context::level::error),
-	code_(0)
+process::process()
+	: cx_(&gcx()), unicode_(false), chcp_(-1), flags_(process::noflags), code_(0)
 {
 }
 
@@ -258,7 +270,7 @@ process& process::name(const std::string& name)
 std::string process::name() const
 {
 	if (name_.empty())
-		return bin_.stem().string();
+		return path_to_utf8(bin_.stem());
 	else
 		return name_;
 }
@@ -287,37 +299,68 @@ const fs::path& process::cwd() const
 
 process& process::stdout_flags(stream_flags s)
 {
-	stdout_flags_ = s;
+	stdout_.flags = s;
 	return *this;
 }
 
 process& process::stdout_level(context::level lv)
 {
-	stdout_level_ = lv;
+	stdout_.level = lv;
 	return *this;
 }
 
 process& process::stdout_filter(filter_fun f)
 {
-	stdout_filter_ = f;
+	stdout_.filter = f;
+	return *this;
+}
+
+process& process::stdout_encoding(encodings e)
+{
+	stdout_.encoding = e;
 	return *this;
 }
 
 process& process::stderr_flags(stream_flags s)
 {
-	stderr_flags_ = s;
+	stderr_.flags = s;
 	return *this;
 }
 
 process& process::stderr_level(context::level lv)
 {
-	stderr_level_ = lv;
+	stderr_.level = lv;
 	return *this;
 }
 
 process& process::stderr_filter(filter_fun f)
 {
-	stderr_filter_ = f;
+	stderr_.filter = f;
+	return *this;
+}
+
+process& process::stderr_encoding(encodings e)
+{
+	stderr_.encoding = e;
+	return *this;
+}
+
+process& process::cmd_unicode(bool b)
+{
+	unicode_ = b;
+
+	if (b)
+	{
+		stdout_.encoding = encodings::utf16;
+		stderr_.encoding = encodings::utf16;
+	}
+
+	return *this;
+}
+
+process& process::chcp(int i)
+{
+	chcp_ = i;
 	return *this;
 }
 
@@ -357,7 +400,7 @@ std::string process::make_cmd() const
 	if (!raw_.empty())
 		return raw_;
 
-	return "\"" + bin_.string() + "\"" + cmd_;
+	return "\"" + path_to_utf8(bin_) + "\"" + cmd_;
 }
 
 void process::pipe_into(const process& p)
@@ -368,10 +411,10 @@ void process::pipe_into(const process& p)
 void process::run()
 {
 	if (!cwd_.empty())
-		cx_->debug(context::cmd, "> cd " + cwd_.string());
+		cx_->debug(context::cmd, "> cd {}", cwd_);
 
 	const auto what = make_cmd();
-	cx_->debug(context::cmd, "> " + what);
+	cx_->debug(context::cmd, "> {}", what);
 
 	if (conf::dry())
 		return;
@@ -387,18 +430,37 @@ void process::do_run(const std::string& what)
 	if (fs::exists(error_log_file_))
 	{
 		cx_->trace(context::cmd,
-			"external error log file " +
-			error_log_file_.string() + " exists, deleting");
+			"external error log file {} exists, deleting", error_log_file_);
 
 		op::delete_file(*cx_, error_log_file_, op::optional);
 	}
 
-	STARTUPINFOA si = { .cb=sizeof(si) };
+
+	{
+		HANDLE job = CreateJobObjectW(nullptr, nullptr);
+
+		if (job == 0)
+		{
+			const auto e = GetLastError();
+			cx_->warning(context::cmd,
+				"failed to create job, {}", error_message(e));
+		}
+		else
+		{
+			impl_.job.reset(job);
+		}
+	}
+
+
+	stdout_.buffer = encoded_buffer(stdout_.encoding);
+	stderr_.buffer = encoded_buffer(stderr_.encoding);
+
+	STARTUPINFOW si = { .cb=sizeof(si) };
 	PROCESS_INFORMATION pi = {};
 
-	handle_ptr stdout_pipe, stderr_pipe;
+	handle_ptr stdout_pipe, stderr_pipe, stdin_pipe;
 
-	switch (stdout_flags_)
+	switch (stdout_.flags)
 	{
 		case forward_to_log:
 		case keep_in_string:
@@ -421,7 +483,7 @@ void process::do_run(const std::string& what)
 		}
 	}
 
-	switch (stderr_flags_)
+	switch (stderr_.flags)
 	{
 		case forward_to_log:
 		case keep_in_string:
@@ -444,39 +506,70 @@ void process::do_run(const std::string& what)
 		}
 	}
 
-	si.hStdInput = get_bit_bucket();
+	stdin_pipe.reset(get_bit_bucket());
+	si.hStdInput = stdin_pipe.get();
+
 	si.dwFlags = STARTF_USESTDHANDLES;
 
-	const std::string cmd = this_env::get("COMSPEC");
-	const std::string args = "/C \"" + what + "\"";
+	const std::wstring cmd = utf8_to_utf16(this_env::get("COMSPEC"));
+	std::wstring args = make_cmd_args(what);
 
-	const char* cwd_p = nullptr;
-	std::string cwd_s;
+	const wchar_t* cwd_p = nullptr;
+	std::wstring cwd_s;
 
 	if (!cwd_.empty())
 	{
 		op::create_directories(*cx_, cwd_);
-		cwd_s = cwd_.string();
+		cwd_s = cwd_.native();
 		cwd_p = (cwd_s.empty() ? nullptr : cwd_s.c_str());
 	}
 
 	cx_->trace(context::cmd, "creating process");
 
-	const auto r = ::CreateProcessA(
-		cmd.c_str(), const_cast<char*>(args.c_str()),
-		nullptr, nullptr, TRUE, CREATE_NEW_PROCESS_GROUP,
-		env_.get_pointers(), cwd_p, &si, &pi);
+	const auto r = ::CreateProcessW(
+		cmd.c_str(), args.data(),
+		nullptr, nullptr, TRUE,
+		CREATE_NEW_PROCESS_GROUP|CREATE_UNICODE_ENVIRONMENT,
+		env_.get_unicode_pointers(), cwd_p, &si, &pi);
 
 	if (!r)
 	{
 		const auto e = GetLastError();
-		cx_->bail_out(context::cmd, "failed to start '" + cmd + "'", e);
+		cx_->bail_out(context::cmd,
+			"failed to start '{}', {}", args, error_message(e));
 	}
 
-	cx_->trace(context::cmd, "pid " + std::to_string(pi.dwProcessId));
+	if (impl_.job)
+	{
+		if (!::AssignProcessToJobObject(impl_.job.get(), pi.hProcess))
+		{
+			const auto e = GetLastError();
+			cx_->warning(context::cmd,
+				"can't assign process to job, {}", error_message(e));
+		}
+	}
+
+	cx_->trace(context::cmd, "pid {}", pi.dwProcessId);
 
 	::CloseHandle(pi.hThread);
 	impl_.handle.reset(pi.hProcess);
+}
+
+std::wstring process::make_cmd_args(const std::string& what) const
+{
+	std::wstring s;
+
+	if (unicode_)
+		s += L"/U ";
+
+	s += L"/C \"";
+
+	if (chcp_ != -1)
+		s += L"chcp " + std::to_wstring(chcp_) + L" && ";
+
+	s += utf8_to_utf16(what) + L"\"";
+
+	return s;
 }
 
 void process::interrupt()
@@ -512,7 +605,8 @@ void process::join()
 		else
 		{
 			const auto e = GetLastError();
-			cx_->bail_out(context::cmd, "failed to wait on process", e);
+			cx_->bail_out(context::cmd,
+				"failed to wait on process", error_message(e));
 		}
 	}
 
@@ -520,31 +614,33 @@ void process::join()
 		cx_->trace(context::cmd, "process interrupted and finished");
 }
 
-bool process::read_pipes()
+void process::read_pipes(bool finish)
 {
-	bool read_something = false;
+	read_pipe(finish, stdout_, impl_.stdout_pipe, context::std_out);
+	read_pipe(finish, stderr_, impl_.stderr_pipe, context::std_err);
+}
 
-	// stdout
-	switch (stdout_flags_)
+void process::read_pipe(
+	bool finish, stream& s, async_pipe& pipe, context::reason r)
+{
+	switch (s.flags)
 	{
 		case forward_to_log:
 		{
-			std::string_view s = impl_.stdout_pipe.read();
-			if (!s.empty())
-				read_something = true;
+			s.buffer.add(pipe.read());
 
-			for_each_line(s, [&](auto&& line)
+			s.buffer.next_utf8_lines(finish, [&](auto&& line)
 			{
-				filter f = {line, context::std_out, stdout_level_, false};
+				filter f = {line, r, s.level, false};
 
-				if (stdout_filter_)
+				if (s.filter)
 				{
-					stdout_filter_(f);
+					s.filter(f);
 					if (f.ignore)
 						return;
 				}
 
-				cx_->log(f.r, f.lv, f.line);
+				cx_->log(f.r, f.lv, "{}", f.line);
 			});
 
 			break;
@@ -552,11 +648,7 @@ bool process::read_pipes()
 
 		case keep_in_string:
 		{
-			std::string_view s = impl_.stdout_pipe.read();
-			if (!s.empty())
-				read_something = true;
-
-			stdout_string_ += s;
+			s.buffer.add(pipe.read());
 			break;
 		}
 
@@ -564,49 +656,6 @@ bool process::read_pipes()
 		case inherit:
 			break;
 	}
-
-
-	switch (stderr_flags_)
-	{
-		case forward_to_log:
-		{
-			std::string_view s = impl_.stderr_pipe.read();
-			if (!s.empty())
-				read_something = true;
-
-			for_each_line(s, [&](auto&& line)
-			{
-				filter f = {line, context::std_err, stderr_level_, false};
-
-				if (stderr_filter_)
-				{
-					stderr_filter_(f);
-					if (f.ignore)
-						return;
-				}
-
-				cx_->log(f.r, f.lv, f.line);
-			});
-
-			break;
-		}
-
-		case keep_in_string:
-		{
-			std::string_view s = impl_.stderr_pipe.read();
-			if (!s.empty())
-				read_something = true;
-
-			stderr_string_ += s;
-			break;
-		}
-
-		case bit_bucket:
-		case inherit:
-			break;
-	}
-
-	return read_something;
 }
 
 void process::on_completed()
@@ -614,9 +663,14 @@ void process::on_completed()
 	// one last time
 	for (;;)
 	{
-		if (!read_pipes())
+		read_pipes(false);
+
+		if (impl_.stdout_pipe.closed() && impl_.stderr_pipe.closed())
 			break;
 	}
+
+	read_pipes(true);
+
 
 	if (impl_.interrupt)
 		return;
@@ -624,7 +678,10 @@ void process::on_completed()
 	if (!GetExitCodeProcess(impl_.handle.get(), &code_))
 	{
 		const auto e = GetLastError();
-		cx_->error(context::cmd, "failed to get exit code", e);
+
+		cx_->error(context::cmd,
+			"failed to get exit code, ", error_message(e));
+
 		code_ = 0xffff;
 	}
 
@@ -643,47 +700,79 @@ void process::on_completed()
 	else
 	{
 		dump_error_log_file();
-
-		cx_->bail_out(context::cmd,
-			make_name() + " returned " + std::to_string(code_));
+		dump_stderr();
+		cx_->bail_out(context::cmd, "{} returned {}", make_name(), code_);
 	}
 }
 
 void process::on_timeout(bool& already_interrupted)
 {
-	read_pipes();
+	read_pipes(false);
 
 	if (impl_.interrupt && !already_interrupted)
 	{
-		if (flags_ & terminate_on_interrupt)
+		const auto pid = GetProcessId(impl_.handle.get());
+
+		if (pid == 0)
 		{
 			cx_->trace(context::cmd,
-				"terminating process (flag is set)");
+				"process id is 0, terminating instead");
 
-			::TerminateProcess(impl_.handle.get(), 0xffff);
+			terminate();
 		}
 		else
 		{
-			const auto pid = GetProcessId(impl_.handle.get());
+			cx_->trace(context::cmd, "sending sigint to {}", pid);
+			GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
 
-			if (pid == 0)
+			if (flags_ & terminate_on_interrupt)
 			{
 				cx_->trace(context::cmd,
-					"process id is 0, terminating instead");
+					"terminating process (flag is set)");
 
-				::TerminateProcess(impl_.handle.get(), 0xffff);
-			}
-			else
-			{
-				cx_->trace(context::cmd,
-					"sending sigint to " + std::to_string(pid));
-
-				GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
+				terminate();
 			}
 		}
 
 		already_interrupted = true;
 	}
+}
+
+void process::terminate()
+{
+	UINT exit_code = 0xff;
+
+	if (impl_.job)
+	{
+		JOBOBJECT_BASIC_ACCOUNTING_INFORMATION info = {};
+
+		const auto r = ::QueryInformationJobObject(
+			impl_.job.get(), JobObjectBasicAccountingInformation,
+			&info, sizeof(info), nullptr);
+
+		if (r)
+		{
+			gcx().trace(context::cmd,
+				"terminating job, {} processes ({} spawned total)",
+				info.ActiveProcesses, info.TotalProcesses);
+		}
+		else
+		{
+			gcx().trace(context::cmd, "terminating job");
+		}
+
+		if (::TerminateJobObject(impl_.job.get(), exit_code))
+		{
+			// done
+			return;
+		}
+
+		const auto e = GetLastError();
+		gcx().warning(context::cmd,
+			"failed to terminate job, {}", error_message(e));
+	}
+
+	::TerminateProcess(impl_.handle.get(), exit_code);
 }
 
 void process::dump_error_log_file() noexcept
@@ -696,25 +785,51 @@ void process::dump_error_log_file() noexcept
 		if (fs::exists(error_log_file_))
 		{
 			std::string log = op::read_text_file(
-				*cx_, error_log_file_, op::optional);
+				*cx_, encodings::dont_know, error_log_file_, op::optional);
 
 			if (log.empty())
 				return;
 
 			cx_->error(context::cmd,
-				make_name() + " failed, "
-				"content of " + error_log_file_.string() + ":");
+				"{} failed, content of {}:", make_name(), error_log_file_);
 
 			for_each_line(log, [&](auto&& line)
 			{
-				cx_->error(context::cmd, std::string(8, ' ') + std::string(line));
+				cx_->error(context::cmd, "        {}", line);
 			});
 		}
 		else
 		{
 			cx_->debug(context::cmd,
-				"external error log file " + error_log_file_.string() + " "
-				"doesn't exist");
+				"external error log file {} doesn't exist", error_log_file_);
+		}
+	}
+	catch(...)
+	{
+		// eat it
+	}
+}
+
+void process::dump_stderr() noexcept
+{
+	try
+	{
+		const std::string s = stderr_.buffer.utf8_string();
+
+		if (!s.empty())
+		{
+			cx_->error(context::cmd,
+				"{} failed, content of stderr:", make_name());
+
+			for_each_line(s, [&](auto&& line)
+			{
+				cx_->error(context::cmd, "        {}", line);
+			});
+		}
+		else
+		{
+			cx_->error(context::cmd,
+				"{} failed, stderr was empty", make_name());
 		}
 	}
 	catch(...)
@@ -728,14 +843,14 @@ int process::exit_code() const
 	return static_cast<int>(code_);
 }
 
-std::string process::steal_stdout()
+std::string process::stdout_string()
 {
-	return std::move(stdout_string_);
+	return stdout_.buffer.utf8_string();
 }
 
-std::string process::steal_stderr()
+std::string process::stderr_string()
 {
-	return std::move(stderr_string_);
+	return stderr_.buffer.utf8_string();
 }
 
 void process::add_arg(const std::string& k, const std::string& v, arg_flags f)
@@ -781,7 +896,7 @@ std::string process::arg_to_string(const std::string& s, bool force_quote)
 
 std::string process::arg_to_string(const fs::path& p, bool)
 {
-	return "\"" + p.string() + "\"";
+	return "\"" + path_to_utf8(p) + "\"";
 }
 
 std::string process::arg_to_string(const url& u, bool force_quote)
@@ -790,6 +905,102 @@ std::string process::arg_to_string(const url& u, bool force_quote)
 		return "\"" + u.string() + "\"";
 	else
 		return u.string();
+}
+
+
+encoded_buffer::encoded_buffer(encodings e, std::string bytes)
+	: e_(e), bytes_(std::move(bytes)), last_(0)
+{
+}
+
+void encoded_buffer::add(std::string_view bytes)
+{
+	bytes_.append(bytes.begin(), bytes.end());
+}
+
+std::string encoded_buffer::utf8_string() const
+{
+	return bytes_to_utf8(e_, bytes_);
+}
+
+template <class CharT>
+std::basic_string<CharT> next_line(
+	bool finished, std::string_view bytes, std::size_t& byte_offset)
+{
+	std::size_t size = bytes.size();
+	if ((size & 1) == 1)
+		--size;
+
+	const CharT* start = reinterpret_cast<const CharT*>(bytes.data() + byte_offset);
+	const CharT* end = reinterpret_cast<const CharT*>(bytes.data() + size);
+	const CharT* p = start;
+
+	std::basic_string<CharT> line;
+
+	while (p != end)
+	{
+		if (*p == CharT('\n') || *p == CharT('\r'))
+		{
+			line.assign(start, static_cast<std::size_t>(p - start));
+
+			while (p != end && (*p == CharT('\n') || *p == CharT('\r')))
+				++p;
+
+			if (!line.empty())
+				break;
+
+			start = p;
+		}
+		else
+		{
+			++p;
+		}
+	}
+
+	if (line.empty() && finished)
+	{
+		line = {
+			reinterpret_cast<const wchar_t*>(bytes.data() + byte_offset),
+			reinterpret_cast<const wchar_t*>(bytes.data() + size)
+		};
+
+		byte_offset = bytes.size();
+	}
+	else
+	{
+		byte_offset = static_cast<std::size_t>(
+			reinterpret_cast<const char*>(p) - bytes.data());
+
+		MOB_ASSERT(byte_offset <= bytes.size());
+	}
+
+	return line;
+}
+
+std::string encoded_buffer::next_utf8_line(bool finished)
+{
+	switch (e_)
+	{
+		case encodings::utf16:
+		{
+			const std::wstring utf16 = next_line<wchar_t>(finished, bytes_, last_);
+			return utf16_to_utf8(utf16);
+		}
+
+		case encodings::acp:
+		case encodings::oem:
+		{
+			const std::string cp = next_line<char>(finished, bytes_, last_);
+			return bytes_to_utf8(e_, cp);
+		}
+
+		case encodings::utf8:
+		case encodings::dont_know:
+		default:
+		{
+			return next_line<char>(finished, bytes_, last_);
+		}
+	}
 }
 
 }	// namespace

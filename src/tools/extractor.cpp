@@ -34,21 +34,17 @@ void extractor::do_run()
 	{
 		if (conf::reextract())
 		{
-			cx_->debug(context::reextract, "deleting " + where_.string());
+			cx_->debug(context::reextract, "deleting {}", where_);
 			op::delete_directory(*cx_, where_, op::optional);
 		}
 		else
 		{
-			cx_->debug(
-				context::bypass,
-				"directory " + where_.string() + " already exists");
-
+			cx_->debug(context::bypass, "directory {} already exists", where_);
 			return;
 		}
 	}
 
-	cx_->debug(context::generic,
-		"extracting " + file_.string() + " into " + where_.string());
+	cx_->debug(context::generic, "extracting {} into {}", file_, where_);
 
 	ifile.create();
 
@@ -71,7 +67,7 @@ void extractor::do_run()
 	// so the handling of a duplicate directory is done manually in
 	// check_duplicate_directory() below
 
-	if (file_.string().ends_with(".tar.gz"))
+	if (file_.u8string().ends_with(u8".tar.gz"))
 	{
 		cx_->trace(context::generic, "this is a tar.gz, piping");
 
@@ -113,20 +109,21 @@ void extractor::do_run()
 
 void extractor::check_duplicate_directory(const fs::path& ifile)
 {
-	const auto dir_name = where_.filename().string();
+	const auto dir_name = where_.filename();
 
 	// check for a folder with the same name
 	if (!fs::exists(where_ / dir_name))
 	{
 		cx_->trace(context::generic,
-			"no duplicate subdir " + dir_name + ", leaving as-is");
+			"no duplicate subdir {}, leaving as-is", dir_name);
 
 		return;
 	}
 
 	cx_->trace(context::generic,
-		"found subdir " + dir_name + " with same name as output dir; "
-		"moving everything up one");
+		"found subdir {} with same name as output dir; "
+		"moving everything up one",
+		dir_name);
 
 	// the archive contained a directory with the same name as the output
 	// directory
@@ -148,12 +145,12 @@ void extractor::check_duplicate_directory(const fs::path& ifile)
 			// don't know what to do with archives that have the
 			// same directory _and_ other directories
 			cx_->bail_out(context::generic,
-				"check_duplicate_directory: " + e.path().string() + " is "
-				"yet another directory");
+				"check_duplicate_directory: {} is yet another directory",
+				e.path());
 		}
 
 		cx_->trace(context::generic,
-			"assuming file " + e.path().string() + " is useless, deleting");
+			"assuming file {} is useless, deleting", e.path());
 
 		op::delete_file(*cx_, e.path());
 	}
@@ -163,16 +160,15 @@ void extractor::check_duplicate_directory(const fs::path& ifile)
 
 	// give it a temp name in case there's yet another directory with the
 	// same name in it
-	const auto temp_dir = where_ / ("_mob_" + dir_name );
+	const auto temp_dir = where_ / (u8"_mob_" + dir_name.u8string());
 
 	cx_->trace(context::generic,
-		"renaming dir to " + temp_dir.string() + " to avoid clashes");
+		"renaming dir to {} to avoid clashes", temp_dir);
 
 	if (fs::exists(temp_dir))
 	{
 		cx_->trace(context::generic,
-			"temp dir " + temp_dir.string() + " already exists, "
-			"deleting");
+			"temp dir {} already exists, deleting", temp_dir);
 
 		op::delete_directory(*cx_, temp_dir);
 	}

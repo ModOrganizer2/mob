@@ -41,13 +41,12 @@ void zlib::do_fetch()
 void zlib::do_build_and_install()
 {
 	const auto build_path = run_tool(cmake()
-		.generator(cmake::jom)
+		.generator(cmake::vs)
 		.root(source_path())
 		.prefix(source_path()));
 
-	run_tool(jom()
-		.path(build_path)
-		.target("install"));
+	run_tool(msbuild()
+		.solution(build_path / "INSTALL.vcxproj"));
 
 	op::copy_file_to_dir_if_better(cx(),
 		build_path / "zconf.h",

@@ -37,7 +37,7 @@ cmake& cmake::def(const std::string& name, const std::string& value)
 
 cmake& cmake::def(const std::string& name, const fs::path& p)
 {
-	def(name, p.string());
+	def(name, path_to_utf8(p));
 	return *this;
 }
 
@@ -81,6 +81,8 @@ void cmake::do_run()
 	output_ = root_ / (g.output_dir(arch_));
 
 	process_
+		.stdout_encoding(encodings::utf8)
+		.stderr_encoding(encodings::utf8)
 		.arg("-G", "\"" + g.name + "\"")
 		.arg("-DCMAKE_BUILD_TYPE=Release")
 		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", process::log_quiet)
@@ -93,7 +95,8 @@ void cmake::do_run()
 
 	process_
 		.arg("..")
-		.env(env::vs(arch_))
+		.env(env::vs(arch_)
+			.set("CXXFLAGS", "/wd4566"))
 		.cwd(output_);
 
 	execute_and_join();

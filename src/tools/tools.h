@@ -164,7 +164,8 @@ protected:
 	void do_run() override;
 
 private:
-	fs::path patches_;
+	std::string task_;
+	bool prebuilt_;
 	fs::path output_;
 	fs::path file_;
 

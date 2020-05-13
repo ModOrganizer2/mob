@@ -9,6 +9,37 @@
 namespace mob
 {
 
+extern u8stream u8cout(std::wcout);
+extern u8stream u8cerr(std::wcerr);
+
+
+void u8stream::do_output(const std::string& s)
+{
+	out_ << utf8_to_utf16(s);
+}
+
+
+void mob_assertion_failed(
+	const char* message,
+	const char* exp, const wchar_t* file, int line, const char* func)
+{
+	if (message)
+	{
+		gcx().error(context::generic,
+			"assertion failed: {}:{} {}: {} ({})",
+			std::wstring(file), line, func, message, exp);
+	}
+	else
+	{
+		gcx().error(context::generic,
+			"assertion failed: {}:{} {}: '{}'",
+			std::wstring(file), line, func, exp);
+	}
+
+	if (IsDebuggerPresent())
+		DebugBreak();
+}
+
 url make_github_url(const std::string& org, const std::string& repo)
 {
 	return "https://github.com/" + org + "/" + repo + ".git";
@@ -116,7 +147,7 @@ std::string pad_left(std::string s, std::size_t n, char c)
 file_deleter::file_deleter(const context& cx, fs::path p)
 	: cx_(cx), p_(std::move(p)), delete_(true)
 {
-	cx_.trace(context::fs, "will delete " + p_.string() + " if things go bad");
+	cx_.trace(context::fs, "will delete {} if things go bad", p_);
 }
 
 file_deleter::~file_deleter()
@@ -134,13 +165,13 @@ file_deleter::~file_deleter()
 
 void file_deleter::delete_now()
 {
-	cx_.debug(context::fs, "something went bad, deleting " + p_.string());
+	cx_.debug(context::fs, "something went bad, deleting {}", p_);
 	op::delete_file(cx_, p_, op::optional);
 }
 
 void file_deleter::cancel()
 {
-	cx_.trace(context::fs, "everything okay, keeping " + p_.string());
+	cx_.trace(context::fs, "everything okay, keeping {}", p_);
 	delete_ = false;
 }
 
@@ -148,7 +179,7 @@ void file_deleter::cancel()
 directory_deleter::directory_deleter(const context& cx, fs::path p)
 	: cx_(cx), p_(std::move(p)), delete_(true)
 {
-	cx_.trace(context::fs, "will delete " + p_.string() + " if things go bad");
+	cx_.trace(context::fs, "will delete {} if things go bad", p_);
 }
 
 directory_deleter::~directory_deleter()
@@ -166,13 +197,13 @@ directory_deleter::~directory_deleter()
 
 void directory_deleter::delete_now()
 {
-	cx_.debug(context::fs, "something went bad, deleting " + p_.string());
+	cx_.debug(context::fs, "something went bad, deleting {}", p_);
 	op::delete_directory(cx_, p_, op::optional);
 }
 
 void directory_deleter::cancel()
 {
-	cx_.trace(context::fs, "everything okay, keeping " + p_.string());
+	cx_.trace(context::fs, "everything okay, keeping {}", p_);
 	delete_ = false;
 }
 
@@ -182,10 +213,7 @@ interruption_file::interruption_file(
 		: cx_(cx), dir_(std::move(dir)), name_(std::move(name))
 {
 	if (fs::exists(file()))
-	{
-		cx_.trace(context::interruption,
-			"found interrupt file " + file().string());
-	}
+		cx_.trace(context::interruption, "found interrupt file {}", file());
 }
 
 bool interruption_file::exists() const
@@ -200,17 +228,13 @@ fs::path interruption_file::file() const
 
 void interruption_file::create()
 {
-	cx_.trace(context::interruption,
-		"creating interrupt file " + file().string());
-
+	cx_.trace(context::interruption, "creating interrupt file {}", file());
 	op::touch(cx_, file());
 }
 
 void interruption_file::remove()
 {
-	cx_.trace(context::interruption,
-		"removing interrupt file " + file().string());
-
+	cx_.trace(context::interruption, "removing interrupt file {}", file());
 	op::delete_file(cx_, file());
 }
 
@@ -226,8 +250,8 @@ bool bypass_file::exists() const
 	{
 		if (conf::rebuild())
 		{
-			cx_.trace(context::bypass,
-				"bypass file " + file_.string() + " exists, deleting");
+			cx_.trace(context::rebuild,
+				"bypass file {} exists, deleting", file_);
 
 			op::delete_file(cx_, file_, op::optional);
 
@@ -235,26 +259,20 @@ bool bypass_file::exists() const
 		}
 		else
 		{
-			cx_.trace(context::bypass,
-				"bypass file " + file_.string() + " exists");
-
+			cx_.trace(context::bypass, "bypass file {} exists", file_);
 			return true;
 		}
 	}
 	else
 	{
-		cx_.trace(context::bypass,
-			"bypass file " + file_.string() + " not found");
-
+		cx_.trace(context::bypass, "bypass file {} not found", file_);
 		return false;
 	}
 }
 
 void bypass_file::create()
 {
-	cx_.trace(context::bypass,
-		"create bypass file " + file_.string());
-
+	cx_.trace(context::bypass, "create bypass file {}", file_);
 	op::touch(cx_, file_);
 }
 
@@ -297,17 +315,17 @@ console_color::console_color(colors c)
 
 			case colors::grey:
 				reset_ = true;
-				std::cout << "\033[38;2;150;150;150m";
+				u8cout << "\033[38;2;150;150;150m";
 				break;
 
 			case colors::yellow:
 				reset_ = true;
-				std::cout << "\033[38;2;240;240;50m";
+				u8cout << "\033[38;2;240;240;50m";
 				break;
 
 			case colors::red:
 				reset_ = true;
-				std::cout << "\033[38;2;240;50;50m";
+				u8cout << "\033[38;2;240;50;50m";
 				break;
 		}
 	}
@@ -352,7 +370,7 @@ console_color::~console_color()
 
 	if (g_color_method == color_methods::ansi)
 	{
-		std::cout << "\033[39m\033[49m";
+		u8cout << "\033[39m\033[49m";
 	}
 	else if (g_color_method == color_methods::console)
 	{
@@ -360,5 +378,133 @@ console_color::~console_color()
 	}
 }
 
-}	// namespace
 
+std::optional<std::wstring> to_utf16(UINT from, std::string_view s)
+{
+	if (s.empty())
+		return std::wstring();
+
+	const int wsize = MultiByteToWideChar(
+		from, 0, s.data(), static_cast<int>(s.size()), nullptr, 0);
+
+	if (wsize == 0)
+		return {};
+
+	auto buffer = std::make_unique<wchar_t[]>(
+		static_cast<std::size_t>(wsize + 1));
+
+	const int written = MultiByteToWideChar(
+		from, 0, s.data(), static_cast<int>(s.size()),
+		buffer.get(), wsize);
+
+	if (written == 0)
+		return {};
+
+	MOB_ASSERT(written == wsize);
+
+	return std::wstring(buffer.get(), buffer.get() + written);
+}
+
+std::optional<std::string> to_utf8(std::wstring_view ws)
+{
+	if (ws.empty())
+		return std::string();
+
+	const int size = WideCharToMultiByte(
+		CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()), nullptr, 0,
+		nullptr, nullptr);
+
+	if (size == 0)
+		return {};
+
+	auto buffer = std::make_unique<char[]>(
+		static_cast<std::size_t>(size + 1));
+
+	const int written = WideCharToMultiByte(
+		CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()),
+		buffer.get(), size, nullptr, nullptr);
+
+	if (written == 0)
+		return {};
+
+	MOB_ASSERT(written == size);
+
+	return std::string(buffer.get(), buffer.get() + written);
+}
+
+
+std::wstring utf8_to_utf16(std::string_view s)
+{
+	auto ws = to_utf16(CP_UTF8, s);
+	if (!ws)
+	{
+		std::cerr << "can't convert from utf8 to utf16\n";
+		return L"???";
+	}
+
+	return *ws;
+}
+
+std::string utf16_to_utf8(std::wstring_view ws)
+{
+	auto s = to_utf8(ws);
+	if (!s)
+	{
+		std::cerr << "can't convert from utf16 to utf8\n";
+		return "???";
+	}
+
+	return *s;
+}
+
+std::wstring cp_to_utf16(UINT from, std::string_view s)
+{
+	auto ws = to_utf16(from, s);
+	if (!ws)
+	{
+		std::cerr << "can't convert from acp to utf16\n";
+		return L"???";
+	}
+
+	return *ws;
+}
+
+std::string bytes_to_utf8(encodings e, std::string_view s)
+{
+	switch (e)
+	{
+		case encodings::utf16:
+		{
+			const auto* ws = reinterpret_cast<const wchar_t*>(s.data());
+			const auto chars = s.size() / sizeof(wchar_t);
+			return utf16_to_utf8({ws, chars});
+		}
+
+		case encodings::acp:
+		{
+			const std::wstring utf16 = cp_to_utf16(CP_ACP, s);
+			return utf16_to_utf8(utf16);
+		}
+
+		case encodings::oem:
+		{
+			const std::wstring utf16 = cp_to_utf16(CP_OEMCP, s);
+			return utf16_to_utf8(utf16);
+		}
+
+		case encodings::utf8:
+		case encodings::dont_know:
+		default:
+		{
+			return {s.begin(), s.end()};
+		}
+	}
+}
+
+
+std::string path_to_utf8(fs::path p)
+{
+	return utf16_to_utf8(p.native());
+}
+
+}	// namespace
