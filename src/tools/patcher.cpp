@@ -6,13 +6,14 @@ namespace mob
 {
 
 patcher::patcher()
-	: basic_process_runner("patch")
+	: basic_process_runner("patch"), prebuilt_(false)
 {
 }
 
 patcher& patcher::task(const std::string& name, bool prebuilt)
 {
-	patches_ = paths::patches() / name / (prebuilt ? "prebuilt" : "sources");
+	task_ = name;
+	prebuilt_ = prebuilt;
 	return *this;
 }
 
@@ -30,19 +31,25 @@ patcher& patcher::root(const fs::path& dir)
 
 void patcher::do_run()
 {
-	if (!fs::exists(patches_))
+	const fs::path patches_root = paths::patches() / task_;
+
+	if (!fs::exists(patches_root))
 	{
 		cx_->trace(context::generic,
-			"patch directory {} doesn't exist, assuming no patches", patches_);
+			"patch directory {} doesn't exist, assuming no patches",
+			patches_root);
 
 		return;
 	}
 
 	if (file_.empty())
 	{
-		cx_->trace(context::generic, "looking for patches in {}", patches_);
+		const fs::path patches =
+			patches_root / (prebuilt_ ? "prebuilt" : "sources");
 
-		for (auto e : fs::directory_iterator(patches_))
+		cx_->trace(context::generic, "looking for patches in {}", patches);
+
+		for (auto e : fs::directory_iterator(patches))
 		{
 			if (!e.is_regular_file())
 			{
@@ -75,7 +82,7 @@ void patcher::do_run()
 	else
 	{
 		cx_->trace(context::generic, "doing manual patch from {}", file_);
-		do_patch(patches_ / file_);
+		do_patch(patches_root / file_);
 	}
 }
 
