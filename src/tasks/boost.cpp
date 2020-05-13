@@ -168,9 +168,9 @@ void boost::write_config_jam()
 	oss
 		<< "using python\n"
 		<< "  : " << python_version_for_jam() << "\n"
-		<< "  : " << python::python_exe().generic_string() << "\n"
-		<< "  : " << python::include_path().generic_string() << "\n"
-		<< "  : " << python::build_path().generic_string() << "\n"
+		<< "  : " << path_to_utf8(python::python_exe()) << "\n"
+		<< "  : " << path_to_utf8(python::include_path()) << "\n"
+		<< "  : " << path_to_utf8(python::build_path()) << "\n"
 		<< "  : <address-model>64\n"
 		<< "  : <define>BOOST_ALL_NO_LIB=1\n"
 		<< "  ;";
@@ -281,7 +281,7 @@ std::string boost::boost_version_no_tags()
 	// 1.72.1
 	std::string s = m[1].str() + "." + m[2].str();
 
-	if (m.size() > 3)
+	if (m[3] != "")
 		s += "." + m[3].str();
 
 	return s;
@@ -299,13 +299,13 @@ std::string boost::boost_version_all_underscores()
 	// boost_1_72_0_b1_rc1
 	std::string s = "boost_" + m[1].str() + "_" + m[2].str();
 
-	if (m.size() > 3)
+	if (m[3] != "")
 		s += "_" + m[3].str();
 
-	if (m.size() > 4)
+	if (m[4] != "")
 		s += "_" + m[4].str();
 
-	if (m.size() > 5)
+	if (m[5] != "")
 		s += "_" + m[5].str();
 
 	return s;

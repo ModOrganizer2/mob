@@ -232,7 +232,7 @@ void task::threaded_run(std::string thread_name, std::function<void ()> f)
 	}
 	catch(std::exception& e)
 	{
-		error("{} uncaught exception: {}", name(), e.what());
+		error("uncaught exception in task {}: {}", name(), e.what());
 		interrupt_all();
 	}
 }

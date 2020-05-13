@@ -33,9 +33,7 @@ python::version_info python::parsed_version()
 
 	v.major = m[1];
 	v.minor = m[2];
-
-	if (m.size() > 3)
-		v.patch = m[3];
+	v.patch = m[3];
 
 	return v;
 }

@@ -235,7 +235,7 @@ std::string openssl::version_no_minor_underscores()
 {
 	auto m = parse_version();
 
-	if (m.size() == 2)
+	if (m[2] == "")
 		return m[1].str();
 	else
 		return m[1].str() + "_" + m[2].str();
