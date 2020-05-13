@@ -435,6 +435,23 @@ void process::do_run(const std::string& what)
 		op::delete_file(*cx_, error_log_file_, op::optional);
 	}
 
+
+	{
+		HANDLE job = CreateJobObjectW(nullptr, nullptr);
+
+		if (job == 0)
+		{
+			const auto e = GetLastError();
+			cx_->warning(context::cmd,
+				"failed to create job, {}", error_message(e));
+		}
+		else
+		{
+			impl_.job.reset(job);
+		}
+	}
+
+
 	stdout_.buffer = encoded_buffer(stdout_.encoding);
 	stderr_.buffer = encoded_buffer(stderr_.encoding);
 
@@ -520,6 +537,16 @@ void process::do_run(const std::string& what)
 		const auto e = GetLastError();
 		cx_->bail_out(context::cmd,
 			"failed to start '{}', {}", args, error_message(e));
+	}
+
+	if (impl_.job)
+	{
+		if (!::AssignProcessToJobObject(impl_.job.get(), pi.hProcess))
+		{
+			const auto e = GetLastError();
+			cx_->warning(context::cmd,
+				"can't assign process to job, {}", error_message(e));
+		}
 	}
 
 	cx_->trace(context::cmd, "pid {}", pi.dwProcessId);
@@ -684,33 +711,68 @@ void process::on_timeout(bool& already_interrupted)
 
 	if (impl_.interrupt && !already_interrupted)
 	{
-		if (flags_ & terminate_on_interrupt)
+		const auto pid = GetProcessId(impl_.handle.get());
+
+		if (pid == 0)
 		{
 			cx_->trace(context::cmd,
-				"terminating process (flag is set)");
+				"process id is 0, terminating instead");
 
-			::TerminateProcess(impl_.handle.get(), 0xffff);
+			terminate();
 		}
 		else
 		{
-			const auto pid = GetProcessId(impl_.handle.get());
+			cx_->trace(context::cmd, "sending sigint to {}", pid);
+			GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
 
-			if (pid == 0)
+			if (flags_ & terminate_on_interrupt)
 			{
 				cx_->trace(context::cmd,
-					"process id is 0, terminating instead");
+					"terminating process (flag is set)");
 
-				::TerminateProcess(impl_.handle.get(), 0xffff);
-			}
-			else
-			{
-				cx_->trace(context::cmd, "sending sigint to {}", pid);
-				GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
+				terminate();
 			}
 		}
 
 		already_interrupted = true;
 	}
+}
+
+void process::terminate()
+{
+	UINT exit_code = 0xff;
+
+	if (impl_.job)
+	{
+		JOBOBJECT_BASIC_ACCOUNTING_INFORMATION info = {};
+
+		const auto r = ::QueryInformationJobObject(
+			impl_.job.get(), JobObjectBasicAccountingInformation,
+			&info, sizeof(info), nullptr);
+
+		if (r)
+		{
+			gcx().trace(context::cmd,
+				"terminating job, {} processes ({} spawned total)",
+				info.ActiveProcesses, info.TotalProcesses);
+		}
+		else
+		{
+			gcx().trace(context::cmd, "terminating job");
+		}
+
+		if (::TerminateJobObject(impl_.job.get(), exit_code))
+		{
+			// done
+			return;
+		}
+
+		const auto e = GetLastError();
+		gcx().warning(context::cmd,
+			"failed to terminate job, {}", error_message(e));
+	}
+
+	::TerminateProcess(impl_.handle.get(), exit_code);
 }
 
 void process::dump_error_log_file() noexcept

@@ -200,6 +200,7 @@ private:
 	struct impl
 	{
 		handle_ptr handle;
+		handle_ptr job;
 		std::atomic<bool> interrupt{false};
 		async_pipe stdout_pipe, stderr_pipe;
 
@@ -245,6 +246,8 @@ private:
 
 	void on_completed();
 	void on_timeout(bool& already_interrupted);
+	void terminate();
+
 	void dump_error_log_file() noexcept;
 	void dump_stderr() noexcept;
 

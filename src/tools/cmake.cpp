@@ -95,7 +95,8 @@ void cmake::do_run()
 
 	process_
 		.arg("..")
-		.env(env::vs(arch_))
+		.env(env::vs(arch_)
+			.set("CXXFLAGS", "/wd4566"))
 		.cwd(output_);
 
 	execute_and_join();

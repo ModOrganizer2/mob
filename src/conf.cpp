@@ -44,6 +44,7 @@ static path_map g_tools =
 	{"devenv",  "devenv.exe"},
 	{"cmake",   "cmake.exe"},
 	{"git",     "git.exe"},
+	{"nasm",    "nasm.exe"},
 	{"vcvars",   ""},
 };
 
@@ -214,6 +215,7 @@ namespace tools
 	fs::path git::binary() 		      { return tool_by_name("git"); }
 	fs::path sevenz::binary() 	      { return tool_by_name("sevenz"); }
 	fs::path jom::binary() 		      { return tool_by_name("jom"); }
+	fs::path nasm::binary()           { return tool_by_name("nasm"); }
 	fs::path patch::binary() 	      { return tool_by_name("patch"); }
 	fs::path nuget::binary() 	      { return tool_by_name("nuget"); }
 

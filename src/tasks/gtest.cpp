@@ -43,25 +43,26 @@ void gtest::do_build_and_install()
 		{"gtest64", [&] {
 			// x64
 			const auto build_path_x64 = run_tool(cmake()
-				.generator(cmake::jom)
+				.generator(cmake::vs)
 				.architecture(arch::x64)
+				.prefix(source_path() / "build")
 				.root(source_path()));
 
-			run_tool(jom()
-				.architecture(arch::x64)
-				.path(build_path_x64));
+			run_tool(msbuild()
+				.solution(build_path_x64 / "INSTALL.vcxproj"));
 		}},
 
 		{"gtest32", [&] {
 			// x86
 			const auto build_path_x86 = run_tool(cmake()
-				.generator(cmake::jom)
+				.generator(cmake::vs)
 				.architecture(arch::x86)
+				.prefix(source_path() / "build_32")
 				.root(source_path()));
 
-			run_tool(jom()
+			run_tool(msbuild()
 				.architecture(arch::x86)
-				.path(build_path_x86));
+				.solution(build_path_x86 / "INSTALL.vcxproj"));
 		}}
 	});
 }

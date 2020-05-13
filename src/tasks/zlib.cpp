@@ -46,7 +46,7 @@ void zlib::do_build_and_install()
 		.prefix(source_path()));
 
 	run_tool(msbuild()
-		.solution(source_path() / "vsbuild" / "INSTALL.vcxproj"));
+		.solution(build_path / "INSTALL.vcxproj"));
 
 	op::copy_file_to_dir_if_better(cx(),
 		build_path / "zconf.h",

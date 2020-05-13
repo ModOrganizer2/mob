@@ -47,6 +47,11 @@ namespace tools
 		static fs::path binary();
 	};
 
+	struct nasm
+	{
+		static fs::path binary();
+	};
+
 	struct patch
 	{
 		static fs::path binary();

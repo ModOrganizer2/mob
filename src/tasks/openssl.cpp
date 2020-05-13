@@ -108,11 +108,12 @@ void openssl::configure()
 	run_tool(process_runner(process()
 		.binary(tools::perl::binary())
 		.arg("Configure")
+		.arg("VC-WIN64A")
 		.arg("--openssldir=", build_path())
 		.arg("--prefix=", build_path())
 		.arg("-FS")
 		.arg("-MP1")
-		.arg("VC-WIN64A")
+		.arg("-wd4566")
 		.cwd(source_path())
 		.env(env::vs(arch::x64))));
 }
