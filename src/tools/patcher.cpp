@@ -49,6 +49,15 @@ void patcher::do_run()
 
 		cx_->trace(context::generic, "looking for patches in {}", patches);
 
+		if (!fs::exists(patches))
+		{
+			cx_->trace(context::generic,
+				"patch directory {} doesn't exist, assuming no patches",
+				patches);
+
+			return;
+		}
+
 		for (auto e : fs::directory_iterator(patches))
 		{
 			if (!e.is_regular_file())

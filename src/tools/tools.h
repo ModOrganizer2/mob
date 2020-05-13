@@ -285,8 +285,6 @@ private:
 	std::string platform_;
 	arch arch_;
 	flags_t flags_;
-
-	void write_custom_props_file();
 };
 
 
