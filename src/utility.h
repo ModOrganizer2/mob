@@ -252,8 +252,8 @@ std::string path_to_utf8(fs::path p);
 class u8stream
 {
 public:
-	u8stream(std::wostream& out)
-		: out_(out)
+	u8stream(bool err)
+		: err_(err)
 	{
 	}
 
@@ -269,7 +269,7 @@ public:
 	}
 
 private:
-	std::wostream& out_;
+	bool err_;
 
 	void do_output(const std::string& s);
 };
@@ -278,6 +278,7 @@ private:
 extern u8stream u8cout;
 extern u8stream u8cerr;
 
+void set_std_streams();
 
 
 template <class F>

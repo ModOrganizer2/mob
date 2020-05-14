@@ -312,7 +312,7 @@ int run(const std::vector<std::string>& args)
 
 int wmain(int argc, wchar_t** argv)
 {
-	_setmode(_fileno(stdout), _O_U16TEXT);
+	mob::set_std_streams();
 	mob::set_thread_exception_handlers();
 
 	std::vector<std::string> args;

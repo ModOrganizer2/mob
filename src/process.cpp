@@ -932,8 +932,12 @@ std::basic_string<CharT> next_line(
 	bool finished, std::string_view bytes, std::size_t& byte_offset)
 {
 	std::size_t size = bytes.size();
-	if ((size & 1) == 1)
-		--size;
+
+	if constexpr (sizeof(CharT) == 2)
+	{
+		if ((size & 1) == 1)
+			--size;
+	}
 
 	const CharT* start = reinterpret_cast<const CharT*>(bytes.data() + byte_offset);
 	const CharT* end = reinterpret_cast<const CharT*>(bytes.data() + size);

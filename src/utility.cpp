@@ -9,8 +9,8 @@
 namespace mob
 {
 
-extern u8stream u8cout(std::wcout);
-extern u8stream u8cerr(std::wcerr);
+extern u8stream u8cout(false);
+extern u8stream u8cerr(true);
 
 constexpr std::size_t max_name_length = 1000;
 constexpr std::size_t max_frames = 100;
@@ -173,13 +173,61 @@ void set_thread_exception_handlers()
 }
 
 
+static bool stdout_console = []
+{
+	DWORD d = 0;
+
+	if (GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &d))
+	{
+		// this is a console
+		return true;
+	}
+
+	return false;
+}();
+
+static bool stderr_console = []
+{
+	DWORD d = 0;
+
+	if (GetConsoleMode(GetStdHandle(STD_ERROR_HANDLE), &d))
+	{
+		// this is a console
+		return true;
+	}
+
+	return false;
+}();
+
+
+void set_std_streams()
+{
+	if (stdout_console)
+		_setmode(_fileno(stdout), _O_U16TEXT);
+
+	if (stderr_console)
+		_setmode(_fileno(stderr), _O_U16TEXT);
+}
+
 void u8stream::do_output(const std::string& s)
 {
 	static std::mutex m;
-
-	const std::wstring ws = utf8_to_utf16(s);
 	std::scoped_lock lock(m);
-	out_ << ws;
+
+	if (err_)
+	{
+		if (stderr_console)
+			std::wcerr << utf8_to_utf16(s);
+		else
+			std::cerr << s;
+	}
+	else
+	{
+		if (stdout_console)
+			std::wcout << utf8_to_utf16(s);
+		else
+			std::cout << s;
+	}
 }
 
 
