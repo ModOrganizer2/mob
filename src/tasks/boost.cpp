@@ -184,7 +184,7 @@ void boost::write_config_jam()
 	});
 
 
-	op::write_text_file(cx(), config_jam_file(), oss.str());
+	op::write_text_file(cx(), encodings::utf8, config_jam_file(), oss.str());
 }
 
 

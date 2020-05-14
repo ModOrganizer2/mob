@@ -150,8 +150,24 @@ void sip::generate()
 		.env(this_env::get()
 			.set("PYTHONUTF8", "1"))));
 
+
+	const std::string filename = "sip-module-script.py";
+	const fs::path src = python::scripts_path() / filename;
+	const fs::path backup = python::scripts_path() / (filename + ".bak");
+	const fs::path dest = python::scripts_path() / (filename + ".acp");
+
+	if (!fs::exists(backup))
+	{
+		const std::string utf8 = op::read_text_file(cx(), encodings::utf8, src);
+		op::write_text_file(cx(), encodings::acp, dest, utf8);
+		op::swap_files(cx(), src, dest, backup);
+	}
+
 	run_tool(process_runner(process()
 		.binary(sip_module_exe())
+		.chcp(850)
+		.stdout_encoding(encodings::acp)
+		.stderr_encoding(encodings::acp)
 		.arg("--sip-h")
 		.arg("PyQt5.zip")
 		.cwd(source_path())));

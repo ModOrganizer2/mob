@@ -216,6 +216,11 @@ private:
 		filter_fun filter;
 		encodings encoding = encodings::dont_know;
 		encoded_buffer buffer;
+
+		stream(context::level lv)
+			: level(lv)
+		{
+		}
 	};
 
 	const context* cx_;
@@ -231,6 +236,7 @@ private:
 	std::string raw_;
 	std::string cmd_;
 	fs::path error_log_file_;
+	std::map<context::level, std::vector<std::string>> logs_;
 
 	impl impl_;
 	DWORD code_;

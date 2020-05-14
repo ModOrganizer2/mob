@@ -311,6 +311,14 @@ void copy_glob_to_dir_if_better(
 	const auto file_parent = src_glob.parent_path();
 	const auto wildcard = src_glob.filename().native();
 
+	if (!fs::exists(file_parent))
+	{
+		cx.bail_out(context::fs,
+			"can't copy glob {} to {}, parent directory {} doesn't exist",
+			src_glob, dest_dir, file_parent);
+	}
+
+
 	for (auto&& e : fs::directory_iterator(file_parent))
 	{
 		const auto name = e.path().filename().native();
@@ -353,6 +361,43 @@ void copy_glob_to_dir_if_better(
 			}
 		}
 	}
+}
+
+void swap_files(
+	const context& cx, const fs::path& src, const fs::path& dest,
+	const fs::path& backup, flags)
+{
+	cx.trace(context::fs, "swapping {} and {}", src, dest);
+
+	if (conf::dry())
+		return;
+
+	const wchar_t* backup_p = nullptr;
+	std::wstring backup_s;
+
+	if (!backup.empty())
+	{
+		backup_s = backup.native();
+		backup_p = backup_s.c_str();
+	}
+
+	const auto r = ::ReplaceFileW(
+		src.native().c_str(), dest.native().c_str(), backup_p,
+		REPLACEFILE_IGNORE_MERGE_ERRORS | REPLACEFILE_IGNORE_ACL_ERRORS,
+		nullptr, nullptr);
+
+	if (r)
+		return;
+
+	const auto e = GetLastError();
+
+	cx.warning(
+		context::generic,
+		"failed to atomically rename {} to {}, {}; hoping for the best",
+		src, dest, error_message(e));
+
+	op::rename(cx, src, backup);
+	op::rename(cx, dest, src);
 }
 
 std::string read_text_file_impl(const context& cx, const fs::path& p, flags f)
@@ -398,15 +443,17 @@ std::string read_text_file(
 }
 
 void write_text_file(
-	const context& cx, const fs::path& p, std::string_view s, flags f)
+	const context& cx, encodings e, const fs::path& p,
+	std::string_view utf8, flags f)
 {
 	check(cx, p);
 
-	cx.trace(context::fs, "writing {} bytes to {}", s.size(), p);
+	const std::string bytes = utf8_to_bytes(e, utf8);
+	cx.trace(context::fs, "writing {} bytes to {}", bytes.size(), p);
 
 	{
-		std::ofstream out(p);
-		out << s;
+		std::ofstream out(p, std::ios::binary);
+		out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
 		out.close();
 
 		if (out.bad())
@@ -423,7 +470,7 @@ void write_text_file(
 	}
 
 	cx.trace(context::fs,
-		"finished writing {} bytes to {}", s.size(), p);
+		"finished writing {} bytes to {}", bytes.size(), p);
 }
 
 

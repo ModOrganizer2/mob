@@ -231,8 +231,9 @@ process::impl& process::impl::operator=(const impl& i)
 }
 
 
-process::process()
-	: cx_(&gcx()), unicode_(false), chcp_(-1), flags_(process::noflags), code_(0)
+process::process() :
+	cx_(&gcx()), unicode_(false), chcp_(-1), flags_(process::noflags),
+	stdout_(context::level::trace), stderr_(context::level::error), code_(0)
 {
 }
 
@@ -634,6 +635,7 @@ void process::read_pipe(
 						return;
 				}
 
+				logs_[f.lv].push_back(std::string(f.line));
 				cx_->log(f.r, f.lv, "{}", f.line);
 			});
 
@@ -682,7 +684,29 @@ void process::on_completed()
 	// success
 	if (code_ == 0)
 	{
-		cx_->trace(context::cmd, "process exit code is 0");
+		const auto& warnings = logs_[context::level::warning];
+		const auto& errors = logs_[context::level::error];
+
+		if (!warnings.empty() || !errors.empty())
+		{
+			cx_->warning(
+				context::cmd,
+				"process exit code is 0, but stderr had something");
+
+			cx_->warning(context::cmd, "process was: {}", make_cmd());
+			cx_->warning(context::cmd, "stderr:");
+
+			for (auto&& line : warnings)
+				cx_->warning(context::std_err, "        {}", line);
+
+			for (auto&& line : errors)
+				cx_->warning(context::std_err, "        {}", line);
+		}
+		else
+		{
+			cx_->trace(context::cmd, "process exit code is 0");
+		}
+
 		return;
 	}
 
@@ -804,7 +828,7 @@ void process::dump_stderr() noexcept
 	if (!s.empty())
 	{
 		cx_->error(context::cmd,
-			"{} failed, content of stderr:", make_name());
+			"{} failed, {}, content of stderr:", make_name(), make_cmd());
 
 		for_each_line(s, [&](auto&& line)
 		{

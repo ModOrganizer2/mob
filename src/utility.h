@@ -240,7 +240,8 @@ std::string trim_copy(const std::string& s, const std::string& what=" \t\r\n");
 
 std::wstring utf8_to_utf16(std::string_view s);
 std::string utf16_to_utf8(std::wstring_view ws);
-std::string bytes_to_utf8(encodings e, std::string_view s);
+std::string bytes_to_utf8(encodings e, std::string_view bytes);
+std::string utf8_to_bytes(encodings e, std::string_view utf8);
 
 template <class T>
 std::string path_to_utf8(T&&) = delete;

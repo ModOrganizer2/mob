@@ -307,22 +307,21 @@ std::string context::make_log_string(reason r, level, std::string_view s) const
 
 void dump_logs()
 {
-	if (!g_warnings.empty())
+	if (!g_warnings.empty() || !g_errors.empty())
 	{
-		auto c = level_color(context::level::warning);
-		u8cout << "\n\nthere were warnings:\n";
+		u8cout << "\n\nthere were problems:\n";
 
-		for (auto&& s : g_warnings)
-			u8cout << s << "\n";
-	}
+		{
+			auto c = level_color(context::level::warning);
+			for (auto&& s : g_warnings)
+				u8cout << s << "\n";
+		}
 
-	if (!g_errors.empty())
-	{
-		auto c = level_color(context::level::error);
-		u8cout << "\n\nthere were errors:\n";
-
-		for (auto&& s : g_errors)
-			u8cout << s << "\n";
+		{
+			auto c = level_color(context::level::error);
+			for (auto&& s : g_errors)
+				u8cout << s << "\n";
+		}
 	}
 }
 

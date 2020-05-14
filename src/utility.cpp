@@ -71,6 +71,11 @@ void dump_stacktrace(const wchar_t* what)
 
 		std::wcerr << L"\n";
 	}
+
+	if (IsDebuggerPresent())
+		DebugBreak();
+	else
+		TerminateProcess(GetCurrentProcess(), 0xffff);
 }
 
 void terminate_handler() noexcept
@@ -525,7 +530,7 @@ console_color::~console_color()
 }
 
 
-std::optional<std::wstring> to_utf16(UINT from, std::string_view s)
+std::optional<std::wstring> to_widechar(UINT from, std::string_view s)
 {
 	if (s.empty())
 		return std::wstring();
@@ -551,13 +556,13 @@ std::optional<std::wstring> to_utf16(UINT from, std::string_view s)
 	return std::wstring(buffer.get(), buffer.get() + written);
 }
 
-std::optional<std::string> to_utf8(std::wstring_view ws)
+std::optional<std::string> to_multibyte(UINT to, std::wstring_view ws)
 {
 	if (ws.empty())
 		return std::string();
 
 	const int size = WideCharToMultiByte(
-		CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()), nullptr, 0,
+		to, 0, ws.data(), static_cast<int>(ws.size()), nullptr, 0,
 		nullptr, nullptr);
 
 	if (size == 0)
@@ -567,7 +572,7 @@ std::optional<std::string> to_utf8(std::wstring_view ws)
 		static_cast<std::size_t>(size + 1));
 
 	const int written = WideCharToMultiByte(
-		CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()),
+		to, 0, ws.data(), static_cast<int>(ws.size()),
 		buffer.get(), size, nullptr, nullptr);
 
 	if (written == 0)
@@ -581,10 +586,10 @@ std::optional<std::string> to_utf8(std::wstring_view ws)
 
 std::wstring utf8_to_utf16(std::string_view s)
 {
-	auto ws = to_utf16(CP_UTF8, s);
+	auto ws = to_widechar(CP_UTF8, s);
 	if (!ws)
 	{
-		std::cerr << "can't convert from utf8 to utf16\n";
+		std::wcerr << L"can't convert from utf8 to utf16\n";
 		return L"???";
 	}
 
@@ -593,10 +598,10 @@ std::wstring utf8_to_utf16(std::string_view s)
 
 std::string utf16_to_utf8(std::wstring_view ws)
 {
-	auto s = to_utf8(ws);
+	auto s = to_multibyte(CP_UTF8, ws);
 	if (!s)
 	{
-		std::cerr << "can't convert from utf16 to utf8\n";
+		std::wcerr << L"can't convert from utf16 to utf8\n";
 		return "???";
 	}
 
@@ -605,15 +610,29 @@ std::string utf16_to_utf8(std::wstring_view ws)
 
 std::wstring cp_to_utf16(UINT from, std::string_view s)
 {
-	auto ws = to_utf16(from, s);
+	auto ws = to_widechar(from, s);
 	if (!ws)
 	{
-		std::cerr << "can't convert from acp to utf16\n";
+		std::wcerr << L"can't convert from cp " << from << L" to utf16\n";
 		return L"???";
 	}
 
 	return *ws;
 }
+
+std::string utf16_to_cp(UINT to, std::wstring_view ws)
+{
+	auto s = to_multibyte(to, ws);
+
+	if (!s)
+	{
+		std::wcerr << L"can't convert from cp " << to << L" to utf16\n";
+		return "???";
+	}
+
+	return *s;
+}
+
 
 std::string bytes_to_utf8(encodings e, std::string_view s)
 {
@@ -643,6 +662,58 @@ std::string bytes_to_utf8(encodings e, std::string_view s)
 		default:
 		{
 			return {s.begin(), s.end()};
+		}
+	}
+}
+
+std::string utf16_to_bytes(encodings e, std::wstring_view ws)
+{
+	switch (e)
+	{
+		case encodings::utf16:
+		{
+			return std::string(
+				reinterpret_cast<const char*>(ws.data()),
+				ws.size() * sizeof(wchar_t));
+		}
+
+		case encodings::acp:
+		{
+			return utf16_to_cp(CP_ACP, ws);
+		}
+
+		case encodings::oem:
+		{
+			return utf16_to_cp(CP_OEMCP, ws);
+		}
+
+		case encodings::utf8:
+		case encodings::dont_know:
+		default:
+		{
+			return utf16_to_utf8(ws);
+		}
+	}
+
+}
+
+std::string utf8_to_bytes(encodings e, std::string_view utf8)
+{
+	switch (e)
+	{
+		case encodings::utf16:
+		case encodings::acp:
+		case encodings::oem:
+		{
+			const std::wstring ws = utf8_to_utf16(utf8);
+			return utf16_to_bytes(e, ws);
+		}
+
+		case encodings::utf8:
+		case encodings::dont_know:
+		default:
+		{
+			return std::string(utf8);
 		}
 	}
 }
