@@ -188,6 +188,16 @@ private:
 		}
 		catch(std::exception&)
 		{
+			std::wstring s;
+
+			const char* p = f;
+			while (*p)
+			{
+				s += (wchar_t)*p;
+				++p;
+			}
+
+			std::wcerr << "bad format string '" << s << "'\n";
 			MOB_ASSERT(false, "bad format string");
 		}
 	}

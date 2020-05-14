@@ -66,6 +66,7 @@
 #include <shlwapi.h>
 #include <io.h>
 #include <fcntl.h>
+#include <imagehlp.h>
 
 #include <curl/curl.h>
 #include <clipp.h>

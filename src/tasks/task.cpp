@@ -230,11 +230,6 @@ void task::threaded_run(std::string thread_name, std::function<void ()> f)
 	{
 		return;
 	}
-	catch(std::exception& e)
-	{
-		error("uncaught exception in task {}: {}", name(), e.what());
-		interrupt_all();
-	}
 }
 
 void task::run()
@@ -271,7 +266,7 @@ void task::join()
 
 void task::fetch()
 {
-	thread_ = std::thread([&]
+	thread_ = start_thread([&]
 	{
 		threaded_run(name(), [&]
 		{
@@ -301,7 +296,7 @@ void task::fetch()
 
 void task::build_and_install()
 {
-	thread_ = std::thread([&]
+	thread_ = start_thread([&]
 	{
 		threaded_run(name(), [&]
 		{
@@ -372,7 +367,7 @@ void parallel_tasks::run()
 {
 	for (auto& t : children_)
 	{
-		threads_.push_back(std::thread([&]
+		threads_.push_back(start_thread([&]
 		{
 			t->run();
 		}));
@@ -407,7 +402,7 @@ void parallel_tasks::build_and_install()
 	{
 		for (auto& t : children_)
 		{
-			threads_.push_back(std::thread([&]
+			threads_.push_back(start_thread([&]
 			{
 				t->run();
 			}));

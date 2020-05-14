@@ -93,17 +93,7 @@ void curl_downloader::start(const url& u, const fs::path& path)
 	if (conf::dry())
 		return;
 
-	thread_ = std::thread([&]
-	{
-		try
-		{
-			run();
-		}
-		catch(...)
-		{
-			// eat it
-		}
-	});
+	thread_ = start_thread([&]{ run(); });
 }
 
 void curl_downloader::join()

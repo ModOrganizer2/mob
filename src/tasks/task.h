@@ -87,7 +87,7 @@ protected:
 		{
 			cx().trace(context::generic, "running in parallel: {}", name);
 
-			ts.push_back(std::thread([this, name, f]
+			ts.push_back(start_thread([this, name, f]
 			{
 				threaded_run(name, f);
 			}));

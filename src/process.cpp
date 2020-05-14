@@ -238,13 +238,7 @@ process::process()
 
 process::~process()
 {
-	try
-	{
-		join();
-	}
-	catch(...)
-	{
-	}
+	join();
 }
 
 process process::raw(const context& cx, const std::string& cmd)
@@ -777,64 +771,50 @@ void process::terminate()
 
 void process::dump_error_log_file() noexcept
 {
-	try
+	if (error_log_file_.empty())
+		return;
+
+	if (fs::exists(error_log_file_))
 	{
-		if (error_log_file_.empty())
+		std::string log = op::read_text_file(
+			*cx_, encodings::dont_know, error_log_file_, op::optional);
+
+		if (log.empty())
 			return;
 
-		if (fs::exists(error_log_file_))
+		cx_->error(context::cmd,
+			"{} failed, content of {}:", make_name(), error_log_file_);
+
+		for_each_line(log, [&](auto&& line)
 		{
-			std::string log = op::read_text_file(
-				*cx_, encodings::dont_know, error_log_file_, op::optional);
-
-			if (log.empty())
-				return;
-
-			cx_->error(context::cmd,
-				"{} failed, content of {}:", make_name(), error_log_file_);
-
-			for_each_line(log, [&](auto&& line)
-			{
-				cx_->error(context::cmd, "        {}", line);
-			});
-		}
-		else
-		{
-			cx_->debug(context::cmd,
-				"external error log file {} doesn't exist", error_log_file_);
-		}
+			cx_->error(context::cmd, "        {}", line);
+		});
 	}
-	catch(...)
+	else
 	{
-		// eat it
+		cx_->debug(context::cmd,
+			"external error log file {} doesn't exist", error_log_file_);
 	}
 }
 
 void process::dump_stderr() noexcept
 {
-	try
+	const std::string s = stderr_.buffer.utf8_string();
+
+	if (!s.empty())
 	{
-		const std::string s = stderr_.buffer.utf8_string();
+		cx_->error(context::cmd,
+			"{} failed, content of stderr:", make_name());
 
-		if (!s.empty())
+		for_each_line(s, [&](auto&& line)
 		{
-			cx_->error(context::cmd,
-				"{} failed, content of stderr:", make_name());
-
-			for_each_line(s, [&](auto&& line)
-			{
-				cx_->error(context::cmd, "        {}", line);
-			});
-		}
-		else
-		{
-			cx_->error(context::cmd,
-				"{} failed, stderr was empty", make_name());
-		}
+			cx_->error(context::cmd, "        {}", line);
+		});
 	}
-	catch(...)
+	else
 	{
-		// eat it
+		cx_->error(context::cmd,
+			"{} failed, stderr was empty", make_name());
 	}
 }
 

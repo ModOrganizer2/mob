@@ -313,37 +313,25 @@ int run(const std::vector<std::string>& args)
 int wmain(int argc, wchar_t** argv)
 {
 	_setmode(_fileno(stdout), _O_U16TEXT);
+	mob::set_thread_exception_handlers();
 
-	try
+	std::vector<std::string> args;
+	for (int i=1; i<argc; ++i)
+		args.push_back(mob::utf16_to_utf8(argv[i]));
+
+	int r = mob::run(args);
+
+	if (r == 0)
 	{
-		std::vector<std::string> args;
-		for (int i=1; i<argc; ++i)
-			args.push_back(mob::utf16_to_utf8(argv[i]));
-
-		int r = mob::run(args);
-
-		if (r == 0)
-		{
-			mob::gcx().info(mob::context::generic, "mob done");
-		}
-		else
-		{
-			mob::gcx().info(mob::context::generic,
-				"mob finished with exit code {}", r);
-		}
-
-		mob::dump_logs();
-
-		return r;
+		mob::gcx().info(mob::context::generic, "mob done");
 	}
-	catch(std::exception& e)
+	else
 	{
-		mob::u8cerr << "unhandled exception: " << e.what() << "\n";
-	}
-	catch(...)
-	{
-		mob::u8cerr << "unknown unhandled exception\n";
+		mob::gcx().info(mob::context::generic,
+			"mob finished with exit code {}", r);
 	}
 
-	return 1;
+	mob::dump_logs();
+
+	return r;
 }

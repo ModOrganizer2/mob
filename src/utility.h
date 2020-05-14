@@ -35,6 +35,18 @@ inline void mob_assert(
 		mob_assertion_failed(nullptr, exp, file, line, func);
 }
 
+void set_thread_exception_handlers();
+
+template <class F>
+std::thread start_thread(F&& f)
+{
+	return std::thread([f]
+	{
+		set_thread_exception_handlers();
+		f();
+	});
+}
+
 
 enum class encodings
 {
