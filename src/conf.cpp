@@ -329,19 +329,19 @@ void set_option(const std::string& s)
 void dump_available_options()
 {
 	for (auto&& [k, v] : g_options)
-		u8cout << "options/" << k << "\n";
+		u8cout << "options/" << k << " = " << v << "\n";
 
 	for (auto&& [k, v] : g_tools)
-		u8cout << "tools/" << k << "\n";
+		u8cout << "tools/" << k << " = " << v << "\n";
 
 	for (auto&& [k, v] : g_prebuilt)
-		u8cout << "prebuilt/" << k << "\n";
+		u8cout << "prebuilt/" << k << " = " << v << "\n";
 
 	for (auto&& [k, v] : g_versions)
-		u8cout << "versions/" << k << "\n";
+		u8cout << "versions/" << k << " = " << v << "\n";
 
 	for (auto&& [k, v] : g_paths)
-		u8cout << "paths/" << k << "\n";
+		u8cout << "paths/" << k << " = " << v << "\n";
 }
 
 bool try_parts(fs::path& check, const std::vector<std::string>& parts)
@@ -931,7 +931,7 @@ void init_options(const fs::path& ini, const std::vector<std::string>& opts)
 	make_canonical_path("install",          paths::prefix(), "install");
 	make_canonical_path("install_bin",      paths::install(), "bin");
 	make_canonical_path("install_libs",     paths::install(), "libs");
-	make_canonical_path("install_pdbs",     paths::install(), "pdbs");
+	make_canonical_path("install_pdbs",     paths::install(), "pdb");
 	make_canonical_path("install_dlls",     paths::install_bin(), "dlls");
 	make_canonical_path("install_loot",     paths::install_bin(), "loot");
 	make_canonical_path("install_plugins",  paths::install_bin(), "plugins");

@@ -62,4 +62,14 @@ void write_text_file(
 	const context& cx, encodings e, const fs::path& p, std::string_view utf8,
 	flags f=noflags);
 
+void archive_from_glob(
+	const context& cx,
+	const fs::path& src_glob, const fs::path& dest_file,
+	const std::vector<std::string>& ignore);
+
+void archive_from_files(
+	const context& cx,
+	const std::vector<fs::path>& files, const fs::path& files_root,
+	const fs::path& dest_file);
+
 }	// namespace

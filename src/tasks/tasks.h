@@ -261,6 +261,7 @@ public:
 	static bool prebuilt();
 
 	static fs::path source_path();
+	static fs::path super_path();
 
 	bool is_super() const override;
 
@@ -274,8 +275,6 @@ private:
 	void initialize_super(const fs::path& super_root);
 
 	fs::path this_source_path() const;
-
-	static fs::path super_path();
 };
 
 

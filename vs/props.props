@@ -25,7 +25,7 @@
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>..\third-party\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Ws2_32.lib;Crypt32.lib;Wldap32.lib;Shlwapi.lib;DbgHelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Ws2_32.lib;Crypt32.lib;Wldap32.lib;Shlwapi.lib;DbgHelp.lib;Version.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup />

@@ -6,7 +6,6 @@ namespace mob
 class command
 {
 public:
-	command();
 	virtual ~command() = default;
 
 	struct common_options
@@ -24,21 +23,35 @@ public:
 	static common_options common;
 
 	static clipp::group common_options_group();
-	virtual clipp::group group() = 0;
 
 	void force_exit_code(int code);
 	void force_pick();
 
 	bool picked() const;
+	bool wants_help() const;
 
+	clipp::group group();
 	int run();
 
 protected:
-	bool picked_;
+	enum flags
+	{
+		noflags           = 0x00,
+		requires_options  = 0x01,
+	};
 
+	bool picked_;
+	bool help_;
+
+	command(flags f=noflags);
+
+	virtual clipp::group do_group() = 0;
+	virtual void do_pre_run() {};
 	virtual int do_run() = 0;
+	virtual std::string do_doc() { return {}; }
 
 private:
+	flags flags_;
 	std::optional<int> code_;
 };
 
@@ -46,9 +59,9 @@ private:
 class version_command : public command
 {
 public:
-	clipp::group group() override;
 
 protected:
+	clipp::group do_group() override;
 	int do_run() override;
 };
 
@@ -56,9 +69,9 @@ protected:
 class help_command : public command
 {
 public:
-	clipp::group group() override;
 
 protected:
+	clipp::group do_group() override;
 	int do_run() override;
 };
 
@@ -66,19 +79,22 @@ protected:
 class options_command : public command
 {
 public:
-	clipp::group group() override;
 
 protected:
+	clipp::group do_group() override;
 	int do_run() override;
+	std::string do_doc() override;
 };
 
 
 class build_command : public command
 {
 public:
-	clipp::group group() override;
+	build_command();
 
 protected:
+	clipp::group do_group() override;
+	void do_pre_run() override;
 	int do_run() override;
 
 private:
@@ -93,20 +109,50 @@ private:
 class list_command : public command
 {
 public:
-	clipp::group group() override;
 
 protected:
+	clipp::group do_group() override;
 	int do_run() override;
+	std::string do_doc() override;
 };
 
 
-class devbuild_command : public command
+class release_command : public command
 {
 public:
-	clipp::group group() override;
+	release_command();
+
+	void make_bin();
+	void make_pdbs();
+	void make_src();
 
 protected:
+	clipp::group do_group() override;
 	int do_run() override;
+	std::string do_doc() override;
+
+private:
+	bool bin_ = true;
+	bool src_ = true;
+	bool pdbs_ = true;
+	std::string utf8out_;
+	fs::path out_;
+	std::string version_;
+	bool version_exe_ = false;
+	bool version_rc_ = false;
+	std::string utf8_rc_path_;
+	fs::path rc_path_;
+	bool force_;
+	std::string suffix_;
+
+	fs::path make_filename(const std::string& what) const;
+
+	void walk_dir(
+		const fs::path& dir, std::vector<fs::path>& files,
+		const std::vector<std::regex>& ignore_re, std::size_t& total_size);
+
+	std::string version_from_exe() const;
+	std::string version_from_rc() const;
 };
 
 }	// namespace

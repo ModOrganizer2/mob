@@ -3,6 +3,7 @@
 #include "utility.h"
 #include "conf.h"
 #include "context.h"
+#include "process.h"
 
 namespace mob::op
 {
@@ -471,6 +472,85 @@ void write_text_file(
 
 	cx.trace(context::fs,
 		"finished writing {} bytes to {}", bytes.size(), p);
+}
+
+void archive_from_glob(
+	const context& cx,
+	const fs::path& src_glob, const fs::path& dest_file,
+	const std::vector<std::string>& ignore)
+{
+	cx.trace(context::fs, "archiving {} into {}", src_glob, dest_file);
+
+	if (conf::dry())
+		return;
+
+	op::create_directories(cx, dest_file.parent_path());
+
+	auto p = process()
+		.binary(tools::sevenz::binary())
+		.arg("a")
+		.arg(dest_file)
+		.arg("-r")
+		.arg("-mx=5")
+		.arg(src_glob);
+
+	for (auto&& i : ignore)
+		p.arg("-xr!", i, process::nospace);
+
+	p.run();
+	p.join();
+}
+
+void archive_from_files(
+	const context& cx,
+	const std::vector<fs::path>& files, const fs::path& files_root,
+	const fs::path& dest_file)
+{
+	cx.trace(context::fs,
+		"archiving {} files rooted in {} into {}",
+		files.size(), files_root, dest_file);
+
+	if (conf::dry())
+		return;
+
+	std::string list_file_text;
+	std::error_code ec;
+
+	for (auto&& f : files)
+	{
+		fs::path rf = fs::relative(f, files_root, ec);
+
+		if (ec)
+		{
+			cx.bail_out(context::fs,
+				"file {} is not in root {}", f, files_root);
+		}
+
+		list_file_text += path_to_utf8(rf) + "\n";
+	}
+
+	const auto list_file = make_temp_file();
+	guard g([&]
+	{
+		if (fs::exists(list_file))
+		{
+			std::error_code ec;
+			fs::remove(list_file, ec);
+		}
+	});
+
+	op::write_text_file(gcx(), encodings::utf8, list_file, list_file_text);
+	op::create_directories(cx, dest_file.parent_path());
+
+	auto p = process()
+		.binary(tools::sevenz::binary())
+		.arg("a")
+		.arg(dest_file)
+		.arg("@", list_file, process::nospace)
+		.cwd(files_root);
+
+	p.run();
+	p.join();
 }
 
 

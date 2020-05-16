@@ -22,7 +22,7 @@ std::shared_ptr<command> handle_command_line(const std::vector<std::string>& arg
 		std::make_unique<options_command>(),
 		build,
 		std::make_unique<list_command>(),
-		std::make_unique<devbuild_command>(),
+		std::make_unique<release_command>(),
 	};
 
 
@@ -43,14 +43,36 @@ std::shared_ptr<command> handle_command_line(const std::vector<std::string>& arg
 
 	if (!pr)
 	{
-		pr = clipp::parse(args, command::common_options_group());
+		// some commands have mandatory options, like devbuild, which requires
+		// the build number
+		//
+		// doing `devbuild -h` therefore fails to parse because of the missing
+		// build number
+		//
+		// but options are actually still set correctly, so -h can be checked
+		// manually here
+		for (auto&& c : commands)
+		{
+			if (c->picked() && c->wants_help())
+				return std::move(c);
+		}
+
+		// another way parsing can fail is if no commands are given, like just
+		// running `mob` as-is; clipp doesn't really have a ways of setting
+		// a default command to use, to the arguments can be reparsed with
+		// only the common options
+		cli = command::common_options_group();
+		pr = clipp::parse(args, cli);
 
 		if (!pr)
 		{
+			// bad command line
 			help->force_exit_code(1);
 			return help;
 		}
 
+		// if this parsing works, it means the user invoked `mob` without a
+		// command; default to `build`
 		build->force_pick();
 	}
 
@@ -60,7 +82,6 @@ std::shared_ptr<command> handle_command_line(const std::vector<std::string>& arg
 		if (c->picked())
 			return std::move(c);
 	}
-	u8cout << "!!\n";
 
 	return {};
 }
