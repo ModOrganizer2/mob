@@ -9,6 +9,8 @@
 namespace mob
 {
 
+static std::mutex g_output_mutex;
+
 extern u8stream u8cout(false);
 extern u8stream u8cerr(true);
 
@@ -25,6 +27,8 @@ static wchar_t exception_message[exception_message_length + 1] = {};
 
 void dump_stacktrace(const wchar_t* what)
 {
+	std::scoped_lock lock(g_output_mutex);
+
 	std::wcerr
 		<< L"\n\n*****************************\n"
 		<< what << L"\n\n";
@@ -211,8 +215,7 @@ void set_std_streams()
 
 void u8stream::do_output(const std::string& s)
 {
-	static std::mutex m;
-	std::scoped_lock lock(m);
+	std::scoped_lock lock(g_output_mutex);
 
 	if (err_)
 	{

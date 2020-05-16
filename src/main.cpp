@@ -3,180 +3,64 @@
 #include "net.h"
 #include "op.h"
 #include "utility.h"
+#include "commands.h"
 #include "tasks/tasks.h"
 #include "tools/tools.h"
 
 namespace mob
 {
 
-static std::vector<std::string> g_tasks_to_run;
-
-
-std::string version()
+std::shared_ptr<command> handle_command_line(const std::vector<std::string>& args)
 {
-	return "mob 1.0";
-}
+	auto help = std::make_shared<help_command>();
+	auto build = std::make_shared<build_command>();
 
-void show_help(const clipp::group& g)
-{
-	u8cout << clipp::make_man_page(
-		g, "mob", clipp::doc_formatting()
-		.first_column(4)
-		.doc_column(30));
-}
-
-std::optional<int> handle_command_line(const std::vector<std::string>& args)
-{
-	struct
+	std::vector<std::shared_ptr<command>> commands =
 	{
-		bool version = false;
-		bool help = false;
-		bool dry = false;
-		bool redownload = false;
-		bool reextract = false;
-		bool rebuild = false;
-		bool clean = false;
-		bool list = false;
-		int output_log_level = -1;
-		int file_log_level = -1;
-		std::string log_file;
-		std::vector<std::string> options;
-		std::vector<std::string> set;
-		std::string ini;
-		std::string prefix;
-	} cmd;
-
-	clipp::group g;
-
-	g.push_back(
-		(clipp::option("-v", "--version") >> cmd.version)
-			% "shows the version",
-
-		(clipp::option("-h", "--help") >> cmd.help)
-			% "shows this message",
-
-		(clipp::option("-d", "--destination")
-			& clipp::value("DIR") >> cmd.prefix)
-			% ("base output directory, will contain build/, install/, etc."),
-
-		(clipp::option("-i", "--ini")
-			& clipp::value("FILE") >> cmd.ini)
-			% ("path to the ini file"),
-
-		(clipp::option("--dry") >> cmd.dry)
-			%  "simulates filesystem operations",
-
-		(clipp::option("-l", "--log-level")
-			&  clipp::value("LEVEL") >> cmd.output_log_level)
-			%  "0 is silent, 6 is max",
-
-		(clipp::option("--file-log-level")
-			&  clipp::value("LEVEL") >> cmd.file_log_level)
-				%  "overrides --log-level for the log file",
-
-		(clipp::option("--log-file")
-			&  clipp::value("FILE") >> cmd.log_file)
-				%  "path to log file",
-
-		(clipp::option("-g", "--redownload") >> cmd.redownload)
-			% "redownloads archives, see --reextract",
-
-		(clipp::option("-e", "--reextract") >> cmd.reextract)
-			% "deletes source directories and re-extracts archives",
-
-		(clipp::option("-b", "--rebuild") >> cmd.rebuild)
-			%  "cleans and rebuilds projects",
-
-		(clipp::option("-c", "--clean") >> cmd.clean)
-			% "combines --redownload, --reextract and --rebuild",
-
-		(clipp::repeatable(clipp::option("-s", "--set") >> cmd.set
-			& clipp::opt_value("OPTION", cmd.options)))
-			%  "sets an option, such as 'versions/openssl=1.2'; -s with no "
-		       "arguments lists the available options",
-
-		(clipp::option("--list") >> cmd.list)
-			% "lists all the available tasks",
-
-		(clipp::opt_values(
-			clipp::match::prefix_not("-"), "task", g_tasks_to_run))
-			% "tasks to run; specify 'super' to only build modorganizer "
-		      "projects"
-	);
+		help,
+		std::make_unique<version_command>(),
+		std::make_unique<options_command>(),
+		build,
+		std::make_unique<list_command>(),
+		std::make_unique<devbuild_command>(),
+	};
 
 
-	const auto pr = clipp::parse(args, g);
+	std::vector<clipp::group> command_groups;
+	for (auto& c : commands)
+		command_groups.push_back(c->group());
+
+	clipp::group all_groups;
+	all_groups.scoped(false);
+	all_groups.exclusive(true);
+	for (auto& c : command_groups)
+		all_groups.push_back(c);
+
+#pragma warning(suppress: 4548)
+	auto cli = (all_groups, command::common_options_group());
+
+	auto pr = clipp::parse(args, cli);
 
 	if (!pr)
 	{
-		show_help(g);
-		return 1;
-	}
+		pr = clipp::parse(args, command::common_options_group());
 
-	if (cmd.version)
-	{
-		u8cout << version() << "\n";
-		return 0;
-	}
-
-	if (cmd.help)
-	{
-		show_help(g);
-		return 0;
-	}
-
-	if (cmd.list)
-	{
-		list_tasks();
-		return 0;
-	}
-
-	if (!cmd.set.empty())
-	{
-		if (cmd.set.size() != cmd.options.size())
+		if (!pr)
 		{
-			dump_available_options();
-			return 0;
+			help->force_exit_code(1);
+			return help;
 		}
+
+		build->force_pick();
 	}
 
-	if (cmd.file_log_level == -1)
-		cmd.file_log_level = cmd.output_log_level;
 
-	if (cmd.output_log_level >= 0)
+	for (auto&& c : commands)
 	{
-		cmd.options.push_back(
-			"options/output_log_level=" +
-			std::to_string(cmd.output_log_level));
+		if (c->picked())
+			return std::move(c);
 	}
-
-	if (cmd.file_log_level > 0)
-	{
-		cmd.options.push_back(
-			"options/file_log_level=" +
-			std::to_string(cmd.file_log_level));
-	}
-
-	if (!cmd.log_file.empty())
-		cmd.options.push_back("options/log_file=" + cmd.log_file);
-
-	if (cmd.dry)
-		cmd.options.push_back("options/dry=true");
-
-	if (cmd.redownload || cmd.clean)
-		cmd.options.push_back("options/redownload=true");
-
-	if (cmd.reextract || cmd.clean)
-		cmd.options.push_back("options/reextract=true");
-
-	if (cmd.rebuild || cmd.clean)
-		cmd.options.push_back("options/rebuild=true");
-
-	if (!cmd.prefix.empty())
-		cmd.options.push_back("paths/prefix=" + cmd.prefix);
-
-	init_options(cmd.ini, cmd.options);
-	dump_options();
+	u8cout << "!!\n";
 
 	return {};
 }
@@ -276,33 +160,15 @@ int run(const std::vector<std::string>& args)
 
 	try
 	{
-		if (auto r=handle_command_line(args))
-			return *r;
+		auto c = handle_command_line(args);
+		if (!c)
+			return 1;
+
+		return c->run();
 	}
 	catch(bailed&)
 	{
 		// silent
-		return 1;
-	}
-
-
-	try
-	{
-
-		::SetConsoleCtrlHandler(signal_handler, TRUE);
-
-		curl_init curl;
-
-		if (!g_tasks_to_run.empty())
-			run_tasks(g_tasks_to_run);
-		else
-			run_all_tasks();
-
-		return 0;
-	}
-	catch(bailed&)
-	{
-		error("bailing out");
 		return 1;
 	}
 }
@@ -314,23 +180,13 @@ int wmain(int argc, wchar_t** argv)
 {
 	mob::set_std_streams();
 	mob::set_thread_exception_handlers();
+	::SetConsoleCtrlHandler(mob::signal_handler, TRUE);
 
 	std::vector<std::string> args;
 	for (int i=1; i<argc; ++i)
 		args.push_back(mob::utf16_to_utf8(argv[i]));
 
 	int r = mob::run(args);
-
-	if (r == 0)
-	{
-		mob::gcx().info(mob::context::generic, "mob done");
-	}
-	else
-	{
-		mob::gcx().info(mob::context::generic,
-			"mob finished with exit code {}", r);
-	}
-
 	mob::dump_logs();
 
 	return r;

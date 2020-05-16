@@ -763,7 +763,7 @@ void parse_ini(const fs::path& ini)
 	}
 }
 
-void check_missing_options()
+bool check_missing_options()
 {
 	if (conf::mo_org().empty())
 	{
@@ -771,7 +771,7 @@ void check_missing_options()
 			<< "missing mo_org; either specify it the [options] section of "
 			<< "the ini or pass '-s options/mo_org=something'\n";
 
-		throw bailed("");
+		return false;
 	}
 
 	if (conf::mo_branch().empty())
@@ -780,7 +780,7 @@ void check_missing_options()
 			<< "missing mo_branch; either specify it the [options] section of "
 			<< "the ini or pass '-s options/mo_org=something'\n";
 
-		throw bailed("");
+		return false;
 	}
 
 	if (paths::prefix().empty())
@@ -789,7 +789,7 @@ void check_missing_options()
 			<< "missing prefix; either specify it the [paths] section of "
 			<< "the ini or pass '-d path'\n";
 
-		throw bailed("");
+		return false;
 	}
 
 	for (auto&& [k, v] : g_versions)
@@ -797,9 +797,11 @@ void check_missing_options()
 		if (v.empty())
 		{
 			u8cerr << "missing version for " << k << "\n";
-			throw bailed("");
+			return false;
 		}
 	}
+
+	return true;
 }
 
 template <class F>
@@ -904,7 +906,6 @@ void init_options(const fs::path& ini, const std::vector<std::string>& opts)
 		conf::set_log_file(g_options["log_file"]);
 
 	context::set_log_file(conf::log_file());
-	check_missing_options();
 
 	set_path_if_empty("third_party", find_third_party_directory);
 
@@ -922,7 +923,9 @@ void init_options(const fs::path& ini, const std::vector<std::string>& opts)
 	find_vcvars();
 	validate_qt();
 
-	make_canonical_path("prefix",           fs::current_path(), "");
+	if (!paths::prefix().empty())
+		make_canonical_path("prefix",           fs::current_path(), "");
+
 	make_canonical_path("cache",            paths::prefix(), "downloads");
 	make_canonical_path("build",            paths::prefix(), "build");
 	make_canonical_path("install",          paths::prefix(), "install");
@@ -941,6 +944,11 @@ void init_options(const fs::path& ini, const std::vector<std::string>& opts)
 	make_canonical_path(
 		"install_stylesheets",
 		paths::install_bin(), "stylesheets");
+}
+
+bool verify_options()
+{
+	return check_missing_options();
 }
 
 template <class Map>

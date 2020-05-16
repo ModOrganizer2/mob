@@ -153,6 +153,7 @@ struct paths
 
 
 void init_options(const fs::path& ini, const std::vector<std::string>& opts);
+bool verify_options();
 void dump_options();
 void dump_available_options();
 

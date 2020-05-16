@@ -11,6 +11,7 @@ class interrupted {};
 
 static std::vector<std::unique_ptr<task>> g_tasks;
 static std::vector<task*> g_all_tasks;
+static std::atomic<bool> g_interrupt = false;
 std::mutex task::interrupt_mutex_;
 
 void add_task(std::unique_ptr<task> t)
@@ -49,19 +50,41 @@ task* find_task(const std::string& name)
 
 void run_tasks(const std::vector<task*> tasks)
 {
+	try
 	{
-		std::set<task*> set(tasks.begin(), tasks.end());
-		MOB_ASSERT(set.size() == tasks.size());
+		{
+			std::set<task*> set(tasks.begin(), tasks.end());
+			MOB_ASSERT(set.size() == tasks.size());
+		}
+
+		for (auto* t : tasks)
+		{
+			t->fetch();
+
+			if (g_interrupt)
+				throw interrupted();
+		}
+
+		for (auto* t : tasks)
+		{
+			t->join();
+
+			if (g_interrupt)
+				throw interrupted();
+
+			t->build_and_install();
+
+			if (g_interrupt)
+				throw interrupted();
+
+			t->join();
+
+			if (g_interrupt)
+				throw interrupted();
+		}
 	}
-
-	for (auto* t : tasks)
-		t->fetch();
-
-	for (auto* t : tasks)
+	catch(interrupted&)
 	{
-		t->join();
-		t->build_and_install();
-		t->join();
 	}
 }
 
@@ -129,13 +152,26 @@ void run_all_tasks()
 }
 
 
+struct task::thread_context
+{
+	std::thread::id tid;
+	context cx;
+
+	thread_context(std::thread::id tid, context cx)
+		: tid(tid), cx(std::move(cx))
+	{
+	}
+};
+
+
 task::task(std::vector<std::string> names)
 	: names_(std::move(names)), interrupted_(false)
 {
 	contexts_.push_back(std::make_unique<thread_context>(
 		std::this_thread::get_id(), context(name())));
 
-	g_all_tasks.push_back(this);
+	if (name() != "parallel")
+		g_all_tasks.push_back(this);
 }
 
 task::~task()
@@ -180,6 +216,8 @@ void task::add_name(std::string s)
 void task::interrupt_all()
 {
 	std::scoped_lock lock(interrupt_mutex_);
+
+	g_interrupt = true;
 	for (auto&& t : g_tasks)
 		t->interrupt();
 }
@@ -232,6 +270,24 @@ void task::threaded_run(std::string thread_name, std::function<void ()> f)
 	}
 }
 
+void task::parallel(std::vector<std::pair<std::string, std::function<void ()>>> v)
+{
+	std::vector<std::thread> ts;
+
+	for (auto&& [name, f] : v)
+	{
+		cx().trace(context::generic, "running in parallel: {}", name);
+
+		ts.push_back(start_thread([this, name, f]
+			{
+				threaded_run(name, f);
+			}));
+	}
+
+	for (auto&& t : ts)
+		t.join();
+}
+
 void task::run()
 {
 	threaded_run(name(), [&]
@@ -241,10 +297,12 @@ void task::run()
 		fetch();
 		join();
 
+		check_interrupted();
+
 		build_and_install();
 		join();
 
-		cx().info(context::generic, "task completed");
+		check_interrupted();
 	});
 }
 

@@ -179,7 +179,7 @@ private:
 	{
 		try
 		{
-			const std::string utf8 = fmt::format(
+			const std::string utf8 = ::fmt::format(
 				f,
 				details::converter<std::decay_t<Args>>::convert(
 					std::forward<Args>(args))...);

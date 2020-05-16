@@ -138,6 +138,9 @@
     <ClCompile Include="..\src\tasks\explorerpp.cpp">
       <Filter>src\tasks</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\commands.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
@@ -172,6 +175,9 @@
     </ClInclude>
     <ClInclude Include="..\src\tools\tools.h">
       <Filter>src\tools</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\commands.h">
+      <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
