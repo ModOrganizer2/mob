@@ -242,8 +242,8 @@ clipp::group build_command::do_group()
 		(clipp::option("-b", "--rebuild") >> rebuild_)
 			%  "cleans and rebuilds projects",
 
-		(clipp::option("-c", "--clean") >> clean_)
-			% "combines --redownload, --reextract and --rebuild",
+		(clipp::option("-n", "--new") >> clean_)
+			% "deletes everything and starts from scratch",
 
 		(clipp::opt_values(
 			clipp::match::prefix_not("-"), "task", tasks_))
