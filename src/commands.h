@@ -103,6 +103,9 @@ private:
 	bool reextract_ = false;
 	bool rebuild_ = false;
 	bool clean_ = false;
+	bool keep_msbuild_ = false;
+
+	void terminate_msbuild();
 };
 
 

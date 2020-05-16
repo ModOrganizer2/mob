@@ -245,6 +245,9 @@ clipp::group build_command::do_group()
 		(clipp::option("-n", "--new") >> clean_)
 			% "deletes everything and starts from scratch",
 
+		(clipp::option("--keep-msbuild") >> keep_msbuild_)
+			% "don't terminate msbuild.exe instances after building",
+
 		(clipp::opt_values(
 			clipp::match::prefix_not("-"), "task", tasks_))
 			% "tasks to run; specify 'super' to only build modorganizer "
@@ -274,6 +277,9 @@ int build_command::do_run()
 		else
 			run_all_tasks();
 
+		if (!keep_msbuild_)
+			terminate_msbuild();
+
 		mob::gcx().info(mob::context::generic, "mob done");
 		return 0;
 	}
@@ -282,6 +288,14 @@ int build_command::do_run()
 		error("bailing out");
 		return 1;
 	}
+}
+
+void build_command::terminate_msbuild()
+{
+	if (conf::dry())
+		return;
+
+	system("taskkill /im msbuild.exe /f > NUL");
 }
 
 
