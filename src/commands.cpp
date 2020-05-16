@@ -10,7 +10,7 @@ namespace mob
 
 std::string version()
 {
-	return "mob 1.0";
+	return "mob 2.0";
 }
 
 void help(const clipp::group& g, const std::string& more)
