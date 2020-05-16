@@ -57,23 +57,9 @@ std::shared_ptr<command> handle_command_line(const std::vector<std::string>& arg
 				return std::move(c);
 		}
 
-		// another way parsing can fail is if no commands are given, like just
-		// running `mob` as-is; clipp doesn't really have a ways of setting
-		// a default command to use, to the arguments can be reparsed with
-		// only the common options
-		cli = command::common_options_group();
-		pr = clipp::parse(args, cli);
-
-		if (!pr)
-		{
-			// bad command line
-			help->force_exit_code(1);
-			return help;
-		}
-
-		// if this parsing works, it means the user invoked `mob` without a
-		// command; default to `build`
-		build->force_pick();
+		// bad command line
+		help->force_exit_code(1);
+		return help;
 	}
 
 

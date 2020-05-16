@@ -37,4 +37,4 @@ if %errorlevel% neq 0 (
 )
 
 copy "build\Release\x64\mob.exe" .\mob.exe > NUL
-echo run `mob -d path` to start building
+echo run `mob -d prefix/path build` to start building

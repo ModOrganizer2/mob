@@ -194,7 +194,7 @@ int help_command::do_run()
 		"    build      builds tasks\n"
 		"    release    creates a release or a devbuild"
 		"\n\n"
-		"Invoking `mob` without a command builds everything. Do "
+		"Invoking `mob -d some/prefix build` builds everything. Do \n"
 		"`mob build <task name>...` to build specific tasks. See\n"
 		"`mob command --help` for more information about a command.");
 
