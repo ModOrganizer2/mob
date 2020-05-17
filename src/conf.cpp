@@ -855,7 +855,11 @@ void init_options(
 	set_special_options();
 	context::set_log_file(conf::log_file());
 
+	gcx().debug(context::conf,
+		"command line: {}", std::wstring(GetCommandLineW()));
+
 	gcx().debug(context::conf, "using inis in order:");
+
 	for (auto&& ini : inis)
 		gcx().debug(context::conf, "  . {}", ini);
 
