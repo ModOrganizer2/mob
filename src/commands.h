@@ -15,8 +15,8 @@ public:
 		int file_log_level = -1;
 		std::string log_file;
 		std::vector<std::string> options;
-		std::vector<std::string> set;
-		std::string ini;
+		std::vector<std::string> inis;
+		bool no_default_inis = false;
 		std::string prefix;
 	};
 

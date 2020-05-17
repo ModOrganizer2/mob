@@ -8,7 +8,10 @@
 namespace mob
 {
 
-static const std::string default_ini_filename = "mob.ini";
+std::string master_ini_filename()
+{
+	return "mob.ini";
+}
 
 // special cases to avoid string manipulations
 static int g_output_log_level = 3;
@@ -460,24 +463,15 @@ void ini_error(const fs::path& ini, std::size_t line, const std::string& what)
 		ini.filename(), (line + 1), what);
 }
 
-fs::path find_ini(const fs::path& ini)
+fs::path find_master_ini()
 {
-	fs::path p = ini;
+	auto p = fs::current_path();
 
-	if (!p.empty())
-	{
-		if (fs::exists(p))
-			return fs::canonical(p);
-		else
-			gcx().bail_out(context::conf, "can't find ini at {}", ini);
-	}
+	if (try_parts(p, {"..", "..", "..", master_ini_filename()}))
+		return fs::canonical(p);
 
-	p = fs::current_path();
-
-	if (try_parts(p, {"..", "..", "..", default_ini_filename}))
-		return p;
-
-	gcx().bail_out(context::conf, "can't find {}", default_ini_filename);
+	gcx().bail_out(context::conf,
+		"can't find master ini {}", master_ini_filename());
 }
 
 std::vector<std::string> read_ini(const fs::path& ini)
@@ -695,11 +689,75 @@ void set_special_options()
 	}
 }
 
-void init_options(
-	const fs::path& ini_from_cl, const std::vector<std::string>& opts)
+std::vector<fs::path> find_inis(const std::vector<fs::path>& inis_from_cl)
 {
-	const fs::path actual_ini = find_ini(ini_from_cl);
-	parse_ini(actual_ini, true);
+	const auto master = find_master_ini();
+
+	std::vector<fs::path> v;
+
+	for (auto&& e : fs::directory_iterator(master.parent_path()))
+	{
+		const auto p = e.path();
+
+		if (path_to_utf8(p.extension()) != ".ini")
+			continue;
+
+		if (p.filename() == master.filename())
+			continue;
+
+		v.push_back(p);
+	}
+
+	std::sort(v.begin(), v.end());
+	v.insert(v.begin(), master);
+
+	for (auto&& p : inis_from_cl)
+	{
+		if (!fs::exists(p))
+		{
+			u8cerr << "ini " << p << " not found\n";
+			throw bailed();
+		}
+
+		bool found = false;
+
+		for (auto itor=v.begin(); itor!=v.end(); ++itor)
+		{
+			if (fs::equivalent(p, *itor))
+			{
+				found = true;
+				v.erase(itor);
+				v.push_back(p);
+				break;
+			}
+		}
+
+		if (!found)
+			v.push_back(p);
+	}
+
+	return v;
+}
+
+void init_options(
+	const std::vector<fs::path>& inis_from_cl, bool auto_detection,
+	const std::vector<std::string>& opts)
+{
+	std::vector<fs::path> inis;
+
+	if (auto_detection)
+		inis = find_inis(inis_from_cl);
+	else
+		inis = inis_from_cl;
+
+	MOB_ASSERT(!inis.empty());
+
+	bool add = true;
+	for (auto&& ini : inis)
+	{
+		parse_ini(ini, add);
+		add = false;
+	}
 
 	if (!opts.empty())
 	{
@@ -714,6 +772,10 @@ void init_options(
 
 	set_special_options();
 	context::set_log_file(conf::log_file());
+
+	gcx().debug(context::conf, "using inis in order:");
+	for (auto&& ini : inis)
+		gcx().debug(context::conf, "  . {}", ini);
 
 	set_path_if_empty("third_party", find_third_party_directory);
 	this_env::prepend_to_path(paths::third_party() / "bin");
@@ -756,11 +818,6 @@ void init_options(
 bool verify_options()
 {
 	return check_missing_options();
-}
-
-template <class Map>
-void table(const std::string& caption, const Map& values)
-{
 }
 
 std::vector<std::string> format_options()

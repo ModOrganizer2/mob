@@ -57,7 +57,12 @@ struct paths
 };
 
 
-void init_options(const fs::path& ini, const std::vector<std::string>& opts);
+std::string master_ini_filename();
+
+void init_options(
+	const std::vector<fs::path>& inis_from_cl, bool auto_detection,
+	const std::vector<std::string>& opts);
+
 bool verify_options();
 void log_options();
 void dump_available_options();
