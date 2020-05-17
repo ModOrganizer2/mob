@@ -194,16 +194,24 @@ std::vector<std::string> openssl::output_names()
 {
 	return
 	{
-		"libcrypto-" + version_no_minor_underscores() + "-x64",
-		"libssl-" + version_no_minor_underscores() + "-x64"
+		"libcrypto-" + version_no_patch_underscores() + "-x64",
+		"libssl-" + version_no_patch_underscores() + "-x64"
 	};
 }
 
-std::smatch openssl::parse_version()
+openssl::version_info openssl::parsed_version()
 {
-	// 1.1.1d
+	// 1.2.3d
 	// everything but 1 is optional
-	std::regex re(R"((\d+)(?:\.(\d+)(?:\.(\d+)([a-zA-Z]+)?)?)?)");
+	std::regex re(
+		"(\\d+)"                        // 1
+		"(?:"
+			"\\.(\\d+)"                 // .2
+			"(?:"
+				"\\.(\\d+)([a-zA-Z]+)?" // .3d
+			")?"
+		")?");
+
 	std::smatch m;
 
 	const auto s = version();
@@ -211,36 +219,19 @@ std::smatch openssl::parse_version()
 	if (!std::regex_match(s, m, re))
 		bail_out("bad openssl version '{}'", s);
 
-	return m;
+	return {m[1], m[2], m[3]};
 }
 
-std::string openssl::version_no_tags()
+std::string openssl::version_no_patch_underscores()
 {
-	auto m = parse_version();
+	auto v = parsed_version();
 
-	// up to 4 so the tag is skipped if present
-	const std::size_t count = std::min<std::size_t>(m.size(), 4);
+	std::string s = v.major;
 
-	std::string s;
-	for (std::size_t i=1; i<count; ++i)
-	{
-		if (!s.empty())
-			s += ".";
-
-		s += m[i].str();
-	}
+	if (v.minor != "")
+		s += "_" + v.minor;
 
 	return s;
-}
-
-std::string openssl::version_no_minor_underscores()
-{
-	auto m = parse_version();
-
-	if (m[2] == "")
-		return m[1].str();
-	else
-		return m[1].str() + "_" + m[2].str();
 }
 
 }	// namespace

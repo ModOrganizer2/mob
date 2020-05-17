@@ -36,9 +36,21 @@ cmake& cmake::generator(generators g)
 	return *this;
 }
 
+cmake& cmake::generator(const std::string& g)
+{
+	genstring_ = g;
+	return *this;
+}
+
 cmake& cmake::root(const fs::path& p)
 {
 	root_ = p;
+	return *this;
+}
+
+cmake& cmake::output(const fs::path& p)
+{
+	output_ = p;
 	return *this;
 }
 
@@ -72,6 +84,12 @@ cmake& cmake::architecture(arch a)
 	return *this;
 }
 
+cmake& cmake::cmd(const std::string& s)
+{
+	cmd_ = s;
+	return *this;
+}
+
 fs::path cmake::result() const
 {
 	return output_;
@@ -83,23 +101,39 @@ void cmake::do_run()
 		cx_->bail_out(context::generic, "cmake output path is empty");
 
 	const auto& g = get_generator(gen_);
-	output_ = root_ / (g.output_dir(arch_));
+
+	if (output_.empty())
+		output_ = root_ / (g.output_dir(arch_));
 
 	process_
 		.stdout_encoding(encodings::utf8)
 		.stderr_encoding(encodings::utf8)
-		.arg("-G", "\"" + g.name + "\"")
 		.arg("-DCMAKE_BUILD_TYPE=Release")
 		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", process::log_quiet)
 		.arg("--log-level", "WARNING", process::log_quiet)
-		.arg("--no-warn-unused-cli")
-		.arg(g.get_arch(arch_));
+		.arg("--no-warn-unused-cli");
+
+	if (genstring_.empty())
+	{
+		process_
+			.arg("-G", "\"" + g.name + "\"")
+			.arg(g.get_arch(arch_));
+	}
+	else
+	{
+		process_
+			.arg("-G", "\"" + genstring_ + "\"");
+	}
 
 	if (!prefix_.empty())
 		process_.arg("-DCMAKE_INSTALL_PREFIX=", prefix_, process::nospace);
 
+	if (cmd_.empty())
+		process_.arg("..");
+	else
+		process_.arg(cmd_);
+
 	process_
-		.arg("..")
 		.env(env::vs(arch_)
 			.set("CXXFLAGS", "/wd4566"))
 		.cwd(output_);
@@ -118,7 +152,7 @@ const std::map<cmake::generators, cmake::gen_info>& cmake::all_generators()
 			"Visual Studio " + vs::version() + " " + vs::year(),
 			"Win32",
 			"x64"
-	}}
+		}}
 	};
 
 	return map;

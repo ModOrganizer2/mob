@@ -26,6 +26,7 @@ public:
 
 	void force_exit_code(int code);
 	void force_pick();
+	void force_help();
 
 	bool picked() const;
 	bool wants_help() const;
@@ -222,6 +223,25 @@ private:
 
 	std::string git_file(const fs::path& repo);
 	std::string make_url(const std::string& git_file);
+};
+
+
+class cmake_command : public command
+{
+public:
+	cmake_command();
+
+protected:
+	clipp::group do_group() override;
+	int do_run() override;
+	std::string do_doc() override;
+
+private:
+	std::string gen_;
+	std::string cmd_;
+	bool x64_ = true;
+	std::string prefix_;
+	std::string path_;
 };
 
 }	// namespace

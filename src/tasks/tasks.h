@@ -12,8 +12,14 @@ namespace mob
 class boost : public basic_task<boost>
 {
 public:
+	struct version_info
+	{
+		std::string major, minor, patch, rest;
+	};
+
 	boost();
 
+	static version_info parsed_version();
 	static std::string version();
 	static std::string version_vs();
 	static bool prebuilt();
@@ -41,7 +47,6 @@ private:
 		const std::vector<std::string>& components,
 		const std::string& link, const std::string& runtime_link, arch a);
 
-	static std::smatch parse_boost_version();
 	static std::string source_download_filename();
 	static fs::path config_jam_file();
 	static url prebuilt_url();
@@ -262,6 +267,8 @@ public:
 	static fs::path source_path();
 	static fs::path super_path();
 
+	static cmake create_cmake_tool(const fs::path& root);
+
 	bool is_super() const override;
 
 protected:
@@ -314,8 +321,14 @@ protected:
 class openssl : public basic_task<openssl>
 {
 public:
+	struct version_info
+	{
+		std::string major, minor, patch;
+	};
+
 	openssl();
 
+	static version_info parsed_version();
 	static std::string version();
 	static bool prebuilt();
 
@@ -344,9 +357,7 @@ private:
 	static url prebuilt_url();
 	static fs::path build_path();
 	static std::vector<std::string> output_names();
-	static std::smatch parse_version();
-	static std::string version_no_tags();
-	static std::string version_no_minor_underscores();
+	static std::string version_no_patch_underscores();
 };
 
 

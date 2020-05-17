@@ -24,6 +24,7 @@ std::shared_ptr<command> handle_command_line(const std::vector<std::string>& arg
 		std::make_unique<list_command>(),
 		std::make_unique<release_command>(),
 		std::make_unique<git_command>(),
+		std::make_unique<cmake_command>()
 	};
 
 
@@ -44,18 +45,14 @@ std::shared_ptr<command> handle_command_line(const std::vector<std::string>& arg
 
 	if (!pr)
 	{
-		// some commands have mandatory options, like devbuild, which requires
-		// the build number
-		//
-		// doing `devbuild -h` therefore fails to parse because of the missing
-		// build number
-		//
-		// but options are actually still set correctly, so -h can be checked
-		// manually here
+		// if a command was picked, show its help instead of the main one
 		for (auto&& c : commands)
 		{
-			if (c->picked() && c->wants_help())
+			if (c->picked())
+			{
+				c->force_help();
 				return std::move(c);
+			}
 		}
 
 		// bad command line

@@ -188,11 +188,20 @@ void boost::write_config_jam()
 }
 
 
-std::smatch boost::parse_boost_version()
+boost::version_info boost::parsed_version()
 {
 	// 1.72.0-b1-rc1
 	// everything but 1.72 is optional
-	std::regex re(R"((\d+)\.(\d+)(?:\.(\d+)(?:-(\w+)(?:-(\w+))?)?)?)");
+	std::regex re(
+		"(\\d+)\\."       // 1.
+		"(\\d+)"          // 72
+		"(?:"
+			"\\.(\\d+)"   // .0
+			"(?:"
+				"-(.+)"   // -b1-rc1
+			")?"
+		")?");
+
 	std::smatch m;
 
 	const auto s = version();
@@ -200,7 +209,7 @@ std::smatch boost::parse_boost_version()
 	if (!std::regex_match(s, m, re))
 		bail_out("bad boost version '{}'", s);
 
-	return m;
+	return {m[1], m[2], m[3], m[4]};
 }
 
 std::string boost::source_download_filename()
@@ -270,21 +279,21 @@ std::string boost::python_version_for_jam()
 
 std::string boost::boost_version_no_patch_underscores()
 {
-	const auto m = parse_boost_version();
+	const auto v = parsed_version();
 
 	// 1_72
-	return m[1].str() + "_" + m[2].str();
+	return v.major + "_" + v.minor;
 }
 
 std::string boost::boost_version_no_tags()
 {
-	const auto m = parse_boost_version();
+	const auto v = parsed_version();
 
-	// 1.72.1
-	std::string s = m[1].str() + "." + m[2].str();
+	// 1.72[.1]
+	std::string s = v.major + "." + v.minor;
 
-	if (m[3] != "")
-		s += "." + m[3].str();
+	if (v.patch != "")
+		s += "." + v.patch;
 
 	return s;
 }
@@ -296,19 +305,16 @@ std::string boost::boost_version_no_tags_underscores()
 
 std::string boost::boost_version_all_underscores()
 {
-	const auto m = parse_boost_version();
+	const auto v = parsed_version();
 
-	// boost_1_72_0_b1_rc1
-	std::string s = "boost_" + m[1].str() + "_" + m[2].str();
+	// boost_1_72[_0[_b1_rc1]]
+	std::string s = "boost_" + v.major + "_" + v.minor;
 
-	if (m[3] != "")
-		s += "_" + m[3].str();
+	if (v.patch != "")
+		s += "_" + v.patch;
 
-	if (m[4] != "")
-		s += "_" + m[4].str();
-
-	if (m[5] != "")
-		s += "_" + m[5].str();
+	if (v.rest != "")
+		s += "_" + replace_all(v.rest, "-", "_");
 
 	return s;
 }

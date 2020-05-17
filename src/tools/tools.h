@@ -223,12 +223,15 @@ public:
 	static void clean(const context& cx, const fs::path& root);
 
 	cmake& generator(generators g);
+	cmake& generator(const std::string& g);
 	cmake& root(const fs::path& p);
+	cmake& output(const fs::path& p);
 	cmake& prefix(const fs::path& s);
 	cmake& def(const std::string& name, const std::string& value);
 	cmake& def(const std::string& name, const fs::path& p);
 	cmake& def(const std::string& name, const char* s);
 	cmake& architecture(arch a);
+	cmake& cmd(const std::string& s);
 
 	fs::path result() const;
 
@@ -249,9 +252,11 @@ private:
 
 	fs::path root_;
 	generators gen_;
+	std::string genstring_;
 	fs::path prefix_;
 	fs::path output_;
 	arch arch_;
+	std::string cmd_;
 
 	static const std::map<generators, gen_info>& all_generators();
 	static const gen_info& get_generator(generators g);
