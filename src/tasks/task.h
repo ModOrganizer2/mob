@@ -40,7 +40,7 @@ public:
 	const std::vector<std::string>& names() const;
 
 	virtual fs::path get_source_path() const = 0;
-	virtual const std::string& get_version() const = 0;
+	virtual std::string get_version() const = 0;
 	virtual const bool get_prebuilt() const = 0;
 
 	virtual bool is_super() const;
@@ -111,7 +111,7 @@ public:
 		return Task::source_path();
 	}
 
-	const std::string& get_version() const override
+	std::string get_version() const override
 	{
 		return Task::version();
 	}
@@ -142,10 +142,9 @@ public:
 		return {};
 	}
 
-	const std::string& get_version() const override
+	std::string get_version() const override
 	{
-		static std::string s;
-		return s;
+		return {};
 	}
 
 	const bool get_prebuilt() const override

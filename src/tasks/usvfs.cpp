@@ -9,7 +9,7 @@ usvfs::usvfs()
 {
 }
 
-const std::string& usvfs::version()
+std::string usvfs::version()
 {
 	return version_by_name("usvfs");
 }

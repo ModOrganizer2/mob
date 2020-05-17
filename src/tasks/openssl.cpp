@@ -9,7 +9,7 @@ openssl::openssl()
 {
 }
 
-const std::string& openssl::version()
+std::string openssl::version()
 {
 	return version_by_name("openssl");
 }
@@ -206,8 +206,10 @@ std::smatch openssl::parse_version()
 	std::regex re(R"((\d+)(?:\.(\d+)(?:\.(\d+)([a-zA-Z]+)?)?)?)");
 	std::smatch m;
 
-	if (!std::regex_match(version(), m, re))
-		bail_out("bad openssl version '{}'", version());
+	const auto s = version();
+
+	if (!std::regex_match(s, m, re))
+		bail_out("bad openssl version '{}'", s);
 
 	return m;
 }

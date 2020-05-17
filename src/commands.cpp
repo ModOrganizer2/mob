@@ -146,7 +146,7 @@ int command::run()
 	if (flags_ & requires_options)
 	{
 		init_options(command::common.ini, command::common.options);
-		dump_options();
+		log_options();
 
 		if (!verify_options())
 			return 1;

@@ -9,10 +9,9 @@ licenses::licenses()
 {
 }
 
-const std::string& licenses::version()
+std::string licenses::version()
 {
-	static std::string s;
-	return s;
+	return {};
 }
 
 bool licenses::prebuilt()

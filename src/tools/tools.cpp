@@ -72,12 +72,12 @@ fs::path nasm::binary()
 
 fs::path qt::installation_path()
 {
-	return paths::by_name("qt_install");
+	return path_by_name("qt_install");
 }
 
 fs::path qt::bin_path()
 {
-	return paths::by_name("qt_bin");
+	return path_by_name("qt_bin");
 }
 
 std::string qt::version()
@@ -103,7 +103,7 @@ fs::path vs::devenv_binary()
 
 fs::path vs::installation_path()
 {
-	return paths::by_name("vs");
+	return path_by_name("vs");
 }
 
 fs::path vs::vswhere()

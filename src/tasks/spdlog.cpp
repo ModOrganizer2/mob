@@ -9,7 +9,7 @@ spdlog::spdlog()
 {
 }
 
-const std::string& spdlog::version()
+std::string spdlog::version()
 {
 	return version_by_name("spdlog");
 }

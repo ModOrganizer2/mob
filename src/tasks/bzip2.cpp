@@ -9,7 +9,7 @@ bzip2::bzip2()
 {
 }
 
-const std::string& bzip2::version()
+std::string bzip2::version()
 {
 	return version_by_name("bzip2");
 }

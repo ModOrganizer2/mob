@@ -9,12 +9,12 @@ sip::sip()
 {
 }
 
-const std::string& sip::version()
+std::string sip::version()
 {
 	return version_by_name("sip");
 }
 
-const std::string& sip::version_for_pyqt()
+std::string sip::version_for_pyqt()
 {
 	return version_by_name("pyqt_sip");
 }
@@ -46,8 +46,10 @@ fs::path sip::module_source_path()
 	std::regex re(R"((\d+)\.(\d+)(?:\.(\d+))?)");
 	std::smatch m;
 
-	if (!std::regex_match(version_for_pyqt(), m, re))
-		bail_out("bad pyqt sip version {}", version_for_pyqt());
+	const auto s = version_for_pyqt();
+
+	if (!std::regex_match(s, m, re))
+		bail_out("bad pyqt sip version {}", s);
 
 	// 12.7
 	const auto dir = m[1].str() + "." + m[2].str();

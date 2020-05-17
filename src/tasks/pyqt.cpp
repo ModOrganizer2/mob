@@ -9,12 +9,12 @@ pyqt::pyqt()
 {
 }
 
-const std::string& pyqt::version()
+std::string pyqt::version()
 {
 	return version_by_name("pyqt");
 }
 
-const std::string& pyqt::builder_version()
+std::string pyqt::builder_version()
 {
 	return version_by_name("pyqt_builder");
 }

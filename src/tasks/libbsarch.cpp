@@ -9,7 +9,7 @@ libbsarch::libbsarch()
 {
 }
 
-const std::string& libbsarch::version()
+std::string libbsarch::version()
 {
 	return version_by_name("libbsarch");
 }

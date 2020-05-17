@@ -9,7 +9,7 @@ python::python()
 {
 }
 
-const std::string& python::version()
+std::string python::version()
 {
 	return version_by_name("python");
 }
@@ -26,8 +26,10 @@ python::version_info python::parsed_version()
 	std::regex re(R"(v?(\d+)\.(\d+)(?:\.(\d+))?)");
 	std::smatch m;
 
-	if (!std::regex_match(version(), m, re))
-		bail_out("bad python version '{}'", version());
+	const auto s = version();
+
+	if (!std::regex_match(s, m, re))
+		bail_out("bad python version '{}'", s);
 
 	version_info v;
 

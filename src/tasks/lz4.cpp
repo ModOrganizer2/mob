@@ -9,7 +9,7 @@ lz4::lz4()
 {
 }
 
-const std::string& lz4::version()
+std::string lz4::version()
 {
 	return version_by_name("lz4");
 }

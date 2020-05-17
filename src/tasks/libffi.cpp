@@ -9,10 +9,9 @@ libffi::libffi()
 {
 }
 
-const std::string& libffi::version()
+std::string libffi::version()
 {
-	static std::string s;
-	return s;
+	return {};
 }
 
 bool libffi::prebuilt()

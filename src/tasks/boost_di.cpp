@@ -9,10 +9,9 @@ boost_di::boost_di()
 {
 }
 
-const std::string& boost_di::version()
+std::string boost_di::version()
 {
-	static std::string s;
-	return s;
+	return {};
 }
 
 bool boost_di::prebuilt()

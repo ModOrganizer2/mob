@@ -9,7 +9,7 @@ zlib::zlib()
 {
 }
 
-const std::string& zlib::version()
+std::string zlib::version()
 {
 	return version_by_name("zlib");
 }

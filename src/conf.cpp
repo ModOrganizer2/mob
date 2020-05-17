@@ -8,188 +8,101 @@
 namespace mob
 {
 
-using string_map = std::map<std::string, std::string>;
-using path_map = std::map<std::string, fs::path>;
-using bool_map   = std::map<std::string, bool>;
+static const std::string default_ini_filename = "mob.ini";
 
-static fs::path g_ini;
-const std::string default_ini_filename = "mob.ini";
-
-// special case to avoid string manipulations
+// special cases to avoid string manipulations
 static int g_output_log_level = 3;
 static int g_file_log_level = 5;
-static fs::path g_log_file = "c:\\dev\\projects\\mob\\mob.log";
 
-static string_map g_options =
+static std::map<std::string, std::map<std::string, std::string>> g_conf;
+
+const std::string& get_conf(const std::string& section, const std::string& key)
 {
-	{"mo_org",     "ModOrganizer2"},
-	{"mo_branch",  "master"},
-	{"dry",        "false"},
-	{"redownload", "false"},
-	{"reextract",  "false"},
-	{"rebuild",    "false"},
-	{"output_log_level", ""},
-	{"file_log_level", ""},
-	{"log_file", ""}
-};
+	auto sitor = g_conf.find(section);
 
-static path_map g_tools =
-{
-	{"sevenz",  "7z.exe"},
-	{"jom",     "jom.exe"},
-	{"patch",   "patch.exe"},
-	{"nuget",   "nuget.exe"},
-	{"vswhere", "vswhere.exe"},
-	{"perl",    "perl.exe"},
-	{"msbuild", "msbuild.exe"},
-	{"devenv",  "devenv.exe"},
-	{"cmake",   "cmake.exe"},
-	{"git",     "git.exe"},
-	{"nasm",    "nasm.exe"},
-	{"vcvars",   ""},
-};
+	if (sitor == g_conf.end())
+	{
+		gcx().bail_out(context::conf,
+			"conf section '{}' doesn't exist", section);
+	}
 
-static bool_map g_prebuilt =
-{
-	{"boost",   false},
-	{"lz4",     false},
-	{"openssl", false},
-	{"pyqt",    false},
-	{"python",  false},
-	{"usvfs",   false}
-};
+	auto kitor = sitor->second.find(key);
 
-static string_map g_versions =
-{
-	{"vs",           ""},
-	{"vs_year",      ""},
-	{"vs_toolset",   ""},
-	{"sdk",          ""},
-	{"sevenz",       ""},
-	{"zlib",         ""},
-	{"boost",        ""},
-	{"boost_vs",     ""},
-	{"python",       ""},
-	{"fmt",          ""},
-	{"gtest",        ""},
-	{"libbsarch",    ""},
-	{"libloot",      ""},
-	{"libloot_hash", ""},
-	{"openssl",      ""},
-	{"bzip2",        ""},
-	{"lz4",          ""},
-	{"nmm",          ""},
-	{"spdlog",       ""},
-	{"usvfs",        ""},
-	{"qt",           ""},
-	{"qt_vs",        ""},
-	{"pyqt",         ""},
-	{"pyqt_builder", ""},
-	{"sip",          ""},
-	{"pyqt_sip",     ""},
-	{"explorerpp",   ""},
+	if (kitor == sitor->second.end())
+	{
+		gcx().bail_out(context::conf,
+			"key '{}' not found in section '{}'", key, section);
+	}
 
-	{"ss_6788_paper_lad",      ""},
-	{"ss_6788_paper_automata", ""},
-	{"ss_6788_paper_mono",     ""},
-	{"ss_6788_1809_dark_mode", ""}
-};
-
-static path_map g_paths =
-{
-	{"third_party" ,        ""},
-	{"prefix",              ""},
-	{"cache",               ""},
-	{"build",               ""},
-	{"install",             ""},
-	{"install_bin",         ""},
-	{"install_libs",        ""},
-	{"install_pdbs",        ""},
-	{"install_dlls",        ""},
-	{"install_loot",        ""},
-	{"install_plugins",     ""},
-	{"install_stylesheets", ""},
-	{"install_licenses",    ""},
-	{"install_pythoncore",  ""},
-	{"patches",             ""},
-	{"licenses",            ""},
-	{"vs",                  ""},
-	{"qt_install",          ""},
-	{"qt_bin",              ""},
-	{"pf_x86",              ""},
-	{"pf_x64",              ""},
-	{"temp_dir",            ""},
-};
-
-
-template <class Map>
-const typename Map::mapped_type& get(
-	const std::string& map_name, const Map& map,
-	const std::string& name)
-{
-	auto itor = map.find(name);
-
-	if (itor == map.end())
-		gcx().bail_out(context::conf, "{} '{}' doesn't exist", map_name, name);
-
-	return itor->second;
+	return kitor->second;
 }
 
-
-const fs::path& tool_by_name(const std::string& name)
+void set_conf(
+	const std::string& section,
+	const std::string& key, const std::string& value)
 {
-	return get("tool", g_tools, name);
+	auto sitor = g_conf.find(section);
+
+	if (sitor == g_conf.end())
+	{
+		gcx().bail_out(context::conf,
+			"conf section '{}' doesn't exist", section);
+	}
+
+	auto kitor = sitor->second.find(key);
+
+	if (kitor == sitor->second.end())
+	{
+		gcx().bail_out(context::conf,
+			"key '{}' not found in section '{}'", key, section);
+	}
+
+	kitor->second = value;
 }
 
-const std::string& conf::by_name(const std::string& name)
+void add_conf(
+	const std::string& section,
+	const std::string& key, const std::string& value)
 {
-	return get("option", g_options, name);
+	g_conf[section][key] = value;
 }
 
-bool conf::by_name_bool(const std::string& name)
+bool prebuilt_by_name(const std::string& task)
 {
+	std::istringstream iss(get_conf("prebuilt", task));
 	bool b;
-	std::istringstream iss(by_name(name));
 	iss >> std::boolalpha >> b;
 	return b;
 }
 
-
-bool prebuilt_by_name(const std::string& task)
+std::string version_by_name(const std::string& s)
 {
-	return get("prebuilt", g_prebuilt, task);
+	return get_conf("versions", s);
 }
 
-const std::string& version_by_name(const std::string& s)
+fs::path tool_by_name(const std::string& name)
 {
-	return get("version", g_versions, s);
+	return get_conf("tools", name);
 }
 
-const fs::path& paths::by_name(const std::string& s)
+fs::path path_by_name(const std::string& s)
 {
-	return get("path", g_paths, s);
+	return get_conf("paths", s);
 }
 
-void conf::set_output_log_level(int i)
+std::string conf_by_name(const std::string& name)
 {
-	if (i < 0 || i > 6)
-		gcx().bail_out(context::generic, "bad output log level {}", i);
-
-	g_output_log_level = i;
+	return get_conf("options", name);
 }
 
-void conf::set_file_log_level(int i)
+bool bool_conf_by_name(const std::string& name)
 {
-	if (i < 0 || i > 6)
-		gcx().bail_out(context::generic, "bad file log level {}", i);
-
-	g_file_log_level = i;
+	std::istringstream iss(get_conf("options", name));
+	bool b;
+	iss >> std::boolalpha >> b;
+	return b;
 }
 
-void conf::set_log_file(const fs::path& p)
-{
-	g_log_file = p;
-}
 
 int conf::output_log_level()
 {
@@ -201,74 +114,13 @@ int conf::file_log_level()
 	return g_file_log_level;
 }
 
-const fs::path& conf::log_file()
+
+struct parsed_option
 {
-	return g_log_file;
-}
+	std::string section, key, value;
+};
 
-
-template <class T>
-bool parse_value(const std::string& s, T& out)
-{
-	out = s;
-	return true;
-}
-
-template <>
-bool parse_value<bool>(const std::string& s, bool& out)
-{
-	std::istringstream iss(s);
-	iss >> std::boolalpha >> out;
-	return !iss.bad();
-}
-
-template <>
-bool parse_value<fs::path>(const std::string& s, fs::path& out)
-{
-	out = utf8_to_utf16(s);
-	return true;
-}
-
-template <class Map>
-bool set_option_impl(
-	Map& map, const std::string& key, const std::string& value)
-{
-	auto itor = map.find(key);
-	if (itor == map.end())
-	{
-		gcx().error(context::conf, "unknown key '{}'", key);
-		return false;
-	}
-
-	if (!parse_value<typename Map::mapped_type>(value, itor->second))
-	{
-		gcx().error(context::conf, "bad value '{}'", value);
-		return false;
-	}
-
-	return true;
-}
-
-bool set_option(
-	const std::string& section,
-	const std::string& key, const std::string& value)
-{
-	if (section == "options")
-		return set_option_impl(g_options, key, value);
-	else if (section == "tools")
-		return set_option_impl(g_tools, key, value);
-	else if (section == "prebuilt")
-		return set_option_impl(g_prebuilt, key, value);
-	else if (section == "versions")
-		return set_option_impl(g_versions, key, value);
-	else if (section == "paths")
-		return set_option_impl(g_paths, key, value);
-
-	gcx().error(context::conf, "bad section name '{}'", section);
-	return false;
-}
-
-void set_option(const std::string& s)
+parsed_option parse_option(const std::string& s)
 {
 	const auto slash = s.find("/");
 	if (slash == std::string::npos)
@@ -284,37 +136,11 @@ void set_option(const std::string& s)
 			"bad option {}, must be section/key=value", s);
 	}
 
-	const std::string section = s.substr(0, slash);
-	const std::string key = s.substr(slash + 1, equal - slash - 1);
-	const std::string value = s.substr(equal + 1);
+	std::string section = s.substr(0, slash);
+	std::string key = s.substr(slash + 1, equal - slash - 1);
+	std::string value = s.substr(equal + 1);
 
-	if (set_option(section, key, value))
-	{
-		gcx().trace(context::conf, "setting {}/{}={}", section, key, value);
-	}
-	else
-	{
-		gcx().bail_out(context::conf,
-			"failed to set {}/{}={}", section, key, value);
-	}
-}
-
-void dump_available_options()
-{
-	for (auto&& [k, v] : g_options)
-		u8cout << "options/" << k << " = " << v << "\n";
-
-	for (auto&& [k, v] : g_tools)
-		u8cout << "tools/" << k << " = " << v << "\n";
-
-	for (auto&& [k, v] : g_prebuilt)
-		u8cout << "prebuilt/" << k << " = " << v << "\n";
-
-	for (auto&& [k, v] : g_versions)
-		u8cout << "versions/" << k << " = " << v << "\n";
-
-	for (auto&& [k, v] : g_paths)
-		u8cout << "paths/" << k << " = " << v << "\n";
+	return {section, key, value};
 }
 
 bool try_parts(fs::path& check, const std::vector<std::string>& parts)
@@ -430,7 +256,7 @@ bool try_qt_location(fs::path& check)
 
 fs::path find_qt()
 {
-	fs::path p = g_paths["qt_install"];
+	fs::path p = path_by_name("qt_install");
 
 	if (!p.empty())
 	{
@@ -477,7 +303,7 @@ void validate_qt()
 	if (!try_qt_location(p))
 		gcx().bail_out(context::conf, "qt path {} doesn't exist", p);
 
-	g_paths["qt_install"] = p;
+	set_conf("paths", "qt_install", path_to_utf8(p));
 }
 
 fs::path get_known_folder(const GUID& id)
@@ -596,7 +422,7 @@ bool try_vcvars(fs::path& bat)
 
 void find_vcvars()
 {
-	fs::path& bat = g_tools["vcvars"];
+	fs::path bat = tool_by_name("vcvars");
 
 	if (conf::dry())
 	{
@@ -605,31 +431,33 @@ void find_vcvars()
 
 		return;
 	}
-
-
-	if (bat.empty())
-	{
-		bat = vs::installation_path()
-			/ "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
-
-		if (!try_vcvars(bat))
-			gcx().bail_out(context::conf, "vcvars not found at {}", bat);
-	}
 	else
 	{
-		if (!try_vcvars(bat))
-			gcx().bail_out(context::conf, "vcvars not found at {}", bat);
+		if (bat.empty())
+		{
+			bat = vs::installation_path()
+				/ "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
+
+			if (!try_vcvars(bat))
+				gcx().bail_out(context::conf, "vcvars not found at {}", bat);
+		}
+		else
+		{
+			if (!try_vcvars(bat))
+				gcx().bail_out(context::conf, "vcvars not found at {}", bat);
+		}
 	}
 
+	set_conf("tools", "vcvars", path_to_utf8(bat));
 	gcx().trace(context::conf, "using vcvars at {}", bat);
 }
 
 
-void ini_error(std::size_t line, const std::string& what)
+void ini_error(const fs::path& ini, std::size_t line, const std::string& what)
 {
 	gcx().bail_out(context::conf,
 		"{}:{}: {}",
-		g_ini.filename(), (line + 1), what);
+		ini.filename(), (line + 1), what);
 }
 
 fs::path find_ini(const fs::path& ini)
@@ -680,8 +508,9 @@ std::vector<std::string> read_ini(const fs::path& ini)
 }
 
 void parse_section(
-	std::size_t& i, const std::vector<std::string>& lines,
-	const std::string& section)
+	const fs::path& ini, std::size_t& i,
+	const std::vector<std::string>& lines, const std::string& section,
+	bool add)
 {
 	++i;
 
@@ -694,27 +523,28 @@ void parse_section(
 
 		const auto sep = line.find("=");
 		if (sep == std::string::npos)
-			ini_error(i, "bad line '" + line + "'");
+			ini_error(ini, i, "bad line '" + line + "'");
 
 		const std::string k = trim_copy(line.substr(0, sep));
 		const std::string v = trim_copy(line.substr(sep + 1));
 
 		if (k.empty())
-			ini_error(i, "bad line '" + line + "'");
+			ini_error(ini, i, "bad line '" + line + "'");
 
-		if (!set_option(section, k, v))
-			ini_error(i, "bad line '" + line + "'");
+		if (add)
+			add_conf(section, k, v);
+		else
+			set_conf(section, k, v);
 
 		++i;
 	}
 }
 
-void parse_ini(const fs::path& ini)
+void parse_ini(const fs::path& ini, bool add)
 {
-	g_ini = find_ini(ini);
-	gcx().debug(context::conf, "using ini at {}", g_ini);
+	gcx().debug(context::conf, "using ini at {}", ini);
 
-	const auto lines = read_ini(g_ini);
+	const auto lines = read_ini(ini);
 	std::size_t i = 0;
 
 	for (;;)
@@ -727,11 +557,11 @@ void parse_ini(const fs::path& ini)
 		if (line.starts_with("[") && line.ends_with("]"))
 		{
 			const std::string section = line.substr(1, line.size() - 2);
-			parse_section(i, lines, section);
+			parse_section(ini, i, lines, section, add);
 		}
 		else
 		{
-			ini_error(i, "bad line '" + line + "'");
+			ini_error(ini, i, "bad line '" + line + "'");
 		}
 	}
 }
@@ -765,7 +595,7 @@ bool check_missing_options()
 		return false;
 	}
 
-	for (auto&& [k, v] : g_versions)
+	for (auto&& [k, v] : g_conf["versions"])
 	{
 		if (v.empty())
 		{
@@ -780,108 +610,112 @@ bool check_missing_options()
 template <class F>
 void set_path_if_empty(const std::string& k, F&& f)
 {
-	auto itor = g_paths.find(k);
-	if (itor == g_paths.end())
-		gcx().bail_out(context::conf, "unknown path key {}", k);
+	fs::path p = get_conf("paths", k);
 
-	if (!itor->second.empty())
+	if (p.empty())
 	{
-		if (conf::dry())
-			return;
-
-		if (fs::exists(itor->second))
-		{
-			itor->second = fs::canonical(itor->second);
-			return;
-		}
+		if constexpr (std::is_same_v<fs::path, std::decay_t<decltype(f)>>)
+			p = f;
 		else
-		{
-			gcx().bail_out(context::conf, "path {} not found", itor->second);
-		}
+			p = f();
 	}
 
-	fs::path cp;
+	p = fs::absolute(p);
 
-	if constexpr (std::is_same_v<fs::path, std::decay_t<decltype(f)>>)
-		cp = f;
-	else
-		cp = f();
-
-	if (conf::dry())
+	if (!conf::dry())
 	{
-		itor->second = cp;
-		return;
+		if (!fs::exists(p))
+			gcx().bail_out(context::conf, "path {} not found", p);
+
+		p = fs::canonical(p);
 	}
 
-	cp = fs::absolute(cp);
-
-	if (!fs::exists(cp))
-		gcx().bail_out(context::conf, "path {} not found", cp);
-
-	itor->second = fs::canonical(cp);
+	set_conf("paths", k, path_to_utf8(p));
 }
 
 void make_canonical_path(
 	const std::string& key,
 	const fs::path& default_parent, const std::string& default_dir)
 {
-	auto itor = g_paths.find(key);
-	if (itor == g_paths.end())
-		gcx().bail_out(context::conf, "unknown path key {}", key);
+	fs::path p = path_by_name(key);
 
-	if (itor->second.empty())
+	if (p.empty())
 	{
-		itor->second = default_parent / default_dir;
+		p = default_parent / default_dir;
 	}
 	else
 	{
-		if (itor->second.is_relative())
-			itor->second = default_parent / itor->second;
+		if (p.is_relative())
+			p = default_parent / p;
 	}
 
 	if (!conf::dry())
-		itor->second = fs::weakly_canonical(fs::absolute(itor->second));
+		p = fs::weakly_canonical(fs::absolute(p));
+
+	set_conf("paths", key, path_to_utf8(p));
 }
 
-void init_options(const fs::path& ini, const std::vector<std::string>& opts)
+void set_special_options()
 {
-	parse_ini(ini);
+	auto v = get_conf("options", "output_log_level");
+
+	if (!v.empty())
+	{
+		try
+		{
+			const auto i = std::stoi(v);
+			if (i < 0 || i > 6)
+				gcx().bail_out(context::generic, "bad output log level {}", i);
+
+			g_output_log_level = i;
+		}
+		catch(std::exception&)
+		{
+			gcx().bail_out(context::generic, "bad output log level {}", v);
+		}
+	}
+
+
+	v = get_conf("options", "file_log_level");
+
+	if (!v.empty())
+	{
+		try
+		{
+			const auto i = std::stoi(v);
+			if (i < 0 || i > 6)
+				gcx().bail_out(context::generic, "bad file log level {}", i);
+
+			g_file_log_level = i;
+		}
+		catch(std::exception&)
+		{
+			gcx().bail_out(context::generic, "bad file log level {}", v);
+		}
+	}
+}
+
+void init_options(
+	const fs::path& ini_from_cl, const std::vector<std::string>& opts)
+{
+	const fs::path actual_ini = find_ini(ini_from_cl);
+	parse_ini(actual_ini, true);
 
 	if (!opts.empty())
 	{
 		gcx().debug(context::conf, "overriding from command line:");
 
 		for (auto&& o : opts)
-			set_option(o);
+		{
+			const auto po = parse_option(o);
+			set_conf(po.section, po.key, po.value);
+		}
 	}
 
-	try
-	{
-		if (!g_options["output_log_level"].empty())
-			conf::set_output_log_level(std::stoi(g_options["output_log_level"]));
-	}
-	catch(std::exception&)
-	{
-		gcx().bail_out(context::generic, "bad output_log_level");
-	}
-
-	try
-	{
-		if (!g_options["file_log_level"].empty())
-			conf::set_file_log_level(std::stoi(g_options["file_log_level"]));
-	}
-	catch(std::exception&)
-	{
-		gcx().bail_out(context::generic, "bad file_log_level");
-	}
-
-	if (!g_options["log_file"].empty())
-		conf::set_log_file(g_options["log_file"]);
-
+	set_special_options();
 	context::set_log_file(conf::log_file());
 
 	set_path_if_empty("third_party", find_third_party_directory);
-
 	this_env::prepend_to_path(paths::third_party() / "bin");
 
 	set_path_if_empty("pf_x86",     find_program_files_x86);
@@ -927,36 +761,46 @@ bool verify_options()
 template <class Map>
 void table(const std::string& caption, const Map& values)
 {
-	std::size_t longest = 0;
-	for (auto&& [k, v] : values)
-		longest = std::max(longest, k.size());
-
-	gcx().trace(context::conf, "{}:", caption);
-	for (auto&& [k, v] : values)
-		gcx().trace(context::conf, " . {} = {}", pad_right(k, longest), v);
 }
 
-void dump_options()
+std::vector<std::string> format_options()
 {
-	string_map opts = g_options;
-	table("options", opts);
+	std::size_t longest_section = 0;
+	std::size_t longest_key = 0;
 
-	string_map tools;
-	for (auto&& [k, v] : g_tools)
-		tools[k] = path_to_utf8(v);
-	table("tools", tools);
+	for (auto&& [s, kv] : g_conf)
+	{
+		longest_section = std::max(longest_section, s.size());
 
-	string_map prebuilt;
-	for (auto&& [k, v] : g_prebuilt)
-		prebuilt[k] = (v ? "true" : "false");
-	table("prebuilt", prebuilt);
+		for (auto&& [k, v] : kv)
+			longest_key = std::max(longest_key, k.size());
+	}
 
-	table("versions", g_versions);
+	std::vector<std::string> lines;
 
-	string_map paths;
-	for (auto&& [k, v] : g_paths)
-		paths[k] = path_to_utf8(v);
-	table("paths", paths);
+	for (auto&& [s, kv] : g_conf)
+	{
+		for (auto&& [k, v] : kv)
+		{
+			lines.push_back(
+				pad_right(s, longest_section) + " " +
+				pad_right(k, longest_key) + " = " + v);
+		}
+	}
+
+	return lines;
+}
+
+void log_options()
+{
+	for (auto&& line : format_options())
+		gcx().trace(context::conf, "{}", line);
+}
+
+void dump_available_options()
+{
+	for (auto&& line : format_options())
+		u8cout << line << "\n";
 }
 
 

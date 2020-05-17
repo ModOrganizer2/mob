@@ -9,12 +9,12 @@ boost::boost()
 {
 }
 
-const std::string& boost::version()
+std::string boost::version()
 {
 	return version_by_name("boost");
 }
 
-const std::string& boost::version_vs()
+std::string boost::version_vs()
 {
 	return version_by_name("boost_vs");
 }
@@ -195,8 +195,10 @@ std::smatch boost::parse_boost_version()
 	std::regex re(R"((\d+)\.(\d+)(?:\.(\d+)(?:-(\w+)(?:-(\w+))?)?)?)");
 	std::smatch m;
 
-	if (!std::regex_match(version(), m, re))
-		bail_out("bad boost version '{}'", version());
+	const auto s = version();
+
+	if (!std::regex_match(s, m, re))
+		bail_out("bad boost version '{}'", s);
 
 	return m;
 }

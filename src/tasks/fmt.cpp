@@ -9,7 +9,7 @@ fmt::fmt()
 {
 }
 
-const std::string& fmt::version()
+std::string fmt::version()
 {
 	return version_by_name("fmt");
 }

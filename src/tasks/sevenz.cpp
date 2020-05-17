@@ -9,7 +9,7 @@ sevenz::sevenz()
 {
 }
 
-const std::string& sevenz::version()
+std::string sevenz::version()
 {
 	return version_by_name("sevenz");
 }

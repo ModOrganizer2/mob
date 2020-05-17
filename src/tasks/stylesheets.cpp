@@ -9,10 +9,9 @@ stylesheets::stylesheets()
 {
 }
 
-const std::string& stylesheets::version()
+std::string stylesheets::version()
 {
-	static std::string s;
-	return s;
+	return {};
 }
 
 std::string stylesheets::paper_lad_6788_version()

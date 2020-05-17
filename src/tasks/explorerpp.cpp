@@ -9,7 +9,7 @@ explorerpp::explorerpp()
 {
 }
 
-const std::string& explorerpp::version()
+std::string explorerpp::version()
 {
 	return version_by_name("explorerpp");
 }

@@ -9,10 +9,9 @@ ncc::ncc()
 {
 }
 
-const std::string& ncc::version()
+std::string ncc::version()
 {
-	static std::string s;
-	return s;
+	return {};
 }
 
 bool ncc::prebuilt()

@@ -9,7 +9,7 @@ nmm::nmm()
 {
 }
 
-const std::string& nmm::version()
+std::string nmm::version()
 {
 	return version_by_name("nmm");
 }

@@ -9,7 +9,7 @@ gtest::gtest()
 {
 }
 
-const std::string& gtest::version()
+std::string gtest::version()
 {
 	return version_by_name("gtest");
 }
