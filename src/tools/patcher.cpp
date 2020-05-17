@@ -10,6 +10,11 @@ patcher::patcher()
 {
 }
 
+fs::path patcher::binary()
+{
+	return conf::tool_by_name("patch");
+}
+
 patcher& patcher::task(const std::string& name, bool prebuilt)
 {
 	task_ = name;
@@ -98,7 +103,7 @@ void patcher::do_run()
 void patcher::do_patch(const fs::path& patch_file)
 {
 	const auto base = process()
-		.binary(tools::patch::binary())
+		.binary(binary())
 		.arg("--read-only", "ignore")
 		.arg("--strip", "0")
 		.arg("--directory", output_)

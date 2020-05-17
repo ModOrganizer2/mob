@@ -9,9 +9,9 @@ sevenz::sevenz()
 {
 }
 
-const std::string& sevenz::version()
+std::string sevenz::version()
 {
-	return versions::by_name("sevenz");
+	return conf::version_by_name("sevenz");
 }
 
 bool sevenz::prebuilt()

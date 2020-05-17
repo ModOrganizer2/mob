@@ -9,10 +9,9 @@ libffi::libffi()
 {
 }
 
-const std::string& libffi::version()
+std::string libffi::version()
 {
-	static std::string s;
-	return s;
+	return {};
 }
 
 bool libffi::prebuilt()
@@ -27,7 +26,7 @@ fs::path libffi::source_path()
 
 void libffi::do_fetch()
 {
-	run_tool(git_clone()
+	run_tool(git(task_conf().git_op())
 		.url(make_github_url("python","cpython-bin-deps"))
 		.branch("libffi")
 		.output(source_path()));

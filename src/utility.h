@@ -64,7 +64,7 @@ class url;
 class bailed
 {
 public:
-	bailed(std::string s)
+	bailed(std::string s={})
 		: s_(std::move(s))
 	{
 	}

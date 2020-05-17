@@ -9,14 +9,14 @@ python::python()
 {
 }
 
-const std::string& python::version()
+std::string python::version()
 {
-	return versions::by_name("python");
+	return conf::version_by_name("python");
 }
 
 bool python::prebuilt()
 {
-	return prebuilt::by_name("python");
+	return conf::prebuilt_by_name("python");
 }
 
 python::version_info python::parsed_version()
@@ -26,8 +26,10 @@ python::version_info python::parsed_version()
 	std::regex re(R"(v?(\d+)\.(\d+)(?:\.(\d+))?)");
 	std::smatch m;
 
-	if (!std::regex_match(version(), m, re))
-		bail_out("bad python version '{}'", version());
+	const auto s = version();
+
+	if (!std::regex_match(s, m, re))
+		bail_out("bad python version '{}'", s);
 
 	version_info v;
 
@@ -109,12 +111,13 @@ void python::build_and_install_prebuilt()
 
 void python::fetch_from_source()
 {
-	run_tool(git_clone()
+	run_tool(git(task_conf().git_op())
 		.url(make_github_url("python", "cpython"))
 		.branch(version())
 		.output(source_path()));
 
-	run_tool(devenv_upgrade(solution_file()));
+	run_tool(vs(vs::upgrade)
+		.solution(solution_file()));
 }
 
 void python::build_and_install_from_source()

@@ -9,14 +9,14 @@ openssl::openssl()
 {
 }
 
-const std::string& openssl::version()
+std::string openssl::version()
 {
-	return versions::by_name("openssl");
+	return conf::version_by_name("openssl");
 }
 
 bool openssl::prebuilt()
 {
-	return prebuilt::by_name("openssl");
+	return conf::prebuilt_by_name("openssl");
 }
 
 fs::path openssl::source_path()
@@ -106,7 +106,7 @@ void openssl::build_and_install_from_source()
 void openssl::configure()
 {
 	run_tool(process_runner(process()
-		.binary(tools::perl::binary())
+		.binary(perl::binary())
 		.arg("Configure")
 		.arg("VC-WIN64A")
 		.arg("--openssldir=", build_path())
@@ -206,8 +206,10 @@ std::smatch openssl::parse_version()
 	std::regex re(R"((\d+)(?:\.(\d+)(?:\.(\d+)([a-zA-Z]+)?)?)?)");
 	std::smatch m;
 
-	if (!std::regex_match(version(), m, re))
-		bail_out("bad openssl version '{}'", version());
+	const auto s = version();
+
+	if (!std::regex_match(s, m, re))
+		bail_out("bad openssl version '{}'", s);
 
 	return m;
 }

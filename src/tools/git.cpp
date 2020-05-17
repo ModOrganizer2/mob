@@ -5,34 +5,38 @@
 namespace mob
 {
 
-
-git_clone::git_clone()
-	: basic_process_runner("git")
+git::git(ops o)
+	: basic_process_runner("git"), op_(o)
 {
 }
 
-git_clone& git_clone::url(const mob::url& u)
+fs::path git::binary()
+{
+	return conf::tool_by_name("git");
+}
+
+git& git::url(const mob::url& u)
 {
 	url_ = u;
 	return *this;
 }
 
-git_clone& git_clone::branch(const std::string& name)
+git& git::branch(const std::string& name)
 {
 	branch_ = name;
 	return *this;
 }
 
-git_clone& git_clone::output(const fs::path& dir)
+git& git::output(const fs::path& dir)
 {
 	where_ = dir;
 	return *this;
 }
 
-void git_clone::do_run()
+void git::do_run()
 {
 	if (url_.empty() || where_.empty())
-		bail_out("git_clone missing parameters");
+		bail_out("git missing parameters");
 
 	if (conf::redownload() || conf::reextract())
 	{
@@ -40,18 +44,51 @@ void git_clone::do_run()
 		op::delete_directory(*cx_, where_, op::optional);
 	}
 
-	const fs::path dot_git = where_ / ".git";
 
-	if (!fs::exists(dot_git))
-		clone();
-	else
-		pull();
+	switch (op_)
+	{
+		case clone:
+		{
+			do_clone();
+			break;
+		}
+
+		case pull:
+		{
+			do_pull();
+			break;
+		}
+
+		case clone_or_pull2:
+		{
+			do_clone_or_pull();
+			break;
+		}
+
+		default:
+		{
+			cx_->bail_out(context::generic, "git unknown op {}", op_);
+		}
+	}
 }
 
-void git_clone::clone()
+void git::do_clone_or_pull()
 {
+	if (!do_clone())
+		do_pull();
+}
+
+bool git::do_clone()
+{
+	const fs::path dot_git = where_ / ".git";
+	if (fs::exists(dot_git))
+	{
+		cx_->trace(context::generic, "not cloning, {} exists", dot_git);
+		return false;
+	}
+
 	process_ = process()
-		.binary(tools::git::binary())
+		.binary(binary())
 		.stderr_level(context::level::trace)
 		.arg("clone")
 		.arg("--recurse-submodules")
@@ -63,12 +100,14 @@ void git_clone::clone()
 		.arg(where_);
 
 	execute_and_join();
+
+	return true;
 }
 
-void git_clone::pull()
+void git::do_pull()
 {
 	process_ = process()
-		.binary(tools::git::binary())
+		.binary(binary())
 		.stderr_level(context::level::trace)
 		.arg("pull")
 		.arg("--recurse-submodules")

@@ -9,14 +9,14 @@ libloot::libloot()
 {
 }
 
-const std::string& libloot::version()
+std::string libloot::version()
 {
-	return versions::by_name("libloot");
+	return conf::version_by_name("libloot");
 }
 
-const std::string& libloot::hash()
+std::string libloot::hash()
 {
-	return versions::by_name("libloot_hash");
+	return conf::version_by_name("libloot_hash");
 }
 
 bool libloot::prebuilt()

@@ -9,9 +9,9 @@ zlib::zlib()
 {
 }
 
-const std::string& zlib::version()
+std::string zlib::version()
 {
-	return versions::by_name("zlib");
+	return conf::version_by_name("zlib");
 }
 
 bool zlib::prebuilt()

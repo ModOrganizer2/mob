@@ -3,345 +3,264 @@
 #include "utility.h"
 #include "context.h"
 #include "process.h"
+#include "tools/tools.h"
 
 namespace mob
 {
 
-using string_map = std::map<std::string, std::string>;
-using path_map = std::map<std::string, fs::path>;
-using bool_map   = std::map<std::string, bool>;
-
-static fs::path g_ini;
-const std::string default_ini_filename = "mob.ini";
-
-// special case to avoid string manipulations
-static int g_output_log_level = 3;
-static int g_file_log_level = 5;
-static fs::path g_log_file = "c:\\dev\\projects\\mob\\mob.log";
-
-static string_map g_options =
+std::string master_ini_filename()
 {
-	{"mo_org",     "ModOrganizer2"},
-	{"mo_branch",  "master"},
-	{"dry",        "false"},
-	{"redownload", "false"},
-	{"reextract",  "false"},
-	{"rebuild",    "false"},
-	{"output_log_level", ""},
-	{"file_log_level", ""},
-	{"log_file", ""}
-};
-
-static path_map g_tools =
-{
-	{"sevenz",  "7z.exe"},
-	{"jom",     "jom.exe"},
-	{"patch",   "patch.exe"},
-	{"nuget",   "nuget.exe"},
-	{"vswhere", "vswhere.exe"},
-	{"perl",    "perl.exe"},
-	{"msbuild", "msbuild.exe"},
-	{"devenv",  "devenv.exe"},
-	{"cmake",   "cmake.exe"},
-	{"git",     "git.exe"},
-	{"nasm",    "nasm.exe"},
-	{"vcvars",   ""},
-};
-
-static bool_map g_prebuilt =
-{
-	{"boost",   false},
-	{"lz4",     false},
-	{"openssl", false},
-	{"pyqt",    false},
-	{"python",  false},
-	{"usvfs",   false}
-};
-
-static string_map g_versions =
-{
-	{"vs",           ""},
-	{"vs_year",      ""},
-	{"vs_toolset",   ""},
-	{"sdk",          ""},
-	{"sevenz",       ""},
-	{"zlib",         ""},
-	{"boost",        ""},
-	{"boost_vs",     ""},
-	{"python",       ""},
-	{"fmt",          ""},
-	{"gtest",        ""},
-	{"libbsarch",    ""},
-	{"libloot",      ""},
-	{"libloot_hash", ""},
-	{"openssl",      ""},
-	{"bzip2",        ""},
-	{"lz4",          ""},
-	{"nmm",          ""},
-	{"spdlog",       ""},
-	{"usvfs",        ""},
-	{"qt",           ""},
-	{"qt_vs",        ""},
-	{"pyqt",         ""},
-	{"pyqt_builder", ""},
-	{"sip",          ""},
-	{"pyqt_sip",     ""},
-	{"explorerpp",   ""},
-
-	{"ss_6788_paper_lad",      ""},
-	{"ss_6788_paper_automata", ""},
-	{"ss_6788_paper_mono",     ""},
-	{"ss_6788_1809_dark_mode", ""}
-};
-
-static path_map g_paths =
-{
-	{"third_party" ,        ""},
-	{"prefix",              ""},
-	{"cache",               ""},
-	{"build",               ""},
-	{"install",             ""},
-	{"install_bin",         ""},
-	{"install_libs",        ""},
-	{"install_pdbs",        ""},
-	{"install_dlls",        ""},
-	{"install_loot",        ""},
-	{"install_plugins",     ""},
-	{"install_stylesheets", ""},
-	{"install_licenses",    ""},
-	{"install_pythoncore",  ""},
-	{"patches",             ""},
-	{"licenses",            ""},
-	{"vs",                  ""},
-	{"qt_install",          ""},
-	{"qt_bin",              ""},
-	{"pf_x86",              ""},
-	{"pf_x64",              ""},
-	{"temp_dir",            ""},
-};
-
-
-template <class Map>
-const typename Map::mapped_type& get(
-	const std::string& map_name, const Map& map,
-	const std::string& name)
-{
-	auto itor = map.find(name);
-
-	if (itor == map.end())
-		gcx().bail_out(context::conf, "{} '{}' doesn't exist", map_name, name);
-
-	return itor->second;
+	return "mob.ini";
 }
 
+conf::task_map conf::map_;
+int conf::output_log_level_ = 3;
+int conf::file_log_level_ = 5;
 
-const fs::path& tool_by_name(const std::string& name)
+
+std::string conf::get_global(const std::string& section, const std::string& key)
 {
-	return get("tool", g_tools, name);
+	auto global = map_.find("");
+	MOB_ASSERT(global != map_.end());
+
+	auto sitor = global->second.find(section);
+	if (sitor == global->second.end())
+	{
+		gcx().bail_out(context::conf,
+			"conf section '{}' doesn't exist", section);
+	}
+
+	auto kitor = sitor->second.find(key);
+	if (kitor == sitor->second.end())
+	{
+		gcx().bail_out(context::conf,
+			"key '{}' not found in section '{}'", key, section);
+	}
+
+	return kitor->second;
 }
 
-const std::string& conf::by_name(const std::string& name)
+void conf::set_global(
+	const std::string& section,
+	const std::string& key, const std::string& value)
 {
-	return get("option", g_options, name);
+	auto global = map_.find("");
+	MOB_ASSERT(global != map_.end());
+
+	auto sitor = global->second.find(section);
+	if (sitor == global->second.end())
+	{
+		gcx().bail_out(context::conf,
+			"conf section '{}' doesn't exist", section);
+	}
+
+	auto kitor = sitor->second.find(key);
+	if (kitor == sitor->second.end())
+	{
+		gcx().bail_out(context::conf,
+			"key '{}' not found in section '{}'", key, section);
+	}
+
+	kitor->second = value;
 }
 
-bool conf::by_name_bool(const std::string& name)
+void conf::add_global(
+	const std::string& section,
+	const std::string& key, const std::string& value)
 {
+	map_[""][section][key] = value;
+}
+
+std::string conf::get_for_task(
+	const std::vector<std::string>& task_names,
+	const std::string& section, const std::string& key)
+{
+	task_map::iterator task = map_.end();
+
+	for (auto&& tn : task_names)
+	{
+		task = map_.find(tn);
+		if (task != map_.end())
+			break;
+	}
+
+	if (task == map_.end())
+		return get_global(section, key);
+
+	auto sitor = task->second.find(section);
+	if (sitor == task->second.end())
+		return get_global(section, key);
+
+	auto kitor = sitor->second.find(key);
+	if (kitor == sitor->second.end())
+		return get_global(section, key);
+
+	return kitor->second;
+}
+
+void conf::set_for_task(
+	const std::string& task_name, const std::string& section,
+	const std::string& key, const std::string& value)
+{
+	// make sure it exists, will throw if it doesn't
+	get_global(section, key);
+
+	map_[task_name][section][key] = value;
+}
+
+bool conf::prebuilt_by_name(const std::string& task)
+{
+	std::istringstream iss(get_global("prebuilt", task));
 	bool b;
-	std::istringstream iss(by_name(name));
 	iss >> std::boolalpha >> b;
 	return b;
 }
 
-
-bool prebuilt::by_name(const std::string& s)
+fs::path conf::path_by_name(const std::string& name)
 {
-	return get("prebuilt", g_prebuilt, s);
+	return get_global("paths", name);
 }
 
-const std::string& versions::by_name(const std::string& s)
+std::string conf::version_by_name(const std::string& name)
 {
-	return get("version", g_versions, s);
+	return get_global("versions", name);
 }
 
-const fs::path& paths::by_name(const std::string& s)
+fs::path conf::tool_by_name(const std::string& name)
 {
-	return get("path", g_paths, s);
+	return get_global("tools", name);
 }
 
-void conf::set_output_log_level(int i)
+std::string conf::global_by_name(const std::string& name)
 {
-	if (i < 0 || i > 6)
-		gcx().bail_out(context::generic, "bad output log level {}", i);
-
-	g_output_log_level = i;
+	return get_global("global", name);
 }
 
-void conf::set_file_log_level(int i)
+bool conf::bool_global_by_name(const std::string& name)
 {
-	if (i < 0 || i > 6)
-		gcx().bail_out(context::generic, "bad file log level {}", i);
-
-	g_file_log_level = i;
+	std::istringstream iss(global_by_name(name));
+	bool b;
+	iss >> std::boolalpha >> b;
+	return b;
 }
 
-void conf::set_log_file(const fs::path& p)
+std::string conf::option_by_name(
+	const std::vector<std::string>& task_names, const std::string& name)
 {
-	g_log_file = p;
+	return get_for_task(task_names, "options", name);
 }
 
-int conf::output_log_level()
+bool conf::bool_option_by_name(
+	const std::vector<std::string>& task_names, const std::string& name)
 {
-	return g_output_log_level;
+	std::istringstream iss(option_by_name(task_names, name));
+	bool b;
+	iss >> std::boolalpha >> b;
+	return b;
 }
 
-int conf::file_log_level()
+void conf::set_output_log_level(const std::string& s)
 {
-	return g_file_log_level;
-}
+	if (s.empty())
+		return;
 
-const fs::path& conf::log_file()
-{
-	return g_log_file;
-}
-
-
-namespace tools
-{
-	fs::path perl::binary()           { return tool_by_name("perl"); }
-	fs::path msbuild::binary()        { return tool_by_name("msbuild"); }
-	fs::path devenv::binary() 	      { return tool_by_name("devenv"); }
-	fs::path cmake::binary() 	      { return tool_by_name("cmake"); }
-	fs::path git::binary() 		      { return tool_by_name("git"); }
-	fs::path sevenz::binary() 	      { return tool_by_name("sevenz"); }
-	fs::path jom::binary() 		      { return tool_by_name("jom"); }
-	fs::path nasm::binary()           { return tool_by_name("nasm"); }
-	fs::path patch::binary() 	      { return tool_by_name("patch"); }
-	fs::path nuget::binary() 	      { return tool_by_name("nuget"); }
-
-	fs::path vs::installation_path()  { return paths::by_name("vs"); }
-	fs::path vs::vswhere()            { return tool_by_name("vswhere"); }
-	fs::path vs::vcvars() 			  { return tool_by_name("vcvars"); }
-	std::string vs::version() 		  { return versions::by_name("vs"); }
-	std::string vs::year() 			  { return versions::by_name("vs_year"); }
-	std::string vs::toolset() 		  { return versions::by_name("vs_toolset"); }
-	std::string vs::sdk() 			  { return versions::by_name("sdk"); }
-
-	fs::path qt::installation_path()  { return paths::by_name("qt_install"); }
-	fs::path qt::bin_path() 		  { return paths::by_name("qt_bin"); }
-	std::string qt::version() 		  { return versions::by_name("qt"); }
-	std::string qt::vs_version() 	  { return versions::by_name("qt_vs"); }
-}
-
-
-template <class T>
-bool parse_value(const std::string& s, T& out)
-{
-	out = s;
-	return true;
-}
-
-template <>
-bool parse_value<bool>(const std::string& s, bool& out)
-{
-	std::istringstream iss(s);
-	iss >> std::boolalpha >> out;
-	return !iss.bad();
-}
-
-template <>
-bool parse_value<fs::path>(const std::string& s, fs::path& out)
-{
-	out = utf8_to_utf16(s);
-	return true;
-}
-
-template <class Map>
-bool set_option_impl(
-	Map& map, const std::string& key, const std::string& value)
-{
-	auto itor = map.find(key);
-	if (itor == map.end())
+	try
 	{
-		gcx().error(context::conf, "unknown key '{}'", key);
-		return false;
+		const auto i = std::stoi(s);
+
+		if (i < 0 || i > 6)
+			gcx().bail_out(context::generic, "bad output log level {}", i);
+
+		output_log_level_ = i;
+	}
+	catch(std::exception&)
+	{
+		gcx().bail_out(context::generic, "bad output log level {}", s);
+	}
+}
+
+void conf::set_file_log_level(const std::string& s)
+{
+	if (s.empty())
+		return;
+
+	try
+	{
+		const auto i = std::stoi(s);
+		if (i < 0 || i > 6)
+			gcx().bail_out(context::generic, "bad file log level {}", i);
+
+		file_log_level_ = i;
+	}
+	catch(std::exception&)
+	{
+		gcx().bail_out(context::generic, "bad file log level {}", s);
+	}
+}
+
+std::vector<std::string> conf::format_options()
+{
+	std::size_t longest_task = 0;
+	std::size_t longest_section = 0;
+	std::size_t longest_key = 0;
+
+	for (auto&& [t, ss] : map_)
+	{
+		longest_task = std::max(longest_task, t.size());
+
+		for (auto&& [s, kv] : ss)
+		{
+			longest_section = std::max(longest_section, s.size());
+
+			for (auto&& [k, v] : kv)
+				longest_key = std::max(longest_key, k.size());
+		}
 	}
 
-	if (!parse_value<typename Map::mapped_type>(value, itor->second))
+	std::vector<std::string> lines;
+
+	for (auto&& [t, ss] : map_)
 	{
-		gcx().error(context::conf, "bad value '{}'", value);
-		return false;
+		for (auto&& [s, kv] : ss)
+		{
+			for (auto&& [k, v] : kv)
+			{
+				lines.push_back(
+					pad_right(t, longest_task) + "  " +
+					pad_right(s, longest_section) + "  " +
+					pad_right(k, longest_key) + " = " + v);
+			}
+		}
 	}
 
-	return true;
+	return lines;
 }
 
-bool set_option(
-	const std::string& section,
-	const std::string& key, const std::string& value)
-{
-	if (section == "options")
-		return set_option_impl(g_options, key, value);
-	else if (section == "tools")
-		return set_option_impl(g_tools, key, value);
-	else if (section == "prebuilt")
-		return set_option_impl(g_prebuilt, key, value);
-	else if (section == "versions")
-		return set_option_impl(g_versions, key, value);
-	else if (section == "paths")
-		return set_option_impl(g_paths, key, value);
 
-	gcx().error(context::conf, "bad section name '{}'", section);
-	return false;
-}
-
-void set_option(const std::string& s)
+struct parsed_option
 {
-	const auto slash = s.find("/");
-	if (slash == std::string::npos)
+	std::string task, section, key, value;
+};
+
+parsed_option parse_option(const std::string& s)
+{
+	// task:section/key=value
+	// task: is optional
+	std::regex re(R"((?:(.+)\:)?(.+)/(.*)=(.*))");
+	std::smatch m;
+
+	if (!std::regex_match(s, m, re))
 	{
 		gcx().bail_out(context::conf,
-			"bad option {}, must be section/key=value", s);
+			"bad option {}, must be [task:]section/key=value", s);
 	}
 
-	const auto equal = s.find("=", slash);
-	if (slash == std::string::npos)
-	{
-		gcx().bail_out(context::conf,
-			"bad option {}, must be section/key=value", s);
-	}
+	std::string task = trim_copy(m[1]);
+	std::string section = trim_copy(m[2]);
+	std::string key = trim_copy(m[3]);
+	std::string value = trim_copy(m[4]);
 
-	const std::string section = s.substr(0, slash);
-	const std::string key = s.substr(slash + 1, equal - slash - 1);
-	const std::string value = s.substr(equal + 1);
-
-	if (set_option(section, key, value))
-	{
-		gcx().trace(context::conf, "setting {}/{}={}", section, key, value);
-	}
-	else
-	{
-		gcx().bail_out(context::conf,
-			"failed to set {}/{}={}", section, key, value);
-	}
-}
-
-void dump_available_options()
-{
-	for (auto&& [k, v] : g_options)
-		u8cout << "options/" << k << " = " << v << "\n";
-
-	for (auto&& [k, v] : g_tools)
-		u8cout << "tools/" << k << " = " << v << "\n";
-
-	for (auto&& [k, v] : g_prebuilt)
-		u8cout << "prebuilt/" << k << " = " << v << "\n";
-
-	for (auto&& [k, v] : g_versions)
-		u8cout << "versions/" << k << " = " << v << "\n";
-
-	for (auto&& [k, v] : g_paths)
-		u8cout << "paths/" << k << " = " << v << "\n";
+	return {task, section, key, value};
 }
 
 bool try_parts(fs::path& check, const std::vector<std::string>& parts)
@@ -424,8 +343,8 @@ bool find_qmake(fs::path& check)
 	// try Qt/Qt5.14.2/msvc*/bin/qmake.exe
 	if (try_parts(check, {
 		"Qt",
-		"Qt" + tools::qt::version(),
-		"msvc" + tools::qt::vs_version() + "_64",
+		"Qt" + qt::version(),
+		"msvc" + qt::vs_version() + "_64",
 		"bin",
 		"qmake.exe"}))
 	{
@@ -435,8 +354,8 @@ bool find_qmake(fs::path& check)
 	// try Qt/5.14.2/msvc*/bin/qmake.exe
 	if (try_parts(check, {
 		"Qt",
-		tools::qt::version(),
-		"msvc" + tools::qt::vs_version() + "_64",
+		qt::version(),
+		"msvc" + qt::vs_version() + "_64",
 		"bin",
 		"qmake.exe"}))
 	{
@@ -457,7 +376,7 @@ bool try_qt_location(fs::path& check)
 
 fs::path find_qt()
 {
-	fs::path p = g_paths["qt_install"];
+	fs::path p = conf::path_by_name("qt_install");
 
 	if (!p.empty())
 	{
@@ -499,12 +418,12 @@ fs::path find_qt()
 
 void validate_qt()
 {
-	fs::path p = tools::qt::installation_path();
+	fs::path p = qt::installation_path();
 
 	if (!try_qt_location(p))
 		gcx().bail_out(context::conf, "qt path {} doesn't exist", p);
 
-	g_paths["qt_install"] = p;
+	conf::set_global("paths", "qt_install", path_to_utf8(p));
 }
 
 fs::path get_known_folder(const GUID& id)
@@ -585,12 +504,12 @@ fs::path find_temp_dir()
 fs::path find_vs()
 {
 	if (conf::dry())
-		return tools::vs::vswhere();
+		return vs::vswhere();
 
 	auto p = process()
-		.binary(tools::vs::vswhere())
+		.binary(vs::vswhere())
 		.arg("-prerelease")
-		.arg("-version", tools::vs::version())
+		.arg("-version", vs::version())
 		.arg("-property", "installationPath")
 		.stdout_flags(process::keep_in_string)
 		.stderr_flags(process::inherit);
@@ -623,7 +542,7 @@ bool try_vcvars(fs::path& bat)
 
 void find_vcvars()
 {
-	fs::path& bat = g_tools["vcvars"];
+	fs::path bat = conf::tool_by_name("vcvars");
 
 	if (conf::dry())
 	{
@@ -632,51 +551,44 @@ void find_vcvars()
 
 		return;
 	}
-
-
-	if (bat.empty())
-	{
-		bat = tools::vs::installation_path()
-			/ "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
-
-		if (!try_vcvars(bat))
-			gcx().bail_out(context::conf, "vcvars not found at {}", bat);
-	}
 	else
 	{
-		if (!try_vcvars(bat))
-			gcx().bail_out(context::conf, "vcvars not found at {}", bat);
+		if (bat.empty())
+		{
+			bat = vs::installation_path()
+				/ "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
+
+			if (!try_vcvars(bat))
+				gcx().bail_out(context::conf, "vcvars not found at {}", bat);
+		}
+		else
+		{
+			if (!try_vcvars(bat))
+				gcx().bail_out(context::conf, "vcvars not found at {}", bat);
+		}
 	}
 
+	conf::set_global("tools", "vcvars", path_to_utf8(bat));
 	gcx().trace(context::conf, "using vcvars at {}", bat);
 }
 
 
-void ini_error(std::size_t line, const std::string& what)
+void ini_error(const fs::path& ini, std::size_t line, const std::string& what)
 {
 	gcx().bail_out(context::conf,
 		"{}:{}: {}",
-		g_ini.filename(), (line + 1), what);
+		ini.filename(), (line + 1), what);
 }
 
-fs::path find_ini(const fs::path& ini)
+fs::path find_master_ini()
 {
-	fs::path p = ini;
+	auto p = fs::current_path();
 
-	if (!p.empty())
-	{
-		if (fs::exists(p))
-			return fs::canonical(p);
-		else
-			gcx().bail_out(context::conf, "can't find ini at {}", ini);
-	}
+	if (try_parts(p, {"..", "..", "..", master_ini_filename()}))
+		return fs::canonical(p);
 
-	p = fs::current_path();
-
-	if (try_parts(p, {"..", "..", "..", default_ini_filename}))
-		return p;
-
-	gcx().bail_out(context::conf, "can't find {}", default_ini_filename);
+	gcx().bail_out(context::conf,
+		"can't find master ini {}", master_ini_filename());
 }
 
 std::vector<std::string> read_ini(const fs::path& ini)
@@ -707,8 +619,9 @@ std::vector<std::string> read_ini(const fs::path& ini)
 }
 
 void parse_section(
-	std::size_t& i, const std::vector<std::string>& lines,
-	const std::string& section)
+	const fs::path& ini, std::size_t& i,
+	const std::vector<std::string>& lines,
+	const std::string& task, const std::string& section, bool add)
 {
 	++i;
 
@@ -721,27 +634,35 @@ void parse_section(
 
 		const auto sep = line.find("=");
 		if (sep == std::string::npos)
-			ini_error(i, "bad line '" + line + "'");
+			ini_error(ini, i, "bad line '" + line + "'");
 
 		const std::string k = trim_copy(line.substr(0, sep));
 		const std::string v = trim_copy(line.substr(sep + 1));
 
 		if (k.empty())
-			ini_error(i, "bad line '" + line + "'");
+			ini_error(ini, i, "bad line '" + line + "'");
 
-		if (!set_option(section, k, v))
-			ini_error(i, "bad line '" + line + "'");
+		if (task.empty())
+		{
+			if (add)
+				conf::add_global(section, k, v);
+			else
+				conf::set_global(section, k, v);
+		}
+		else
+		{
+			conf::set_for_task(task, section, k, v);
+		}
 
 		++i;
 	}
 }
 
-void parse_ini(const fs::path& ini)
+void parse_ini(const fs::path& ini, bool add)
 {
-	g_ini = find_ini(ini);
-	gcx().debug(context::conf, "using ini at {}", g_ini);
+	gcx().debug(context::conf, "using ini at {}", ini);
 
-	const auto lines = read_ini(g_ini);
+	const auto lines = read_ini(ini);
 	std::size_t i = 0;
 
 	for (;;)
@@ -753,36 +674,33 @@ void parse_ini(const fs::path& ini)
 
 		if (line.starts_with("[") && line.ends_with("]"))
 		{
-			const std::string section = line.substr(1, line.size() - 2);
-			parse_section(i, lines, section);
+			const std::string s = line.substr(1, line.size() - 2);
+
+			std::string task, section;
+
+			const auto col = s.find(":");
+
+			if (col == std::string::npos)
+			{
+				section = s;
+			}
+			else
+			{
+				task = s.substr(0, col);
+				section = s.substr(col + 1);
+			}
+
+			parse_section(ini, i, lines, task, section, add);
 		}
 		else
 		{
-			ini_error(i, "bad line '" + line + "'");
+			ini_error(ini, i, "bad line '" + line + "'");
 		}
 	}
 }
 
 bool check_missing_options()
 {
-	if (conf::mo_org().empty())
-	{
-		u8cerr
-			<< "missing mo_org; either specify it the [options] section of "
-			<< "the ini or pass '-s options/mo_org=something'\n";
-
-		return false;
-	}
-
-	if (conf::mo_branch().empty())
-	{
-		u8cerr
-			<< "missing mo_branch; either specify it the [options] section of "
-			<< "the ini or pass '-s options/mo_org=something'\n";
-
-		return false;
-	}
-
 	if (paths::prefix().empty())
 	{
 		u8cerr
@@ -792,123 +710,156 @@ bool check_missing_options()
 		return false;
 	}
 
-	for (auto&& [k, v] : g_versions)
-	{
-		if (v.empty())
-		{
-			u8cerr << "missing version for " << k << "\n";
-			return false;
-		}
-	}
-
 	return true;
 }
 
 template <class F>
 void set_path_if_empty(const std::string& k, F&& f)
 {
-	auto itor = g_paths.find(k);
-	if (itor == g_paths.end())
-		gcx().bail_out(context::conf, "unknown path key {}", k);
+	fs::path p = conf::get_global("paths", k);
 
-	if (!itor->second.empty())
+	if (p.empty())
 	{
-		if (conf::dry())
-			return;
-
-		if (fs::exists(itor->second))
-		{
-			itor->second = fs::canonical(itor->second);
-			return;
-		}
+		if constexpr (std::is_same_v<fs::path, std::decay_t<decltype(f)>>)
+			p = f;
 		else
-		{
-			gcx().bail_out(context::conf, "path {} not found", itor->second);
-		}
+			p = f();
 	}
 
-	fs::path cp;
+	p = fs::absolute(p);
 
-	if constexpr (std::is_same_v<fs::path, std::decay_t<decltype(f)>>)
-		cp = f;
-	else
-		cp = f();
-
-	if (conf::dry())
+	if (!conf::dry())
 	{
-		itor->second = cp;
-		return;
+		if (!fs::exists(p))
+			gcx().bail_out(context::conf, "path {} not found", p);
+
+		p = fs::canonical(p);
 	}
 
-	cp = fs::absolute(cp);
-
-	if (!fs::exists(cp))
-		gcx().bail_out(context::conf, "path {} not found", cp);
-
-	itor->second = fs::canonical(cp);
+	conf::set_global("paths", k, path_to_utf8(p));
 }
 
 void make_canonical_path(
 	const std::string& key,
 	const fs::path& default_parent, const std::string& default_dir)
 {
-	auto itor = g_paths.find(key);
-	if (itor == g_paths.end())
-		gcx().bail_out(context::conf, "unknown path key {}", key);
+	fs::path p = conf::path_by_name(key);
 
-	if (itor->second.empty())
+	if (p.empty())
 	{
-		itor->second = default_parent / default_dir;
+		p = default_parent / default_dir;
 	}
 	else
 	{
-		if (itor->second.is_relative())
-			itor->second = default_parent / itor->second;
+		if (p.is_relative())
+			p = default_parent / p;
 	}
 
 	if (!conf::dry())
-		itor->second = fs::weakly_canonical(fs::absolute(itor->second));
+		p = fs::weakly_canonical(fs::absolute(p));
+
+	conf::set_global("paths", key, path_to_utf8(p));
 }
 
-void init_options(const fs::path& ini, const std::vector<std::string>& opts)
+void set_special_options()
 {
-	parse_ini(ini);
+	conf::set_output_log_level(conf::get_global("global", "output_log_level"));
+	conf::set_file_log_level(conf::get_global("global", "file_log_level"));
+}
+
+std::vector<fs::path> find_inis(const std::vector<fs::path>& inis_from_cl)
+{
+	const auto master = find_master_ini();
+
+	std::vector<fs::path> v;
+
+	for (auto&& e : fs::directory_iterator(master.parent_path()))
+	{
+		const auto p = e.path();
+
+		if (path_to_utf8(p.extension()) != ".ini")
+			continue;
+
+		if (p.filename() == master.filename())
+			continue;
+
+		v.push_back(p);
+	}
+
+	std::sort(v.begin(), v.end());
+	v.insert(v.begin(), master);
+
+	for (auto&& p : inis_from_cl)
+	{
+		if (!fs::exists(p))
+		{
+			u8cerr << "ini " << p << " not found\n";
+			throw bailed();
+		}
+
+		bool found = false;
+
+		for (auto itor=v.begin(); itor!=v.end(); ++itor)
+		{
+			if (fs::equivalent(p, *itor))
+			{
+				found = true;
+				v.erase(itor);
+				v.push_back(p);
+				break;
+			}
+		}
+
+		if (!found)
+			v.push_back(p);
+	}
+
+	return v;
+}
+
+void init_options(
+	const std::vector<fs::path>& inis_from_cl, bool auto_detection,
+	const std::vector<std::string>& opts)
+{
+	std::vector<fs::path> inis;
+
+	if (auto_detection)
+		inis = find_inis(inis_from_cl);
+	else
+		inis = inis_from_cl;
+
+	MOB_ASSERT(!inis.empty());
+
+	bool add = true;
+	for (auto&& ini : inis)
+	{
+		parse_ini(ini, add);
+		add = false;
+	}
 
 	if (!opts.empty())
 	{
 		gcx().debug(context::conf, "overriding from command line:");
 
 		for (auto&& o : opts)
-			set_option(o);
+		{
+			const auto po = parse_option(o);
+
+			if (po.task.empty())
+				conf::set_global(po.section, po.key, po.value);
+			else
+				conf::set_for_task(po.task, po.section, po.key, po.value);
+		}
 	}
 
-	try
-	{
-		if (!g_options["output_log_level"].empty())
-			conf::set_output_log_level(std::stoi(g_options["output_log_level"]));
-	}
-	catch(std::exception&)
-	{
-		gcx().bail_out(context::generic, "bad output_log_level");
-	}
-
-	try
-	{
-		if (!g_options["file_log_level"].empty())
-			conf::set_file_log_level(std::stoi(g_options["file_log_level"]));
-	}
-	catch(std::exception&)
-	{
-		gcx().bail_out(context::generic, "bad file_log_level");
-	}
-
-	if (!g_options["log_file"].empty())
-		conf::set_log_file(g_options["log_file"]);
-
+	set_special_options();
 	context::set_log_file(conf::log_file());
 
-	set_path_if_empty("third_party", find_third_party_directory);
+	gcx().debug(context::conf, "using inis in order:");
+	for (auto&& ini : inis)
+		gcx().debug(context::conf, "  . {}", ini);
 
+	set_path_if_empty("third_party", find_third_party_directory);
 	this_env::prepend_to_path(paths::third_party() / "bin");
 
 	set_path_if_empty("pf_x86",     find_program_files_x86);
@@ -918,7 +869,7 @@ void init_options(const fs::path& ini, const std::vector<std::string>& opts)
 	set_path_if_empty("temp_dir",   find_temp_dir);
 	set_path_if_empty("patches",    find_in_root("patches"));
 	set_path_if_empty("licenses",   find_in_root("licenses"));
-	set_path_if_empty("qt_bin",     tools::qt::installation_path() / "bin");
+	set_path_if_empty("qt_bin",     qt::installation_path() / "bin");
 
 	find_vcvars();
 	validate_qt();
@@ -951,39 +902,16 @@ bool verify_options()
 	return check_missing_options();
 }
 
-template <class Map>
-void table(const std::string& caption, const Map& values)
+void log_options()
 {
-	std::size_t longest = 0;
-	for (auto&& [k, v] : values)
-		longest = std::max(longest, k.size());
-
-	gcx().trace(context::conf, "{}:", caption);
-	for (auto&& [k, v] : values)
-		gcx().trace(context::conf, " . {} = {}", pad_right(k, longest), v);
+	for (auto&& line : conf::format_options())
+		gcx().trace(context::conf, "{}", line);
 }
 
-void dump_options()
+void dump_available_options()
 {
-	string_map opts = g_options;
-	table("options", opts);
-
-	string_map tools;
-	for (auto&& [k, v] : g_tools)
-		tools[k] = path_to_utf8(v);
-	table("tools", tools);
-
-	string_map prebuilt;
-	for (auto&& [k, v] : g_prebuilt)
-		prebuilt[k] = (v ? "true" : "false");
-	table("prebuilt", prebuilt);
-
-	table("versions", g_versions);
-
-	string_map paths;
-	for (auto&& [k, v] : g_paths)
-		paths[k] = path_to_utf8(v);
-	table("paths", paths);
+	for (auto&& line : conf::format_options())
+		u8cout << line << "\n";
 }
 
 

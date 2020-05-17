@@ -15,8 +15,8 @@ public:
 		int file_log_level = -1;
 		std::string log_file;
 		std::vector<std::string> options;
-		std::vector<std::string> set;
-		std::string ini;
+		std::vector<std::string> inis;
+		bool no_default_inis = false;
 		std::string prefix;
 	};
 
@@ -103,6 +103,7 @@ private:
 	bool reextract_ = false;
 	bool rebuild_ = false;
 	bool clean_ = false;
+	bool nopull_ = false;
 	bool keep_msbuild_ = false;
 
 	void terminate_msbuild();

@@ -41,6 +41,24 @@ private:
 };
 
 
+struct perl
+{
+	static fs::path binary();
+};
+
+struct nasm
+{
+	static fs::path binary();
+};
+
+struct qt
+{
+	static fs::path installation_path();
+	static fs::path bin_path();
+	static std::string version();
+	static std::string vs_version();
+};
+
 
 class downloader : public tool
 {
@@ -111,25 +129,37 @@ private:
 };
 
 
-class git_clone : public basic_process_runner
+class git : public basic_process_runner
 {
 public:
-	git_clone();
+	enum ops
+	{
+		clone = 1,
+		pull,
+		clone_or_pull2
+	};
 
-	git_clone& url(const mob::url& u);
-	git_clone& branch(const std::string& name);
-	git_clone& output(const fs::path& dir);
+
+	git(ops o);
+
+	static fs::path binary();
+
+	git& url(const mob::url& u);
+	git& branch(const std::string& name);
+	git& output(const fs::path& dir);
 
 protected:
 	void do_run() override;
 
 private:
+	ops op_;
 	mob::url url_;
 	std::string branch_;
 	fs::path where_;
 
-	void clone();
-	void pull();
+	void do_clone_or_pull();
+	bool do_clone();
+	void do_pull();
 };
 
 
@@ -137,6 +167,9 @@ class extractor : public basic_process_runner
 {
 public:
 	extractor();
+
+	static fs::path binary();
+
 	extractor& file(const fs::path& file);
 	extractor& output(const fs::path& dir);
 
@@ -155,6 +188,8 @@ class patcher : public basic_process_runner
 {
 public:
 	patcher();
+
+	static fs::path binary();
 
 	patcher& task(const std::string& name, bool prebuilt=false);
 	patcher& file(const fs::path& p);
@@ -184,6 +219,7 @@ public:
 
 	cmake();
 
+	static fs::path binary();
 	static void clean(const context& cx, const fs::path& root);
 
 	cmake& generator(generators g);
@@ -234,6 +270,8 @@ public:
 
 	jom();
 
+	static fs::path binary();
+
 	jom& path(const fs::path& p);
 	jom& target(const std::string& s);
 	jom& def(const std::string& s);
@@ -264,6 +302,8 @@ public:
 
 	msbuild();
 
+	static fs::path binary();
+
 	msbuild& solution(const fs::path& sln);
 	msbuild& projects(const std::vector<std::string>& names);
 	msbuild& parameters(const std::vector<std::string>& params);
@@ -288,16 +328,35 @@ private:
 };
 
 
-class devenv_upgrade : public basic_process_runner
+class vs : public basic_process_runner
 {
 public:
-	devenv_upgrade(fs::path sln);
+	enum ops
+	{
+		upgrade = 1
+	};
+
+	vs(ops o);
+
+	static fs::path devenv_binary();
+	static fs::path installation_path();
+	static fs::path vswhere();
+	static fs::path vcvars();
+	static std::string version();
+	static std::string year();
+	static std::string toolset();
+	static std::string sdk();
+
+	vs& solution(const fs::path& sln);
 
 protected:
 	void do_run() override;
 
 private:
+	ops op_;
 	fs::path sln_;
+
+	void do_upgrade();
 };
 
 
@@ -305,6 +364,8 @@ class nuget : public basic_process_runner
 {
 public:
 	nuget(fs::path sln);
+
+	static fs::path binary();
 
 protected:
 	void do_run() override;

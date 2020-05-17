@@ -9,10 +9,9 @@ ncc::ncc()
 {
 }
 
-const std::string& ncc::version()
+std::string ncc::version()
 {
-	static std::string s;
-	return s;
+	return {};
 }
 
 bool ncc::prebuilt()
@@ -33,9 +32,9 @@ void ncc::do_clean_for_rebuild()
 
 void ncc::do_fetch()
 {
-	run_tool(git_clone()
-		.url(make_github_url(conf::mo_org(), "modorganizer-NCC"))
-		.branch(conf::mo_branch())
+	run_tool(git(task_conf().git_op())
+		.url(make_github_url(task_conf().mo_org(), "modorganizer-NCC"))
+		.branch(task_conf().mo_branch())
 		.output(source_path()));
 }
 

@@ -9,10 +9,9 @@ boost_di::boost_di()
 {
 }
 
-const std::string& boost_di::version()
+std::string boost_di::version()
 {
-	static std::string s;
-	return s;
+	return {};
 }
 
 bool boost_di::prebuilt()
@@ -27,7 +26,7 @@ fs::path boost_di::source_path()
 
 void boost_di::do_fetch()
 {
-	run_tool(git_clone()
+	run_tool(git(task_conf().git_op())
 		.url(make_github_url("boost-experimental", "di"))
 		.branch("cpp14")
 		.output(source_path()));

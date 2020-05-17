@@ -5,7 +5,6 @@
 #include "../conf.h"
 #include "../utility.h"
 #include "../op.h"
-#include "../tools/tools.h"
 
 namespace mob
 {
@@ -15,8 +14,8 @@ class boost : public basic_task<boost>
 public:
 	boost();
 
-	static const std::string& version();
-	static const std::string& version_vs();
+	static std::string version();
+	static std::string version_vs();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -66,7 +65,7 @@ class boost_di : public basic_task<boost_di>
 public:
 	boost_di();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -81,7 +80,7 @@ class bzip2 : public basic_task<bzip2>
 public:
 	bzip2();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -99,7 +98,7 @@ class explorerpp : public basic_task<explorerpp>
 public:
 	explorerpp();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -117,7 +116,7 @@ class fmt : public basic_task<fmt>
 public:
 	fmt();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -137,7 +136,7 @@ class gtest : public basic_task<gtest>
 public:
 	gtest();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -154,7 +153,7 @@ class licenses : public basic_task<licenses>
 public:
 	licenses();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -169,7 +168,7 @@ class libbsarch : public basic_task<libbsarch>
 public:
 	libbsarch();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -189,7 +188,7 @@ class libffi : public basic_task<libffi>
 public:
 	libffi();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -206,8 +205,8 @@ class libloot : public basic_task<libloot>
 public:
 	libloot();
 
-	static const std::string& version();
-	static const std::string& hash();
+	static std::string version();
+	static std::string hash();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -227,7 +226,7 @@ class lz4 : public basic_task<lz4>
 public:
 	lz4();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -257,7 +256,7 @@ class modorganizer : public basic_task<modorganizer>
 public:
 	modorganizer(std::string name);
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -283,7 +282,7 @@ class ncc : public basic_task<ncc>
 public:
 	ncc();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -300,7 +299,7 @@ class nmm : public basic_task<nmm>
 public:
 	nmm();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -317,7 +316,7 @@ class openssl : public basic_task<openssl>
 public:
 	openssl();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -356,8 +355,8 @@ class pyqt : public basic_task<pyqt>
 public:
 	pyqt();
 
-	static const std::string& version();
-	static const std::string& builder_version();
+	static std::string version();
+	static std::string builder_version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -397,7 +396,7 @@ public:
 
 	python();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static version_info parsed_version();
@@ -435,8 +434,8 @@ class sip : public basic_task<sip>
 public:
 	sip();
 
-	static const std::string& version();
-	static const std::string& version_for_pyqt();
+	static std::string version();
+	static std::string version_for_pyqt();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -462,7 +461,7 @@ class sevenz : public basic_task<sevenz>
 public:
 	sevenz();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -486,7 +485,7 @@ class spdlog : public basic_task<spdlog>
 public:
 	spdlog();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -501,10 +500,16 @@ class stylesheets : public basic_task<stylesheets>
 public:
 	stylesheets();
 
-	static const std::string& version();
 	static bool prebuilt();
-
 	static fs::path source_path();
+
+	static std::string paper_lad_6788_version();
+	static std::string paper_automata_6788_version();
+	static std::string paper_mono_6788_version();
+	static std::string dark_mode_1809_6788_version();
+
+	// dummy, doesn't applly
+	static std::string version();
 
 protected:
 	void do_fetch() override;
@@ -528,7 +533,7 @@ class usvfs : public basic_task<usvfs>
 public:
 	usvfs();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();
@@ -556,7 +561,7 @@ class zlib : public basic_task<zlib>
 public:
 	zlib();
 
-	static const std::string& version();
+	static std::string version();
 	static bool prebuilt();
 
 	static fs::path source_path();

@@ -24,10 +24,9 @@ modorganizer::modorganizer(std::string long_name)
 		add_name(long_name);
 }
 
-const std::string& modorganizer::version()
+std::string modorganizer::version()
 {
-	static std::string s;
-	return s;
+	return {};
 }
 
 bool modorganizer::prebuilt()
@@ -59,9 +58,9 @@ void modorganizer::do_fetch()
 {
 	initialize_super(super_path());
 
-	run_tool(git_clone()
-		.url(make_github_url(conf::mo_org(), repo_))
-		.branch(conf::mo_branch())
+	run_tool(git(task_conf().git_op())
+		.url(make_github_url(task_conf().mo_org(), repo_))
+		.branch(task_conf().mo_branch())
 		.output(this_source_path()));
 }
 
@@ -71,15 +70,15 @@ void modorganizer::do_build_and_install()
 		std::scoped_lock lock(g_super_mutex);
 
 		run_tool(process_runner(process()
-			.binary(tools::git::binary())
+			.binary(git::binary())
 			.arg("-c", "core.autocrlf=false")
 			.arg("submodule")
 			.arg("--quiet")
 			.arg("add")
-			.arg("-b", conf::mo_branch())
+			.arg("-b", task_conf().mo_branch())
 			.arg("--force")
 			.arg("--name", name())
-			.arg(make_github_url(conf::mo_org(), repo_))
+			.arg(make_github_url(task_conf().mo_org(), repo_))
 			.arg(name())
 			.cwd(super_path())));
 	}
@@ -102,7 +101,7 @@ void modorganizer::do_build_and_install()
 		.def("SPDLOG_ROOT",        spdlog::source_path())
 		.def("LOOT_PATH",          libloot::source_path())
 		.def("LZ4_ROOT",           lz4::source_path())
-		.def("QT_ROOT",            tools::qt::installation_path())
+		.def("QT_ROOT",            qt::installation_path())
 		.def("ZLIB_ROOT",          zlib::source_path())
 		.def("PYTHON_ROOT",        python::source_path())
 		.def("SEVENZ_ROOT",        sevenz::source_path())
@@ -137,7 +136,7 @@ void modorganizer::initialize_super(const fs::path& super_root)
 	cx().trace(context::generic, "checking super");
 
 	auto p = process()
-		.binary(tools::git::binary())
+		.binary(git::binary())
 		.arg("rev-parse")
 		.arg("--is-inside-work-tree")
 		.stderr_filter([](process::filter& f)
@@ -157,7 +156,7 @@ void modorganizer::initialize_super(const fs::path& super_root)
 	cx().trace(context::generic, "initializing super");
 
 	run_tool(process_runner(process()
-		.binary(tools::git::binary())
+		.binary(git::binary())
 		.arg("init")
 		.cwd(super_root)));
 }

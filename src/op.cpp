@@ -4,6 +4,7 @@
 #include "conf.h"
 #include "context.h"
 #include "process.h"
+#include "tools/tools.h"
 
 namespace mob::op
 {
@@ -487,7 +488,7 @@ void archive_from_glob(
 	op::create_directories(cx, dest_file.parent_path());
 
 	auto p = process()
-		.binary(tools::sevenz::binary())
+		.binary(extractor::binary())
 		.arg("a")
 		.arg(dest_file)
 		.arg("-r")
@@ -543,7 +544,7 @@ void archive_from_files(
 	op::create_directories(cx, dest_file.parent_path());
 
 	auto p = process()
-		.binary(tools::sevenz::binary())
+		.binary(extractor::binary())
 		.arg("a")
 		.arg(dest_file)
 		.arg("@", list_file, process::nospace)

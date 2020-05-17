@@ -49,8 +49,8 @@ clipp::group command::common_options_group()
 	auto& o = common;
 
 	return
-		(clipp::option("-i", "--ini")
-			& clipp::value("FILE") >> o.ini)
+		(clipp::repeatable(clipp::option("-i", "--ini")
+			& clipp::value("FILE") >> o.inis))
 			% ("path to the ini file"),
 
 		(clipp::option("--dry") >> o.dry)
@@ -72,10 +72,12 @@ clipp::group command::common_options_group()
 			& clipp::value("DIR") >> o.prefix)
 			% ("base output directory, will contain build/, install/, etc."),
 
-		(clipp::repeatable(clipp::option("-s", "--set") >> o.set
-			& clipp::opt_value("OPTION", o.options)))
-			%  "sets an option, such as 'versions/openssl=1.2'; -s with no "
-			   "arguments lists the available options";
+		(clipp::repeatable(clipp::option("-s", "--set")
+			& clipp::value("OPTION", o.options)))
+			%  "sets an option, such as 'versions/openssl=1.2'",
+
+		(clipp::option("--no-default-inis") >> o.no_default_inis)
+			% "disables auto detection of ini files, only uses --ini";
 }
 
 void command::force_exit_code(int code)
@@ -121,22 +123,22 @@ int command::run()
 	if (o.output_log_level >= 0)
 	{
 		o.options.push_back(
-			"options/output_log_level=" +
+			"global/output_log_level=" +
 			std::to_string(o.output_log_level));
 	}
 
 	if (o.file_log_level > 0)
 	{
 		o.options.push_back(
-			"options/file_log_level=" +
+			"global/file_log_level=" +
 			std::to_string(o.file_log_level));
 	}
 
 	if (!o.log_file.empty())
-		o.options.push_back("options/log_file=" + o.log_file);
+		o.options.push_back("global/log_file=" + o.log_file);
 
 	if (o.dry)
-		o.options.push_back("options/dry=true");
+		o.options.push_back("global/dry=true");
 
 	if (!o.prefix.empty())
 		o.options.push_back("paths/prefix=" + o.prefix);
@@ -145,8 +147,21 @@ int command::run()
 
 	if (flags_ & requires_options)
 	{
-		init_options(command::common.ini, command::common.options);
-		dump_options();
+		if (o.no_default_inis && o.inis.empty())
+		{
+			u8cerr
+				<< "--no-default-inis requires at least one --ini for the "
+				<< "master ini file\n";
+
+			return 1;
+		}
+
+		std::vector<fs::path> inis;
+		for (auto&& s : o.inis)
+			inis.push_back(s);
+
+		init_options(inis, !o.no_default_inis, o.options);
+		log_options();
 
 		if (!verify_options())
 			return 1;
@@ -185,6 +200,8 @@ int help_command::do_run()
 #pragma warning(suppress: 4548)
 	auto doc = (command::common_options_group(), (clipp::value("command")));
 
+	const auto mobini = master_ini_filename();
+
 	help(doc,
 		"Commands:\n"
 		"    help       shows this message\n"
@@ -196,7 +213,24 @@ int help_command::do_run()
 		"\n\n"
 		"Invoking `mob -d some/prefix build` builds everything. Do \n"
 		"`mob build <task name>...` to build specific tasks. See\n"
-		"`mob command --help` for more information about a command.");
+		"`mob command --help` for more information about a command.\n"
+		"\n"
+		"INI files\n"
+		"\n"
+		"By default, mob will look for a master INI `" + mobini + "` in the \n"
+		"current directory and up to three of its parents (so it can also be\n"
+		"found from the build directory). Once mob found the master INI, it\n"
+		"will look for any other .ini file in the same directory.\n"
+		"\n"
+		"These additional INI files will be loaded after the master, in\n"
+		"lexicographical order, overriding anything the previous INI file\n"
+		"may have set.\n"
+		"\n"
+		"Additional INI files may be specified with --ini. They will be\n"
+		"loaded in order after the ones that were auto detected. If the same\n"
+		"INI file is found in the directory and on the command line, its\n"
+		"position in the load order will be moved to that of the command\n"
+		"line.");
 
 	return 0;
 }
@@ -245,6 +279,9 @@ clipp::group build_command::do_group()
 		(clipp::option("-n", "--new") >> clean_)
 			% "deletes everything and starts from scratch",
 
+		(clipp::option("-p", "--no-pull") >> nopull_)
+		% "clones repos if necessary, but never pulls once cloned",
+
 		(clipp::option("--keep-msbuild") >> keep_msbuild_)
 			% "don't terminate msbuild.exe instances after building",
 
@@ -264,6 +301,9 @@ void build_command::do_pre_run()
 
 	if (rebuild_ || clean_)
 		common.options.push_back("options/rebuild=true");
+
+	if (nopull_)
+		common.options.push_back("options/no_pull=true");
 }
 
 int build_command::do_run()
@@ -295,7 +335,7 @@ void build_command::terminate_msbuild()
 	if (conf::dry())
 		return;
 
-	system("taskkill /im msbuild.exe /f > NUL");
+	system("taskkill /im msbuild.exe /f > NUL 2>&1");
 }
 
 

@@ -3,126 +3,76 @@
 namespace mob
 {
 
-#define VALUE(NAME) \
-	static decltype(auto) NAME() { return by_name(#NAME); }
-
-#define VALUE_BOOL(NAME) \
-	static bool NAME() { return by_name_bool(#NAME); }
-
-
-namespace tools
+class conf
 {
-	struct perl
-	{
-		static fs::path binary();
-	};
+public:
+	static std::string get_global(
+		const std::string& section, const std::string& key);
 
-	struct msbuild
-	{
-		static fs::path binary();
-	};
+	static void set_global(
+		const std::string& section,
+		const std::string& key, const std::string& value);
 
-	struct devenv
-	{
-		static fs::path binary();
-	};
+	static void add_global(
+		const std::string& section,
+		const std::string& key, const std::string& value);
 
-	struct cmake
-	{
-		static fs::path binary();
-	};
 
-	struct git
-	{
-		static fs::path binary();
-	};
+	static std::string get_for_task(
+		const std::vector<std::string>& task_names,
+		const std::string& section, const std::string& key);
 
-	struct sevenz
-	{
-		static fs::path binary();
-	};
+	static void set_for_task(
+		const std::string& task_name, const std::string& section,
+		const std::string& key, const std::string& value);
 
-	struct jom
-	{
-		static fs::path binary();
-	};
 
-	struct nasm
-	{
-		static fs::path binary();
-	};
+	static bool prebuilt_by_name(const std::string& task);
+	static fs::path path_by_name(const std::string& name);
+	static std::string version_by_name(const std::string& name);
+	static fs::path tool_by_name(const std::string& name);
 
-	struct patch
-	{
-		static fs::path binary();
-	};
+	static std::string global_by_name(const std::string& name);
+	static bool bool_global_by_name(const std::string& name);
 
-	struct nuget
-	{
-		static fs::path binary();
-	};
+	static std::string option_by_name(
+		const std::vector<std::string>& task_names, const std::string& name);
 
-	struct vs
-	{
-		static fs::path installation_path();
-		static fs::path vswhere();
-		static fs::path vcvars();
-		static std::string version();
-		static std::string year();
-		static std::string toolset();
-		static std::string sdk();
-	};
+	static bool bool_option_by_name(
+		const std::vector<std::string>& task_names, const std::string& name);
 
-	struct qt
-	{
-		static fs::path installation_path();
-		static fs::path bin_path();
-		static std::string version();
-		static std::string vs_version();
-	};
+
+	static int output_log_level() { return output_log_level_; }
+	static void set_output_log_level(const std::string& s);
+
+	static int file_log_level()   { return file_log_level_; }
+	static void set_file_log_level(const std::string& s);
+
+	static fs::path log_file() { return global_by_name("log_file"); }
+	static bool dry()          { return bool_global_by_name("dry"); }
+	static bool redownload()   { return bool_global_by_name("redownload"); }
+	static bool reextract()    { return bool_global_by_name("reextract"); }
+	static bool rebuild()      { return bool_global_by_name("rebuild"); }
+
+	static std::vector<std::string> format_options();
+
+private:
+	using key_value_map = std::map<std::string, std::string>;
+	using section_map = std::map<std::string, key_value_map>;
+	using task_map = std::map<std::string, section_map>;
+
+	static task_map map_;
+
+	// special cases to avoid string manipulations
+	static int output_log_level_;
+	static int file_log_level_;
 };
 
-
-struct conf
-{
-	static void set_output_log_level(int i);
-	static void set_file_log_level(int i);
-	static void set_log_file(const fs::path& p);
-
-	static int output_log_level();
-	static int file_log_level();
-	static const fs::path& log_file();
-
-	static const std::string& by_name(const std::string& s);
-	static bool by_name_bool(const std::string& name);
-
-	VALUE(mo_org);
-	VALUE(mo_branch);
-
-	VALUE_BOOL(dry);
-	VALUE_BOOL(redownload);
-	VALUE_BOOL(reextract);
-	VALUE_BOOL(rebuild);
-};
-
-struct prebuilt
-{
-	static bool by_name(const std::string& s);
-};
-
-struct versions
-{
-	static const std::string& by_name(const std::string& s);
-
-	VALUE(ss_6788_paper_lad);
-	VALUE(ss_6788_paper_automata);
-	VALUE(ss_6788_paper_mono);
-	VALUE(ss_6788_1809_dark_mode);
-};
 
 struct paths
 {
-	static const fs::path& by_name(const std::string& s);
+#define VALUE(NAME) \
+	static fs::path NAME() { return conf::path_by_name(#NAME); }
 
 	VALUE(third_party);
 	VALUE(prefix);
@@ -146,15 +96,19 @@ struct paths
 	VALUE(pf_x86);
 	VALUE(pf_x64);
 	VALUE(temp_dir);
+
+#undef VALUE
 };
 
-#undef VALUE_BOOL
-#undef VALUE
 
+std::string master_ini_filename();
 
-void init_options(const fs::path& ini, const std::vector<std::string>& opts);
+void init_options(
+	const std::vector<fs::path>& inis_from_cl, bool auto_detection,
+	const std::vector<std::string>& opts);
+
 bool verify_options();
-void dump_options();
+void log_options();
 void dump_available_options();
 
 fs::path make_temp_file();

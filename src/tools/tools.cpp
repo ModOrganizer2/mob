@@ -60,12 +60,106 @@ bool tool::interrupted() const
 }
 
 
-devenv_upgrade::devenv_upgrade(fs::path sln)
-	: basic_process_runner("upgrade project"), sln_(std::move(sln))
+fs::path perl::binary()
+{
+	return conf::tool_by_name("perl");
+}
+
+fs::path nasm::binary()
+{
+	return conf::tool_by_name("nasm");
+}
+
+fs::path qt::installation_path()
+{
+	return conf::path_by_name("qt_install");
+}
+
+fs::path qt::bin_path()
+{
+	return conf::path_by_name("qt_bin");
+}
+
+std::string qt::version()
+{
+	return conf::version_by_name("qt");
+}
+
+std::string qt::vs_version()
+{
+	return conf::version_by_name("qt_vs");
+}
+
+
+vs::vs(ops o)
+	: basic_process_runner("vs"), op_(o)
 {
 }
 
-void devenv_upgrade::do_run()
+fs::path vs::devenv_binary()
+{
+	return conf::tool_by_name("devenv");
+}
+
+fs::path vs::installation_path()
+{
+	return conf::path_by_name("vs");
+}
+
+fs::path vs::vswhere()
+{
+	return conf::tool_by_name("vswhere");
+}
+
+fs::path vs::vcvars()
+{
+	return conf::tool_by_name("vcvars");
+}
+
+std::string vs::version()
+{
+	return conf::version_by_name("vs");
+}
+
+std::string vs::year()
+{
+	return conf::version_by_name("vs_year");
+}
+
+std::string vs::toolset()
+{
+	return conf::version_by_name("vs_toolset");
+}
+
+std::string vs::sdk()
+{
+	return conf::version_by_name("sdk");
+}
+
+vs& vs::solution(const fs::path& sln)
+{
+	sln_ = sln;
+	return *this;
+}
+
+void vs::do_run()
+{
+	switch (op_)
+	{
+		case upgrade:
+		{
+			do_upgrade();
+			break;
+		}
+
+		default:
+		{
+			cx_->bail_out(context::generic, "vs unknown op {}", op_);
+		}
+	}
+}
+
+void vs::do_upgrade()
 {
 	if (fs::exists(sln_.parent_path() / "UpgradeLog.htm"))
 	{
@@ -74,7 +168,7 @@ void devenv_upgrade::do_run()
 	}
 
 	process_
-		.binary(tools::devenv::binary())
+		.binary(devenv_binary())
 		.env(env::vs(arch::x64))
 		.arg("/upgrade")
 		.arg(sln_);
@@ -87,10 +181,15 @@ nuget::nuget(fs::path sln)
 	: basic_process_runner("nuget"), sln_(std::move(sln))
 {
 	process_
-		.binary(tools::nuget::binary())
+		.binary(binary())
 		.arg("restore")
 		.arg(sln_)
 		.cwd(sln_.parent_path());
+}
+
+fs::path nuget::binary()
+{
+	return conf::tool_by_name("nuget");
 }
 
 void nuget::do_run()

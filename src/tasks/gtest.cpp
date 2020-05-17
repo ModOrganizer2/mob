@@ -9,9 +9,9 @@ gtest::gtest()
 {
 }
 
-const std::string& gtest::version()
+std::string gtest::version()
 {
-	return versions::by_name("gtest");
+	return conf::version_by_name("gtest");
 }
 
 bool gtest::prebuilt()
@@ -31,7 +31,7 @@ void gtest::do_clean_for_rebuild()
 
 void gtest::do_fetch()
 {
-	run_tool(git_clone()
+	run_tool(git(task_conf().git_op())
 		.url(make_github_url("google", "googletest"))
 		.branch(version())
 		.output(source_path()));

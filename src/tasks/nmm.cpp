@@ -9,9 +9,9 @@ nmm::nmm()
 {
 }
 
-const std::string& nmm::version()
+std::string nmm::version()
 {
-	return versions::by_name("nmm");
+	return conf::version_by_name("nmm");
 }
 
 bool nmm::prebuilt()
@@ -31,7 +31,7 @@ void nmm::do_clean_for_rebuild()
 
 void nmm::do_fetch()
 {
-	run_tool(git_clone()
+	run_tool(git(task_conf().git_op())
 		.url(make_github_url("Nexus-Mods", "Nexus-Mod-Manager"))
 		.branch(version())
 		.output(source_path()));
