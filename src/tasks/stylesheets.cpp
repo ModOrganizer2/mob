@@ -15,6 +15,27 @@ const std::string& stylesheets::version()
 	return s;
 }
 
+std::string stylesheets::paper_lad_6788_version()
+{
+	return version_by_name("ss_paper_lad_6788");
+}
+
+std::string stylesheets::paper_automata_6788_version()
+{
+	return version_by_name("ss_paper_automata_6788");
+}
+
+std::string stylesheets::paper_mono_6788_version()
+{
+	return version_by_name("ss_paper_mono_6788");
+}
+
+std::string stylesheets::dark_mode_1809_6788_version()
+{
+	return version_by_name("ss_dark_mode_1809_6788");
+}
+
+
 bool stylesheets::prebuilt()
 {
 	return false;
@@ -65,29 +86,29 @@ std::vector<stylesheets::release> stylesheets::releases()
 		{
 			"6788-00",
 			"paper-light-and-dark",
-			versions::ss_6788_paper_lad(),
-			versions::ss_6788_paper_lad(),
+			stylesheets::paper_lad_6788_version(),
+			stylesheets::paper_lad_6788_version(),
 		},
 
 		{
 			"6788-00",
 			"paper-automata",
-			versions::ss_6788_paper_automata(),
+			paper_automata_6788_version(),
 			"Paper-Automata"
 		},
 
 		{
 			"6788-00",
 			"paper-mono",
-			versions::ss_6788_paper_mono(),
+			paper_mono_6788_version(),
 			"Paper-Mono"
 		},
 
 		{
 			"6788-00",
 			"1809-dark-mode",
-			versions::ss_6788_1809_dark_mode(),
-			versions::ss_6788_1809_dark_mode()
+			dark_mode_1809_6788_version(),
+			dark_mode_1809_6788_version()
 		}
 	};
 }

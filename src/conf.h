@@ -9,80 +9,6 @@ namespace mob
 #define VALUE_BOOL(NAME) \
 	static bool NAME() { return by_name_bool(#NAME); }
 
-
-namespace tools
-{
-	struct perl
-	{
-		static fs::path binary();
-	};
-
-	struct msbuild
-	{
-		static fs::path binary();
-	};
-
-	struct devenv
-	{
-		static fs::path binary();
-	};
-
-	struct cmake
-	{
-		static fs::path binary();
-	};
-
-	struct git
-	{
-		static fs::path binary();
-	};
-
-	struct sevenz
-	{
-		static fs::path binary();
-	};
-
-	struct jom
-	{
-		static fs::path binary();
-	};
-
-	struct nasm
-	{
-		static fs::path binary();
-	};
-
-	struct patch
-	{
-		static fs::path binary();
-	};
-
-	struct nuget
-	{
-		static fs::path binary();
-	};
-
-	struct vs
-	{
-		static fs::path installation_path();
-		static fs::path vswhere();
-		static fs::path vcvars();
-		static std::string version();
-		static std::string year();
-		static std::string toolset();
-		static std::string sdk();
-	};
-
-	struct qt
-	{
-		static fs::path installation_path();
-		static fs::path bin_path();
-		static std::string version();
-		static std::string vs_version();
-	};
-};
-
-
 struct conf
 {
 	static void set_output_log_level(int i);
@@ -103,21 +29,6 @@ struct conf
 	VALUE_BOOL(redownload);
 	VALUE_BOOL(reextract);
 	VALUE_BOOL(rebuild);
-};
-
-struct prebuilt
-{
-	static bool by_name(const std::string& s);
-};
-
-struct versions
-{
-	static const std::string& by_name(const std::string& s);
-
-	VALUE(ss_6788_paper_lad);
-	VALUE(ss_6788_paper_automata);
-	VALUE(ss_6788_paper_mono);
-	VALUE(ss_6788_1809_dark_mode);
 };
 
 struct paths
@@ -151,6 +62,10 @@ struct paths
 #undef VALUE_BOOL
 #undef VALUE
 
+
+bool prebuilt_by_name(const std::string& task);
+const std::string& version_by_name(const std::string& s);
+const fs::path& tool_by_name(const std::string& s);
 
 void init_options(const fs::path& ini, const std::vector<std::string>& opts);
 bool verify_options();

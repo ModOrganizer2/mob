@@ -11,12 +11,12 @@ usvfs::usvfs()
 
 const std::string& usvfs::version()
 {
-	return versions::by_name("usvfs");
+	return version_by_name("usvfs");
 }
 
 bool usvfs::prebuilt()
 {
-	return prebuilt::by_name("usvfs");
+	return prebuilt_by_name("usvfs");
 }
 
 fs::path usvfs::source_path()
@@ -65,7 +65,7 @@ void usvfs::build_and_install_prebuilt()
 
 void usvfs::fetch_from_source()
 {
-	run_tool(git_clone()
+	run_tool(git(git::clone_or_pull)
 		.url(make_github_url(conf::mo_org(), "usvfs"))
 		.branch(version())
 		.output(source_path()));

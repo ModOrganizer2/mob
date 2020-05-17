@@ -3,6 +3,7 @@
 #include "utility.h"
 #include "context.h"
 #include "process.h"
+#include "tools/tools.h"
 
 namespace mob
 {
@@ -154,12 +155,12 @@ bool conf::by_name_bool(const std::string& name)
 }
 
 
-bool prebuilt::by_name(const std::string& s)
+bool prebuilt_by_name(const std::string& task)
 {
-	return get("prebuilt", g_prebuilt, s);
+	return get("prebuilt", g_prebuilt, task);
 }
 
-const std::string& versions::by_name(const std::string& s)
+const std::string& version_by_name(const std::string& s)
 {
 	return get("version", g_versions, s);
 }
@@ -203,34 +204,6 @@ int conf::file_log_level()
 const fs::path& conf::log_file()
 {
 	return g_log_file;
-}
-
-
-namespace tools
-{
-	fs::path perl::binary()           { return tool_by_name("perl"); }
-	fs::path msbuild::binary()        { return tool_by_name("msbuild"); }
-	fs::path devenv::binary() 	      { return tool_by_name("devenv"); }
-	fs::path cmake::binary() 	      { return tool_by_name("cmake"); }
-	fs::path git::binary() 		      { return tool_by_name("git"); }
-	fs::path sevenz::binary() 	      { return tool_by_name("sevenz"); }
-	fs::path jom::binary() 		      { return tool_by_name("jom"); }
-	fs::path nasm::binary()           { return tool_by_name("nasm"); }
-	fs::path patch::binary() 	      { return tool_by_name("patch"); }
-	fs::path nuget::binary() 	      { return tool_by_name("nuget"); }
-
-	fs::path vs::installation_path()  { return paths::by_name("vs"); }
-	fs::path vs::vswhere()            { return tool_by_name("vswhere"); }
-	fs::path vs::vcvars() 			  { return tool_by_name("vcvars"); }
-	std::string vs::version() 		  { return versions::by_name("vs"); }
-	std::string vs::year() 			  { return versions::by_name("vs_year"); }
-	std::string vs::toolset() 		  { return versions::by_name("vs_toolset"); }
-	std::string vs::sdk() 			  { return versions::by_name("sdk"); }
-
-	fs::path qt::installation_path()  { return paths::by_name("qt_install"); }
-	fs::path qt::bin_path() 		  { return paths::by_name("qt_bin"); }
-	std::string qt::version() 		  { return versions::by_name("qt"); }
-	std::string qt::vs_version() 	  { return versions::by_name("qt_vs"); }
 }
 
 
@@ -424,8 +397,8 @@ bool find_qmake(fs::path& check)
 	// try Qt/Qt5.14.2/msvc*/bin/qmake.exe
 	if (try_parts(check, {
 		"Qt",
-		"Qt" + tools::qt::version(),
-		"msvc" + tools::qt::vs_version() + "_64",
+		"Qt" + qt::version(),
+		"msvc" + qt::vs_version() + "_64",
 		"bin",
 		"qmake.exe"}))
 	{
@@ -435,8 +408,8 @@ bool find_qmake(fs::path& check)
 	// try Qt/5.14.2/msvc*/bin/qmake.exe
 	if (try_parts(check, {
 		"Qt",
-		tools::qt::version(),
-		"msvc" + tools::qt::vs_version() + "_64",
+		qt::version(),
+		"msvc" + qt::vs_version() + "_64",
 		"bin",
 		"qmake.exe"}))
 	{
@@ -499,7 +472,7 @@ fs::path find_qt()
 
 void validate_qt()
 {
-	fs::path p = tools::qt::installation_path();
+	fs::path p = qt::installation_path();
 
 	if (!try_qt_location(p))
 		gcx().bail_out(context::conf, "qt path {} doesn't exist", p);
@@ -585,12 +558,12 @@ fs::path find_temp_dir()
 fs::path find_vs()
 {
 	if (conf::dry())
-		return tools::vs::vswhere();
+		return vs::vswhere();
 
 	auto p = process()
-		.binary(tools::vs::vswhere())
+		.binary(vs::vswhere())
 		.arg("-prerelease")
-		.arg("-version", tools::vs::version())
+		.arg("-version", vs::version())
 		.arg("-property", "installationPath")
 		.stdout_flags(process::keep_in_string)
 		.stderr_flags(process::inherit);
@@ -636,7 +609,7 @@ void find_vcvars()
 
 	if (bat.empty())
 	{
-		bat = tools::vs::installation_path()
+		bat = vs::installation_path()
 			/ "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
 
 		if (!try_vcvars(bat))
@@ -918,7 +891,7 @@ void init_options(const fs::path& ini, const std::vector<std::string>& opts)
 	set_path_if_empty("temp_dir",   find_temp_dir);
 	set_path_if_empty("patches",    find_in_root("patches"));
 	set_path_if_empty("licenses",   find_in_root("licenses"));
-	set_path_if_empty("qt_bin",     tools::qt::installation_path() / "bin");
+	set_path_if_empty("qt_bin",     qt::installation_path() / "bin");
 
 	find_vcvars();
 	validate_qt();

@@ -11,17 +11,17 @@ boost::boost()
 
 const std::string& boost::version()
 {
-	return versions::by_name("boost");
+	return version_by_name("boost");
 }
 
 const std::string& boost::version_vs()
 {
-	return versions::by_name("boost_vs");
+	return version_by_name("boost_vs");
 }
 
 bool boost::prebuilt()
 {
-	return prebuilt::by_name("boost");
+	return prebuilt_by_name("boost");
 }
 
 fs::path boost::source_path()
@@ -152,7 +152,7 @@ void boost::do_b2(
 		.arg("address-model=",  address_model_for_arch(a))
 		.arg("link=",           link)
 		.arg("runtime-link=",   runtime_link)
-		.arg("toolset=",        "msvc-" + tools::vs::toolset())
+		.arg("toolset=",        "msvc-" + vs::toolset())
 		.arg("--user-config=",  config_jam_file())
 		.arg("--stagedir=",     root_lib_path(a))
 		.arg("--libdir=",       root_lib_path(a))

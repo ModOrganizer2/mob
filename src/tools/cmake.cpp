@@ -8,7 +8,26 @@ cmake::cmake()
 	: basic_process_runner("cmake"), gen_(jom), arch_(arch::def)
 {
 	process_
-		.binary(tools::cmake::binary());
+		.binary(binary());
+}
+
+fs::path cmake::binary()
+{
+	return tool_by_name("cmake");
+}
+
+void cmake::clean(const context& cx, const fs::path& root)
+{
+	cx.trace(context::rebuild, "deleting all generator directories");
+
+	for (auto&& [k, g] : all_generators())
+	{
+		op::delete_directory(cx,
+			root / g.output_dir(arch::x86), op::optional);
+
+		op::delete_directory(cx,
+			root / g.output_dir(arch::x64), op::optional);
+	}
 }
 
 cmake& cmake::generator(generators g)
@@ -58,20 +77,6 @@ fs::path cmake::result() const
 	return output_;
 }
 
-void cmake::clean(const context& cx, const fs::path& root)
-{
-	cx.trace(context::rebuild, "deleting all generator directories");
-
-	for (auto&& [k, g] : all_generators())
-	{
-		op::delete_directory(cx,
-			root / g.output_dir(arch::x86), op::optional);
-
-		op::delete_directory(cx,
-			root / g.output_dir(arch::x64), op::optional);
-	}
-}
-
 void cmake::do_run()
 {
 	if (root_.empty())
@@ -110,7 +115,7 @@ const std::map<cmake::generators, cmake::gen_info>& cmake::all_generators()
 
 		{ generators::vs, {
 			"vsbuild",
-			"Visual Studio " + tools::vs::version() + " " + tools::vs::year(),
+			"Visual Studio " + vs::version() + " " + vs::year(),
 			"Win32",
 			"x64"
 	}}

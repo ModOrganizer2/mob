@@ -11,12 +11,12 @@ sip::sip()
 
 const std::string& sip::version()
 {
-	return versions::by_name("sip");
+	return version_by_name("sip");
 }
 
 const std::string& sip::version_for_pyqt()
 {
-	return versions::by_name("pyqt_sip");
+	return version_by_name("pyqt_sip");
 }
 
 bool sip::prebuilt()

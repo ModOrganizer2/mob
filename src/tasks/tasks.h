@@ -501,10 +501,16 @@ class stylesheets : public basic_task<stylesheets>
 public:
 	stylesheets();
 
-	static const std::string& version();
 	static bool prebuilt();
-
 	static fs::path source_path();
+
+	static std::string paper_lad_6788_version();
+	static std::string paper_automata_6788_version();
+	static std::string paper_mono_6788_version();
+	static std::string dark_mode_1809_6788_version();
+
+	// dummy, doesn't applly
+	static const std::string& version();
 
 protected:
 	void do_fetch() override;

@@ -11,12 +11,12 @@ python::python()
 
 const std::string& python::version()
 {
-	return versions::by_name("python");
+	return version_by_name("python");
 }
 
 bool python::prebuilt()
 {
-	return prebuilt::by_name("python");
+	return prebuilt_by_name("python");
 }
 
 python::version_info python::parsed_version()
@@ -109,12 +109,13 @@ void python::build_and_install_prebuilt()
 
 void python::fetch_from_source()
 {
-	run_tool(git_clone()
+	run_tool(git(git::clone_or_pull)
 		.url(make_github_url("python", "cpython"))
 		.branch(version())
 		.output(source_path()));
 
-	run_tool(devenv_upgrade(solution_file()));
+	run_tool(vs(vs::upgrade)
+		.solution(solution_file()));
 }
 
 void python::build_and_install_from_source()

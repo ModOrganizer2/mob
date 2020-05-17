@@ -11,7 +11,7 @@ fmt::fmt()
 
 const std::string& fmt::version()
 {
-	return versions::by_name("fmt");
+	return version_by_name("fmt");
 }
 
 bool fmt::prebuilt()

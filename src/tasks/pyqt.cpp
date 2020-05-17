@@ -11,17 +11,17 @@ pyqt::pyqt()
 
 const std::string& pyqt::version()
 {
-	return versions::by_name("pyqt");
+	return version_by_name("pyqt");
 }
 
 const std::string& pyqt::builder_version()
 {
-	return versions::by_name("pyqt_builder");
+	return version_by_name("pyqt_builder");
 }
 
 bool pyqt::prebuilt()
 {
-	return prebuilt::by_name("pyqt");
+	return prebuilt_by_name("pyqt");
 }
 
 fs::path pyqt::source_path()
@@ -106,7 +106,7 @@ void pyqt::sip_build()
 {
 	auto pyqt_env = env::vs_x64()
 		.append_path({
-			tools::qt::bin_path(),
+			qt::bin_path(),
 			python::build_path(),
 			python::source_path(),
 			python::scripts_path()})
@@ -202,12 +202,12 @@ void pyqt::copy_files()
 	// these are needed by PyQt5 while building several projects
 
 	op::copy_file_to_dir_if_better(cx(),
-		tools::qt::bin_path() / "Qt5Core.dll",
+		qt::bin_path() / "Qt5Core.dll",
 		python::build_path(),
 		op::unsafe);   // source file is outside prefix
 
 	op::copy_file_to_dir_if_better(cx(),
-		tools::qt::bin_path() / "Qt5Xml.dll",
+		qt::bin_path() / "Qt5Xml.dll",
 		python::build_path(),
 		op::unsafe);   // source file is outside prefix
 }

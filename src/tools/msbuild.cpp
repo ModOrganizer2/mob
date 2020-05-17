@@ -11,6 +11,11 @@ msbuild::msbuild() :
 {
 }
 
+fs::path msbuild::binary()
+{
+	return tool_by_name("msbuild");
+}
+
 msbuild& msbuild::solution(const fs::path& sln)
 {
 	sln_ = sln;
@@ -61,7 +66,7 @@ int msbuild::result() const
 void msbuild::do_run()
 {
 	// 14.2 to v142
-	const auto toolset = "v" + replace_all(tools::vs::toolset(), ".", "");
+	const auto toolset = "v" + replace_all(vs::toolset(), ".", "");
 
 	std::string plat;
 
@@ -95,7 +100,7 @@ void msbuild::do_run()
 	}
 
 	process_
-		.binary(tools::msbuild::binary())
+		.binary(binary())
 		.chcp(65001)
 		.stdout_encoding(encodings::utf8)
 		.stderr_encoding(encodings::utf8)
@@ -112,7 +117,7 @@ void msbuild::do_run()
 	process_
 		.arg("-property:Configuration=", config_, process::quote)
 		.arg("-property:PlatformToolset=" + toolset)
-		.arg("-property:WindowsTargetPlatformVersion=" + tools::vs::sdk())
+		.arg("-property:WindowsTargetPlatformVersion=" + vs::sdk())
 		.arg("-property:Platform=", plat, process::quote)
 		.arg("-verbosity:minimal", process::log_quiet)
 		.arg("-consoleLoggerParameters:ErrorsOnly", process::log_quiet);

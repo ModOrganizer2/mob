@@ -4,6 +4,7 @@
 #include "process.h"
 #include "op.h"
 #include "context.h"
+#include "tools/tools.h"
 
 namespace mob
 {
@@ -33,7 +34,7 @@ env get_vcvars_env(arch a)
 
 	// "vcvarsall.bat" amd64 && set > temp_file
 	const std::string cmd =
-		"\"" + path_to_utf8(tools::vs::vcvars()) + "\" " + arch_s +
+		"\"" + path_to_utf8(vs::vcvars()) + "\" " + arch_s +
 		" && set > \"" + path_to_utf8(tmp) + "\"";
 
 	process::raw(gcx(), cmd)

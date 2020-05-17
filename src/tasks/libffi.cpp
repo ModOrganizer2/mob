@@ -27,7 +27,7 @@ fs::path libffi::source_path()
 
 void libffi::do_fetch()
 {
-	run_tool(git_clone()
+	run_tool(git(git::clone_or_pull)
 		.url(make_github_url("python","cpython-bin-deps"))
 		.branch("libffi")
 		.output(source_path()));

@@ -11,12 +11,12 @@ lz4::lz4()
 
 const std::string& lz4::version()
 {
-	return versions::by_name("lz4");
+	return version_by_name("lz4");
 }
 
 bool lz4::prebuilt()
 {
-	return prebuilt::by_name("lz4");
+	return prebuilt_by_name("lz4");
 }
 
 fs::path lz4::source_path()
@@ -72,12 +72,13 @@ void lz4::build_and_install_prebuilt()
 
 void lz4::fetch_from_source()
 {
-	run_tool(git_clone()
+	run_tool(git(git::clone_or_pull)
 		.url(make_github_url("lz4","lz4"))
 		.branch(version())
 		.output(source_path()));
 
-	run_tool(devenv_upgrade(solution_file()));
+	run_tool(vs(vs::upgrade)
+		.solution(solution_file()));
 }
 
 void lz4::build_and_install_from_source()

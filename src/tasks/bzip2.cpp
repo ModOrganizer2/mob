@@ -11,7 +11,7 @@ bzip2::bzip2()
 
 const std::string& bzip2::version()
 {
-	return versions::by_name("bzip2");
+	return version_by_name("bzip2");
 }
 
 bool bzip2::prebuilt()

@@ -5,34 +5,50 @@
 namespace mob
 {
 
-
-git_clone::git_clone()
-	: basic_process_runner("git")
+git::git(ops o)
+	: basic_process_runner("git"), op_(o)
 {
 }
 
-git_clone& git_clone::url(const mob::url& u)
+fs::path git::binary()
+{
+	return tool_by_name("git");
+}
+
+git& git::url(const mob::url& u)
 {
 	url_ = u;
 	return *this;
 }
 
-git_clone& git_clone::branch(const std::string& name)
+git& git::branch(const std::string& name)
 {
 	branch_ = name;
 	return *this;
 }
 
-git_clone& git_clone::output(const fs::path& dir)
+git& git::output(const fs::path& dir)
 {
 	where_ = dir;
 	return *this;
 }
 
-void git_clone::do_run()
+void git::do_run()
+{
+	switch (op_)
+	{
+		case clone_or_pull:
+			do_clone_or_pull();
+
+		default:
+			cx_->bail_out(context::generic, "git unknown op {}", op_);
+	}
+}
+
+void git::do_clone_or_pull()
 {
 	if (url_.empty() || where_.empty())
-		bail_out("git_clone missing parameters");
+		bail_out("git missing parameters");
 
 	if (conf::redownload() || conf::reextract())
 	{
@@ -48,10 +64,10 @@ void git_clone::do_run()
 		pull();
 }
 
-void git_clone::clone()
+void git::clone()
 {
 	process_ = process()
-		.binary(tools::git::binary())
+		.binary(binary())
 		.stderr_level(context::level::trace)
 		.arg("clone")
 		.arg("--recurse-submodules")
@@ -65,10 +81,10 @@ void git_clone::clone()
 	execute_and_join();
 }
 
-void git_clone::pull()
+void git::pull()
 {
 	process_ = process()
-		.binary(tools::git::binary())
+		.binary(binary())
 		.stderr_level(context::level::trace)
 		.arg("pull")
 		.arg("--recurse-submodules")

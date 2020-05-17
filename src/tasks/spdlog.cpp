@@ -11,7 +11,7 @@ spdlog::spdlog()
 
 const std::string& spdlog::version()
 {
-	return versions::by_name("spdlog");
+	return version_by_name("spdlog");
 }
 
 bool spdlog::prebuilt()
@@ -26,7 +26,7 @@ fs::path spdlog::source_path()
 
 void spdlog::do_fetch()
 {
-	run_tool(git_clone()
+	run_tool(git(git::clone_or_pull)
 		.url(make_github_url("gabime", "spdlog"))
 		.branch(version())
 		.output(source_path()));

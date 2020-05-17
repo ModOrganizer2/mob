@@ -11,12 +11,12 @@ openssl::openssl()
 
 const std::string& openssl::version()
 {
-	return versions::by_name("openssl");
+	return version_by_name("openssl");
 }
 
 bool openssl::prebuilt()
 {
-	return prebuilt::by_name("openssl");
+	return prebuilt_by_name("openssl");
 }
 
 fs::path openssl::source_path()
@@ -106,7 +106,7 @@ void openssl::build_and_install_from_source()
 void openssl::configure()
 {
 	run_tool(process_runner(process()
-		.binary(tools::perl::binary())
+		.binary(perl::binary())
 		.arg("Configure")
 		.arg("VC-WIN64A")
 		.arg("--openssldir=", build_path())
