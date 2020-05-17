@@ -23,6 +23,7 @@ std::shared_ptr<command> handle_command_line(const std::vector<std::string>& arg
 		build,
 		std::make_unique<list_command>(),
 		std::make_unique<release_command>(),
+		std::make_unique<git_command>(),
 	};
 
 

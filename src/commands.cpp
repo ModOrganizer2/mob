@@ -51,7 +51,7 @@ clipp::group command::common_options_group()
 	return
 		(clipp::repeatable(clipp::option("-i", "--ini")
 			& clipp::value("FILE") >> o.inis))
-			% ("path to the ini file"),
+			% "path to the ini file",
 
 		(clipp::option("--dry") >> o.dry)
 			%  "simulates filesystem operations",
@@ -102,9 +102,7 @@ bool command::wants_help() const
 
 clipp::group command::group()
 {
-	return (do_group(),
-		(clipp::option("-h", "--help") >> help_)
-			% ("shows this message"));
+	return do_group();
 }
 
 int command::run()
@@ -209,7 +207,8 @@ int help_command::do_run()
 		"    list       lists available tasks\n"
 		"    options    lists available options and default values\n"
 		"    build      builds tasks\n"
-		"    release    creates a release or a devbuild"
+		"    release    creates a release or a devbuild\n"
+		"    git        manages the git repos"
 		"\n\n"
 		"Invoking `mob -d some/prefix build` builds everything. Do \n"
 		"`mob build <task name>...` to build specific tasks. See\n"
@@ -239,7 +238,11 @@ int help_command::do_run()
 clipp::group options_command::do_group()
 {
 	return clipp::group(
-		clipp::command("options").set(picked_));
+		clipp::command("options").set(picked_),
+
+		(clipp::option("-h", "--help") >> help_)
+			% ("shows this message")
+	);
 }
 
 int options_command::do_run()
@@ -266,6 +269,9 @@ clipp::group build_command::do_group()
 {
 	return
 		(clipp::command("build")).set(picked_),
+
+		(clipp::option("-h", "--help") >> help_)
+			% ("shows this message"),
 
 		(clipp::option("-g", "--redownload") >> redownload_)
 			% "redownloads archives, see --reextract",
@@ -342,7 +348,11 @@ void build_command::terminate_msbuild()
 clipp::group list_command::do_group()
 {
 	return clipp::group(
-		clipp::command("list").set(picked_));
+		clipp::command("list").set(picked_),
+
+		(clipp::option("-h", "--help") >> help_)
+			% ("shows this message")
+	);
 }
 
 int list_command::do_run()
@@ -492,6 +502,9 @@ clipp::group release_command::do_group()
 {
 	return clipp::group(
 		clipp::command("release").set(picked_),
+
+		(clipp::option("-h", "--help") >> help_)
+			% ("shows this message"),
 
 		(
 			clipp::option("--no-bin").set(bin_, false) |
@@ -692,6 +705,403 @@ std::string release_command::version_from_rc() const
 	}
 
 	return v;
+}
+
+
+git_command::git_command()
+	: command(requires_options)
+{
+}
+
+clipp::group git_command::do_group()
+{
+	return clipp::group(
+		clipp::command("git").set(picked_),
+
+		(clipp::option("-h", "--help") >> help_)
+			% ("shows this message"),
+
+		"set-remotes" %
+		(clipp::command("set-remotes").set(mode_, modes::set_remotes),
+			(clipp::required("-u", "--username")
+				& clipp::value("USERNAME") >> username_)
+				% "git username",
+
+			(clipp::required("-e", "--email")
+				& clipp::value("EMAIL") >> email_)
+				% "git email",
+
+			(clipp::option("-k", "--key")
+				& clipp::value("PATH") >> key_)
+				% "path to putty key",
+
+			(clipp::option("-s", "--no-push").set(nopush_)
+				% "disables pushing to 'upstream' by changing the push url "
+				  "to 'nopushurl' to avoid accidental pushes"),
+
+			(clipp::option("-p", "--push-origin").set(push_default_)
+				% "sets the new 'origin' remote as the default push target")
+		)
+
+		|
+
+		"add-remote" %
+		(clipp::command("add-remote").set(mode_, modes::add_remote),
+			(clipp::required("-n", "--name")
+				& clipp::value("NAME") >> remote_)
+				% "name of new remote",
+
+			(clipp::required("-u", "--url")
+				& clipp::value("URL") >> url_)
+				% "remote URL",
+
+			(clipp::option("-k", "--key")
+				& clipp::value("PATH") >> key_)
+				% "path to putty key",
+
+			(clipp::option("-p", "--push-origin").set(push_default_)
+				% "sets this new remote as the default push target")
+		)
+
+		|
+
+		"ignore-ts" %
+		(clipp::command("ignore-ts").set(mode_, modes::ignore_ts),
+			(
+				clipp::command("on").set(tson_, true) |
+				clipp::command("off").set(tson_, false)
+			)
+		)
+	);
+}
+
+int git_command::do_run()
+{
+	switch (mode_)
+	{
+		case modes::set_remotes:
+		{
+			do_set_remotes();
+			break;
+		}
+
+		case modes::add_remote:
+		{
+			do_add_remote();
+			break;
+		}
+
+		case modes::ignore_ts:
+		{
+			do_ignore_ts();
+			break;
+		}
+
+		case modes::none:
+		default:
+			u8cerr << "bad git mode " << static_cast<int>(mode_) << "\n";
+			throw bailed();
+	}
+
+	return 0;
+}
+
+std::string git_command::do_doc()
+{
+	return
+		"All the commands will go through all modorganizer repos, plus usvfs\n"
+		"and NCC.\n"
+		"\n"
+		"set-remotes\n"
+		"For each repo, this first sets the username and email. Then, it\n"
+		"will rename the remote 'origin' to 'upstream' and create a new\n"
+		"remote 'origin' with the given information. If the remote\n"
+		"'upstream' already exists in a repo, nothing happens.\n"
+		"\n"
+		"add-remote\n"
+		"For each repo, adds a new remote with the given information. If a\n"
+		"remote with the same name already exists, nothing happens.\n"
+		"\n"
+		"ignore-ts\n"
+		"Toggles the --assume-changed status of all .ts files in all repos.";
+}
+
+void git_command::do_set_remotes()
+{
+	const auto repos = get_repos();
+
+	for (auto&& r : repos)
+	{
+		u8cout << "setting up " << path_to_utf8(r.filename()) << "\n";
+
+		set_config(r, "user.name", username_);
+		set_config(r, "user.email", email_);
+
+		if (!has_remote(r, "upstream"))
+		{
+			const auto gf = git_file(r);
+
+			rename_remote(r, "origin", "upstream");
+
+			if (nopush_)
+				set_remote_push_url(r, "upstream", "nopushurl");
+
+			add_remote(r, "origin", make_url(gf));
+
+			if (push_default_)
+				set_config(r, "remote.pushdefault", "origin");
+
+			if (!key_.empty())
+				set_config(r, "remote.origin.puttykeyfile", key_);
+		}
+	}
+}
+
+void git_command::do_add_remote()
+{
+	const auto repos = get_repos();
+
+	u8cout
+		<< "adding remote '" << remote_ << "' "
+		<< "from '" << url_ << "' to repos\n";
+
+	for (auto&& r : repos)
+	{
+		u8cout << path_to_utf8(r.filename()) << "\n";
+
+		if (!has_remote(r, remote_))
+		{
+			add_remote(r, remote_, url_);
+
+			if (push_default_)
+				set_config(r, "remote.pushdefault", remote_);
+
+			if (!key_.empty())
+				set_config(r, "remote." + remote_ + ".puttykeyfile", key_);
+		}
+	}
+}
+
+void git_command::do_ignore_ts()
+{
+	const auto repos = get_repos();
+
+	if (tson_)
+		u8cout << "ignoring .ts files\n";
+	else
+		u8cout << "un-ignoring .ts files\n";
+
+	for (auto&& r : repos)
+	{
+		u8cout << path_to_utf8(r.filename()) << "\n";
+
+		for (auto&& e : fs::recursive_directory_iterator(r))
+		{
+			if (!e.is_regular_file())
+				continue;
+
+			const auto p = e.path();
+
+			if (!path_to_utf8(p.extension()).ends_with(".ts"))
+				continue;
+
+			const auto rp = fs::relative(p, r);
+
+			if (is_tracked(r, rp))
+			{
+				u8cout << "  . " << path_to_utf8(rp) << "\n";
+				set_assume_unchanged(r, rp, tson_);
+			}
+			else
+			{
+				u8cout
+					<< "  . "
+					<< path_to_utf8(rp) << " (skipping, not tracked)\n";
+			}
+		}
+	}
+}
+
+std::vector<fs::path> git_command::get_repos() const
+{
+	std::vector<fs::path> v;
+
+	if (fs::exists(usvfs::source_path()))
+		v.push_back(usvfs::source_path());
+
+	if (fs::exists(ncc::source_path()))
+		v.push_back(ncc::source_path());
+
+
+	const auto super = modorganizer::super_path();
+
+	if (fs::exists(super))
+	{
+		for (auto e : fs::directory_iterator(super))
+		{
+			if (!e.is_directory())
+				continue;
+
+			const auto p = e.path();
+			if (path_to_utf8(p.filename()).starts_with("."))
+				continue;
+
+			v.push_back(p);
+		}
+	}
+
+	return v;
+}
+
+void git_command::set_config(
+	const fs::path& repo, const std::string& key, const std::string& value)
+{
+	auto p = process()
+		.binary(git::binary())
+		.arg("config")
+		.arg(key)
+		.arg(value)
+		.cwd(repo);
+
+	p.run();
+	p.join();
+}
+
+bool git_command::has_remote(const fs::path& repo, const std::string& name)
+{
+	auto p = process()
+		.binary(git::binary())
+		.flags(process::allow_failure)
+		.stderr_level(context::level::debug)
+		.arg("remote")
+		.arg("show")
+		.arg(name)
+		.cwd(repo);
+
+	p.run();
+	p.join();
+
+	return (p.exit_code() == 0);
+}
+
+void git_command::rename_remote(
+	const fs::path& repo,
+	const std::string& from, const std::string& to)
+{
+	auto p = process()
+		.binary(git::binary())
+		.arg("remote")
+		.arg("rename")
+		.arg(from)
+		.arg(to)
+		.cwd(repo);
+
+	p.run();
+	p.join();
+}
+
+void git_command::add_remote(
+	const fs::path& repo,
+	const std::string& name, const std::string& url)
+{
+	auto p = process()
+		.binary(git::binary())
+		.arg("remote")
+		.arg("add")
+		.arg(name)
+		.arg(url)
+		.cwd(repo);
+
+	p.run();
+	p.join();
+}
+
+void git_command::set_remote_push_url(
+	const fs::path& repo,
+	const std::string& remote, const std::string& url)
+{
+	auto p = process()
+		.binary(git::binary())
+		.arg("remote")
+		.arg("set-url")
+		.arg("--push")
+		.arg(remote)
+		.arg(url)
+		.cwd(repo);
+
+	p.run();
+	p.join();
+}
+
+void git_command::set_assume_unchanged(
+	const fs::path& repo, const fs::path& relative_file, bool on)
+{
+	auto p = process()
+		.binary(git::binary())
+		.arg("update-index")
+		.arg(on ? "--assume-unchanged" : "--no-assume-unchanged")
+		.arg(relative_file, process::forward_slashes)
+		.cwd(repo);
+
+	p.run();
+	p.join();
+}
+
+bool git_command::is_tracked(
+	const fs::path& repo, const fs::path& relative_file)
+{
+	auto p = process()
+		.binary(git::binary())
+		.stdout_level(context::level::debug)
+		.stderr_level(context::level::debug)
+		.flags(process::allow_failure)
+		.arg("ls-files")
+		.arg("--error-unmatch")
+		.arg(relative_file, process::forward_slashes)
+		.cwd(repo);
+
+	p.run();
+	p.join();
+
+	return (p.exit_code() == 0);
+}
+
+std::string git_command::git_file(const fs::path& repo)
+{
+	auto p = process()
+		.binary(git::binary())
+		.stdout_flags(process::keep_in_string)
+		.arg("remote")
+		.arg("get-url")
+		.arg("origin")
+		.cwd(repo);
+
+	p.run();
+	p.join();
+
+	const std::string out = p.stdout_string();
+
+	const auto last_slash = out.find_last_of("/");
+	if (last_slash == std::string::npos)
+	{
+		u8cerr << "bad get-url output '" << out << "'\n";
+		throw bailed();
+	}
+
+	auto s = trim_copy(out.substr(last_slash + 1));
+
+	if (s.empty())
+	{
+		u8cerr << "bad get-url output '" << out << "'\n";
+		throw bailed();
+	}
+
+	return s;
+}
+
+std::string git_command::make_url(const std::string& git_file)
+{
+	return "git@github.com:" + username_ + "/" + git_file;
 }
 
 }	// namespace

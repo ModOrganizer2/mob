@@ -78,13 +78,14 @@ public:
 
 	enum arg_flags
 	{
-		noargflags = 0x00,
-		log_debug  = 0x01,
-		log_trace  = 0x02,
-		log_dump   = 0x04,
-		log_quiet  = 0x08,
-		nospace    = 0x10,
-		quote      = 0x20
+		noargflags      = 0x00,
+		log_debug       = 0x01,
+		log_trace       = 0x02,
+		log_dump        = 0x04,
+		log_quiet       = 0x08,
+		nospace         = 0x10,
+		quote           = 0x20,
+		forward_slashes = 0x40
 	};
 
 	enum stream_flags
@@ -157,14 +158,14 @@ public:
 	template <class T, class=std::enable_if_t<!std::is_same_v<T, arg_flags>>>
 	process& arg(const T& value, arg_flags f=noargflags)
 	{
-		add_arg("", arg_to_string(value, (f & quote)), f);
+		add_arg("", arg_to_string(value, f), f);
 		return *this;
 	}
 
 	template <class T, class=std::enable_if_t<!std::is_same_v<T, arg_flags>>>
 	process& arg(const std::string& name, const T& value, arg_flags f=noargflags)
 	{
-		add_arg(name, arg_to_string(value, (f & quote)), f);
+		add_arg(name, arg_to_string(value, f), f);
 		return *this;
 	}
 
@@ -259,10 +260,10 @@ private:
 
 	void add_arg(const std::string& k, const std::string& v, arg_flags f);
 
-	std::string arg_to_string(const char* s, bool force_quote);
-	std::string arg_to_string(const std::string& s, bool force_quote);
-	std::string arg_to_string(const fs::path& p, bool force_quote);
-	std::string arg_to_string(const url& u, bool force_quote);
+	std::string arg_to_string(const char* s, arg_flags f);
+	std::string arg_to_string(const std::string& s, arg_flags f);
+	std::string arg_to_string(const fs::path& p, arg_flags f);
+	std::string arg_to_string(const url& u, arg_flags f);
 };
 
 

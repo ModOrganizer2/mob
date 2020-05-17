@@ -111,6 +111,7 @@ bool verify_options();
 void log_options();
 void dump_available_options();
 
+fs::path find_in_path(const std::string& exe);
 fs::path make_temp_file();
 
 }	// namespace

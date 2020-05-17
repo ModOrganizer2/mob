@@ -519,7 +519,19 @@ void process::do_run(const std::string& what)
 		cwd_p = (cwd_s.empty() ? nullptr : cwd_s.c_str());
 	}
 
-	cx_->trace(context::cmd, "creating process");
+	if (!bin_.empty())
+	{
+		if (bin_.is_absolute())
+		{
+			cx_->trace(context::cmd, "creating process {}", bin_);
+		}
+		else
+		{
+			cx_->trace(context::cmd,
+				"creating process, looks like it should spawn '{}'",
+				find_in_path(path_to_utf8(bin_.filename())));
+		}
+	}
 
 	const auto r = ::CreateProcessW(
 		cmd.c_str(), args.data(),
@@ -882,30 +894,35 @@ void process::add_arg(const std::string& k, const std::string& v, arg_flags f)
 		cmd_ += " " + k + " " + v;
 }
 
-std::string process::arg_to_string(const char* s, bool force_quote)
+std::string process::arg_to_string(const char* s, arg_flags f)
 {
-	if (force_quote)
+	if (f & quote)
 		return "\"" + std::string(s) + "\"";
 	else
 		return s;
 }
 
-std::string process::arg_to_string(const std::string& s, bool force_quote)
+std::string process::arg_to_string(const std::string& s, arg_flags f)
 {
-	if (force_quote)
+	if (f & quote)
 		return "\"" + std::string(s) + "\"";
 	else
 		return s;
 }
 
-std::string process::arg_to_string(const fs::path& p, bool)
+std::string process::arg_to_string(const fs::path& p, arg_flags f)
 {
-	return "\"" + path_to_utf8(p) + "\"";
+	std::string s = path_to_utf8(p);
+
+	if (f & forward_slashes)
+		s = replace_all(s, "\\", "/");
+
+	return "\"" + s + "\"";
 }
 
-std::string process::arg_to_string(const url& u, bool force_quote)
+std::string process::arg_to_string(const url& u, arg_flags f)
 {
-	if (force_quote)
+	if (f & quote)
 		return "\"" + u.string() + "\"";
 	else
 		return u.string();
