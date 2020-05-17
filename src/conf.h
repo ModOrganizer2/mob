@@ -3,6 +3,12 @@
 namespace mob
 {
 
+#define VALUE_PER_TASK(NAME) \
+	static decltype(auto) NAME(const std::vector<std::string>& names = {}) { return by_name(#NAME, names); }
+
+#define VALUE_BOOL_PER_TASK(NAME) \
+	static bool NAME(const std::vector<std::string>& names = {}) { return by_name_bool(#NAME, names); }
+
 #define VALUE(NAME) \
 	static decltype(auto) NAME() { return by_name(#NAME); }
 
@@ -93,16 +99,16 @@ struct conf
 	static int file_log_level();
 	static const fs::path& log_file();
 
-	static const std::string& by_name(const std::string& s);
-	static bool by_name_bool(const std::string& name);
+	static const std::string& by_name(const std::string& s, const std::vector<std::string>& task_names = {});
+	static bool by_name_bool(const std::string& name, const std::vector<std::string>& task_names = {});
 
-	VALUE(mo_org);
-	VALUE(mo_branch);
+	VALUE_PER_TASK(mo_org);
+	VALUE_PER_TASK(mo_branch);
 
-	VALUE_BOOL(dry);
-	VALUE_BOOL(redownload);
-	VALUE_BOOL(reextract);
-	VALUE_BOOL(rebuild);
+	VALUE_BOOL_PER_TASK(dry);
+	VALUE_BOOL_PER_TASK(redownload);
+	VALUE_BOOL_PER_TASK(reextract);
+	VALUE_BOOL_PER_TASK(rebuild);
 };
 
 struct prebuilt

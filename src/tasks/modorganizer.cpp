@@ -60,8 +60,8 @@ void modorganizer::do_fetch()
 	initialize_super(super_path());
 
 	run_tool(git_clone()
-		.url(make_github_url(conf::mo_org(), repo_))
-		.branch(conf::mo_branch())
+		.url(make_github_url(conf::mo_org(names()), repo_))
+		.branch(conf::mo_branch(names()))
 		.output(this_source_path()));
 }
 
@@ -76,10 +76,10 @@ void modorganizer::do_build_and_install()
 			.arg("submodule")
 			.arg("--quiet")
 			.arg("add")
-			.arg("-b", conf::mo_branch())
+			.arg("-b", conf::mo_branch(names()))
 			.arg("--force")
 			.arg("--name", name())
-			.arg(make_github_url(conf::mo_org(), repo_))
+			.arg(make_github_url(conf::mo_org(names()), repo_))
 			.arg(name())
 			.cwd(super_path())));
 	}

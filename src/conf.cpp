@@ -32,6 +32,8 @@ static string_map g_options =
 	{"log_file", ""}
 };
 
+static std::map<std::string, string_map> g_task_options;
+
 static path_map g_tools =
 {
 	{"sevenz",  "7z.exe"},
@@ -140,15 +142,26 @@ const fs::path& tool_by_name(const std::string& name)
 	return get("tool", g_tools, name);
 }
 
-const std::string& conf::by_name(const std::string& name)
+const std::string& conf::by_name(const std::string& name, const std::vector<std::string>& task_names)
 {
-	return get("option", g_options, name);
+	auto* options = &g_options;
+
+	// Check if there is a per-task options:
+	for (auto& ts : task_names) {
+		auto it = g_task_options.find(ts);
+		if (it != std::end(g_task_options)) {
+			options = &it->second;
+			break;
+		}
+	}
+
+	return get("option", *options, name);
 }
 
-bool conf::by_name_bool(const std::string& name)
+bool conf::by_name_bool(const std::string& name, const std::vector<std::string>& task_names)
 {
 	bool b;
-	std::istringstream iss(by_name(name));
+	std::istringstream iss(by_name(name, task_names));
 	iss >> std::boolalpha >> b;
 	return b;
 }
@@ -282,6 +295,18 @@ bool set_option(
 {
 	if (section == "options")
 		return set_option_impl(g_options, key, value);
+	else if (section.starts_with("options-")) {
+		const auto dash = section.find("-");
+
+		// TODO: Check if a task with that name actually exists (add task_exists in task?).
+		const auto taskname = section.substr(dash + 1);
+
+		// We copy the whole global options, easier to handle:
+		if (g_task_options.find(taskname) == std::end(g_task_options)) {
+			g_task_options[taskname] = g_options;
+		}
+		return set_option_impl(g_task_options[taskname], key, value);
+	}
 	else if (section == "tools")
 		return set_option_impl(g_tools, key, value);
 	else if (section == "prebuilt")
