@@ -65,8 +65,8 @@ void usvfs::build_and_install_prebuilt()
 
 void usvfs::fetch_from_source()
 {
-	run_tool(git(git::clone_or_pull)
-		.url(make_github_url(conf::mo_org(names()), "usvfs"))
+	run_tool(git(task_conf().git_op())
+		.url(make_github_url(task_conf().mo_org(), "usvfs"))
 		.branch(version())
 		.output(source_path()));
 }

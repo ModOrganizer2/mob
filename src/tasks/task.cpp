@@ -288,6 +288,11 @@ void task::parallel(std::vector<std::pair<std::string, std::function<void ()>>> 
 		t.join();
 }
 
+task_conf_holder task::task_conf() const
+{
+	return task_conf_holder(names_);
+}
+
 void task::run()
 {
 	threaded_run(name(), [&]

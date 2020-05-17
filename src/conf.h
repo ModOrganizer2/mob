@@ -38,6 +38,9 @@ public:
 	static std::string option_by_name(
 		const std::vector<std::string>& task_names, const std::string& name);
 
+	static bool bool_option_by_name(
+		const std::vector<std::string>& task_names, const std::string& name);
+
 
 	static int output_log_level() { return output_log_level_; }
 	static void set_output_log_level(const std::string& s);
@@ -50,17 +53,6 @@ public:
 	static bool redownload()   { return bool_global_by_name("redownload"); }
 	static bool reextract()    { return bool_global_by_name("reextract"); }
 	static bool rebuild()      { return bool_global_by_name("rebuild"); }
-
-
-	static std::string mo_org(const std::vector<std::string>& task_names)
-	{
-		return option_by_name(task_names, "mo_org");
-	}
-
-	static std::string mo_branch(const std::vector<std::string>& task_names)
-	{
-		return option_by_name(task_names, "mo_branch");
-	}
 
 	static std::vector<std::string> format_options();
 
@@ -75,6 +67,7 @@ private:
 	static int output_log_level_;
 	static int file_log_level_;
 };
+
 
 struct paths
 {

@@ -279,6 +279,9 @@ clipp::group build_command::do_group()
 		(clipp::option("-n", "--new") >> clean_)
 			% "deletes everything and starts from scratch",
 
+		(clipp::option("-p", "--no-pull") >> nopull_)
+		% "clones repos if necessary, but never pulls once cloned",
+
 		(clipp::option("--keep-msbuild") >> keep_msbuild_)
 			% "don't terminate msbuild.exe instances after building",
 
@@ -298,6 +301,9 @@ void build_command::do_pre_run()
 
 	if (rebuild_ || clean_)
 		common.options.push_back("options/rebuild=true");
+
+	if (nopull_)
+		common.options.push_back("options/no_pull=true");
 }
 
 int build_command::do_run()
@@ -329,7 +335,7 @@ void build_command::terminate_msbuild()
 	if (conf::dry())
 		return;
 
-	system("taskkill /im msbuild.exe /f > NUL");
+	system("taskkill /im msbuild.exe /f > NUL 2>&1");
 }
 
 

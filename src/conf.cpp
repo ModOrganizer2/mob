@@ -138,7 +138,7 @@ std::string conf::global_by_name(const std::string& name)
 
 bool conf::bool_global_by_name(const std::string& name)
 {
-	std::istringstream iss(get_global("global", name));
+	std::istringstream iss(global_by_name(name));
 	bool b;
 	iss >> std::boolalpha >> b;
 	return b;
@@ -148,6 +148,15 @@ std::string conf::option_by_name(
 	const std::vector<std::string>& task_names, const std::string& name)
 {
 	return get_for_task(task_names, "options", name);
+}
+
+bool conf::bool_option_by_name(
+	const std::vector<std::string>& task_names, const std::string& name)
+{
+	std::istringstream iss(option_by_name(task_names, name));
+	bool b;
+	iss >> std::boolalpha >> b;
+	return b;
 }
 
 void conf::set_output_log_level(const std::string& s)
@@ -230,30 +239,28 @@ std::vector<std::string> conf::format_options()
 
 struct parsed_option
 {
-	std::string section, key, value;
+	std::string task, section, key, value;
 };
 
 parsed_option parse_option(const std::string& s)
 {
-	const auto slash = s.find("/");
-	if (slash == std::string::npos)
+	// task:section/key=value
+	// task: is optional
+	std::regex re(R"((?:(.+)\:)?(.+)/(.*)=(.*))");
+	std::smatch m;
+
+	if (!std::regex_match(s, m, re))
 	{
 		gcx().bail_out(context::conf,
-			"bad option {}, must be section/key=value", s);
+			"bad option {}, must be [task:]section/key=value", s);
 	}
 
-	const auto equal = s.find("=", slash);
-	if (slash == std::string::npos)
-	{
-		gcx().bail_out(context::conf,
-			"bad option {}, must be section/key=value", s);
-	}
+	std::string task = trim_copy(m[1]);
+	std::string section = trim_copy(m[2]);
+	std::string key = trim_copy(m[3]);
+	std::string value = trim_copy(m[4]);
 
-	std::string section = s.substr(0, slash);
-	std::string key = s.substr(slash + 1, equal - slash - 1);
-	std::string value = s.substr(equal + 1);
-
-	return {section, key, value};
+	return {task, section, key, value};
 }
 
 bool try_parts(fs::path& check, const std::vector<std::string>& parts)
@@ -671,16 +678,16 @@ void parse_ini(const fs::path& ini, bool add)
 
 			std::string task, section;
 
-			const auto slash = s.find("/");
+			const auto col = s.find(":");
 
-			if (slash == std::string::npos)
+			if (col == std::string::npos)
 			{
 				section = s;
 			}
 			else
 			{
-				task = s.substr(0, slash);
-				section = s.substr(slash +1 );
+				task = s.substr(0, col);
+				section = s.substr(col + 1);
 			}
 
 			parse_section(ini, i, lines, task, section, add);
@@ -694,24 +701,6 @@ void parse_ini(const fs::path& ini, bool add)
 
 bool check_missing_options()
 {
-	if (conf::mo_org({""}).empty())
-	{
-		u8cerr
-			<< "missing mo_org; either specify it the [options] section of "
-			<< "the ini or pass '-s options/mo_org=something'\n";
-
-		return false;
-	}
-
-	if (conf::mo_branch({""}).empty())
-	{
-		u8cerr
-			<< "missing mo_branch; either specify it the [options] section of "
-			<< "the ini or pass '-s options/mo_org=something'\n";
-
-		return false;
-	}
-
 	if (paths::prefix().empty())
 	{
 		u8cerr
@@ -855,7 +844,11 @@ void init_options(
 		for (auto&& o : opts)
 		{
 			const auto po = parse_option(o);
-			conf::set_global(po.section, po.key, po.value);
+
+			if (po.task.empty())
+				conf::set_global(po.section, po.key, po.value);
+			else
+				conf::set_for_task(po.task, po.section, po.key, po.value);
 		}
 	}
 

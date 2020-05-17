@@ -35,9 +35,31 @@ git& git::output(const fs::path& dir)
 
 void git::do_run()
 {
+	if (url_.empty() || where_.empty())
+		bail_out("git missing parameters");
+
+	if (conf::redownload() || conf::reextract())
+	{
+		cx_->trace(context::rebuild, "deleting directory controlled by git");
+		op::delete_directory(*cx_, where_, op::optional);
+	}
+
+
 	switch (op_)
 	{
-		case clone_or_pull:
+		case clone:
+		{
+			do_clone();
+			break;
+		}
+
+		case pull:
+		{
+			do_pull();
+			break;
+		}
+
+		case clone_or_pull2:
 		{
 			do_clone_or_pull();
 			break;
@@ -52,25 +74,19 @@ void git::do_run()
 
 void git::do_clone_or_pull()
 {
-	if (url_.empty() || where_.empty())
-		bail_out("git missing parameters");
-
-	if (conf::redownload() || conf::reextract())
-	{
-		cx_->trace(context::rebuild, "deleting directory controlled by git");
-		op::delete_directory(*cx_, where_, op::optional);
-	}
-
-	const fs::path dot_git = where_ / ".git";
-
-	if (!fs::exists(dot_git))
-		clone();
-	else
-		pull();
+	if (!do_clone())
+		do_pull();
 }
 
-void git::clone()
+bool git::do_clone()
 {
+	const fs::path dot_git = where_ / ".git";
+	if (fs::exists(dot_git))
+	{
+		cx_->trace(context::generic, "not cloning, {} exists", dot_git);
+		return false;
+	}
+
 	process_ = process()
 		.binary(binary())
 		.stderr_level(context::level::trace)
@@ -84,9 +100,11 @@ void git::clone()
 		.arg(where_);
 
 	execute_and_join();
+
+	return true;
 }
 
-void git::pull()
+void git::do_pull()
 {
 	process_ = process()
 		.binary(binary())

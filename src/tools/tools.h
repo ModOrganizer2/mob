@@ -134,7 +134,9 @@ class git : public basic_process_runner
 public:
 	enum ops
 	{
-		clone_or_pull = 1
+		clone = 1,
+		pull,
+		clone_or_pull2
 	};
 
 
@@ -156,8 +158,8 @@ private:
 	fs::path where_;
 
 	void do_clone_or_pull();
-	void clone();
-	void pull();
+	bool do_clone();
+	void do_pull();
 };
 
 

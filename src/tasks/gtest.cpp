@@ -31,7 +31,7 @@ void gtest::do_clean_for_rebuild()
 
 void gtest::do_fetch()
 {
-	run_tool(git(git::clone_or_pull)
+	run_tool(git(task_conf().git_op())
 		.url(make_github_url("google", "googletest"))
 		.branch(version())
 		.output(source_path()));

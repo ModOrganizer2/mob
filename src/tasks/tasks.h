@@ -5,7 +5,6 @@
 #include "../conf.h"
 #include "../utility.h"
 #include "../op.h"
-#include "../tools/tools.h"
 
 namespace mob
 {

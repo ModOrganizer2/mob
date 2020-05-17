@@ -26,7 +26,7 @@ fs::path boost_di::source_path()
 
 void boost_di::do_fetch()
 {
-	run_tool(git(git::clone_or_pull)
+	run_tool(git(task_conf().git_op())
 		.url(make_github_url("boost-experimental", "di"))
 		.branch("cpp14")
 		.output(source_path()));

@@ -2,11 +2,13 @@
 
 #include "../utility.h"
 #include "../context.h"
+#include "../tools/tools.h"
 
 namespace mob
 {
 
 class task;
+class tool;
 
 void add_task(std::unique_ptr<task> t);
 
@@ -25,7 +27,41 @@ void run_all_tasks();
 void list_tasks(bool err=false);
 
 
-class tool;
+class task_conf_holder
+{
+public:
+	task_conf_holder(std::vector<std::string> names)
+		: names_(std::move(names))
+	{
+	}
+
+	std::string mo_org()
+	{
+		return conf::option_by_name(names_, "mo_org");
+	}
+
+	std::string mo_branch()
+	{
+		return conf::option_by_name(names_, "mo_branch");
+	}
+
+	bool no_pull()
+	{
+		return conf::bool_option_by_name(names_, "no_pull");
+	}
+
+	git::ops git_op()
+	{
+		if (no_pull())
+			return git::clone;
+		else
+			return git::clone_or_pull2;
+	}
+
+private:
+	std::vector<std::string> names_;
+};
+
 
 class task
 {
@@ -79,6 +115,8 @@ protected:
 
 	void threaded_run(std::string name, std::function<void ()> f);
 	void parallel(std::vector<std::pair<std::string, std::function<void ()>>> v);
+
+	task_conf_holder task_conf() const;
 
 private:
 	struct thread_context;
