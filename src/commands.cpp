@@ -123,22 +123,22 @@ int command::run()
 	if (o.output_log_level >= 0)
 	{
 		o.options.push_back(
-			"options/output_log_level=" +
+			"global/output_log_level=" +
 			std::to_string(o.output_log_level));
 	}
 
 	if (o.file_log_level > 0)
 	{
 		o.options.push_back(
-			"options/file_log_level=" +
+			"global/file_log_level=" +
 			std::to_string(o.file_log_level));
 	}
 
 	if (!o.log_file.empty())
-		o.options.push_back("options/log_file=" + o.log_file);
+		o.options.push_back("global/log_file=" + o.log_file);
 
 	if (o.dry)
-		o.options.push_back("options/dry=true");
+		o.options.push_back("global/dry=true");
 
 	if (!o.prefix.empty())
 		o.options.push_back("paths/prefix=" + o.prefix);

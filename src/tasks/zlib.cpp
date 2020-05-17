@@ -11,7 +11,7 @@ zlib::zlib()
 
 std::string zlib::version()
 {
-	return version_by_name("zlib");
+	return conf::version_by_name("zlib");
 }
 
 bool zlib::prebuilt()

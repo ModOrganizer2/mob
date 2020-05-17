@@ -33,8 +33,8 @@ void ncc::do_clean_for_rebuild()
 void ncc::do_fetch()
 {
 	run_tool(git(git::clone_or_pull)
-		.url(make_github_url(conf::mo_org(), "modorganizer-NCC"))
-		.branch(conf::mo_branch())
+		.url(make_github_url(conf::mo_org(names()), "modorganizer-NCC"))
+		.branch(conf::mo_branch(names()))
 		.output(source_path()));
 }
 

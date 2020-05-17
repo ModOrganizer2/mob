@@ -11,17 +11,17 @@ boost::boost()
 
 std::string boost::version()
 {
-	return version_by_name("boost");
+	return conf::version_by_name("boost");
 }
 
 std::string boost::version_vs()
 {
-	return version_by_name("boost_vs");
+	return conf::version_by_name("boost_vs");
 }
 
 bool boost::prebuilt()
 {
-	return prebuilt_by_name("boost");
+	return conf::prebuilt_by_name("boost");
 }
 
 fs::path boost::source_path()

@@ -13,7 +13,7 @@ cmake::cmake()
 
 fs::path cmake::binary()
 {
-	return tool_by_name("cmake");
+	return conf::tool_by_name("cmake");
 }
 
 void cmake::clean(const context& cx, const fs::path& root)

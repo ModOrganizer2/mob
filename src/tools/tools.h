@@ -134,7 +134,7 @@ class git : public basic_process_runner
 public:
 	enum ops
 	{
-		clone_or_pull
+		clone_or_pull = 1
 	};
 
 

@@ -11,7 +11,7 @@ explorerpp::explorerpp()
 
 std::string explorerpp::version()
 {
-	return version_by_name("explorerpp");
+	return conf::version_by_name("explorerpp");
 }
 
 bool explorerpp::prebuilt()

@@ -13,7 +13,7 @@ msbuild::msbuild() :
 
 fs::path msbuild::binary()
 {
-	return tool_by_name("msbuild");
+	return conf::tool_by_name("msbuild");
 }
 
 msbuild& msbuild::solution(const fs::path& sln)

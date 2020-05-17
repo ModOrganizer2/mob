@@ -12,7 +12,7 @@ git::git(ops o)
 
 fs::path git::binary()
 {
-	return tool_by_name("git");
+	return conf::tool_by_name("git");
 }
 
 git& git::url(const mob::url& u)
@@ -38,10 +38,15 @@ void git::do_run()
 	switch (op_)
 	{
 		case clone_or_pull:
+		{
 			do_clone_or_pull();
+			break;
+		}
 
 		default:
+		{
 			cx_->bail_out(context::generic, "git unknown op {}", op_);
+		}
 	}
 }
 

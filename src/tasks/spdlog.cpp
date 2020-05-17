@@ -11,7 +11,7 @@ spdlog::spdlog()
 
 std::string spdlog::version()
 {
-	return version_by_name("spdlog");
+	return conf::version_by_name("spdlog");
 }
 
 bool spdlog::prebuilt()

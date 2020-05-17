@@ -13,24 +13,24 @@ std::string master_ini_filename()
 	return "mob.ini";
 }
 
-// special cases to avoid string manipulations
-static int g_output_log_level = 3;
-static int g_file_log_level = 5;
+conf::task_map conf::map_;
+int conf::output_log_level_ = 3;
+int conf::file_log_level_ = 5;
 
-static std::map<std::string, std::map<std::string, std::string>> g_conf;
 
-const std::string& get_conf(const std::string& section, const std::string& key)
+std::string conf::get_global(const std::string& section, const std::string& key)
 {
-	auto sitor = g_conf.find(section);
+	auto global = map_.find("");
+	MOB_ASSERT(global != map_.end());
 
-	if (sitor == g_conf.end())
+	auto sitor = global->second.find(section);
+	if (sitor == global->second.end())
 	{
 		gcx().bail_out(context::conf,
 			"conf section '{}' doesn't exist", section);
 	}
 
 	auto kitor = sitor->second.find(key);
-
 	if (kitor == sitor->second.end())
 	{
 		gcx().bail_out(context::conf,
@@ -40,20 +40,21 @@ const std::string& get_conf(const std::string& section, const std::string& key)
 	return kitor->second;
 }
 
-void set_conf(
+void conf::set_global(
 	const std::string& section,
 	const std::string& key, const std::string& value)
 {
-	auto sitor = g_conf.find(section);
+	auto global = map_.find("");
+	MOB_ASSERT(global != map_.end());
 
-	if (sitor == g_conf.end())
+	auto sitor = global->second.find(section);
+	if (sitor == global->second.end())
 	{
 		gcx().bail_out(context::conf,
 			"conf section '{}' doesn't exist", section);
 	}
 
 	auto kitor = sitor->second.find(key);
-
 	if (kitor == sitor->second.end())
 	{
 		gcx().bail_out(context::conf,
@@ -63,58 +64,167 @@ void set_conf(
 	kitor->second = value;
 }
 
-void add_conf(
+void conf::add_global(
 	const std::string& section,
 	const std::string& key, const std::string& value)
 {
-	g_conf[section][key] = value;
+	map_[""][section][key] = value;
 }
 
-bool prebuilt_by_name(const std::string& task)
+std::string conf::get_for_task(
+	const std::vector<std::string>& task_names,
+	const std::string& section, const std::string& key)
 {
-	std::istringstream iss(get_conf("prebuilt", task));
+	task_map::iterator task = map_.end();
+
+	for (auto&& tn : task_names)
+	{
+		task = map_.find(tn);
+		if (task != map_.end())
+			break;
+	}
+
+	if (task == map_.end())
+		return get_global(section, key);
+
+	auto sitor = task->second.find(section);
+	if (sitor == task->second.end())
+		return get_global(section, key);
+
+	auto kitor = sitor->second.find(key);
+	if (kitor == sitor->second.end())
+		return get_global(section, key);
+
+	return kitor->second;
+}
+
+void conf::set_for_task(
+	const std::string& task_name, const std::string& section,
+	const std::string& key, const std::string& value)
+{
+	// make sure it exists, will throw if it doesn't
+	get_global(section, key);
+
+	map_[task_name][section][key] = value;
+}
+
+bool conf::prebuilt_by_name(const std::string& task)
+{
+	std::istringstream iss(get_global("prebuilt", task));
 	bool b;
 	iss >> std::boolalpha >> b;
 	return b;
 }
 
-std::string version_by_name(const std::string& s)
+fs::path conf::path_by_name(const std::string& name)
 {
-	return get_conf("versions", s);
+	return get_global("paths", name);
 }
 
-fs::path tool_by_name(const std::string& name)
+std::string conf::version_by_name(const std::string& name)
 {
-	return get_conf("tools", name);
+	return get_global("versions", name);
 }
 
-fs::path path_by_name(const std::string& s)
+fs::path conf::tool_by_name(const std::string& name)
 {
-	return get_conf("paths", s);
+	return get_global("tools", name);
 }
 
-std::string conf_by_name(const std::string& name)
+std::string conf::global_by_name(const std::string& name)
 {
-	return get_conf("options", name);
+	return get_global("global", name);
 }
 
-bool bool_conf_by_name(const std::string& name)
+bool conf::bool_global_by_name(const std::string& name)
 {
-	std::istringstream iss(get_conf("options", name));
+	std::istringstream iss(get_global("global", name));
 	bool b;
 	iss >> std::boolalpha >> b;
 	return b;
 }
 
-
-int conf::output_log_level()
+std::string conf::option_by_name(
+	const std::vector<std::string>& task_names, const std::string& name)
 {
-	return g_output_log_level;
+	return get_for_task(task_names, "options", name);
 }
 
-int conf::file_log_level()
+void conf::set_output_log_level(const std::string& s)
 {
-	return g_file_log_level;
+	if (s.empty())
+		return;
+
+	try
+	{
+		const auto i = std::stoi(s);
+
+		if (i < 0 || i > 6)
+			gcx().bail_out(context::generic, "bad output log level {}", i);
+
+		output_log_level_ = i;
+	}
+	catch(std::exception&)
+	{
+		gcx().bail_out(context::generic, "bad output log level {}", s);
+	}
+}
+
+void conf::set_file_log_level(const std::string& s)
+{
+	if (s.empty())
+		return;
+
+	try
+	{
+		const auto i = std::stoi(s);
+		if (i < 0 || i > 6)
+			gcx().bail_out(context::generic, "bad file log level {}", i);
+
+		file_log_level_ = i;
+	}
+	catch(std::exception&)
+	{
+		gcx().bail_out(context::generic, "bad file log level {}", s);
+	}
+}
+
+std::vector<std::string> conf::format_options()
+{
+	std::size_t longest_task = 0;
+	std::size_t longest_section = 0;
+	std::size_t longest_key = 0;
+
+	for (auto&& [t, ss] : map_)
+	{
+		longest_task = std::max(longest_task, t.size());
+
+		for (auto&& [s, kv] : ss)
+		{
+			longest_section = std::max(longest_section, s.size());
+
+			for (auto&& [k, v] : kv)
+				longest_key = std::max(longest_key, k.size());
+		}
+	}
+
+	std::vector<std::string> lines;
+
+	for (auto&& [t, ss] : map_)
+	{
+		for (auto&& [s, kv] : ss)
+		{
+			for (auto&& [k, v] : kv)
+			{
+				lines.push_back(
+					pad_right(t, longest_task) + "  " +
+					pad_right(s, longest_section) + "  " +
+					pad_right(k, longest_key) + " = " + v);
+			}
+		}
+	}
+
+	return lines;
 }
 
 
@@ -259,7 +369,7 @@ bool try_qt_location(fs::path& check)
 
 fs::path find_qt()
 {
-	fs::path p = path_by_name("qt_install");
+	fs::path p = conf::path_by_name("qt_install");
 
 	if (!p.empty())
 	{
@@ -306,7 +416,7 @@ void validate_qt()
 	if (!try_qt_location(p))
 		gcx().bail_out(context::conf, "qt path {} doesn't exist", p);
 
-	set_conf("paths", "qt_install", path_to_utf8(p));
+	conf::set_global("paths", "qt_install", path_to_utf8(p));
 }
 
 fs::path get_known_folder(const GUID& id)
@@ -425,7 +535,7 @@ bool try_vcvars(fs::path& bat)
 
 void find_vcvars()
 {
-	fs::path bat = tool_by_name("vcvars");
+	fs::path bat = conf::tool_by_name("vcvars");
 
 	if (conf::dry())
 	{
@@ -451,7 +561,7 @@ void find_vcvars()
 		}
 	}
 
-	set_conf("tools", "vcvars", path_to_utf8(bat));
+	conf::set_global("tools", "vcvars", path_to_utf8(bat));
 	gcx().trace(context::conf, "using vcvars at {}", bat);
 }
 
@@ -503,8 +613,8 @@ std::vector<std::string> read_ini(const fs::path& ini)
 
 void parse_section(
 	const fs::path& ini, std::size_t& i,
-	const std::vector<std::string>& lines, const std::string& section,
-	bool add)
+	const std::vector<std::string>& lines,
+	const std::string& task, const std::string& section, bool add)
 {
 	++i;
 
@@ -525,10 +635,17 @@ void parse_section(
 		if (k.empty())
 			ini_error(ini, i, "bad line '" + line + "'");
 
-		if (add)
-			add_conf(section, k, v);
+		if (task.empty())
+		{
+			if (add)
+				conf::add_global(section, k, v);
+			else
+				conf::set_global(section, k, v);
+		}
 		else
-			set_conf(section, k, v);
+		{
+			conf::set_for_task(task, section, k, v);
+		}
 
 		++i;
 	}
@@ -550,8 +667,23 @@ void parse_ini(const fs::path& ini, bool add)
 
 		if (line.starts_with("[") && line.ends_with("]"))
 		{
-			const std::string section = line.substr(1, line.size() - 2);
-			parse_section(ini, i, lines, section, add);
+			const std::string s = line.substr(1, line.size() - 2);
+
+			std::string task, section;
+
+			const auto slash = s.find("/");
+
+			if (slash == std::string::npos)
+			{
+				section = s;
+			}
+			else
+			{
+				task = s.substr(0, slash);
+				section = s.substr(slash +1 );
+			}
+
+			parse_section(ini, i, lines, task, section, add);
 		}
 		else
 		{
@@ -562,7 +694,7 @@ void parse_ini(const fs::path& ini, bool add)
 
 bool check_missing_options()
 {
-	if (conf::mo_org().empty())
+	if (conf::mo_org({""}).empty())
 	{
 		u8cerr
 			<< "missing mo_org; either specify it the [options] section of "
@@ -571,7 +703,7 @@ bool check_missing_options()
 		return false;
 	}
 
-	if (conf::mo_branch().empty())
+	if (conf::mo_branch({""}).empty())
 	{
 		u8cerr
 			<< "missing mo_branch; either specify it the [options] section of "
@@ -589,22 +721,13 @@ bool check_missing_options()
 		return false;
 	}
 
-	for (auto&& [k, v] : g_conf["versions"])
-	{
-		if (v.empty())
-		{
-			u8cerr << "missing version for " << k << "\n";
-			return false;
-		}
-	}
-
 	return true;
 }
 
 template <class F>
 void set_path_if_empty(const std::string& k, F&& f)
 {
-	fs::path p = get_conf("paths", k);
+	fs::path p = conf::get_global("paths", k);
 
 	if (p.empty())
 	{
@@ -624,14 +747,14 @@ void set_path_if_empty(const std::string& k, F&& f)
 		p = fs::canonical(p);
 	}
 
-	set_conf("paths", k, path_to_utf8(p));
+	conf::set_global("paths", k, path_to_utf8(p));
 }
 
 void make_canonical_path(
 	const std::string& key,
 	const fs::path& default_parent, const std::string& default_dir)
 {
-	fs::path p = path_by_name(key);
+	fs::path p = conf::path_by_name(key);
 
 	if (p.empty())
 	{
@@ -646,47 +769,13 @@ void make_canonical_path(
 	if (!conf::dry())
 		p = fs::weakly_canonical(fs::absolute(p));
 
-	set_conf("paths", key, path_to_utf8(p));
+	conf::set_global("paths", key, path_to_utf8(p));
 }
 
 void set_special_options()
 {
-	auto v = get_conf("options", "output_log_level");
-
-	if (!v.empty())
-	{
-		try
-		{
-			const auto i = std::stoi(v);
-			if (i < 0 || i > 6)
-				gcx().bail_out(context::generic, "bad output log level {}", i);
-
-			g_output_log_level = i;
-		}
-		catch(std::exception&)
-		{
-			gcx().bail_out(context::generic, "bad output log level {}", v);
-		}
-	}
-
-
-	v = get_conf("options", "file_log_level");
-
-	if (!v.empty())
-	{
-		try
-		{
-			const auto i = std::stoi(v);
-			if (i < 0 || i > 6)
-				gcx().bail_out(context::generic, "bad file log level {}", i);
-
-			g_file_log_level = i;
-		}
-		catch(std::exception&)
-		{
-			gcx().bail_out(context::generic, "bad file log level {}", v);
-		}
-	}
+	conf::set_output_log_level(conf::get_global("global", "output_log_level"));
+	conf::set_file_log_level(conf::get_global("global", "file_log_level"));
 }
 
 std::vector<fs::path> find_inis(const std::vector<fs::path>& inis_from_cl)
@@ -766,7 +855,7 @@ void init_options(
 		for (auto&& o : opts)
 		{
 			const auto po = parse_option(o);
-			set_conf(po.section, po.key, po.value);
+			conf::set_global(po.section, po.key, po.value);
 		}
 	}
 
@@ -820,43 +909,15 @@ bool verify_options()
 	return check_missing_options();
 }
 
-std::vector<std::string> format_options()
-{
-	std::size_t longest_section = 0;
-	std::size_t longest_key = 0;
-
-	for (auto&& [s, kv] : g_conf)
-	{
-		longest_section = std::max(longest_section, s.size());
-
-		for (auto&& [k, v] : kv)
-			longest_key = std::max(longest_key, k.size());
-	}
-
-	std::vector<std::string> lines;
-
-	for (auto&& [s, kv] : g_conf)
-	{
-		for (auto&& [k, v] : kv)
-		{
-			lines.push_back(
-				pad_right(s, longest_section) + " " +
-				pad_right(k, longest_key) + " = " + v);
-		}
-	}
-
-	return lines;
-}
-
 void log_options()
 {
-	for (auto&& line : format_options())
+	for (auto&& line : conf::format_options())
 		gcx().trace(context::conf, "{}", line);
 }
 
 void dump_available_options()
 {
-	for (auto&& line : format_options())
+	for (auto&& line : conf::format_options())
 		u8cout << line << "\n";
 }
 

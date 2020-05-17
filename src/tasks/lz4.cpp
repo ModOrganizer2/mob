@@ -11,12 +11,12 @@ lz4::lz4()
 
 std::string lz4::version()
 {
-	return version_by_name("lz4");
+	return conf::version_by_name("lz4");
 }
 
 bool lz4::prebuilt()
 {
-	return prebuilt_by_name("lz4");
+	return conf::prebuilt_by_name("lz4");
 }
 
 fs::path lz4::source_path()

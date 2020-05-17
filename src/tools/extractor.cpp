@@ -11,7 +11,7 @@ extractor::extractor()
 
 fs::path extractor::binary()
 {
-	return tool_by_name("sevenz");
+	return conf::tool_by_name("sevenz");
 }
 
 extractor& extractor::file(const fs::path& file)

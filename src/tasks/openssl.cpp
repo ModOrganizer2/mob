@@ -11,12 +11,12 @@ openssl::openssl()
 
 std::string openssl::version()
 {
-	return version_by_name("openssl");
+	return conf::version_by_name("openssl");
 }
 
 bool openssl::prebuilt()
 {
-	return prebuilt_by_name("openssl");
+	return conf::prebuilt_by_name("openssl");
 }
 
 fs::path openssl::source_path()

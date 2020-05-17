@@ -11,17 +11,17 @@ pyqt::pyqt()
 
 std::string pyqt::version()
 {
-	return version_by_name("pyqt");
+	return conf::version_by_name("pyqt");
 }
 
 std::string pyqt::builder_version()
 {
-	return version_by_name("pyqt_builder");
+	return conf::version_by_name("pyqt_builder");
 }
 
 bool pyqt::prebuilt()
 {
-	return prebuilt_by_name("pyqt");
+	return conf::prebuilt_by_name("pyqt");
 }
 
 fs::path pyqt::source_path()

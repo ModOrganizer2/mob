@@ -11,7 +11,7 @@ libbsarch::libbsarch()
 
 std::string libbsarch::version()
 {
-	return version_by_name("libbsarch");
+	return conf::version_by_name("libbsarch");
 }
 
 bool libbsarch::prebuilt()

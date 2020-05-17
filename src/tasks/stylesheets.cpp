@@ -16,22 +16,22 @@ std::string stylesheets::version()
 
 std::string stylesheets::paper_lad_6788_version()
 {
-	return version_by_name("ss_paper_lad_6788");
+	return conf::version_by_name("ss_paper_lad_6788");
 }
 
 std::string stylesheets::paper_automata_6788_version()
 {
-	return version_by_name("ss_paper_automata_6788");
+	return conf::version_by_name("ss_paper_automata_6788");
 }
 
 std::string stylesheets::paper_mono_6788_version()
 {
-	return version_by_name("ss_paper_mono_6788");
+	return conf::version_by_name("ss_paper_mono_6788");
 }
 
 std::string stylesheets::dark_mode_1809_6788_version()
 {
-	return version_by_name("ss_dark_mode_1809_6788");
+	return conf::version_by_name("ss_dark_mode_1809_6788");
 }
 
 

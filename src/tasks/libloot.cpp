@@ -11,12 +11,12 @@ libloot::libloot()
 
 std::string libloot::version()
 {
-	return version_by_name("libloot");
+	return conf::version_by_name("libloot");
 }
 
 std::string libloot::hash()
 {
-	return version_by_name("libloot_hash");
+	return conf::version_by_name("libloot_hash");
 }
 
 bool libloot::prebuilt()

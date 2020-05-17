@@ -11,7 +11,7 @@ nmm::nmm()
 
 std::string nmm::version()
 {
-	return version_by_name("nmm");
+	return conf::version_by_name("nmm");
 }
 
 bool nmm::prebuilt()

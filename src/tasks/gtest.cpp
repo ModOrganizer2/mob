@@ -11,7 +11,7 @@ gtest::gtest()
 
 std::string gtest::version()
 {
-	return version_by_name("gtest");
+	return conf::version_by_name("gtest");
 }
 
 bool gtest::prebuilt()

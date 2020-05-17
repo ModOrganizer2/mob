@@ -11,12 +11,12 @@ python::python()
 
 std::string python::version()
 {
-	return version_by_name("python");
+	return conf::version_by_name("python");
 }
 
 bool python::prebuilt()
 {
-	return prebuilt_by_name("python");
+	return conf::prebuilt_by_name("python");
 }
 
 python::version_info python::parsed_version()

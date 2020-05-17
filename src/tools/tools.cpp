@@ -62,32 +62,32 @@ bool tool::interrupted() const
 
 fs::path perl::binary()
 {
-	return tool_by_name("perl");
+	return conf::tool_by_name("perl");
 }
 
 fs::path nasm::binary()
 {
-	return tool_by_name("nasm");
+	return conf::tool_by_name("nasm");
 }
 
 fs::path qt::installation_path()
 {
-	return path_by_name("qt_install");
+	return conf::path_by_name("qt_install");
 }
 
 fs::path qt::bin_path()
 {
-	return path_by_name("qt_bin");
+	return conf::path_by_name("qt_bin");
 }
 
 std::string qt::version()
 {
-	return version_by_name("qt");
+	return conf::version_by_name("qt");
 }
 
 std::string qt::vs_version()
 {
-	return version_by_name("qt_vs");
+	return conf::version_by_name("qt_vs");
 }
 
 
@@ -98,42 +98,42 @@ vs::vs(ops o)
 
 fs::path vs::devenv_binary()
 {
-	return tool_by_name("devenv");
+	return conf::tool_by_name("devenv");
 }
 
 fs::path vs::installation_path()
 {
-	return path_by_name("vs");
+	return conf::path_by_name("vs");
 }
 
 fs::path vs::vswhere()
 {
-	return tool_by_name("vswhere");
+	return conf::tool_by_name("vswhere");
 }
 
 fs::path vs::vcvars()
 {
-	return tool_by_name("vcvars");
+	return conf::tool_by_name("vcvars");
 }
 
 std::string vs::version()
 {
-	return version_by_name("vs");
+	return conf::version_by_name("vs");
 }
 
 std::string vs::year()
 {
-	return version_by_name("vs_year");
+	return conf::version_by_name("vs_year");
 }
 
 std::string vs::toolset()
 {
-	return version_by_name("vs_toolset");
+	return conf::version_by_name("vs_toolset");
 }
 
 std::string vs::sdk()
 {
-	return version_by_name("sdk");
+	return conf::version_by_name("sdk");
 }
 
 vs& vs::solution(const fs::path& sln)
@@ -147,10 +147,15 @@ void vs::do_run()
 	switch (op_)
 	{
 		case upgrade:
+		{
 			do_upgrade();
+			break;
+		}
 
 		default:
+		{
 			cx_->bail_out(context::generic, "vs unknown op {}", op_);
+		}
 	}
 }
 
@@ -184,7 +189,7 @@ nuget::nuget(fs::path sln)
 
 fs::path nuget::binary()
 {
-	return tool_by_name("nuget");
+	return conf::tool_by_name("nuget");
 }
 
 void nuget::do_run()
