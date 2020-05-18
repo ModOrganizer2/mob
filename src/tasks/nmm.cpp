@@ -31,7 +31,7 @@ void nmm::do_clean_for_rebuild()
 
 void nmm::do_fetch()
 {
-	run_tool(git(task_conf().git_op())
+	run_tool(task_conf().make_git()
 		.url(make_github_url("Nexus-Mods", "Nexus-Mod-Manager"))
 		.branch(version())
 		.output(source_path()));

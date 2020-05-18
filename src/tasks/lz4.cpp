@@ -72,7 +72,7 @@ void lz4::build_and_install_prebuilt()
 
 void lz4::fetch_from_source()
 {
-	run_tool(git(task_conf().git_op())
+	run_tool(task_conf().make_git()
 		.url(make_github_url("lz4","lz4"))
 		.branch(version())
 		.output(source_path()));

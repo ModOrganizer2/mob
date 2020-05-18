@@ -111,7 +111,7 @@ void python::build_and_install_prebuilt()
 
 void python::fetch_from_source()
 {
-	run_tool(git(task_conf().git_op())
+	run_tool(task_conf().make_git()
 		.url(make_github_url("python", "cpython"))
 		.branch(version())
 		.output(source_path()));

@@ -151,6 +151,37 @@ void run_all_tasks()
 	run_tasks(tasks);
 }
 
+bool task_exists(const std::string& name)
+{
+	if (name == "super")
+		return true;
+
+	for (auto&& t : g_all_tasks)
+	{
+		for (auto&& n : t->names())
+		{
+			if (n == name)
+				return true;
+		}
+	}
+
+	return false;
+}
+
+bool is_super_task(const std::string& name)
+{
+	for (auto& t : g_all_tasks)
+	{
+		for (auto&& tn : t->names())
+		{
+			if (tn == name)
+				return t->is_super();
+		}
+	}
+
+	return false;
+}
+
 
 struct task::thread_context
 {
@@ -162,6 +193,52 @@ struct task::thread_context
 	{
 	}
 };
+
+
+task_conf_holder::task_conf_holder(const task& t)
+	: task_(t)
+{
+}
+
+std::string task_conf_holder::mo_org()
+{
+	return conf::option_by_name(task_.names(), "mo_org");
+}
+
+std::string task_conf_holder::mo_branch()
+{
+	return conf::option_by_name(task_.names(), "mo_branch");
+}
+
+bool task_conf_holder::no_pull()
+{
+	return conf::bool_option_by_name(task_.names(), "no_pull");
+}
+
+git task_conf_holder::make_git()
+{
+	git g(no_pull() ? git::clone : git::clone_or_pull);
+
+	g.ignore_ts(conf::bool_option_by_name(task_.names(), "ignore_ts"));
+
+	g.credentials(
+		conf::option_by_name(task_.names(), "git_username"),
+		conf::option_by_name(task_.names(), "git_email")
+	);
+
+	if (conf::bool_option_by_name(task_.names(), "set_origin_remote"))
+	{
+		g.remote(
+			conf::option_by_name(task_.names(), "remote_username"),
+			conf::option_by_name(task_.names(), "remote_key"),
+			conf::bool_option_by_name(task_.names(), "remote_no_push_upstream"),
+			conf::bool_option_by_name(task_.names(), "remote_push_default_origin")
+		);
+	}
+
+	return g;
+}
+
 
 
 task::task(std::vector<std::string> names)
@@ -290,7 +367,7 @@ void task::parallel(std::vector<std::pair<std::string, std::function<void ()>>> 
 
 task_conf_holder task::task_conf() const
 {
-	return task_conf_holder(names_);
+	return task_conf_holder(*this);
 }
 
 void task::run()

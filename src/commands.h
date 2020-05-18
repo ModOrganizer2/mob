@@ -185,7 +185,6 @@ private:
 	std::string email_;
 	std::string key_;
 	std::string remote_;
-	std::string url_;
 	bool tson_ = false;
 	bool nopush_ = false;
 	bool push_default_ = false;
@@ -195,34 +194,6 @@ private:
 	void do_ignore_ts();
 
 	std::vector<fs::path> get_repos() const;
-
-	void set_config(
-		const fs::path& repo,
-		const std::string& key, const std::string& value);
-
-	bool has_remote(
-		const fs::path& repo,
-		const std::string& name);
-
-	void rename_remote(
-		const fs::path& repo,
-		const std::string& from, const std::string& to);
-
-	void add_remote(
-		const fs::path& repo,
-		const std::string& name, const std::string& url);
-
-	void set_remote_push_url(
-		const fs::path& repo,
-		const std::string& remote, const std::string& url);
-
-	void set_assume_unchanged(
-		const fs::path& repo, const fs::path& relative_file, bool on);
-
-	bool is_tracked(const fs::path& repo, const fs::path& relative_file);
-
-	std::string git_file(const fs::path& repo);
-	std::string make_url(const std::string& git_file);
 };
 
 

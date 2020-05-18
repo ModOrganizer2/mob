@@ -25,41 +25,23 @@ void run_task(const std::string& name);
 void run_tasks(const std::vector<std::string>& names);;
 void run_all_tasks();
 void list_tasks(bool err=false);
+bool task_exists(const std::string& name);
+bool is_super_task(const std::string& name);
 
 
 class task_conf_holder
 {
 public:
-	task_conf_holder(std::vector<std::string> names)
-		: names_(std::move(names))
-	{
-	}
+	task_conf_holder(const task& t);
 
-	std::string mo_org()
-	{
-		return conf::option_by_name(names_, "mo_org");
-	}
+	std::string mo_org();
+	std::string mo_branch();
+	bool no_pull();
 
-	std::string mo_branch()
-	{
-		return conf::option_by_name(names_, "mo_branch");
-	}
-
-	bool no_pull()
-	{
-		return conf::bool_option_by_name(names_, "no_pull");
-	}
-
-	git::ops git_op()
-	{
-		if (no_pull())
-			return git::clone;
-		else
-			return git::clone_or_pull2;
-	}
+	git make_git();
 
 private:
-	std::vector<std::string> names_;
+	const task& task_;
 };
 
 

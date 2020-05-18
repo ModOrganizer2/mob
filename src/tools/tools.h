@@ -25,9 +25,9 @@ public:
 	void result() {}
 
 protected:
-	context* cx_;
-
 	tool(std::string name);
+
+	const context& cx() const;
 
 	bool interrupted() const;
 
@@ -36,6 +36,7 @@ protected:
 	virtual std::string do_name() const { return {}; }
 
 private:
+	context* cx_;
 	std::string name_;
 	std::atomic<bool> interrupted_;
 };
@@ -136,7 +137,13 @@ public:
 	{
 		clone = 1,
 		pull,
-		clone_or_pull2
+		clone_or_pull
+	};
+
+	struct creds
+	{
+		std::string username;
+		std::string email;
 	};
 
 
@@ -144,9 +151,32 @@ public:
 
 	static fs::path binary();
 
+	static void set_credentials(
+		const fs::path& repo,
+		const std::string& username, const std::string& email);
+
+	static void set_remote(
+		const fs::path& repo,
+		std::string username, std::string key,
+		bool no_push_upstream, bool push_default_origin);
+
+	static void ignore_ts(const fs::path& repo, bool b);
+
+	static void add_remote(
+		const fs::path& repo, const std::string& remote_name,
+		const std::string& username, const std::string& key,
+		bool push_default);
+
+
 	git& url(const mob::url& u);
 	git& branch(const std::string& name);
 	git& output(const fs::path& dir);
+	git& credentials(const std::string& username, const std::string& email);
+	git& ignore_ts(bool b);
+
+	git& remote(
+		std::string username, std::string key,
+		bool no_push_upstream, bool push_default_origin);
 
 protected:
 	void do_run() override;
@@ -156,10 +186,33 @@ private:
 	mob::url url_;
 	std::string branch_;
 	fs::path where_;
+	std::string creds_username_;
+	std::string creds_email_;
+	std::string remote_username_;
+	std::string remote_key_;
+	bool no_push_upstream_ = false;
+	bool push_default_origin_ = false;
+	bool ignore_ts_;
 
 	void do_clone_or_pull();
 	bool do_clone();
 	void do_pull();
+
+	void do_set_credentials();
+	void do_set_remote();
+	void do_ignore_ts();
+
+	void set_config(const std::string& key, const std::string& value);
+	bool has_remote(const std::string& name);
+	void rename_remote(const std::string& from, const std::string& to);
+	void add_remote(const std::string& name, const std::string& url);
+	void set_remote_push(const std::string& remote, const std::string& url);
+	void set_assume_unchanged(const fs::path& relative_file, bool on);
+	bool is_tracked(const fs::path& relative_file);
+	std::string git_file();
+
+	static std::string make_url(
+		const std::string& username, const std::string& git_file);
 };
 
 

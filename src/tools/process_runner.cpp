@@ -22,7 +22,7 @@ void basic_process_runner::do_interrupt()
 
 int basic_process_runner::execute_and_join()
 {
-	process_.set_context(cx_);
+	process_.set_context(&cx());
 	process_.run();
 	join();
 
@@ -72,7 +72,7 @@ void process_runner::do_interrupt()
 
 int process_runner::execute_and_join()
 {
-	real_process().set_context(cx_);
+	real_process().set_context(&cx());
 	real_process().run();
 
 	join();

@@ -34,9 +34,9 @@ fs::path downloader::result() const
 
 void downloader::do_run()
 {
-	dl_.reset(new curl_downloader(cx_));
+	dl_.reset(new curl_downloader(&cx()));
 
-	cx_->trace(context::net, "looking for already downloaded files");
+	cx().trace(context::net, "looking for already downloaded files");
 
 	if (!file_.empty())
 	{
@@ -58,9 +58,9 @@ void downloader::do_run()
 	}
 
 
-	cx_->trace(context::net, "no cached downloads were found, will try:");
+	cx().trace(context::net, "no cached downloads were found, will try:");
 	for (auto&& u : urls_)
-		cx_->trace(context::net, "  . {}", u);
+		cx().trace(context::net, "  . {}", u);
 
 
 	// try them in order
@@ -69,29 +69,29 @@ void downloader::do_run()
 		if (file_.empty())
 			file_ = path_for_url(u);
 
-		cx_->trace(context::net, "trying {} into {}", u, file_);
+		cx().trace(context::net, "trying {} into {}", u, file_);
 
 		dl_->start(u, file_);
-		cx_->trace(context::net, "waiting for download");
+		cx().trace(context::net, "waiting for download");
 		dl_->join();
 
 		if (dl_->ok())
 		{
-			cx_->trace(context::net, "file {} downloaded", file_);
+			cx().trace(context::net, "file {} downloaded", file_);
 			return;
 		}
 
-		cx_->debug(context::net, "download failed");
+		cx().debug(context::net, "download failed");
 	}
 
 	if (interrupted())
 	{
-		cx_->trace(context::interruption, "");
+		cx().trace(context::interruption, "");
 		return;
 	}
 
 	// all failed
-	cx_->bail_out(context::net, "all urls failed to download");
+	cx().bail_out(context::net, "all urls failed to download");
 }
 
 void downloader::do_interrupt()
@@ -106,18 +106,18 @@ bool downloader::try_picking(const fs::path& file)
 	{
 		if (conf::redownload())
 		{
-			cx_->trace(context::redownload, "deleting {}", file);
-			op::delete_file(*cx_, file, op::optional);
+			cx().trace(context::redownload, "deleting {}", file);
+			op::delete_file(cx(), file, op::optional);
 		}
 		else
 		{
-			cx_->trace(context::bypass, "picking {}", file_);
+			cx().trace(context::bypass, "picking {}", file_);
 			return true;
 		}
 	}
 	else
 	{
-		cx_->trace(context::net, "no {}", file);
+		cx().trace(context::net, "no {}", file);
 	}
 
 	return false;
@@ -134,13 +134,13 @@ fs::path downloader::path_for_url(const mob::url& u) const
 		// sf downloads end with /download, strip it to get the filename
 		const std::string strip = "/download";
 
-		cx_->trace(context::net,
+		cx().trace(context::net,
 			"url {} is sourceforge, stripping {} for filename", u, strip);
 
 		if (url_string.ends_with(strip))
 			url_string = url_string.substr(0, url_string.size() - strip.size());
 		else
-			cx_->trace(context::net, "no need to strip {}", u);
+			cx().trace(context::net, "no need to strip {}", u);
 
 		filename = mob::url(url_string).filename();
 	}

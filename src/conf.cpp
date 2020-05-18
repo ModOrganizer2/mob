@@ -3,6 +3,7 @@
 #include "utility.h"
 #include "context.h"
 #include "process.h"
+#include "tasks/task.h"
 #include "tools/tools.h"
 
 namespace mob
@@ -85,6 +86,18 @@ std::string conf::get_for_task(
 	}
 
 	if (task == map_.end())
+	{
+		for (auto&& tn : task_names)
+		{
+			if (is_super_task(tn))
+			{
+				task = map_.find("super");
+				break;
+			}
+		}
+	}
+
+	if (task == map_.end())
 		return get_global(section, key);
 
 	auto sitor = task->second.find(section);
@@ -102,7 +115,7 @@ void conf::set_for_task(
 	const std::string& task_name, const std::string& section,
 	const std::string& key, const std::string& value)
 {
-	// make sure it exists, will throw if it doesn't
+	// make sure the key exists, will throw if it doesn't
 	get_global(section, key);
 
 	map_[task_name][section][key] = value;
@@ -651,6 +664,9 @@ void parse_section(
 		}
 		else
 		{
+			if (!task_exists(task))
+				ini_error(ini, i, "task '" + task + "' doesn't exist");
+
 			conf::set_for_task(task, section, k, v);
 		}
 
@@ -846,9 +862,20 @@ void init_options(
 			const auto po = parse_option(o);
 
 			if (po.task.empty())
+			{
 				conf::set_global(po.section, po.key, po.value);
+			}
 			else
+			{
+				if (!task_exists(po.task))
+				{
+					gcx().bail_out(context::generic,
+						"task '{}' doesn't exist (command line option)",
+						po.task);
+				}
+
 				conf::set_for_task(po.task, po.section, po.key, po.value);
+			}
 		}
 	}
 

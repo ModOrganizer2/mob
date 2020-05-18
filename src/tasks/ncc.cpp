@@ -32,7 +32,7 @@ void ncc::do_clean_for_rebuild()
 
 void ncc::do_fetch()
 {
-	run_tool(git(task_conf().git_op())
+	run_tool(task_conf().make_git()
 		.url(make_github_url(task_conf().mo_org(), "modorganizer-NCC"))
 		.branch(task_conf().mo_branch())
 		.output(source_path()));

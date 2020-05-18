@@ -112,7 +112,7 @@ public:
 
 	static process raw(const context& cx, const std::string& cmd);
 
-	static process pipe(const process& p)
+	static process pipe(process p)
 	{
 		return p;
 	}

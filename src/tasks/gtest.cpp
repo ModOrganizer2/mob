@@ -31,7 +31,7 @@ void gtest::do_clean_for_rebuild()
 
 void gtest::do_fetch()
 {
-	run_tool(git(task_conf().git_op())
+	run_tool(task_conf().make_git()
 		.url(make_github_url("google", "googletest"))
 		.branch(version())
 		.output(source_path()));

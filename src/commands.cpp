@@ -758,9 +758,9 @@ clipp::group git_command::do_group()
 				& clipp::value("NAME") >> remote_)
 				% "name of new remote",
 
-			(clipp::required("-u", "--url")
-				& clipp::value("URL") >> url_)
-				% "remote URL",
+			(clipp::required("-u", "--username")
+				& clipp::value("USERNAME") >> username_)
+				% "git username",
 
 			(clipp::option("-k", "--key")
 				& clipp::value("PATH") >> key_)
@@ -840,27 +840,8 @@ void git_command::do_set_remotes()
 	for (auto&& r : repos)
 	{
 		u8cout << "setting up " << path_to_utf8(r.filename()) << "\n";
-
-		set_config(r, "user.name", username_);
-		set_config(r, "user.email", email_);
-
-		if (!has_remote(r, "upstream"))
-		{
-			const auto gf = git_file(r);
-
-			rename_remote(r, "origin", "upstream");
-
-			if (nopush_)
-				set_remote_push_url(r, "upstream", "nopushurl");
-
-			add_remote(r, "origin", make_url(gf));
-
-			if (push_default_)
-				set_config(r, "remote.pushdefault", "origin");
-
-			if (!key_.empty())
-				set_config(r, "remote.origin.puttykeyfile", key_);
-		}
+		git::set_credentials(r, username_, email_);
+		git::set_remote(r, username_, key_, nopush_, push_default_);
 	}
 }
 
@@ -870,22 +851,12 @@ void git_command::do_add_remote()
 
 	u8cout
 		<< "adding remote '" << remote_ << "' "
-		<< "from '" << url_ << "' to repos\n";
+		<< "from '" << username_ << "' to repos\n";
 
 	for (auto&& r : repos)
 	{
 		u8cout << path_to_utf8(r.filename()) << "\n";
-
-		if (!has_remote(r, remote_))
-		{
-			add_remote(r, remote_, url_);
-
-			if (push_default_)
-				set_config(r, "remote.pushdefault", remote_);
-
-			if (!key_.empty())
-				set_config(r, "remote." + remote_ + ".puttykeyfile", key_);
-		}
+		git::add_remote(r, remote_, username_, key_, push_default_);
 	}
 }
 
@@ -901,31 +872,7 @@ void git_command::do_ignore_ts()
 	for (auto&& r : repos)
 	{
 		u8cout << path_to_utf8(r.filename()) << "\n";
-
-		for (auto&& e : fs::recursive_directory_iterator(r))
-		{
-			if (!e.is_regular_file())
-				continue;
-
-			const auto p = e.path();
-
-			if (!path_to_utf8(p.extension()).ends_with(".ts"))
-				continue;
-
-			const auto rp = fs::relative(p, r);
-
-			if (is_tracked(r, rp))
-			{
-				u8cout << "  . " << path_to_utf8(rp) << "\n";
-				set_assume_unchanged(r, rp, tson_);
-			}
-			else
-			{
-				u8cout
-					<< "  . "
-					<< path_to_utf8(rp) << " (skipping, not tracked)\n";
-			}
-		}
+		git::ignore_ts(r, tson_);
 	}
 }
 
@@ -958,157 +905,6 @@ std::vector<fs::path> git_command::get_repos() const
 	}
 
 	return v;
-}
-
-void git_command::set_config(
-	const fs::path& repo, const std::string& key, const std::string& value)
-{
-	auto p = process()
-		.binary(git::binary())
-		.arg("config")
-		.arg(key)
-		.arg(value)
-		.cwd(repo);
-
-	p.run();
-	p.join();
-}
-
-bool git_command::has_remote(const fs::path& repo, const std::string& name)
-{
-	auto p = process()
-		.binary(git::binary())
-		.flags(process::allow_failure)
-		.stderr_level(context::level::debug)
-		.arg("remote")
-		.arg("show")
-		.arg(name)
-		.cwd(repo);
-
-	p.run();
-	p.join();
-
-	return (p.exit_code() == 0);
-}
-
-void git_command::rename_remote(
-	const fs::path& repo,
-	const std::string& from, const std::string& to)
-{
-	auto p = process()
-		.binary(git::binary())
-		.arg("remote")
-		.arg("rename")
-		.arg(from)
-		.arg(to)
-		.cwd(repo);
-
-	p.run();
-	p.join();
-}
-
-void git_command::add_remote(
-	const fs::path& repo,
-	const std::string& name, const std::string& url)
-{
-	auto p = process()
-		.binary(git::binary())
-		.arg("remote")
-		.arg("add")
-		.arg(name)
-		.arg(url)
-		.cwd(repo);
-
-	p.run();
-	p.join();
-}
-
-void git_command::set_remote_push_url(
-	const fs::path& repo,
-	const std::string& remote, const std::string& url)
-{
-	auto p = process()
-		.binary(git::binary())
-		.arg("remote")
-		.arg("set-url")
-		.arg("--push")
-		.arg(remote)
-		.arg(url)
-		.cwd(repo);
-
-	p.run();
-	p.join();
-}
-
-void git_command::set_assume_unchanged(
-	const fs::path& repo, const fs::path& relative_file, bool on)
-{
-	auto p = process()
-		.binary(git::binary())
-		.arg("update-index")
-		.arg(on ? "--assume-unchanged" : "--no-assume-unchanged")
-		.arg(relative_file, process::forward_slashes)
-		.cwd(repo);
-
-	p.run();
-	p.join();
-}
-
-bool git_command::is_tracked(
-	const fs::path& repo, const fs::path& relative_file)
-{
-	auto p = process()
-		.binary(git::binary())
-		.stdout_level(context::level::debug)
-		.stderr_level(context::level::debug)
-		.flags(process::allow_failure)
-		.arg("ls-files")
-		.arg("--error-unmatch")
-		.arg(relative_file, process::forward_slashes)
-		.cwd(repo);
-
-	p.run();
-	p.join();
-
-	return (p.exit_code() == 0);
-}
-
-std::string git_command::git_file(const fs::path& repo)
-{
-	auto p = process()
-		.binary(git::binary())
-		.stdout_flags(process::keep_in_string)
-		.arg("remote")
-		.arg("get-url")
-		.arg("origin")
-		.cwd(repo);
-
-	p.run();
-	p.join();
-
-	const std::string out = p.stdout_string();
-
-	const auto last_slash = out.find_last_of("/");
-	if (last_slash == std::string::npos)
-	{
-		u8cerr << "bad get-url output '" << out << "'\n";
-		throw bailed();
-	}
-
-	auto s = trim_copy(out.substr(last_slash + 1));
-
-	if (s.empty())
-	{
-		u8cerr << "bad get-url output '" << out << "'\n";
-		throw bailed();
-	}
-
-	return s;
-}
-
-std::string git_command::make_url(const std::string& git_file)
-{
-	return "git@github.com:" + username_ + "/" + git_file;
 }
 
 

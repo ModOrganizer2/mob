@@ -226,7 +226,12 @@ process::impl::impl(const impl& i)
 
 process::impl& process::impl::operator=(const impl& i)
 {
+	handle = {};
+	job = {};
 	interrupt = i.interrupt.load();
+	stdout_pipe = {};
+	stderr_pipe = {};
+
 	return *this;
 }
 

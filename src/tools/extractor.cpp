@@ -28,33 +28,33 @@ extractor& extractor::output(const fs::path& dir)
 
 void extractor::do_run()
 {
-	interruption_file ifile(*cx_, where_, "extractor");
+	interruption_file ifile(cx(), where_, "extractor");
 
 	if (ifile.exists())
 	{
-		cx_->debug(context::generic,
+		cx().debug(context::generic,
 			"previous extraction was interrupted; resuming");
 	}
 	else if (fs::exists(where_))
 	{
 		if (conf::reextract())
 		{
-			cx_->debug(context::reextract, "deleting {}", where_);
-			op::delete_directory(*cx_, where_, op::optional);
+			cx().debug(context::reextract, "deleting {}", where_);
+			op::delete_directory(cx(), where_, op::optional);
 		}
 		else
 		{
-			cx_->debug(context::bypass, "directory {} already exists", where_);
+			cx().debug(context::bypass, "directory {} already exists", where_);
 			return;
 		}
 	}
 
-	cx_->debug(context::generic, "extracting {} into {}", file_, where_);
+	cx().debug(context::generic, "extracting {} into {}", file_, where_);
 
 	ifile.create();
 
-	op::create_directories(*cx_, where_);
-	directory_deleter delete_output(*cx_, where_);
+	op::create_directories(cx(), where_);
+	directory_deleter delete_output(cx(), where_);
 
 	// the -spe from 7z is supposed to figure out if there's a folder in the
 	// archive with the same name as the target and extract its content to
@@ -74,7 +74,7 @@ void extractor::do_run()
 
 	if (file_.u8string().ends_with(u8".tar.gz"))
 	{
-		cx_->trace(context::generic, "this is a tar.gz, piping");
+		cx().trace(context::generic, "this is a tar.gz, piping");
 
 		auto extract_tar = process()
 			.binary(binary())
@@ -119,13 +119,13 @@ void extractor::check_duplicate_directory(const fs::path& ifile)
 	// check for a folder with the same name
 	if (!fs::exists(where_ / dir_name))
 	{
-		cx_->trace(context::generic,
+		cx().trace(context::generic,
 			"no duplicate subdir {}, leaving as-is", dir_name);
 
 		return;
 	}
 
-	cx_->trace(context::generic,
+	cx().trace(context::generic,
 		"found subdir {} with same name as output dir; "
 		"moving everything up one",
 		dir_name);
@@ -149,15 +149,15 @@ void extractor::check_duplicate_directory(const fs::path& ifile)
 		{
 			// don't know what to do with archives that have the
 			// same directory _and_ other directories
-			cx_->bail_out(context::generic,
+			cx().bail_out(context::generic,
 				"check_duplicate_directory: {} is yet another directory",
 				e.path());
 		}
 
-		cx_->trace(context::generic,
+		cx().trace(context::generic,
 			"assuming file {} is useless, deleting", e.path());
 
-		op::delete_file(*cx_, e.path());
+		op::delete_file(cx(), e.path());
 	}
 
 	// now there should only be two things in this directory: another
@@ -167,25 +167,25 @@ void extractor::check_duplicate_directory(const fs::path& ifile)
 	// same name in it
 	const auto temp_dir = where_ / (u8"_mob_" + dir_name.u8string());
 
-	cx_->trace(context::generic,
+	cx().trace(context::generic,
 		"renaming dir to {} to avoid clashes", temp_dir);
 
 	if (fs::exists(temp_dir))
 	{
-		cx_->trace(context::generic,
+		cx().trace(context::generic,
 			"temp dir {} already exists, deleting", temp_dir);
 
-		op::delete_directory(*cx_, temp_dir);
+		op::delete_directory(cx(), temp_dir);
 	}
 
-	op::rename(*cx_, where_ / dir_name, temp_dir);
+	op::rename(cx(), where_ / dir_name, temp_dir);
 
 	// move the content of the directory up
 	for (auto e : fs::directory_iterator(temp_dir))
-		op::move_to_directory(*cx_, e.path(), where_);
+		op::move_to_directory(cx(), e.path(), where_);
 
 	// delete the old directory, which should be empty now
-	op::delete_directory(*cx_, temp_dir);
+	op::delete_directory(cx(), temp_dir);
 }
 
 }	// namespace

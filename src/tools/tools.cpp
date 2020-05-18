@@ -20,6 +20,7 @@ tool::tool(tool&& t)
 
 tool& tool::operator=(tool&& t)
 {
+	cx_ = t.cx_;
 	name_ = std::move(t.name_);
 	interrupted_ = t.interrupted_.load();
 	return *this;
@@ -48,7 +49,7 @@ void tool::interrupt()
 {
 	if (!interrupted_)
 	{
-		cx_->debug(context::interruption, "interrupting {}", name_);
+		cx().debug(context::interruption, "interrupting {}", name_);
 		interrupted_ = true;
 		do_interrupt();
 	}
@@ -57,6 +58,14 @@ void tool::interrupt()
 bool tool::interrupted() const
 {
 	return interrupted_;
+}
+
+const context& tool::cx() const
+{
+	if (cx_)
+		return *cx_;
+	else
+		return gcx();
 }
 
 
@@ -154,7 +163,7 @@ void vs::do_run()
 
 		default:
 		{
-			cx_->bail_out(context::generic, "vs unknown op {}", op_);
+			cx().bail_out(context::generic, "vs unknown op {}", op_);
 		}
 	}
 }

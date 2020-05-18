@@ -58,7 +58,7 @@ void modorganizer::do_fetch()
 {
 	initialize_super(super_path());
 
-	run_tool(git(task_conf().git_op())
+	run_tool(task_conf().make_git()
 		.url(make_github_url(task_conf().mo_org(), repo_))
 		.branch(task_conf().mo_branch())
 		.output(this_source_path()));

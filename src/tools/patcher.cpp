@@ -40,7 +40,7 @@ void patcher::do_run()
 
 	if (!fs::exists(patches_root))
 	{
-		cx_->trace(context::generic,
+		cx().trace(context::generic,
 			"patch directory {} doesn't exist, assuming no patches",
 			patches_root);
 
@@ -52,11 +52,11 @@ void patcher::do_run()
 		const fs::path patches =
 			patches_root / (prebuilt_ ? "prebuilt" : "sources");
 
-		cx_->trace(context::generic, "looking for patches in {}", patches);
+		cx().trace(context::generic, "looking for patches in {}", patches);
 
 		if (!fs::exists(patches))
 		{
-			cx_->trace(context::generic,
+			cx().trace(context::generic,
 				"patch directory {} doesn't exist, assuming no patches",
 				patches);
 
@@ -67,7 +67,7 @@ void patcher::do_run()
 		{
 			if (!e.is_regular_file())
 			{
-				cx_->trace(context::generic,
+				cx().trace(context::generic,
 					"skipping {}, not a file", e.path());
 
 				continue;
@@ -77,14 +77,14 @@ void patcher::do_run()
 
 			if (p.extension() == ".manual_patch")
 			{
-				cx_->trace(context::generic,
+				cx().trace(context::generic,
 					"skipping manual patch {}", e.path());
 
 				continue;
 			}
 			else if (p.extension() != ".patch")
 			{
-				cx_->warning(context::generic,
+				cx().warning(context::generic,
 					"file with unknown extension {}", p);
 
 				continue;
@@ -95,7 +95,7 @@ void patcher::do_run()
 	}
 	else
 	{
-		cx_->trace(context::generic, "doing manual patch from {}", file_);
+		cx().trace(context::generic, "doing manual patch from {}", file_);
 		do_patch(patches_root / file_);
 	}
 }
@@ -121,12 +121,12 @@ void patcher::do_patch(const fs::path& patch_file)
 		.arg("--batch")
 		.arg("--input", patch_file);
 
-	cx_->trace(context::generic, "trying to patch using {}", patch_file);
+	cx().trace(context::generic, "trying to patch using {}", patch_file);
 
 	{
 		// check
 
-		cx_->trace(context::generic,
+		cx().trace(context::generic,
 			"checking if already patched");
 
 		process_ = check;
@@ -134,26 +134,26 @@ void patcher::do_patch(const fs::path& patch_file)
 
 		if (ret == 0)
 		{
-			cx_->trace(context::generic,
+			cx().trace(context::generic,
 				"patch {} already applied", patch_file);
 
 			return;
 		}
 		else if (ret == 1)
 		{
-			cx_->trace(context::generic,
+			cx().trace(context::generic,
 				"looks like the patch is needed");
 		}
 		else
 		{
-			cx_->bail_out(context::generic, "patch returned {}", ret);
+			cx().bail_out(context::generic, "patch returned {}", ret);
 		}
 	}
 
 	{
 		// apply
 
-		cx_->trace(context::generic, "applying patch {}", patch_file);
+		cx().trace(context::generic, "applying patch {}", patch_file);
 		process_ = apply;
 		execute_and_join();
 	}

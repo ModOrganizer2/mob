@@ -98,7 +98,7 @@ fs::path cmake::result() const
 void cmake::do_run()
 {
 	if (root_.empty())
-		cx_->bail_out(context::generic, "cmake output path is empty");
+		cx().bail_out(context::generic, "cmake output path is empty");
 
 	const auto& g = get_generator(gen_);
 
