@@ -22,12 +22,12 @@ void git::set_credentials(
 
 void git::set_remote(
 	const fs::path& repo,
-	std::string username, std::string key,
+	std::string org, std::string key,
 	bool no_push_upstream, bool push_default_origin)
 {
 	git(ops(0))
 		.output(repo)
-		.remote(username, key, no_push_upstream, push_default_origin)
+		.remote(org, key, no_push_upstream, push_default_origin)
 		.do_set_remote();
 }
 
@@ -91,10 +91,10 @@ git& git::credentials(const std::string& username, const std::string& email)
 }
 
 git& git::remote(
-	std::string username, std::string key,
+	std::string org, std::string key,
 	bool no_push_upstream, bool push_default_origin)
 {
-	remote_username_ = username;
+	remote_org_ = org;
 	remote_key_ = key;
 	no_push_upstream_ = no_push_upstream;
 	push_default_origin_ = push_default_origin;
@@ -180,7 +180,7 @@ bool git::do_clone()
 	if (!creds_username_.empty() || !creds_email_.empty())
 		do_set_credentials();
 
-	if (!remote_username_.empty())
+	if (!remote_org_.empty())
 		do_set_remote();
 
 	if (ignore_ts_)
@@ -230,7 +230,7 @@ void git::do_set_remote()
 	if (no_push_upstream_)
 		set_remote_push("upstream", "nopushurl");
 
-	add_remote("origin", make_url(remote_username_, gf));
+	add_remote("origin", make_url(remote_org_, gf));
 
 	if (push_default_origin_)
 		set_config("remote.pushdefault", "origin");
@@ -391,9 +391,9 @@ std::string git::git_file()
 }
 
 std::string git::make_url(
-	const std::string& username, const std::string& git_file)
+	const std::string& org, const std::string& git_file)
 {
-	return "git@github.com:" + username + "/" + git_file;
+	return "git@github.com:" + org + "/" + git_file;
 }
 
 }	// namespace

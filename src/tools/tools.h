@@ -157,14 +157,14 @@ public:
 
 	static void set_remote(
 		const fs::path& repo,
-		std::string username, std::string key,
+		std::string org, std::string key,
 		bool no_push_upstream, bool push_default_origin);
 
 	static void ignore_ts(const fs::path& repo, bool b);
 
 	static void add_remote(
 		const fs::path& repo, const std::string& remote_name,
-		const std::string& username, const std::string& key,
+		const std::string& org, const std::string& key,
 		bool push_default);
 
 
@@ -175,7 +175,7 @@ public:
 	git& ignore_ts(bool b);
 
 	git& remote(
-		std::string username, std::string key,
+		std::string org, std::string key,
 		bool no_push_upstream, bool push_default_origin);
 
 protected:
@@ -188,7 +188,7 @@ private:
 	fs::path where_;
 	std::string creds_username_;
 	std::string creds_email_;
-	std::string remote_username_;
+	std::string remote_org_;
 	std::string remote_key_;
 	bool no_push_upstream_ = false;
 	bool push_default_origin_ = false;
@@ -212,7 +212,7 @@ private:
 	std::string git_file();
 
 	static std::string make_url(
-		const std::string& username, const std::string& git_file);
+		const std::string& org, const std::string& git_file);
 };
 
 

@@ -229,7 +229,7 @@ git task_conf_holder::make_git()
 	if (conf::bool_option_by_name(task_.names(), "set_origin_remote"))
 	{
 		g.remote(
-			conf::option_by_name(task_.names(), "remote_username"),
+			conf::option_by_name(task_.names(), "remote_org"),
 			conf::option_by_name(task_.names(), "remote_key"),
 			conf::bool_option_by_name(task_.names(), "remote_no_push_upstream"),
 			conf::bool_option_by_name(task_.names(), "remote_push_default_origin")
