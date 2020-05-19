@@ -14,6 +14,7 @@ std::string version()
 	return "mob 3.0";
 }
 
+
 void help(const clipp::group& g, const std::string& more)
 {
 #pragma warning(suppress: 4548)
@@ -48,6 +49,7 @@ command::command(flags f)
 clipp::group command::common_options_group()
 {
 	auto& o = common;
+	const auto master = master_ini_filename();
 
 	return
 		(clipp::repeatable(clipp::option("-i", "--ini")
@@ -78,7 +80,8 @@ clipp::group command::common_options_group()
 			%  "sets an option, such as 'versions/openssl=1.2'",
 
 		(clipp::option("--no-default-inis") >> o.no_default_inis)
-			% "disables auto detection of ini files, only uses --ini";
+			% "disables auto loading of ini files, only uses --ini; the first"
+			  "--ini must be the master ini file";
 }
 
 void command::force_exit_code(int code)
@@ -111,14 +114,8 @@ clipp::group command::group()
 	return do_group();
 }
 
-int command::run()
+void command::convert_cl_to_conf()
 {
-	if (help_)
-	{
-		help(group(), do_doc());
-		return 0;
-	}
-
 	auto& o = common;
 
 	if (o.file_log_level == -1)
@@ -146,25 +143,53 @@ int command::run()
 
 	if (!o.prefix.empty())
 		o.options.push_back("paths/prefix=" + o.prefix);
+}
 
-	do_pre_run();
+int command::gather_inis(bool verbose)
+{
+	auto& o = common;
+
+	if (o.no_default_inis && o.inis.empty())
+	{
+		u8cerr
+			<< "--no-default-inis requires at least one --ini for the "
+			<< "master ini file\n";
+
+		return 1;
+	}
+
+	try
+	{
+		inis_ = find_inis(!o.no_default_inis, o.inis, verbose);
+		return 0;
+	}
+	catch(bailed&)
+	{
+		return 1;
+	}
+}
+
+int command::prepare_options(bool verbose)
+{
+	convert_cl_to_conf();
+	return gather_inis(verbose);
+}
+
+int command::run()
+{
+	if (help_)
+	{
+		help(group(), do_doc());
+		return 0;
+	}
 
 	if (flags_ & requires_options)
 	{
-		if (o.no_default_inis && o.inis.empty())
-		{
-			u8cerr
-				<< "--no-default-inis requires at least one --ini for the "
-				<< "master ini file\n";
+		const int r = prepare_options(false);
+		if (r != 0)
+			return r;
 
-			return 1;
-		}
-
-		std::vector<fs::path> inis;
-		for (auto&& s : o.inis)
-			inis.push_back(s);
-
-		init_options(inis, !o.no_default_inis, o.options);
+		init_options(inis_, common.options);
 		log_options();
 
 		if (!verify_options())
@@ -177,6 +202,11 @@ int command::run()
 		return *code_;
 
 	return r;
+}
+
+const std::vector<fs::path>& command::inis() const
+{
+	return inis_;
 }
 
 
@@ -204,18 +234,19 @@ int help_command::do_run()
 #pragma warning(suppress: 4548)
 	auto doc = (command::common_options_group(), (clipp::value("command")));
 
-	const auto mobini = master_ini_filename();
+	const auto master = master_ini_filename();
 
 	help(doc,
 		"Commands:\n"
 		"    help       shows this message\n"
 		"    version    shows the version\n"
 		"    list       lists available tasks\n"
-		"    options    lists available options and default values\n"
+		"    options    lists all options and their values from the inis\n"
 		"    build      builds tasks\n"
 		"    release    creates a release or a devbuild\n"
 		"    git        manages the git repos\n"
 		"    cmake      runs cmake in a directory\n"
+		"    inis       lists the INIs used by mob (debug)\n"
 		"\n\n"
 		"Invoking `mob -d some/prefix build` builds everything. Do \n"
 		"`mob build <task name>...` to build specific tasks. See\n"
@@ -223,24 +254,23 @@ int help_command::do_run()
 		"\n"
 		"INI files\n"
 		"\n"
-		"By default, mob will look for a master INI `" + mobini + "` in the \n"
-		"current directory and up to three of its parents (so it can also be\n"
-		"found from the build directory). Once mob found the master INI, it\n"
-		"will look for any other .ini file in the same directory.\n"
-		"\n"
-		"These additional INI files will be loaded after the master, in\n"
-		"lexicographical order, overriding anything the previous INI file\n"
-		"may have set.\n"
-		"\n"
-		"Additional INI files may be specified with --ini. They will be\n"
-		"loaded in order after the ones that were auto detected. If the same\n"
-		"INI file is found in the directory and on the command line, its\n"
-		"position in the load order will be moved to that of the command\n"
-		"line.");
+		"By default, mob will look for a master INI `" + master + "` in the \n"
+		"root directory (typically where mob.exe resides). Once mob has\n"
+		"found the master INI, it will look for the same filename in the\n"
+		"current directory, if different from the root. If found, both will\n"
+		"be loaded, but the one in the current directory will override the\n"
+		"the other. Additional INIs can be specified with --ini, those will\n"
+		"be loaded after the two mentioned above. Use --no-default-inis to\n"
+		"only disable auto detection and only use --ini.");
 
 	return 0;
 }
 
+
+options_command::options_command()
+	: command(requires_options)
+{
+}
 
 clipp::group options_command::do_group()
 {
@@ -260,10 +290,7 @@ int options_command::do_run()
 
 std::string options_command::do_doc()
 {
-	return
-		"Lists all available options in the form of `section/key = default`.\n"
-		"They can be changed in the INI file by setting `key = value` within\n"
-		"`[section]` or with `-s section/key=value`.";
+	return "Lists the final value of all options found by loading the INIs.";
 }
 
 
@@ -304,16 +331,18 @@ clipp::group build_command::do_group()
 			"projects";
 }
 
-void build_command::do_pre_run()
+void build_command::convert_cl_to_conf()
 {
+	command::convert_cl_to_conf();
+
 	if (redownload_ || clean_)
-		common.options.push_back("options/redownload=true");
+		common.options.push_back("global/redownload=true");
 
 	if (reextract_ || clean_)
-		common.options.push_back("options/reextract=true");
+		common.options.push_back("global/reextract=true");
 
 	if (rebuild_ || clean_)
-		common.options.push_back("options/rebuild=true");
+		common.options.push_back("global/rebuild=true");
 
 	if (nopull_)
 		common.options.push_back("options/no_pull=true");
@@ -969,6 +998,37 @@ std::string cmake_command::do_doc()
 	return
 		"Runs `cmake ..` in the given directory with the same command line\n"
 		"as the one used for modorganizer projects.";
+}
+
+
+clipp::group inis_command::do_group()
+{
+	return clipp::group(
+		clipp::command("inis").set(picked_),
+
+		(clipp::option("-h", "--help") >> help_)
+			% ("shows this message")
+	);
+}
+
+int inis_command::do_run()
+{
+	const auto r = prepare_options(true);
+	if (r != 0)
+		return r;
+
+	u8cout << "\nhigher number overrides lower\n";
+
+	const auto v = inis();
+	for (std::size_t i=0; i<v.size(); ++i)
+		u8cout << (i + 1) << ") " << path_to_utf8(v[i]) << "\n";
+
+	return 0;
+}
+
+std::string inis_command::do_doc()
+{
+	return "Shows which INIs are found.";
 }
 
 }	// namespace

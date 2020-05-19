@@ -103,9 +103,12 @@ struct paths
 
 std::string master_ini_filename();
 
+std::vector<fs::path> find_inis(
+	bool auto_detect, const std::vector<std::string>& from_cl,
+	bool verbose);
+
 void init_options(
-	const std::vector<fs::path>& inis_from_cl, bool auto_detection,
-	const std::vector<std::string>& opts);
+	const std::vector<fs::path>& inis, const std::vector<std::string>& opts);
 
 bool verify_options();
 void log_options();

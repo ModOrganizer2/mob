@@ -50,10 +50,12 @@ struct this_env
 	static void prepend_to_path(const fs::path& p);
 
 	static env get();
+
 	static std::string get(const std::string& k);
+	static std::optional<std::string> get_opt(const std::string& k);
 
 private:
-	static std::wstring get_impl(const std::string& k);
+	static std::optional<std::wstring> get_impl(const std::string& k);
 };
 
 }	// namespace

@@ -224,14 +224,14 @@ void this_env::set(const std::string& k, const std::string& v, env::flags f)
 
 		case env::append:
 		{
-			const std::wstring current = get_impl(k);
+			const std::wstring current = get_impl(k).value_or(L"");
 			::SetEnvironmentVariableW(wk.c_str(), (current + wv).c_str());
 			break;
 		}
 
 		case env::prepend:
 		{
-			const std::wstring current = get_impl(k);
+			const std::wstring current = get_impl(k).value_or(L"");
 			::SetEnvironmentVariableW(wk.c_str(), (wv + current).c_str());
 			break;
 		}
@@ -246,10 +246,23 @@ void this_env::prepend_to_path(const fs::path& p)
 
 std::string this_env::get(const std::string& name)
 {
-	return utf16_to_utf8(get_impl(name));
+	auto v = get_impl(name);
+	if (!v)
+		bail_out("environment variable {} doesn't exist", name);
+
+	return utf16_to_utf8(*v);
 }
 
-std::wstring this_env::get_impl(const std::string& k)
+std::optional<std::string> this_env::get_opt(const std::string& name)
+{
+	auto v = get_impl(name);
+	if (v)
+		return utf16_to_utf8(*v);
+	else
+		return {};
+}
+
+std::optional<std::wstring> this_env::get_impl(const std::string& k)
 {
 	const std::wstring wk = utf8_to_utf16(k);
 
@@ -257,7 +270,7 @@ std::wstring this_env::get_impl(const std::string& k)
 		wk.c_str(), nullptr, 0);
 
 	if (buffer_size == 0)
-		bail_out("environment variable {} doesn't exist", k);
+		return {};
 
 	auto buffer = std::make_unique<wchar_t[]>(buffer_size + 1);
 	std::fill(buffer.get(), buffer.get() + buffer_size + 1, 0);
@@ -266,11 +279,11 @@ std::wstring this_env::get_impl(const std::string& k)
 		wk.c_str(), buffer.get(), static_cast<DWORD>(buffer_size));
 
 	if (written == 0)
-		bail_out("environment variable {} doesn't exist", k);
+		return {};
 
 	MOB_ASSERT((written + 1) == buffer_size);
 
-	return {buffer.get(), buffer.get() + written};
+	return std::wstring(buffer.get(), buffer.get() + written);
 }
 
 env this_env::get()

@@ -9,14 +9,14 @@
 namespace mob
 {
 
+conf::task_map conf::map_;
+int conf::output_log_level_ = 3;
+int conf::file_log_level_ = 5;
+
 std::string master_ini_filename()
 {
 	return "mob.ini";
 }
-
-conf::task_map conf::map_;
-int conf::output_log_level_ = 3;
-int conf::file_log_level_ = 5;
 
 
 std::string conf::get_global(const std::string& section, const std::string& key)
@@ -232,6 +232,18 @@ std::vector<std::string> conf::format_options()
 
 	std::vector<std::string> lines;
 
+	lines.push_back(
+		pad_right("task", longest_task) + "  " +
+		pad_right("section", longest_section) + "  " +
+		pad_right("key",longest_key) + "   " +
+		"value");
+
+	lines.push_back(
+		pad_right("-", longest_task, '-') + "  " +
+		pad_right("-", longest_section, '-') + "  " +
+		pad_right("-",longest_key, '-') + "   " +
+		"-----");
+
 	for (auto&& [t, ss] : map_)
 	{
 		for (auto&& [s, kv] : ss)
@@ -297,25 +309,51 @@ bool try_parts(fs::path& check, const std::vector<std::string>& parts)
 	return false;
 }
 
-fs::path find_root_impl()
+fs::path mob_exe_path()
 {
-	gcx().trace(context::conf, "looking for root directory");
+	// double the buffer size 10 times
+	const int max_tries = 10;
 
-	fs::path p = fs::current_path();
+	DWORD buffer_size = MAX_PATH;
 
-	if (try_parts(p, {"..", "..", "..", "third-party"}))
-		return p;
+	for (int tries=0; tries<max_tries; ++tries)
+	{
+		auto buffer = std::make_unique<wchar_t[]>(buffer_size + 1);
+		DWORD n = GetModuleFileNameW(0, buffer.get(), buffer_size);
 
-	gcx().bail_out(context::conf, "root directory not found");
+		if (n == 0) {
+			const auto e = GetLastError();
+			gcx().bail_out(context::conf,
+				"can't get module filename, {}", error_message(e));
+		}
+		else if (n >= buffer_size) {
+			// buffer is too small, try again
+			buffer_size *= 2;
+		} else {
+			// if GetModuleFileName() works, `n` does not include the null
+			// terminator
+			const std::wstring s(buffer.get(), n);
+			return fs::canonical(s);
+		}
+	}
+
+	gcx().bail_out(context::conf, "can't get module filename");
 }
 
 fs::path find_root()
 {
-	const auto p = find_root_impl().parent_path();
+	gcx().trace(context::conf, "looking for root directory");
 
-	gcx().trace(context::conf, "found root directory at {}", p);
+	fs::path p = mob_exe_path().parent_path();
 
-	return p;
+	if (try_parts(p, {"..", "..", "..", "third-party"}))
+	{
+		p = fs::canonical(p.parent_path());
+		gcx().trace(context::conf, "found root directory at {}", p);
+		return p;
+	}
+
+	gcx().bail_out(context::conf, "root directory not found");
 }
 
 fs::path find_in_root(const fs::path& file)
@@ -593,17 +631,6 @@ void ini_error(const fs::path& ini, std::size_t line, const std::string& what)
 		ini.filename(), (line + 1), what);
 }
 
-fs::path find_master_ini()
-{
-	auto p = fs::current_path();
-
-	if (try_parts(p, {"..", "..", "..", master_ini_filename()}))
-		return fs::canonical(p);
-
-	gcx().bail_out(context::conf,
-		"can't find master ini {}", master_ini_filename());
-}
-
 std::vector<std::string> read_ini(const fs::path& ini)
 {
 	std::ifstream in(ini);
@@ -783,67 +810,100 @@ void set_special_options()
 	conf::set_file_log_level(conf::get_global("global", "file_log_level"));
 }
 
-std::vector<fs::path> find_inis(const std::vector<fs::path>& inis_from_cl)
+std::vector<fs::path> find_inis(
+	bool auto_detect, const std::vector<std::string>& from_cl, bool verbose)
 {
-	const auto master = find_master_ini();
-
 	std::vector<fs::path> v;
 
-	for (auto&& e : fs::directory_iterator(master.parent_path()))
+	auto add_or_move_up = [&](fs::path p)
 	{
-		const auto p = e.path();
-
-		if (path_to_utf8(p.extension()) != ".ini")
-			continue;
-
-		if (p.filename() == master.filename())
-			continue;
-
-		v.push_back(p);
-	}
-
-	std::sort(v.begin(), v.end());
-	v.insert(v.begin(), master);
-
-	for (auto&& p : inis_from_cl)
-	{
-		if (!fs::exists(p))
-		{
-			u8cerr << "ini " << p << " not found\n";
-			throw bailed();
-		}
-
-		bool found = false;
-
 		for (auto itor=v.begin(); itor!=v.end(); ++itor)
 		{
 			if (fs::equivalent(p, *itor))
 			{
-				found = true;
 				v.erase(itor);
 				v.push_back(p);
-				break;
+				return;
 			}
 		}
 
-		if (!found)
-			v.push_back(p);
+		v.push_back(p);
+	};
+
+
+	// auto detect from exe directory and cwd
+	if (auto_detect)
+	{
+		if (verbose)
+			u8cout << "root is " << path_to_utf8(find_root()) << "\n";
+
+		const auto master = find_in_root(master_ini_filename());
+
+		if (verbose)
+			u8cout << "found master " << master_ini_filename() << "\n";
+
+		v.push_back(master);
+
+		const auto in_cwd = fs::current_path() / master_ini_filename();
+		if (fs::exists(in_cwd) && !fs::equivalent(in_cwd, master))
+		{
+			if (verbose)
+				u8cout << "also found in cwd " << path_to_utf8(in_cwd) << "\n";
+
+			v.push_back(fs::canonical(in_cwd));
+		}
+	}
+
+	// MOBINI environment variable
+	if (auto e=this_env::get_opt("MOBINI"))
+	{
+		if (verbose)
+			u8cout << "found env MOBINI: " << *e << "\n";
+
+		for (auto&& i : split(*e, ";"))
+		{
+			if (verbose)
+				u8cout << "checking '" << i << "'\n";
+
+			auto p = fs::path(i);
+			if (!fs::exists(p))
+			{
+				u8cerr << "ini from env MOBINI " << i << " not found\n";
+				throw bailed();
+			}
+
+			p = fs::canonical(p);
+
+			if (verbose)
+				u8cout << "ini from env: " << path_to_utf8(p) << "\n";
+
+			add_or_move_up(p);
+		}
+	}
+
+	for (auto&& i : from_cl)
+	{
+		auto p = fs::path(i);
+		if (!fs::exists(p))
+		{
+			u8cerr << "ini " << i << " not found\n";
+			throw bailed();
+		}
+
+		p = fs::canonical(p);
+
+		if (verbose)
+			u8cout << "ini from command line: " << path_to_utf8(p) << "\n";
+
+		add_or_move_up(p);
 	}
 
 	return v;
 }
 
 void init_options(
-	const std::vector<fs::path>& inis_from_cl, bool auto_detection,
-	const std::vector<std::string>& opts)
+	const std::vector<fs::path>& inis, const std::vector<std::string>& opts)
 {
-	std::vector<fs::path> inis;
-
-	if (auto_detection)
-		inis = find_inis(inis_from_cl);
-	else
-		inis = inis_from_cl;
-
 	MOB_ASSERT(!inis.empty());
 
 	bool add = true;

@@ -232,6 +232,8 @@ std::string replace_all(
 	std::string s, const std::string& from, const std::string& to);
 
 std::string join(const std::vector<std::string>& v, const std::string& sep);
+std::vector<std::string> split(const std::string& s, const std::string& sep);
+
 std::string pad_right(std::string s, std::size_t n, char c=' ');
 std::string pad_left(std::string s, std::size_t n, char c=' ');
 

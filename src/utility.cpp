@@ -322,6 +322,27 @@ std::string join(const std::vector<std::string>& v, const std::string& sep)
 	return s;
 }
 
+std::vector<std::string> split(const std::string& s, const std::string& seps)
+{
+	std::vector<std::string> v;
+
+	std::size_t start = 0;
+
+	while (start < s.size())
+	{
+		auto p = s.find_first_of(seps, start);
+		if (p == std::string::npos)
+			p = s.size();
+
+		if (p - start > 0)
+			v.push_back(s.substr(start, p - start));
+
+		start = p + 1;
+	}
+
+	return v;
+}
+
 void trim(std::string& s, const std::string& what)
 {
 	while (!s.empty())

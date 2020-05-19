@@ -17,6 +17,7 @@ public:
 		std::vector<std::string> options;
 		std::vector<std::string> inis;
 		bool no_default_inis = false;
+		bool dump_inis = false;
 		std::string prefix;
 	};
 
@@ -34,6 +35,8 @@ public:
 	clipp::group group();
 	int run();
 
+	const std::vector<fs::path>& inis() const;
+
 protected:
 	enum flags
 	{
@@ -46,14 +49,19 @@ protected:
 
 	command(flags f=noflags);
 
+	virtual void convert_cl_to_conf();
+	int prepare_options(bool verbose);
+
 	virtual clipp::group do_group() = 0;
-	virtual void do_pre_run() {};
 	virtual int do_run() = 0;
 	virtual std::string do_doc() { return {}; }
 
 private:
 	flags flags_;
 	std::optional<int> code_;
+	std::vector<fs::path> inis_;
+
+	int gather_inis(bool verbose);
 };
 
 
@@ -80,6 +88,7 @@ protected:
 class options_command : public command
 {
 public:
+	options_command();
 
 protected:
 	clipp::group do_group() override;
@@ -94,8 +103,8 @@ public:
 	build_command();
 
 protected:
+	void convert_cl_to_conf() override;
 	clipp::group do_group() override;
-	void do_pre_run() override;
 	int do_run() override;
 
 private:
@@ -213,6 +222,17 @@ private:
 	bool x64_ = true;
 	std::string prefix_;
 	std::string path_;
+};
+
+
+class inis_command : public command
+{
+public:
+
+protected:
+	clipp::group do_group() override;
+	int do_run() override;
+	std::string do_doc() override;
 };
 
 }	// namespace
