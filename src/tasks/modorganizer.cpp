@@ -61,7 +61,7 @@ void modorganizer::do_fetch()
 	run_tool(task_conf().make_git()
 		.url(make_github_url(task_conf().mo_org(), repo_))
 		.branch(task_conf().mo_branch())
-		.output(this_source_path()));
+		.root(this_source_path()));
 }
 
 cmake modorganizer::create_cmake_tool(const fs::path& root)
@@ -94,19 +94,11 @@ void modorganizer::do_build_and_install()
 {
 	{
 		std::scoped_lock lock(g_super_mutex);
-
-		run_tool(process_runner(process()
-			.binary(git::binary())
-			.arg("-c", "core.autocrlf=false")
-			.arg("submodule")
-			.arg("--quiet")
-			.arg("add")
-			.arg("-b", task_conf().mo_branch())
-			.arg("--force")
-			.arg("--name", name())
-			.arg(make_github_url(task_conf().mo_org(), repo_))
-			.arg(name())
-			.cwd(super_path())));
+		run_tool(task_conf().make_git(git::ops::add_submodule)
+			.url(make_github_url(task_conf().mo_org(), repo_))
+			.branch(task_conf().mo_branch())
+			.submodule_name(name())
+			.root(super_path()));
 	}
 
 	if (!fs::exists(this_source_path() / "CMakeLists.txt"))
@@ -161,30 +153,14 @@ void modorganizer::initialize_super(const fs::path& super_root)
 
 	cx().trace(context::generic, "checking super");
 
-	auto p = process()
-		.binary(git::binary())
-		.arg("rev-parse")
-		.arg("--is-inside-work-tree")
-		.stderr_filter([](process::filter& f)
-		{
-			if (f.line.find("not a git repo") != std::string::npos)
-				f.lv = context::level::trace;
-		})
-		.flags(process::allow_failure)
-		.cwd(super_root);
-
-	if (run_tool(process_runner(p)) == 0)
+	if (git::is_git_repo(super_root))
 	{
 		cx().debug(context::generic, "super already initialized");
 		return;
 	}
 
 	cx().trace(context::generic, "initializing super");
-
-	run_tool(process_runner(process()
-		.binary(git::binary())
-		.arg("init")
-		.cwd(super_root)));
+	git::init_repo(super_root);
 }
 
 }	// namespace

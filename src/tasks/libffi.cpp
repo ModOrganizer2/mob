@@ -29,7 +29,7 @@ void libffi::do_fetch()
 	run_tool(task_conf().make_git()
 		.url(make_github_url("python","cpython-bin-deps"))
 		.branch("libffi")
-		.output(source_path()));
+		.root(source_path()));
 }
 
 fs::path libffi::include_path()

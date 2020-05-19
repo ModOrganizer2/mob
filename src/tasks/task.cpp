@@ -215,9 +215,17 @@ bool task_conf_holder::no_pull()
 	return conf::bool_option_by_name(task_.names(), "no_pull");
 }
 
-git task_conf_holder::make_git()
+git task_conf_holder::make_git(git::ops o)
 {
-	git g(no_pull() ? git::clone : git::clone_or_pull);
+	if (o == git::ops::none)
+	{
+		if (no_pull())
+			o = git::ops::clone;
+		else
+			o = git::ops::clone_or_pull;
+	}
+
+	git g(o);
 
 	g.ignore_ts(conf::bool_option_by_name(task_.names(), "ignore_ts"));
 

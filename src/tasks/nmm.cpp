@@ -34,7 +34,7 @@ void nmm::do_fetch()
 	run_tool(task_conf().make_git()
 		.url(make_github_url("Nexus-Mods", "Nexus-Mod-Manager"))
 		.branch(version())
-		.output(source_path()));
+		.root(source_path()));
 
 	run_tool(nuget(source_path() / "NexusClient.sln"));
 }

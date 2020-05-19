@@ -38,7 +38,7 @@ public:
 	std::string mo_branch();
 	bool no_pull();
 
-	git make_git();
+	git make_git(git::ops o=git::ops::none);
 
 private:
 	const task& task_;

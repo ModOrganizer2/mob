@@ -35,7 +35,7 @@ void ncc::do_fetch()
 	run_tool(task_conf().make_git()
 		.url(make_github_url(task_conf().mo_org(), "modorganizer-NCC"))
 		.branch(task_conf().mo_branch())
-		.output(source_path()));
+		.root(source_path()));
 }
 
 void ncc::do_build_and_install()

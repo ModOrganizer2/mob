@@ -133,11 +133,13 @@ private:
 class git : public basic_process_runner
 {
 public:
-	enum ops
+	enum class ops
 	{
-		clone = 1,
+		none = 0,
+		clone,
 		pull,
-		clone_or_pull
+		clone_or_pull,
+		add_submodule
 	};
 
 	struct creds
@@ -167,11 +169,15 @@ public:
 		const std::string& org, const std::string& key,
 		bool push_default);
 
+	static bool is_git_repo(const fs::path& p);
+	static void init_repo(const fs::path& p);
+
 
 	git& url(const mob::url& u);
 	git& branch(const std::string& name);
-	git& output(const fs::path& dir);
+	git& root(const fs::path& dir);
 	git& credentials(const std::string& username, const std::string& email);
+	git& submodule_name(const std::string& name);
 	git& ignore_ts(bool b);
 
 	git& remote(
@@ -185,7 +191,8 @@ private:
 	ops op_;
 	mob::url url_;
 	std::string branch_;
-	fs::path where_;
+	fs::path root_;
+	std::string submodule_;
 	std::string creds_username_;
 	std::string creds_email_;
 	std::string remote_org_;
@@ -194,9 +201,12 @@ private:
 	bool push_default_origin_ = false;
 	bool ignore_ts_;
 
+	process make_process();
+
 	void do_clone_or_pull();
 	bool do_clone();
 	void do_pull();
+	void do_add_submodule();
 
 	void do_set_credentials();
 	void do_set_remote();
@@ -209,6 +219,9 @@ private:
 	void set_remote_push(const std::string& remote, const std::string& url);
 	void set_assume_unchanged(const fs::path& relative_file, bool on);
 	bool is_tracked(const fs::path& relative_file);
+	bool is_repo();
+	void init();
+
 	std::string git_file();
 
 	static std::string make_url(

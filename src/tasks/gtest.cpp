@@ -34,7 +34,7 @@ void gtest::do_fetch()
 	run_tool(task_conf().make_git()
 		.url(make_github_url("google", "googletest"))
 		.branch(version())
-		.output(source_path()));
+		.root(source_path()));
 }
 
 void gtest::do_build_and_install()

@@ -29,7 +29,7 @@ void spdlog::do_fetch()
 	run_tool(task_conf().make_git()
 		.url(make_github_url("gabime", "spdlog"))
 		.branch(version())
-		.output(source_path()));
+		.root(source_path()));
 }
 
 }	// namespace

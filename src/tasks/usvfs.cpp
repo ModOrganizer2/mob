@@ -68,7 +68,7 @@ void usvfs::fetch_from_source()
 	run_tool(task_conf().make_git()
 		.url(make_github_url(task_conf().mo_org(), "usvfs"))
 		.branch(version())
-		.output(source_path()));
+		.root(source_path()));
 }
 
 void usvfs::build_and_install_from_source()

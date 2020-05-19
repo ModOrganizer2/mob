@@ -114,7 +114,7 @@ void python::fetch_from_source()
 	run_tool(task_conf().make_git()
 		.url(make_github_url("python", "cpython"))
 		.branch(version())
-		.output(source_path()));
+		.root(source_path()));
 
 	run_tool(vs(vs::upgrade)
 		.solution(solution_file()));
