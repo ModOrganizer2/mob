@@ -280,10 +280,10 @@ parsed_option parse_option(const std::string& s)
 			"bad option {}, must be [task:]section/key=value", s);
 	}
 
-	std::string task = trim_copy(m[1]);
-	std::string section = trim_copy(m[2]);
-	std::string key = trim_copy(m[3]);
-	std::string value = trim_copy(m[4]);
+	std::string task = trim_copy(m[1].str());
+	std::string section = trim_copy(m[2].str());
+	std::string key = trim_copy(m[3].str());
+	std::string value = trim_copy(m[4].str());
 
 	return {task, section, key, value};
 }

@@ -112,10 +112,34 @@ std::string prefix(context::reason r)
 		return std::string(total, ' ');
 }
 
-std::string error_message(DWORD e)
+std::string error_message(DWORD id)
 {
-	return std::error_code(
-		static_cast<int>(e), std::system_category()).message();
+	wchar_t* message = nullptr;
+
+	const auto ret = FormatMessageW(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER |
+		FORMAT_MESSAGE_FROM_SYSTEM |
+		FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL,
+		id,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		reinterpret_cast<LPWSTR>(&message),
+		0, NULL);
+
+	std::wstring s;
+
+	std::wostringstream oss;
+	oss << L"0x" << std::hex << id;
+
+	if (ret == 0 || !message) {
+		s = oss.str();
+	} else {
+		s = trim_copy(message) + L" (" + oss.str() + L")";
+	}
+
+	LocalFree(message);
+
+	return utf16_to_utf8(s);
 }
 
 std::string timestamp()

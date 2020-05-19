@@ -237,8 +237,11 @@ std::vector<std::string> split(const std::string& s, const std::string& sep);
 std::string pad_right(std::string s, std::size_t n, char c=' ');
 std::string pad_left(std::string s, std::size_t n, char c=' ');
 
-void trim(std::string& s, const std::string& what=" \t\r\n");
-std::string trim_copy(const std::string& s, const std::string& what=" \t\r\n");
+void trim(std::string& s, std::string_view what=" \t\r\n");
+void trim(std::wstring& s, std::wstring_view what=L" \t\r\n");
+
+std::string trim_copy(std::string_view s, std::string_view what=" \t\r\n");
+std::wstring trim_copy(std::wstring_view s, std::wstring_view what=L" \t\r\n");
 
 std::wstring utf8_to_utf16(std::string_view s);
 std::string utf16_to_utf8(std::wstring_view ws);

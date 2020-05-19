@@ -24,13 +24,15 @@ static unsigned char sym_buffer[sizeof(SYMBOL_INFOW) + max_name_length];
 static SYMBOL_INFOW* sym = (SYMBOL_INFOW*)sym_buffer;
 static wchar_t exception_message[exception_message_length + 1] = {};
 
+static LPTOP_LEVEL_EXCEPTION_FILTER g_previous_handler = nullptr;
 
 void dump_stacktrace(const wchar_t* what)
 {
 	std::scoped_lock lock(g_output_mutex);
 
 	std::wcerr
-		<< L"\n\n*****************************\n"
+		<< "\n\nmob has crashed\n"
+		<< L"*****************************\n\n"
 		<< what << L"\n\n";
 
 
@@ -43,7 +45,7 @@ void dump_stacktrace(const wchar_t* what)
 	SymInitializeW(process, NULL, TRUE);
 
 	const std::size_t frame_count = CaptureStackBackTrace(
-		3, max_frames, frame_addresses, nullptr);
+		0, max_frames, frame_addresses, nullptr);
 
 	for (std::size_t i=0; i<frame_count; ++i)
 	{
@@ -144,8 +146,15 @@ const wchar_t* error_code_name(DWORD code)
 		default:                                 return L"unknown exception" ;
 	}
 }
+
 LONG WINAPI unhandled_exception_handler(LPEXCEPTION_POINTERS ep) noexcept
 {
+	if (ep->ExceptionRecord->ExceptionCode == 0xE06D7363)
+	{
+		if (g_previous_handler)
+			return g_previous_handler(ep);;
+	}
+
 	wchar_t* p = exception_message;
 	std::size_t remaining = exception_message_length;
 
@@ -172,8 +181,10 @@ LONG WINAPI unhandled_exception_handler(LPEXCEPTION_POINTERS ep) noexcept
 
 void set_thread_exception_handlers()
 {
+	g_previous_handler = SetUnhandledExceptionFilter(
+		mob::unhandled_exception_handler);
+
 	std::set_terminate(mob::terminate_handler);
-	SetUnhandledExceptionFilter(mob::unhandled_exception_handler);
 }
 
 
@@ -343,7 +354,8 @@ std::vector<std::string> split(const std::string& s, const std::string& seps)
 	return v;
 }
 
-void trim(std::string& s, const std::string& what)
+template <class C>
+void trim_impl(std::basic_string<C>& s, std::basic_string_view<C> what)
 {
 	while (!s.empty())
 	{
@@ -356,12 +368,36 @@ void trim(std::string& s, const std::string& what)
 	}
 }
 
-std::string trim_copy(const std::string& s, const std::string& what)
+template <class C>
+std::basic_string<C> trim_copy_impl(
+	std::basic_string_view<C> s, std::basic_string_view<C> what)
 {
-	std::string c = s;
+	std::basic_string<C> c(s);
 	trim(c, what);
 	return c;
 }
+
+
+void trim(std::string& s, std::string_view what)
+{
+	trim_impl(s, what);
+}
+
+void trim(std::wstring& s, std::wstring_view what)
+{
+	trim_impl(s, what);
+}
+
+std::string trim_copy(std::string_view s, std::string_view what)
+{
+	return trim_copy_impl(s, what);
+}
+
+std::wstring trim_copy(std::wstring_view s, std::wstring_view what)
+{
+	return trim_copy_impl(s, what);
+}
+
 
 std::string pad_right(std::string s, std::size_t n, char c)
 {
