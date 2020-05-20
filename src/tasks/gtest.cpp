@@ -26,20 +26,26 @@ fs::path gtest::source_path()
 
 void gtest::do_clean_for_rebuild()
 {
-	cmake::clean(cx(), source_path());
+	instrument(times_.clean, [&]
+	{
+		cmake::clean(cx(), source_path());
+	});
 }
 
 void gtest::do_fetch()
 {
-	run_tool(task_conf().make_git()
-		.url(make_github_url("google", "googletest"))
-		.branch(version())
-		.root(source_path()));
+	instrument(times_.fetch, [&]
+	{
+		run_tool(task_conf().make_git()
+			.url(make_github_url("google", "googletest"))
+			.branch(version())
+			.root(source_path()));
+	});
 }
 
 void gtest::do_build_and_install()
 {
-	parallel({
+	instrument(times_.build, [&]{ parallel({
 		{"gtest64", [&] {
 			// x64
 			const auto build_path_x64 = run_tool(cmake()
@@ -64,7 +70,7 @@ void gtest::do_build_and_install()
 				.architecture(arch::x86)
 				.solution(build_path_x86 / "INSTALL.vcxproj"));
 		}}
-	});
+	});});
 }
 
 }	// namespace

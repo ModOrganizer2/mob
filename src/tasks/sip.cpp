@@ -59,7 +59,10 @@ fs::path sip::module_source_path()
 
 void sip::do_clean_for_rebuild()
 {
-	op::delete_directory(cx(), source_path() / "build", op::optional);
+	instrument(times_.clean, [&]
+	{
+		op::delete_directory(cx(), source_path() / "build", op::optional);
+	});
 }
 
 void sip::do_fetch()
@@ -69,13 +72,22 @@ void sip::do_fetch()
 
 void sip::do_build_and_install()
 {
-	download();
+	instrument(times_.fetch, [&]
+	{
+		download();
+	});
 
-	run_tool(extractor()
-		.file(download_file())
-		.output(source_path()));
+	instrument(times_.extract, [&]
+	{
+		run_tool(extractor()
+			.file(download_file())
+			.output(source_path()));
+	});
 
-	generate();
+	instrument(times_.build, [&]
+	{
+		generate();
+	});
 
 	op::copy_file_to_dir_if_better(cx(),
 		source_path() / "sip.h",

@@ -26,16 +26,25 @@ fs::path explorerpp::source_path()
 
 void explorerpp::do_fetch()
 {
-	const auto file = run_tool(downloader(source_url()));
+	const auto file = instrument(times_.fetch, [&]
+	{
+		return run_tool(downloader(source_url()));
+	});
 
-	run_tool(extractor()
-		.file(file)
-		.output(source_path()));
+	instrument(times_.extract, [&]
+	{
+		run_tool(extractor()
+			.file(file)
+			.output(source_path()));
+	});
 
-	op::copy_glob_to_dir_if_better(cx(),
-		source_path() / "*",
-		paths::install_bin() / "explorer++",
-		op::copy_files);
+	instrument(times_.install, [&]
+	{
+		op::copy_glob_to_dir_if_better(cx(),
+			source_path() / "*",
+			paths::install_bin() / "explorer++",
+			op::copy_files);
+	});
 }
 
 url explorerpp::source_url()

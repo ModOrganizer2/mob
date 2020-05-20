@@ -43,7 +43,10 @@ void openssl::do_clean_for_rebuild()
 		"openssl puts object files everywhere, so the whole tree will be "
 		"deleted for a rebuild");
 
-	op::delete_directory(cx(), source_path(), op::optional);
+	instrument(times_.clean, [&]
+	{
+		op::delete_directory(cx(), source_path(), op::optional);
+	});
 }
 
 void openssl::do_fetch()
@@ -66,41 +69,65 @@ void openssl::fetch_prebuilt()
 {
 	cx().trace(context::generic, "using prebuilt openssl");
 
-	const auto file = run_tool(downloader(prebuilt_url()));
+	const auto file = instrument(times_.fetch, [&]
+	{
+		return run_tool(downloader(prebuilt_url()));
+	});
 
-	run_tool(extractor()
-		.file(file)
-		.output(source_path()));
+	instrument(times_.extract, [&]
+	{
+		run_tool(extractor()
+			.file(file)
+			.output(source_path()));
+	});
 }
 
 void openssl::fetch_from_source()
 {
-	const auto file = run_tool(downloader(source_url()));
+	const auto file = instrument(times_.fetch, [&]
+	{
+		return run_tool(downloader(source_url()));
+	});
 
-	run_tool(extractor()
-		.file(file)
-		.output(source_path()));
+	instrument(times_.extract, [&]
+	{
+		run_tool(extractor()
+			.file(file)
+			.output(source_path()));
+	});
 }
 
 void openssl::build_and_install_prebuilt()
 {
-	copy_files();
+	instrument(times_.install, [&]
+	{
+		copy_files();
+	});
 }
 
 void openssl::build_and_install_from_source()
 {
-	if (fs::exists(source_path() / "makefile"))
-		cx().trace(context::bypass, "openssl already configured");
-	else
-		configure();
+	instrument(times_.configure, [&]
+	{
+		if (fs::exists(source_path() / "makefile"))
+			cx().trace(context::bypass, "openssl already configured");
+		else
+			configure();
+	});
 
-	install_engines();
+	instrument(times_.build, [&]
+	{
+		install_engines();
+	});
 
-	op::copy_file_to_dir_if_better(cx(),
-		source_path() / "ms" / "applink.c",
-		include_path());
+	instrument(times_.install, [&]
+	{
+		op::copy_file_to_dir_if_better(cx(),
+			source_path() / "ms" / "applink.c",
+			include_path());
 
-	copy_files();
+		copy_files();
+	});
 }
 
 void openssl::configure()

@@ -39,7 +39,12 @@ void pyqt::do_clean_for_rebuild()
 	if (prebuilt())
 		return;
 
-	op::delete_file(cx(), paths::cache() / sip_install_file(), op::optional);
+	instrument(times_.clean, [&]
+	{
+		op::delete_file(cx(),
+			paths::cache() / sip_install_file(),
+			op::optional);
+	});
 }
 
 void pyqt::do_fetch()
@@ -60,46 +65,68 @@ void pyqt::do_build_and_install()
 
 void pyqt::fetch_prebuilt()
 {
-	const auto file = run_tool(downloader(prebuilt_url()));
+	const auto file = instrument(times_.fetch, [&]
+	{
+		return run_tool(downloader(prebuilt_url()));
+	});
 
-	run_tool(extractor()
-		.file(file)
-		.output(source_path()));
+	instrument(times_.extract, [&]
+	{
+		run_tool(extractor()
+			.file(file)
+			.output(source_path()));
+	});
 }
 
 void pyqt::build_and_install_prebuilt()
 {
-	op::copy_glob_to_dir_if_better(cx(),
-		source_path() / "*",
-		python::source_path(),
-		op::copy_files|op::copy_dirs);
+	instrument(times_.install, [&]
+	{
+		op::copy_glob_to_dir_if_better(cx(),
+			source_path() / "*",
+			python::source_path(),
+			op::copy_files|op::copy_dirs);
 
-	copy_files();
+		copy_files();
+	});
 }
 
 void pyqt::fetch_from_source()
 {
-	const auto file = run_tool(downloader(source_url()));
+	const auto file = instrument(times_.fetch, [&]
+	{
+		return run_tool(downloader(source_url()));
+	});
 
-	run_tool(extractor()
-		.file(file)
-		.output(source_path()));
+	instrument(times_.extract, [&]
+	{
+		run_tool(extractor()
+			.file(file)
+			.output(source_path()));
+	});
 }
 
 void pyqt::build_and_install_from_source()
 {
-	run_tool(pip_install()
-		.package("PyQt-builder")
-		.version(builder_version()));
+	instrument(times_.build, [&]
+	{
+		run_tool(pip_install()
+			.package("PyQt-builder")
+			.version(builder_version()));
 
-	run_tool(patcher()
-		.task(name())
-		.file("builder.py.manual_patch")
-		.root(python::site_packages_path() / "pyqtbuild"));
+		run_tool(patcher()
+			.task(name())
+			.file("builder.py.manual_patch")
+			.root(python::site_packages_path() / "pyqtbuild"));
 
-	sip_build();
-	install_sip_file();
-	copy_files();
+		sip_build();
+	});
+
+	instrument(times_.install, [&]
+	{
+		install_sip_file();
+		copy_files();
+	});
 }
 
 void pyqt::sip_build()

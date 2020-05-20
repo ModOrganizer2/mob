@@ -67,10 +67,13 @@ void python::do_clean_for_rebuild()
 	if (prebuilt())
 		return;
 
-	const fs::path pcbuild = source_path() / "PCBuild";
+	instrument(times_.clean, [&]
+	{
+		const fs::path pcbuild = source_path() / "PCBuild";
 
-	op::delete_directory(cx(), pcbuild / "amd64", op::optional);
-	op::delete_directory(cx(), pcbuild / "obj", op::optional);
+		op::delete_directory(cx(), pcbuild / "amd64", op::optional);
+		op::delete_directory(cx(), pcbuild / "obj", op::optional);
+	});
 }
 
 void python::do_fetch()
@@ -91,58 +94,80 @@ void python::do_build_and_install()
 
 void python::fetch_prebuilt()
 {
-	const auto file = run_tool(downloader(prebuilt_url()));
+	const auto file = instrument(times_.fetch, [&]
+	{
+		return run_tool(downloader(prebuilt_url()));
+	});
 
-	run_tool(extractor()
-		.file(file)
-		.output(source_path()));
+	instrument(times_.extract, [&]
+	{
+		run_tool(extractor()
+			.file(file)
+			.output(source_path()));
+	});
 }
 
 void python::build_and_install_prebuilt()
 {
-	op::copy_glob_to_dir_if_better(cx(),
-		openssl::bin_path() / "*.dll",
-		python::build_path(),
-		op::copy_files);
+	instrument(times_.install, [&]
+	{
+		op::copy_glob_to_dir_if_better(cx(),
+			openssl::bin_path() / "*.dll",
+			python::build_path(),
+			op::copy_files);
 
-	install_pip();
-	copy_files();
+		install_pip();
+		copy_files();
+	});
 }
 
 void python::fetch_from_source()
 {
-	run_tool(task_conf().make_git()
-		.url(make_github_url("python", "cpython"))
-		.branch(version())
-		.root(source_path()));
+	instrument(times_.fetch, [&]
+	{
+		run_tool(task_conf().make_git()
+			.url(make_github_url("python", "cpython"))
+			.branch(version())
+			.root(source_path()));
+	});
 
-	run_tool(vs(vs::upgrade)
-		.solution(solution_file()));
+	instrument(times_.configure, [&]
+	{
+		run_tool(vs(vs::upgrade)
+			.solution(solution_file()));
+	});
 }
 
 void python::build_and_install_from_source()
 {
-	run_tool(msbuild()
-		.solution(solution_file())
-		.projects({
-			"python", "pythonw", "python3dll", "select", "pyexpat",
-			"unicodedata", "_queue", "_bz2", "_ssl"})
-		.parameters({
-			"bz2Dir=" + path_to_utf8(bzip2::source_path()),
-			"zlibDir=" + path_to_utf8(zlib::source_path()),
-			"opensslIncludeDir=" + path_to_utf8(openssl::include_path()),
-			"opensslOutDir=" + path_to_utf8(openssl::source_path()),
-			"libffiIncludeDir=" + path_to_utf8(libffi::include_path()),
-			"libffiOutDir=" + path_to_utf8(libffi::lib_path())}));
+	instrument(times_.build, [&]
+	{
+		run_tool(msbuild()
+			.solution(solution_file())
+			.projects({
+				"python", "pythonw", "python3dll", "select", "pyexpat",
+				"unicodedata", "_queue", "_bz2", "_ssl"})
+			.parameters({
+				"bz2Dir=" + path_to_utf8(bzip2::source_path()),
+				"zlibDir=" + path_to_utf8(zlib::source_path()),
+				"opensslIncludeDir=" + path_to_utf8(openssl::include_path()),
+				"opensslOutDir=" + path_to_utf8(openssl::source_path()),
+				"libffiIncludeDir=" + path_to_utf8(libffi::include_path()),
+				"libffiOutDir=" + path_to_utf8(libffi::lib_path())}));
 
-	package();
-	install_pip();
+		package();
+	});
 
-	op::copy_file_to_dir_if_better(cx(),
-		source_path() / "PC" / "pyconfig.h",
-		include_path());
+	instrument(times_.install, [&]
+	{
+		install_pip();
 
-	copy_files();
+		op::copy_file_to_dir_if_better(cx(),
+			source_path() / "PC" / "pyconfig.h",
+			include_path());
+
+		copy_files();
+	});
 }
 
 void python::package()

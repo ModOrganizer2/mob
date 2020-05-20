@@ -26,10 +26,13 @@ fs::path spdlog::source_path()
 
 void spdlog::do_fetch()
 {
-	run_tool(task_conf().make_git()
-		.url(make_github_url("gabime", "spdlog"))
-		.branch(version())
-		.root(source_path()));
+	instrument(times_.fetch, [&]
+	{
+		run_tool(task_conf().make_git()
+			.url(make_github_url("gabime", "spdlog"))
+			.branch(version())
+			.root(source_path()));
+	});
 }
 
 }	// namespace

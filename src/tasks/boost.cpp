@@ -75,39 +75,57 @@ void boost::fetch_prebuilt()
 {
 	cx().trace(context::generic, "using prebuilt boost");
 
-	const auto file = run_tool(downloader(prebuilt_url()));
+	const auto file = instrument(times_.fetch, [&]
+	{
+		return run_tool(downloader(prebuilt_url()));
+	});
 
-	run_tool(extractor()
-		.file(file)
-		.output(source_path()));
+	instrument(times_.extract, [&]
+	{
+		run_tool(extractor()
+			.file(file)
+			.output(source_path()));
+	});
 }
 
 void boost::build_and_install_prebuilt()
 {
-	op::copy_file_to_dir_if_better(cx(),
-		lib_path(arch::x64) / python_dll(),
-		paths::install_bin());
+	instrument(times_.install, [&]
+	{
+		op::copy_file_to_dir_if_better(cx(),
+			lib_path(arch::x64) / python_dll(),
+			paths::install_bin());
+	});
 }
 
 void boost::fetch_from_source()
 {
-	const auto file = run_tool(downloader(source_url()));
+	const auto file = instrument(times_.fetch, [&]
+	{
+		return run_tool(downloader(source_url()));
+	});
 
-	run_tool(extractor()
+	instrument(times_.extract, [&]
+	{
+		run_tool(extractor()
 		.file(file)
 		.output(source_path()));
+	});
 }
 
 void boost::bootstrap()
 {
-	write_config_jam();
+	instrument(times_.configure, [&]
+	{
+		write_config_jam();
 
-	const auto bootstrap = source_path() / "bootstrap.bat";
+		const auto bootstrap = source_path() / "bootstrap.bat";
 
-	run_tool(process_runner(process()
-		.binary(bootstrap)
-		.external_error_log(source_path() / "bootstrap.log")
-		.cwd(source_path())));
+		run_tool(process_runner(process()
+			.binary(bootstrap)
+			.external_error_log(source_path() / "bootstrap.log")
+			.cwd(source_path())));
+	});
 }
 
 void boost::build_and_install_from_source()
@@ -122,25 +140,31 @@ void boost::build_and_install_from_source()
 		bootstrap();
 	}
 
-	do_b2(
-		{"thread", "date_time", "filesystem", "locale"},
-		"static", "static", arch::x64);
+	instrument(times_.build, [&]
+	{
+		do_b2(
+			{"thread", "date_time", "filesystem", "locale"},
+			"static", "static", arch::x64);
 
-	do_b2(
-		{"thread", "date_time", "filesystem", "locale"},
-		"static", "static", arch::x86);
+		do_b2(
+			{"thread", "date_time", "filesystem", "locale"},
+			"static", "static", arch::x86);
 
-	do_b2(
-		{"thread", "date_time", "locale"},
-		"static", "shared", arch::x64);
+		do_b2(
+			{"thread", "date_time", "locale"},
+			"static", "shared", arch::x64);
 
-	do_b2(
-		{"thread", "python"},
-		"shared", "shared", arch::x64);
+		do_b2(
+			{"thread", "python"},
+			"shared", "shared", arch::x64);
+	});
 
-	op::copy_file_to_dir_if_better(cx(),
-		lib_path(arch::x64) / python_dll(),
-		paths::install_bin());
+	instrument(times_.install, [&]
+	{
+		op::copy_file_to_dir_if_better(cx(),
+			lib_path(arch::x64) / python_dll(),
+			paths::install_bin());
+	});
 }
 
 void boost::do_b2(

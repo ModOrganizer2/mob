@@ -27,7 +27,7 @@ void run_all_tasks();
 void list_tasks(bool err=false);
 bool task_exists(const std::string& name);
 bool is_super_task(const std::string& name);
-
+const std::vector<task*>& get_all_tasks();
 
 class task_conf_holder
 {
@@ -48,6 +48,19 @@ private:
 class task
 {
 public:
+	struct time_pair
+	{
+		std::chrono::nanoseconds start{}, end{};
+	};
+
+	struct times_t
+	{
+		time_pair init_super, fetch, extract;
+		time_pair add_submodule_lock, add_submodule;
+		time_pair configure, build, install;
+		time_pair clean;
+	};
+
 	task(const task&) = delete;
 	task& operator=(const task&) = delete;
 
@@ -70,7 +83,11 @@ public:
 	virtual void fetch();
 	virtual void build_and_install();
 
+	times_t times() const;
+
 protected:
+	times_t times_;
+
 	template <class... Names>
 	task(std::string name, Names&&... names)
 		: task(std::vector<std::string>{name, std::forward<Names>(names)...})
@@ -99,6 +116,29 @@ protected:
 	void parallel(std::vector<std::pair<std::string, std::function<void ()>>> v);
 
 	task_conf_holder task_conf() const;
+
+	struct timing_ender
+	{
+		timing_ender(time_pair& tp)
+			: tp(tp)
+		{
+		}
+
+		~timing_ender()
+		{
+			tp.end = timestamp();
+		}
+
+		time_pair& tp;
+	};
+
+	template <class F>
+	auto instrument(time_pair& tp, F&& f)
+	{
+		tp.start = timestamp();
+		timing_ender te(tp);
+		return f();
+	}
 
 private:
 	struct thread_context;

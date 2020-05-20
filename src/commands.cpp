@@ -359,6 +359,36 @@ int build_command::do_run()
 		else
 			run_all_tasks();
 
+		{
+			using namespace std::chrono;
+
+			std::ofstream out("timings.txt");
+
+			for (auto&& tk : get_all_tasks())
+			{
+				const auto t = tk->times();
+
+				auto write = [&](auto&& name, auto&& tp)
+				{
+					out
+						<< replace_all(tk->name(), "_", "") << "\t"
+						<< (duration_cast<milliseconds>(tp.start).count() / 1000.0) << "\t"
+						<< (duration_cast<milliseconds>(tp.end).count() / 1000.0) << "\t"
+						<< name << "\n";
+				};
+
+				write("initsuper", t.init_super);
+				write("fetch", t.fetch);
+				write("extract", t.extract);
+				write("addsubmodulelock", t.add_submodule_lock);
+				write("addsubmodule", t.add_submodule);
+				write("configure", t.configure);
+				write("build", t.build);
+				write("install", t.install);
+				write("clean", t.clean);
+			}
+		}
+
 		if (!keep_msbuild_)
 			terminate_msbuild();
 

@@ -26,11 +26,17 @@ fs::path bzip2::source_path()
 
 void bzip2::do_fetch()
 {
-	const auto file = run_tool(downloader(source_url()));
+	const auto file = instrument(times_.fetch, [&]
+	{
+		return run_tool(downloader(source_url()));
+	});
 
-	run_tool(extractor()
-		.file(file)
-		.output(source_path()));
+	instrument(times_.extract, [&]
+	{
+		run_tool(extractor()
+			.file(file)
+			.output(source_path()));
+	});
 }
 
 url bzip2::source_url()

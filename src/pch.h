@@ -78,5 +78,6 @@ namespace mob
 {
 
 namespace fs = std::filesystem;
+using hr_clock = std::chrono::high_resolution_clock;
 
 }	// namespace

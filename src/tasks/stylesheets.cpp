@@ -49,33 +49,39 @@ fs::path stylesheets::source_path()
 
 void stylesheets::do_fetch()
 {
-	// this isn't very generic, but 6788 is the only repo so far
-
-	for (auto&& r : releases())
+	instrument(times_.fetch, [&]
 	{
-		const auto file = run_tool(downloader()
-			.url(
-				"https://github.com/" + r.repo + "/" + r.name + "/releases/"
-				"download/v" + r.version + "/" + r.file + ".7z")
-			.file(paths::cache() / (r.name + ".7z")));
+		// this isn't very generic, but 6788 is the only repo so far
 
-		run_tool(extractor()
-			.file(file)
-			.output(paths::build() / (r.name + "-v" + r.version)));
-	}
+		for (auto&& r : releases())
+		{
+			const auto file = run_tool(downloader()
+				.url(
+					"https://github.com/" + r.repo + "/" + r.name + "/releases/"
+					"download/v" + r.version + "/" + r.file + ".7z")
+				.file(paths::cache() / (r.name + ".7z")));
+
+			run_tool(extractor()
+				.file(file)
+				.output(paths::build() / (r.name + "-v" + r.version)));
+		}
+	});
 }
 
 void stylesheets::do_build_and_install()
 {
-	for (auto&& r : releases())
+	instrument(times_.install, [&]
 	{
-		const fs::path src = paths::build() / (r.name + "-v" + r.version);
+		for (auto&& r : releases())
+		{
+			const fs::path src = paths::build() / (r.name + "-v" + r.version);
 
-		op::copy_glob_to_dir_if_better(cx(),
-			src / "*",
-			paths::install_stylesheets(),
-			op::copy_files|op::copy_dirs);
-	}
+			op::copy_glob_to_dir_if_better(cx(),
+				src / "*",
+				paths::install_stylesheets(),
+				op::copy_files|op::copy_dirs);
+		}
+	});
 }
 
 std::vector<stylesheets::release> stylesheets::releases()

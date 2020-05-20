@@ -26,31 +26,43 @@ fs::path ncc::source_path()
 
 void ncc::do_clean_for_rebuild()
 {
-	op::delete_directory(
-		cx(), source_path() / "NexusClientCLI" / "obj", op::optional);
+	instrument(times_.clean, [&]
+	{
+		op::delete_directory(
+			cx(), source_path() / "NexusClientCLI" / "obj", op::optional);
+	});
 }
 
 void ncc::do_fetch()
 {
-	run_tool(task_conf().make_git()
-		.url(make_github_url(task_conf().mo_org(), "modorganizer-NCC"))
-		.branch(task_conf().mo_branch())
-		.root(source_path()));
+	instrument(times_.fetch, [&]
+	{
+		run_tool(task_conf().make_git()
+			.url(make_github_url(task_conf().mo_org(), "modorganizer-NCC"))
+			.branch(task_conf().mo_branch())
+			.root(source_path()));
+	});
 }
 
 void ncc::do_build_and_install()
 {
-	run_tool(msbuild()
-		.solution(source_path() / "NexusClient.sln")
-		.projects({"NexusClientCLI"})
-		.platform("Any CPU"));
+	instrument(times_.build, [&]
+	{
+		run_tool(msbuild()
+			.solution(source_path() / "NexusClient.sln")
+			.projects({"NexusClientCLI"})
+			.platform("Any CPU"));
+	});
 
-	const auto publish =source_path() / "publish.bat";
+	instrument(times_.install, [&]
+	{
+		const auto publish = source_path() / "publish.bat";
 
-	run_tool(process_runner(process()
-		.binary(publish)
-		.stderr_level(context::level::trace)
-		.arg(paths::install_bin())));
+		run_tool(process_runner(process()
+			.binary(publish)
+			.stderr_level(context::level::trace)
+			.arg(paths::install_bin())));
+	});
 }
 
 }	// namespace

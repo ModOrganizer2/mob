@@ -29,8 +29,6 @@ std::string converter<url>::convert(const url& u)
 namespace mob
 {
 
-using hr_clock = std::chrono::high_resolution_clock;
-
 static hr_clock::time_point g_start_time = hr_clock::now();
 static std::vector<std::string> g_errors, g_warnings;
 static handle_ptr g_log_file;
@@ -107,14 +105,18 @@ std::string error_message(DWORD id)
 	return utf16_to_utf8(s);
 }
 
-std::string_view timestamp()
+std::chrono::nanoseconds timestamp()
+{
+	return (hr_clock::now() - g_start_time);
+}
+
+std::string_view timestamp_string()
 {
 	static thread_local char buffer[50];
 
 	using namespace std::chrono;
 
-	const auto d = hr_clock::now() - g_start_time;
-	const auto ms = duration_cast<milliseconds>(d);
+	const auto ms = duration_cast<milliseconds>(timestamp());
 	const auto frac = ms.count() / 1000.0;
 
 	const auto r = std::to_chars(
@@ -304,7 +306,7 @@ std::string_view context::make_log_string(reason r, level, std::string_view s) c
 
 	ls.clear();
 
-	append(ls, timestamp(), total_timestamp);
+	append(ls, timestamp_string(), total_timestamp);
 	ls.append(1, ' ');
 	append_brackets(ls, task_, total_task_name);
 

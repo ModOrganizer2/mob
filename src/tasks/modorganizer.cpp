@@ -56,12 +56,18 @@ fs::path modorganizer::super_path()
 
 void modorganizer::do_fetch()
 {
-	initialize_super(super_path());
+	instrument(times_.init_super, [&]
+	{
+		initialize_super(super_path());
+	});
 
-	run_tool(task_conf().make_git()
-		.url(make_github_url(task_conf().mo_org(), repo_))
-		.branch(task_conf().mo_branch())
-		.root(this_source_path()));
+	instrument(times_.fetch, [&]
+	{
+		run_tool(task_conf().make_git()
+			.url(make_github_url(task_conf().mo_org(), repo_))
+			.branch(task_conf().mo_branch())
+			.root(this_source_path()));
+	});
 }
 
 cmake modorganizer::create_cmake_tool(const fs::path& root)
@@ -93,12 +99,21 @@ cmake modorganizer::create_cmake_tool(const fs::path& root)
 void modorganizer::do_build_and_install()
 {
 	{
-		std::scoped_lock lock(g_super_mutex);
-		run_tool(task_conf().make_git(git::ops::add_submodule)
-			.url(make_github_url(task_conf().mo_org(), repo_))
-			.branch(task_conf().mo_branch())
-			.submodule_name(name())
-			.root(super_path()));
+		std::unique_lock<std::mutex> lock(g_super_mutex, std::defer_lock);
+
+		instrument(times_.add_submodule_lock, [&]
+		{
+			lock.lock();
+		});
+
+		instrument(times_.add_submodule, [&]
+		{
+			run_tool(task_conf().make_git(git::ops::add_submodule)
+				.url(make_github_url(task_conf().mo_org(), repo_))
+				.branch(task_conf().mo_branch())
+				.submodule_name(name())
+				.root(super_path()));
+		});
 	}
 
 	if (!fs::exists(this_source_path() / "CMakeLists.txt"))
@@ -109,24 +124,27 @@ void modorganizer::do_build_and_install()
 		return;
 	}
 
-	const auto build_path = run_tool(cmake()
-		.generator(cmake::vs)
-		.def("CMAKE_INSTALL_PREFIX:PATH", paths::install())
-		.def("DEPENDENCIES_DIR",   paths::build())
-		.def("BOOST_ROOT",         boost::source_path())
-		.def("BOOST_LIBRARYDIR",   boost::lib_path(arch::x64))
-		.def("FMT_ROOT",           fmt::source_path())
-		.def("SPDLOG_ROOT",        spdlog::source_path())
-		.def("LOOT_PATH",          libloot::source_path())
-		.def("LZ4_ROOT",           lz4::source_path())
-		.def("QT_ROOT",            qt::installation_path())
-		.def("ZLIB_ROOT",          zlib::source_path())
-		.def("PYTHON_ROOT",        python::source_path())
-		.def("SEVENZ_ROOT",        sevenz::source_path())
-		.def("LIBBSARCH_ROOT",     libbsarch::source_path())
-		.def("BOOST_DI_ROOT",      boost_di::source_path())
-		.def("GTEST_ROOT",         gtest::source_path())
-		.root(this_source_path()));
+	const auto build_path = instrument(times_.configure, [&]
+	{
+		return run_tool(cmake()
+			.generator(cmake::vs)
+			.def("CMAKE_INSTALL_PREFIX:PATH", paths::install())
+			.def("DEPENDENCIES_DIR",   paths::build())
+			.def("BOOST_ROOT",         boost::source_path())
+			.def("BOOST_LIBRARYDIR",   boost::lib_path(arch::x64))
+			.def("FMT_ROOT",           fmt::source_path())
+			.def("SPDLOG_ROOT",        spdlog::source_path())
+			.def("LOOT_PATH",          libloot::source_path())
+			.def("LZ4_ROOT",           lz4::source_path())
+			.def("QT_ROOT",            qt::installation_path())
+			.def("ZLIB_ROOT",          zlib::source_path())
+			.def("PYTHON_ROOT",        python::source_path())
+			.def("SEVENZ_ROOT",        sevenz::source_path())
+			.def("LIBBSARCH_ROOT",     libbsarch::source_path())
+			.def("BOOST_DI_ROOT",      boost_di::source_path())
+			.def("GTEST_ROOT",         gtest::source_path())
+			.root(this_source_path()));
+	});
 
 	// run the project file instead of the .sln and giving INSTALL as a
 	// target, because the target name depends on the folders in the solution
@@ -137,10 +155,13 @@ void modorganizer::do_build_and_install()
 	// because the creation of the CMakePredefinedTarget actually depends on
 	// the USE_FOLDERS variable in the cmake file, just use the project
 	// instead
-	run_tool(msbuild()
-		.solution(build_path / ("INSTALL.vcxproj"))
-		.config("RelWithDebInfo")
-		.architecture(arch::x64));
+	instrument(times_.build, [&]
+	{
+		run_tool(msbuild()
+			.solution(build_path / ("INSTALL.vcxproj"))
+			.config("RelWithDebInfo")
+			.architecture(arch::x64));
+	});
 }
 
 void modorganizer::initialize_super(const fs::path& super_root)

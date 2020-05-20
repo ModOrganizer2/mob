@@ -19,6 +19,11 @@ void add_task(std::unique_ptr<task> t)
 	g_tasks.push_back(std::move(t));
 }
 
+const std::vector<task*>& get_all_tasks()
+{
+	return g_all_tasks;
+}
+
 void list_tasks(bool err)
 {
 	for (auto&& t : g_all_tasks)
@@ -404,6 +409,11 @@ void task::interrupt()
 
 	for (auto* t : tools_)
 		t->interrupt();
+}
+
+task::times_t task::times() const
+{
+	return times_;
 }
 
 void task::join()

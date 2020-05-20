@@ -26,20 +26,32 @@ fs::path sevenz::source_path()
 
 void sevenz::do_fetch()
 {
-	const auto file = run_tool(downloader(source_url()));
+	const auto file = instrument(times_.fetch, [&]
+	{
+		return run_tool(downloader(source_url()));
+	});
 
-	run_tool(extractor()
-		.file(file)
-		.output(source_path()));
+	instrument(times_.extract, [&]
+	{
+		run_tool(extractor()
+			.file(file)
+			.output(source_path()));
+	});
 }
 
 void sevenz::do_build_and_install()
 {
-	build();
+	instrument(times_.build, [&]
+	{
+		build();
+	});
 
-	op::copy_file_to_dir_if_better(cx(),
-		module_to_build() / "x64/7z.dll",
-		paths::install_dlls());
+	instrument(times_.install, [&]
+	{
+		op::copy_file_to_dir_if_better(cx(),
+			module_to_build() / "x64/7z.dll",
+			paths::install_dlls());
+	});
 }
 
 void sevenz::build()
@@ -80,7 +92,10 @@ void sevenz::build()
 
 void sevenz::do_clean_for_rebuild()
 {
-	op::delete_directory(cx(), module_to_build() / "x64", op::optional);
+	instrument(times_.clean, [&]
+	{
+		op::delete_directory(cx(), module_to_build() / "x64", op::optional);
+	});
 }
 
 url sevenz::source_url()

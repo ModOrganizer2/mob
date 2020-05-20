@@ -29,9 +29,14 @@ void usvfs::do_clean_for_rebuild()
 	if (prebuilt())
 		return;
 
-	op::delete_directory(cx(), source_path() / "bin", op::optional);
-	op::delete_directory(cx(), source_path() / "lib", op::optional);
-	op::delete_directory(cx(), source_path() / "vsbuild" / "Release", op::optional);
+	instrument(times_.clean, [&]
+	{
+		op::delete_directory(cx(), source_path() / "bin", op::optional);
+		op::delete_directory(cx(), source_path() / "lib", op::optional);
+
+		op::delete_directory(cx(),
+			source_path() / "vsbuild" / "Release", op::optional);
+	});
 }
 
 void usvfs::do_fetch()
@@ -52,41 +57,54 @@ void usvfs::do_build_and_install()
 
 void usvfs::fetch_prebuilt()
 {
-	fetch_from_source();
-	download_from_appveyor(arch::x64);
-	download_from_appveyor(arch::x86);
+	instrument(times_.fetch, [&]
+	{
+		fetch_from_source();
+		download_from_appveyor(arch::x64);
+		download_from_appveyor(arch::x86);
+	});
 }
 
 void usvfs::build_and_install_prebuilt()
 {
-	copy_prebuilt(arch::x86);
-	copy_prebuilt(arch::x64);
+	instrument(times_.install, [&]
+	{
+		copy_prebuilt(arch::x86);
+		copy_prebuilt(arch::x64);
+	});
 }
 
 void usvfs::fetch_from_source()
 {
-	run_tool(task_conf().make_git()
-		.url(make_github_url(task_conf().mo_org(), "usvfs"))
-		.branch(version())
-		.root(source_path()));
+	instrument(times_.fetch, [&]
+	{
+		run_tool(task_conf().make_git()
+			.url(make_github_url(task_conf().mo_org(), "usvfs"))
+			.branch(version())
+			.root(source_path()));
+	});
 }
 
 void usvfs::build_and_install_from_source()
 {
-	// usvfs doesn't use "Win32" for 32-bit, it uses "x86"
-	//
-	// note that usvfs_proxy has a custom build step in Release that runs
-	// usvfs/vsbuild/stage_helper.cmd, which copies everything into install/
+	instrument(times_.build, [&]
+	{
+		// usvfs doesn't use "Win32" for 32-bit, it uses "x86"
+		//
+		// note that usvfs_proxy has a custom build step in Release that runs
+		// usvfs/vsbuild/stage_helper.cmd, which copies everything into
+		// install/
 
-	run_tool(msbuild()
-		.platform("x64")
-		.projects({"usvfs_proxy"})
-		.solution(source_path() / "vsbuild" / "usvfs.sln"));
+		run_tool(msbuild()
+			.platform("x64")
+			.projects({"usvfs_proxy"})
+			.solution(source_path() / "vsbuild" / "usvfs.sln"));
 
-	run_tool(msbuild()
-		.platform("x86")
-		.projects({"usvfs_proxy"})
-		.solution(source_path() / "vsbuild" / "usvfs.sln"));
+		run_tool(msbuild()
+			.platform("x86")
+			.projects({"usvfs_proxy"})
+			.solution(source_path() / "vsbuild" / "usvfs.sln"));
+	});
 }
 
 void usvfs::download_from_appveyor(arch a)

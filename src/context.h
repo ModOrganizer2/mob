@@ -61,6 +61,10 @@ namespace mob
 class task;
 class tool;
 
+// time since mob started
+//
+std::chrono::nanoseconds timestamp();
+
 std::string error_message(DWORD e);
 
 class context

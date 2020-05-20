@@ -26,29 +26,44 @@ fs::path fmt::source_path()
 
 void fmt::do_fetch()
 {
-	const auto file = run_tool(downloader(source_url()));
+	const auto file = instrument(times_.fetch, [&]
+	{
+		return run_tool(downloader(source_url()));
+	});
 
-	run_tool(extractor()
-		.file(file)
-		.output(source_path()));
+	instrument(times_.extract, [&]
+	{
+		run_tool(extractor()
+			.file(file)
+			.output(source_path()));
+	});
 }
 
 void fmt::do_clean_for_rebuild()
 {
-	cmake::clean(cx(), source_path());
+	instrument(times_.clean, [&]
+	{
+		cmake::clean(cx(), source_path());
+	});
 }
 
 void fmt::do_build_and_install()
 {
-	const auto build_path = run_tool(cmake()
-		.generator(cmake::vs)
-		.root(source_path())
-		.prefix(source_path() / "build")
-		.def("FMT_TEST", "OFF")
-		.def("FMT_DOC", "OFF"));
+	const auto build_path = instrument(times_.configure, [&]
+	{
+		return run_tool(cmake()
+			.generator(cmake::vs)
+			.root(source_path())
+			.prefix(source_path() / "build")
+			.def("FMT_TEST", "OFF")
+			.def("FMT_DOC", "OFF"));
+	});
 
-	run_tool(msbuild()
-		.solution(build_path / "INSTALL.vcxproj"));
+	instrument(times_.build, [&]
+	{
+		run_tool(msbuild()
+			.solution(build_path / "INSTALL.vcxproj"));
+	});
 }
 
 url fmt::source_url()

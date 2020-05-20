@@ -26,18 +26,27 @@ fs::path libbsarch::source_path()
 
 void libbsarch::do_fetch()
 {
-	const auto file = run_tool(downloader(source_url()));
+	const auto file = instrument(times_.fetch, [&]
+	{
+		return run_tool(downloader(source_url()));
+	});
 
-	run_tool(extractor()
-		.file(file)
-		.output(source_path()));
+	instrument(times_.extract, [&]
+	{
+		run_tool(extractor()
+			.file(file)
+			.output(source_path()));
+	});
 }
 
 void libbsarch::do_build_and_install()
 {
-	op::copy_file_to_dir_if_better(cx(),
-		source_path() / "libbsarch.dll",
-		paths::install_dlls());
+	instrument(times_.install, [&]
+	{
+		op::copy_file_to_dir_if_better(cx(),
+			source_path() / "libbsarch.dll",
+			paths::install_dlls());
+	});
 }
 
 std::string libbsarch::dir_name()
