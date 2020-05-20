@@ -524,19 +524,7 @@ void process::do_run(const std::string& what)
 		cwd_p = (cwd_s.empty() ? nullptr : cwd_s.c_str());
 	}
 
-	if (!bin_.empty())
-	{
-		if (bin_.is_absolute())
-		{
-			cx_->trace(context::cmd, "creating process {}", bin_);
-		}
-		else
-		{
-			cx_->trace(context::cmd,
-				"creating process, looks like it should spawn '{}'",
-				find_in_path(path_to_utf8(bin_.filename())));
-		}
-	}
+	cx_->trace(context::cmd, "creating process");
 
 	const auto r = ::CreateProcessW(
 		cmd.c_str(), args.data(),

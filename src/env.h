@@ -19,24 +19,41 @@ public:
 	static env vs_x64();
 	static env vs(arch a);
 
+	env();
+	env(const env& e);
+	env(env&& e);
+	env& operator=(const env& e);
+	env& operator=(env&& e);
+
 	env& append_path(const fs::path& p);
 	env& append_path(const std::vector<fs::path>& v);
-	env& set(std::string k, std::string v, flags f=replace);
+	env& set(std::string_view k, std::string_view v, flags f=replace);
+	env& set(std::wstring k, std::wstring v, flags f=replace);
 
 	void set_from(const env& e);
 
-	std::string get(const std::string& k) const;
+	std::string get(std::string_view k) const;
 
 	void* get_unicode_pointers() const;
 
 private:
-	using map = std::map<std::string, std::string>;
+	using map = std::map<std::wstring, std::wstring>;
 
-	map vars_;
-	mutable std::wstring sys_;
+	struct data
+	{
+		std::mutex m;
+		map vars;
+		mutable std::wstring sys;
+	};
+
+	std::shared_ptr<data> data_;
+	bool own_;
 
 	void create() const;
-	map::const_iterator find(const std::string& name) const;
+	std::wstring* find(std::wstring_view name);
+	const std::wstring* find(std::wstring_view name) const;
+	void set_impl(std::wstring k, std::wstring v, flags f);
+	void copy_for_write();
 };
 
 

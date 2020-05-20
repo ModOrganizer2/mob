@@ -176,11 +176,13 @@ void git::do_run()
 
 process git::make_process()
 {
-	return process()
+	static env e = this_env::get()
+		.set("GCM_INTERACTIVE", "never")
+		.set("GIT_TERMINAL_PROMPT", "0");
+
+	return std::move(process()
 		.binary(binary())
-		.env(this_env::get()
-			.set("GCM_INTERACTIVE", "never")
-			.set("GIT_TERMINAL_PROMPT", "0"));
+		.env(e));
 }
 
 void git::do_add_submodule()

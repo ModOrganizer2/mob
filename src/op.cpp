@@ -35,10 +35,7 @@ void create_directories(const context& cx, const fs::path& p)
 	check(cx, p);
 
 	if (!conf::dry())
-	{
-		if (!fs::exists(p))
-			do_create_directories(cx, p);
-	}
+		do_create_directories(cx, p);
 }
 
 void delete_directory(const context& cx, const fs::path& p, flags f)

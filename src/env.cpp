@@ -103,6 +103,36 @@ env env::vs(arch a)
 	}
 }
 
+
+env::env()
+	: own_(false)
+{
+}
+
+env::env(const env& e)
+	: data_(e.data_), own_(false)
+{
+}
+
+env::env(env&& e)
+	: data_(std::move(e.data_)), own_(e.own_)
+{
+}
+
+env& env::operator=(const env& e)
+{
+	data_ = e.data_;
+	own_ = false;
+	return *this;
+}
+
+env& env::operator=(env&& e)
+{
+	data_ = std::move(e.data_);
+	own_ = e.own_;
+	return *this;
+}
+
 env& env::append_path(const fs::path& p)
 {
 	return append_path(std::vector<fs::path>{p});
@@ -110,101 +140,169 @@ env& env::append_path(const fs::path& p)
 
 env& env::append_path(const std::vector<fs::path>& v)
 {
-	std::string path;
+	copy_for_write();
 
-	auto itor = find("PATH");
-	if (itor != vars_.end())
-		path = itor->second;
+	std::wstring path;
+
+	{
+		auto current = find(L"PATH");
+		if (current)
+			path = *current;
+	}
 
 	for (auto&& p : v)
 	{
 		if (!path.empty())
-			path += ";";
+			path += L";";
 
-		path += path_to_utf8(p);
+		path += p.native();
 	}
 
-	set("PATH", path, replace);
+	set(L"PATH", path, replace);
 
 	return *this;
 }
 
-env& env::set(std::string k, std::string v, flags f)
+env& env::set(std::string_view k, std::string_view v, flags f)
 {
-	auto itor = find(k);
+	copy_for_write();
+	set_impl(utf8_to_utf16(k), utf8_to_utf16(v), f);
+	return *this;
+}
 
-	if (itor == vars_.end())
+env& env::set(std::wstring k, std::wstring v, flags f)
+{
+	copy_for_write();
+	set_impl(std::move(k), std::move(v), f);
+	return *this;
+}
+
+void env::set_impl(std::wstring k, std::wstring v, flags f)
+{
+	auto current = find(k);
+
+	if (!current)
 	{
-		vars_[k] = v;
-		return *this;
+		data_->vars.emplace(std::move(k), std::move(v));
+		return;
 	}
 
 	switch (f)
 	{
 		case replace:
-			vars_[itor->first] = v;
+			*current = std::move(v);
 			break;
 
 		case append:
-			vars_[itor->first] += v;
+			*current += v;
 			break;
 
 		case prepend:
-			vars_[itor->first] = v + vars_[itor->first];
+			*current = v + *current;
 			break;
 	}
-
-	return *this;
 }
 
-std::string env::get(const std::string& k) const
+std::string env::get(std::string_view k) const
 {
-	auto itor = find(k);
-	if (itor == vars_.end())
+	if (!data_)
 		return {};
 
-	return itor->second;
+	auto current = find(utf8_to_utf16(k));
+	if (!current)
+		return {};
+
+	return utf16_to_utf8(*current);
 }
 
 void env::set_from(const env& e)
 {
-	for (auto&& v : e.vars_)
-		set(v.first, v.second, replace);
+	copy_for_write();
+
+	if (e.data_)
+	{
+		for (auto&& v : e.data_->vars)
+			set_impl(v.first, v.second, replace);
+	}
 }
 
 void env::create() const
 {
-	sys_.clear();
+	data_->sys.clear();
 
-	for (auto&& v : vars_)
+	for (auto&& v : data_->vars)
 	{
-		sys_ += utf8_to_utf16(v.first + "=" + v.second);
-		sys_.append(1, L'\0');
+		data_->sys += v.first + L"=" + v.second;
+		data_->sys.append(1, L'\0');
 	}
 
-	sys_.append(1, L'\0');
+	data_->sys.append(1, L'\0');
 }
 
-env::map::const_iterator env::find(const std::string& name) const
+std::wstring* env::find(std::wstring_view name)
 {
-	for (auto itor=vars_.begin(); itor!=vars_.end(); ++itor)
+	if (!data_)
+		return {};
+
+	for (auto itor=data_->vars.begin(); itor!=data_->vars.end(); ++itor)
 	{
-		if (_stricmp(itor->first.c_str(), name.c_str()) == 0)
-			return itor;
+		if (_wcsnicmp(itor->first.c_str(), name.data(), name.size()) == 0)
+			return &itor->second;
 	}
 
-	return vars_.end();
+	return {};
+}
+
+const std::wstring* env::find(std::wstring_view name) const
+{
+	if (!data_)
+		return {};
+
+	for (auto itor=data_->vars.begin(); itor!=data_->vars.end(); ++itor)
+	{
+		if (_wcsnicmp(itor->first.c_str(), name.data(), name.size()) == 0)
+			return &itor->second;
+	}
+
+	return {};
 }
 
 void* env::get_unicode_pointers() const
 {
-	if (vars_.empty())
+	if (!data_ || data_->vars.empty())
 		return nullptr;
 
-	if (sys_.empty())
-		create();
+	{
+		std::scoped_lock lock(data_->m);
+		if (data_->sys.empty())
+			create();
+	}
 
-	return (void*)sys_.c_str();
+	return (void*)data_->sys.c_str();
+}
+
+void env::copy_for_write()
+{
+	if (own_)
+		return;
+
+	if (data_)
+	{
+		auto shared = data_;
+		data_.reset(new data);
+		data_->vars = shared->vars;
+
+		{
+			std::scoped_lock lock(shared->m);
+			data_->sys = shared->sys;
+		}
+	}
+	else
+	{
+		data_.reset(new data);
+	}
+
+	own_ = true;
 }
 
 
