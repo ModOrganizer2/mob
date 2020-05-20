@@ -274,6 +274,7 @@ public:
 protected:
 	void do_fetch() override;
 	void do_build_and_install() override;
+	void do_clean_for_rebuild() override;
 
 private:
 	std::string repo_;

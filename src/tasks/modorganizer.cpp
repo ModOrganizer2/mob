@@ -54,6 +54,15 @@ fs::path modorganizer::super_path()
 	return paths::build() / "modorganizer_super";
 }
 
+void modorganizer::do_clean_for_rebuild()
+{
+	instrument(times_.clean, [&]
+	{
+		op::delete_directory(cx(),
+			this_source_path() / "vsbuild", op::optional);
+	});
+}
+
 void modorganizer::do_fetch()
 {
 	instrument(times_.init_super, [&]
