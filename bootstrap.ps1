@@ -32,4 +32,4 @@ if (! $?) {
 }
 
 Copy-Item "build\Release\x64\mob.exe" ".\mob.exe"
-echo "Run ``mob -d prefix/path build`` to start building"
+echo "Run ``.\mob -d prefix/path build`` to start building"
