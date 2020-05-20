@@ -273,6 +273,8 @@ public:
 		return *this;
 	}
 
+	void write_ln(std::string_view utf8);
+
 private:
 	bool err_;
 

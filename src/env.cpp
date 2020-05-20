@@ -209,10 +209,45 @@ void* env::get_unicode_pointers() const
 
 
 
+static std::mutex g_sys_env_mutex;
+static env g_sys_env;
+static bool g_sys_env_inited;
+
+env this_env::get()
+{
+	std::scoped_lock lock(g_sys_env_mutex);
+
+	if (g_sys_env_inited)
+		return g_sys_env;
+
+	auto free = [](wchar_t* p) { FreeEnvironmentStringsW(p); };
+
+	auto env_block = std::unique_ptr<wchar_t, decltype(free)>{
+		GetEnvironmentStringsW(), free};
+
+	for (const wchar_t* name = env_block.get(); *name != L'\0'; )
+	{
+		const wchar_t* equal = std::wcschr(name, '=');
+		std::wstring key(name, static_cast<std::size_t>(equal - name));
+
+		const wchar_t* pValue = equal + 1;
+		std::wstring value(pValue);
+
+		if (!key.empty())
+			g_sys_env.set(utf16_to_utf8(key), utf16_to_utf8(value));
+
+		name = pValue + value.length() + 1;
+	}
+
+	g_sys_env_inited = true;
+
+	return g_sys_env;
+}
+
 void this_env::set(const std::string& k, const std::string& v, env::flags f)
 {
 	const std::wstring wk = utf8_to_utf16(k);
-	const std::wstring wv = utf8_to_utf16(v);
+	std::wstring wv = utf8_to_utf16(v);
 
 	switch (f)
 	{
@@ -225,16 +260,24 @@ void this_env::set(const std::string& k, const std::string& v, env::flags f)
 		case env::append:
 		{
 			const std::wstring current = get_impl(k).value_or(L"");
-			::SetEnvironmentVariableW(wk.c_str(), (current + wv).c_str());
+			wv = current + wv;
+			::SetEnvironmentVariableW(wk.c_str(), wv.c_str());
 			break;
 		}
 
 		case env::prepend:
 		{
 			const std::wstring current = get_impl(k).value_or(L"");
-			::SetEnvironmentVariableW(wk.c_str(), (wv + current).c_str());
+			wv = wv + current;
+			::SetEnvironmentVariableW(wk.c_str(), wv.c_str());
 			break;
 		}
+	}
+
+	{
+		std::scoped_lock lock(g_sys_env_mutex);
+		if (g_sys_env_inited)
+			g_sys_env.set(k, utf16_to_utf8(wv));
 	}
 }
 
@@ -284,32 +327,6 @@ std::optional<std::wstring> this_env::get_impl(const std::string& k)
 	MOB_ASSERT((written + 1) == buffer_size);
 
 	return std::wstring(buffer.get(), buffer.get() + written);
-}
-
-env this_env::get()
-{
-	env e;
-
-	auto free = [](wchar_t* p) { FreeEnvironmentStringsW(p); };
-
-	auto env_block = std::unique_ptr<wchar_t, decltype(free)>{
-		GetEnvironmentStringsW(), free};
-
-	for (const wchar_t* name = env_block.get(); *name != L'\0'; )
-	{
-		const wchar_t* equal = std::wcschr(name, '=');
-		std::wstring key(name, static_cast<std::size_t>(equal - name));
-
-		const wchar_t* pValue = equal + 1;
-		std::wstring value(pValue);
-
-		if (!key.empty())
-			e.set(utf16_to_utf8(key), utf16_to_utf8(value));
-
-		name = pValue + value.length() + 1;
-	}
-
-	return e;
 }
 
 }  // namespace

@@ -57,7 +57,7 @@ console_color level_color(context::level lv)
 	}
 }
 
-std::string reason_string(context::reason r)
+const char* reason_string(context::reason r)
 {
 	switch (r)
 	{
@@ -75,41 +75,6 @@ std::string reason_string(context::reason r)
 		case context::conf:          return "conf";
 		default:                     return "?";
 	}
-}
-
-std::string task_name(const std::string& name)
-{
-	const std::size_t longest = 15;
-	const std::size_t total = 1 + longest + 2; // '[x] '
-
-	if (!name.empty())
-		return pad_right("[" + name.substr(0, longest) + "]", total);
-	else
-		return std::string(total, ' ');
-}
-
-std::string tool_name(const tool* t)
-{
-	const std::size_t longest = 7;
-	const std::size_t total = 1 + longest + 2; // '[x] '
-
-	if (t && !t->name().empty())
-		return pad_right("[" + t->name().substr(0, longest) + "]", total);
-	else
-		return std::string(total, ' ');
-}
-
-std::string prefix(context::reason r)
-{
-	const std::size_t longest = 7;
-	const std::size_t total = 1 + longest + 2; // '[x] '
-
-	const std::string rs = reason_string(r).substr(0, longest);
-
-	if (!rs.empty())
-		return pad_right("[" + rs + "] ", total);
-	else
-		return std::string(total, ' ');
 }
 
 std::string error_message(DWORD id)
@@ -142,9 +107,8 @@ std::string error_message(DWORD id)
 	return utf16_to_utf8(s);
 }
 
-std::string timestamp()
+std::string_view timestamp()
 {
-	const std::size_t max_length = 7; // 0000.00
 	static thread_local char buffer[50];
 
 	using namespace std::chrono;
@@ -160,7 +124,7 @@ std::string timestamp()
 	const auto n = static_cast<std::size_t>(r.ptr - buffer);
 
 	if (r.ec == std::errc())
-		return pad_left(std::string(buffer, n), max_length, ' ');
+		return {buffer, n};
 	else
 		return "?";
 }
@@ -237,17 +201,14 @@ void context::set_log_file(const fs::path& p)
 }
 
 void context::do_log_impl(
-	bool bail, reason r, level lv, const std::string& utf8) const
+	bool bail, reason r, level lv, std::string_view utf8) const
 {
-	if (!bail && !enabled(lv))
-		return;
-
-	const auto ls = make_log_string(r, lv, utf8);
+	std::string_view ls = make_log_string(r, lv, utf8);
 
 	if (bail)
 	{
-		emit_log(lv, ls + " (bailing out)");
-		throw bailed(ls);
+		emit_log(lv, std::string(ls) + " (bailing out)");
+		throw bailed(std::string(ls));
 	}
 	else
 	{
@@ -255,19 +216,14 @@ void context::do_log_impl(
 	}
 }
 
-void context::emit_log(level lv, const std::string& utf8) const
+void context::emit_log(level lv, std::string_view utf8) const
 {
 	std::scoped_lock lock(g_mutex);
-
-	if (lv == level::error)
-		g_errors.push_back(utf8);
-	else if (lv == level::warning)
-		g_warnings.push_back(utf8);
 
 	if (log_enabled(lv, conf::output_log_level()))
 	{
 		auto c = level_color(lv);
-		u8cout << utf8 << "\n";
+		u8cout.write_ln(utf8);
 	}
 
 	if (g_log_file && log_enabled(lv, conf::file_log_level()))
@@ -275,41 +231,109 @@ void context::emit_log(level lv, const std::string& utf8) const
 		DWORD written = 0;
 
 		::WriteFile(
-			g_log_file.get(), utf8.c_str(), static_cast<DWORD>(utf8.size()),
+			g_log_file.get(), utf8.data(), static_cast<DWORD>(utf8.size()),
 			&written, nullptr);
 
 		::WriteFile(g_log_file.get(), "\r\n", 2, &written, nullptr);
 	}
+
+	if (lv == level::error)
+		g_errors.emplace_back(utf8);
+	else if (lv == level::warning)
+		g_warnings.emplace_back(utf8);
 }
 
-std::string context::make_log_string(reason r, level, std::string_view s) const
+void append_brackets(std::string& s, std::string_view what, std::size_t total)
 {
-	std::ostringstream oss;
+	if (what.empty())
+	{
+		s.append(total, ' ');
+	}
+	else
+	{
+		s.append(1, '[');
+		s.append(what);
+		s.append(1, ']');
 
-	oss
-		<< task_name(task_)
-		<< tool_name(tool_)
-		<< prefix(r);
+		const std::size_t written = 1 + what.size() + 1;  // "[x]"
+
+		if (written < total)
+			s.append(total - written, ' ');
+	}
+}
+
+void append(std::string& s, std::string_view what, std::size_t total)
+{
+	if (what.empty())
+	{
+		s.append(total, ' ');
+	}
+	else
+	{
+		s.append(what);
+
+		const std::size_t written = what.size();  // "x"
+
+		if (written < total)
+			s.append(total - written, ' ');
+	}
+}
+
+std::string_view context::make_log_string(reason r, level, std::string_view s) const
+{
+	const std::size_t total_timestamp = 8; // '0000.00 '
+
+	const std::size_t longest_task_name = 15;
+	const std::size_t total_task_name = 1 + longest_task_name + 2; // '[x] '
+
+	const std::size_t longest_tool_name = 7;
+	const std::size_t total_tool_name = 1 + longest_tool_name + 2; // '[x] '
+
+	const std::size_t longest_prefix = 7;
+	const std::size_t total_prefix = 1 + longest_prefix + 2; // '[x] '
+
+	static thread_local std::string ls;
+
+	ls.reserve(
+		total_timestamp +                // timestamp
+		total_task_name +
+		total_tool_name +
+		total_prefix +
+		s.size() +
+		50);               // possible additional stuff
+
+	ls.clear();
+
+	append(ls, timestamp(), total_timestamp);
+	ls.append(1, ' ');
+	append_brackets(ls, task_, total_task_name);
+
+	if (tool_)
+		append_brackets(ls, tool_->name(), total_tool_name);
+	else
+		ls.append(total_tool_name, ' ');
+
+	append_brackets(ls, reason_string(r), total_prefix);
+
+	ls.append(s);
 
 	switch (r)
 	{
 		case context::redownload:
-			oss << s << " (happened because of --redownload)";
+			ls.append(" (happened because of --redownload)");
 			break;
 
 		case context::rebuild:
-			oss << s << " (happened because of --rebuild)";
+			ls.append(" (happened because of --rebuild)");
 			break;
 
 		case context::reextract:
-			oss << s << " (happened because of --reextract)";
+			ls.append(" (happened because of --reextract)");
 			break;
 
 		case context::interruption:
 			if (s.empty())
-				oss << "interrupted";
-			else
-				oss << s;
+				ls.append("interrupted");
 
 			break;
 
@@ -322,11 +346,10 @@ std::string context::make_log_string(reason r, level, std::string_view s) const
 		case context::generic:
 		case context::conf:
 		default:
-			oss << s;
 			break;
 	}
 
-	return std::string(timestamp()) + " " + oss.str();
+	return ls;
 }
 
 void dump_logs()

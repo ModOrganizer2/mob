@@ -48,8 +48,10 @@ public:
 	static int file_log_level()   { return file_log_level_; }
 	static void set_file_log_level(const std::string& s);
 
+	static bool dry() { return dry_; }
+	static void set_dry(const std::string& s);
+
 	static fs::path log_file() { return global_by_name("log_file"); }
-	static bool dry()          { return bool_global_by_name("dry"); }
 	static bool redownload()   { return bool_global_by_name("redownload"); }
 	static bool reextract()    { return bool_global_by_name("reextract"); }
 	static bool rebuild()      { return bool_global_by_name("rebuild"); }
@@ -66,6 +68,7 @@ private:
 	// special cases to avoid string manipulations
 	static int output_log_level_;
 	static int file_log_level_;
+	static bool dry_;
 };
 
 

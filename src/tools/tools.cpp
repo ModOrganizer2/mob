@@ -26,12 +26,13 @@ tool& tool::operator=(tool&& t)
 	return *this;
 }
 
-std::string tool::name() const
+void tool::set_name(const std::string& s)
 {
-	std::string s = do_name();
-	if (!s.empty())
-		return s;
+	name_ = s;
+}
 
+const std::string& tool::name() const
+{
 	return name_;
 }
 

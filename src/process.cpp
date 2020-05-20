@@ -641,7 +641,7 @@ void process::read_pipe(
 		{
 			s.buffer.add(pipe.read());
 
-			s.buffer.next_utf8_lines(finish, [&](auto&& line)
+			s.buffer.next_utf8_lines(finish, [&](std::string&& line)
 			{
 				filter f = {line, r, s.level, false};
 
@@ -652,8 +652,8 @@ void process::read_pipe(
 						return;
 				}
 
-				logs_[f.lv].push_back(std::string(f.line));
-				cx_->log(f.r, f.lv, "{}", f.line);
+				cx_->log_string(f.r, f.lv, f.line);
+				logs_[f.lv].emplace_back(std::move(line));
 			});
 
 			break;
@@ -947,90 +947,6 @@ void encoded_buffer::add(std::string_view bytes)
 std::string encoded_buffer::utf8_string() const
 {
 	return bytes_to_utf8(e_, bytes_);
-}
-
-template <class CharT>
-std::basic_string<CharT> next_line(
-	bool finished, std::string_view bytes, std::size_t& byte_offset)
-{
-	std::size_t size = bytes.size();
-
-	if constexpr (sizeof(CharT) == 2)
-	{
-		if ((size & 1) == 1)
-			--size;
-	}
-
-	const CharT* start = reinterpret_cast<const CharT*>(bytes.data() + byte_offset);
-	const CharT* end = reinterpret_cast<const CharT*>(bytes.data() + size);
-	const CharT* p = start;
-
-	std::basic_string<CharT> line;
-
-	while (p != end)
-	{
-		if (*p == CharT('\n') || *p == CharT('\r'))
-		{
-			line.assign(start, static_cast<std::size_t>(p - start));
-
-			while (p != end && (*p == CharT('\n') || *p == CharT('\r')))
-				++p;
-
-			if (!line.empty())
-				break;
-
-			start = p;
-		}
-		else
-		{
-			++p;
-		}
-	}
-
-	if (line.empty() && finished)
-	{
-		line = {
-			reinterpret_cast<const wchar_t*>(bytes.data() + byte_offset),
-			reinterpret_cast<const wchar_t*>(bytes.data() + size)
-		};
-
-		byte_offset = bytes.size();
-	}
-	else
-	{
-		byte_offset = static_cast<std::size_t>(
-			reinterpret_cast<const char*>(p) - bytes.data());
-
-		MOB_ASSERT(byte_offset <= bytes.size());
-	}
-
-	return line;
-}
-
-std::string encoded_buffer::next_utf8_line(bool finished)
-{
-	switch (e_)
-	{
-		case encodings::utf16:
-		{
-			const std::wstring utf16 = next_line<wchar_t>(finished, bytes_, last_);
-			return utf16_to_utf8(utf16);
-		}
-
-		case encodings::acp:
-		case encodings::oem:
-		{
-			const std::string cp = next_line<char>(finished, bytes_, last_);
-			return bytes_to_utf8(e_, cp);
-		}
-
-		case encodings::utf8:
-		case encodings::dont_know:
-		default:
-		{
-			return next_line<char>(finished, bytes_, last_);
-		}
-	}
 }
 
 }	// namespace

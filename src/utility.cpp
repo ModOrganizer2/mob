@@ -244,6 +244,26 @@ void u8stream::do_output(const std::string& s)
 	}
 }
 
+void u8stream::write_ln(std::string_view utf8)
+{
+	std::scoped_lock lock(g_output_mutex);
+
+	if (err_)
+	{
+		if (stderr_console)
+			std::wcerr << utf8_to_utf16(utf8) << L"\n";
+		else
+			std::cerr << utf8 << "\n";
+	}
+	else
+	{
+		if (stdout_console)
+			std::wcout << utf8_to_utf16(utf8) << L"\n";
+		else
+			std::cout << utf8 << "\n";
+	}
+}
+
 
 void mob_assertion_failed(
 	const char* message,
@@ -640,55 +660,82 @@ console_color::~console_color()
 
 std::optional<std::wstring> to_widechar(UINT from, std::string_view s)
 {
+	std::wstring ws;
+
 	if (s.empty())
-		return std::wstring();
+		return ws;
 
-	const int wsize = MultiByteToWideChar(
-		from, 0, s.data(), static_cast<int>(s.size()), nullptr, 0);
+	ws.resize(s.size() + 1);
 
-	if (wsize == 0)
-		return {};
+	for (int t=0; t<3; ++t)
+	{
+		const int written = MultiByteToWideChar(
+			from, 0, s.data(), static_cast<int>(s.size()),
+			ws.data(), static_cast<int>(ws.size()));
 
-	auto buffer = std::make_unique<wchar_t[]>(
-		static_cast<std::size_t>(wsize + 1));
+		if (written <= 0)
+		{
+			const auto e = GetLastError();
 
-	const int written = MultiByteToWideChar(
-		from, 0, s.data(), static_cast<int>(s.size()),
-		buffer.get(), wsize);
+			if (e == ERROR_INSUFFICIENT_BUFFER)
+			{
+				ws.resize(ws.size() * 2);
+				continue;
+			}
+			else
+			{
+				return {};
+			}
+		}
+		else
+		{
+			MOB_ASSERT(static_cast<std::size_t>(written) <= s.size());
+			ws.resize(static_cast<std::size_t>(written));
+			break;
+		}
+	}
 
-	if (written == 0)
-		return {};
-
-	MOB_ASSERT(written == wsize);
-
-	return std::wstring(buffer.get(), buffer.get() + written);
+	return ws;
 }
 
 std::optional<std::string> to_multibyte(UINT to, std::wstring_view ws)
 {
+	std::string s;
+
 	if (ws.empty())
-		return std::string();
+		return s;
 
-	const int size = WideCharToMultiByte(
-		to, 0, ws.data(), static_cast<int>(ws.size()), nullptr, 0,
-		nullptr, nullptr);
+	s.resize(static_cast<std::size_t>(ws.size() * 1.5));
 
-	if (size == 0)
-		return {};
+	for (int t=0; t<3; ++t)
+	{
+		const int written = WideCharToMultiByte(
+			to, 0, ws.data(), static_cast<int>(ws.size()),
+			s.data(), static_cast<int>(s.size()), nullptr, nullptr);
 
-	auto buffer = std::make_unique<char[]>(
-		static_cast<std::size_t>(size + 1));
+		if (written <= 0)
+		{
+			const auto e = GetLastError();
 
-	const int written = WideCharToMultiByte(
-		to, 0, ws.data(), static_cast<int>(ws.size()),
-		buffer.get(), size, nullptr, nullptr);
+			if (e == ERROR_INSUFFICIENT_BUFFER)
+			{
+				s.resize(ws.size() * 2);
+				continue;
+			}
+			else
+			{
+				return {};
+			}
+		}
+		else
+		{
+			MOB_ASSERT(static_cast<std::size_t>(written) <= s.size());
+			s.resize(static_cast<std::size_t>(written));
+			break;
+		}
+	}
 
-	if (written == 0)
-		return {};
-
-	MOB_ASSERT(written == size);
-
-	return std::string(buffer.get(), buffer.get() + written);
+	return s;
 }
 
 
@@ -701,7 +748,7 @@ std::wstring utf8_to_utf16(std::string_view s)
 		return L"???";
 	}
 
-	return *ws;
+	return std::move(*ws);
 }
 
 std::string utf16_to_utf8(std::wstring_view ws)
@@ -713,7 +760,7 @@ std::string utf16_to_utf8(std::wstring_view ws)
 		return "???";
 	}
 
-	return *s;
+	return std::move(*s);
 }
 
 std::wstring cp_to_utf16(UINT from, std::string_view s)
@@ -725,7 +772,7 @@ std::wstring cp_to_utf16(UINT from, std::string_view s)
 		return L"???";
 	}
 
-	return *ws;
+	return std::move(*ws);
 }
 
 std::string utf16_to_cp(UINT to, std::wstring_view ws)
@@ -738,7 +785,7 @@ std::string utf16_to_cp(UINT to, std::wstring_view ws)
 		return "???";
 	}
 
-	return *s;
+	return std::move(*s);
 }
 
 

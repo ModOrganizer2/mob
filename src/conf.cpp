@@ -12,6 +12,7 @@ namespace mob
 conf::task_map conf::map_;
 int conf::output_log_level_ = 3;
 int conf::file_log_level_ = 5;
+bool conf::dry_ = false;
 
 std::string master_ini_filename()
 {
@@ -123,10 +124,8 @@ void conf::set_for_task(
 
 bool conf::prebuilt_by_name(const std::string& task)
 {
-	std::istringstream iss(get_global("prebuilt", task));
-	bool b;
-	iss >> std::boolalpha >> b;
-	return b;
+	const std::string s = get_global("prebuilt", task);
+	return (s == "true" || s == "yes" || s == "1");
 }
 
 fs::path conf::path_by_name(const std::string& name)
@@ -151,10 +150,8 @@ std::string conf::global_by_name(const std::string& name)
 
 bool conf::bool_global_by_name(const std::string& name)
 {
-	std::istringstream iss(global_by_name(name));
-	bool b;
-	iss >> std::boolalpha >> b;
-	return b;
+	const std::string s = global_by_name(name);
+	return (s == "true" || s == "yes" || s == "1");
 }
 
 std::string conf::option_by_name(
@@ -166,10 +163,8 @@ std::string conf::option_by_name(
 bool conf::bool_option_by_name(
 	const std::vector<std::string>& task_names, const std::string& name)
 {
-	std::istringstream iss(option_by_name(task_names, name));
-	bool b;
-	iss >> std::boolalpha >> b;
-	return b;
+	const std::string s = option_by_name(task_names, name);
+	return (s == "true" || s == "yes" || s == "1");
 }
 
 void conf::set_output_log_level(const std::string& s)
@@ -210,6 +205,12 @@ void conf::set_file_log_level(const std::string& s)
 		gcx().bail_out(context::generic, "bad file log level {}", s);
 	}
 }
+
+void conf::set_dry(const std::string& s)
+{
+	dry_ = (s == "true" || s == "yes" || s == "1");
+}
+
 
 std::vector<std::string> conf::format_options()
 {
@@ -808,6 +809,7 @@ void set_special_options()
 {
 	conf::set_output_log_level(conf::get_global("global", "output_log_level"));
 	conf::set_file_log_level(conf::get_global("global", "file_log_level"));
+	conf::set_dry(conf::get_global("global", "dry"));
 }
 
 std::vector<fs::path> find_inis(

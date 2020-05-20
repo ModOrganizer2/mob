@@ -128,6 +128,11 @@ public:
 		do_log(false, r, lv, f, std::forward<Args>(args)...);
 	}
 
+	void log_string(reason r, level lv, std::string_view s) const
+	{
+		do_log_string(false, r, lv, s);
+	}
+
 	template <class... Args>
 	void dump(reason r, const char* f, Args&&... args) const
 	{
@@ -174,9 +179,20 @@ private:
 	std::string task_;
 	const tool* tool_;
 
+	void do_log_string(bool bail, reason r, level lv, std::string_view s) const
+	{
+		if (!bail && !enabled(lv))
+			return;
+
+		do_log_impl(bail, r, lv, s);
+	}
+
 	template <class... Args>
 	void do_log(bool bail, reason r, level lv, const char* f, Args&&... args) const
 	{
+		if (!bail && !enabled(lv))
+			return;
+
 		try
 		{
 			const std::string utf8 = ::fmt::format(
@@ -202,9 +218,9 @@ private:
 		}
 	}
 
-	std::string make_log_string(reason r, level lv, std::string_view s) const;
-	void do_log_impl(bool bail, reason r, level lv, const std::string& utf8) const;
-	void emit_log(level lv, const std::string& utf8) const;
+	std::string_view make_log_string(reason r, level lv, std::string_view s) const;
+	void do_log_impl(bool bail, reason r, level lv, std::string_view utf8) const;
+	void emit_log(level lv, std::string_view utf8) const;
 };
 
 

@@ -10,11 +10,6 @@ basic_process_runner::basic_process_runner(std::string name)
 {
 }
 
-std::string basic_process_runner::do_name() const
-{
-	return process_.name();
-}
-
 void basic_process_runner::do_interrupt()
 {
 	process_.interrupt();
@@ -22,6 +17,7 @@ void basic_process_runner::do_interrupt()
 
 int basic_process_runner::execute_and_join()
 {
+	set_name(process_.name());
 	process_.set_context(&cx());
 	process_.run();
 	join();
@@ -60,11 +56,6 @@ int process_runner::result() const
 	return exit_code();
 }
 
-std::string process_runner::do_name() const
-{
-	return real_process().name();
-}
-
 void process_runner::do_interrupt()
 {
 	real_process().interrupt();
@@ -72,6 +63,7 @@ void process_runner::do_interrupt()
 
 int process_runner::execute_and_join()
 {
+	set_name(real_process().name());
 	real_process().set_context(&cx());
 	real_process().run();
 
