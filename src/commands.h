@@ -113,9 +113,9 @@ private:
 	bool reextract_ = false;
 	bool rebuild_ = false;
 	bool clean_ = false;
-	bool nopull_ = false;
+	std::optional<bool> nopull_;
 	bool keep_msbuild_ = false;
-	bool revert_ts_ = false;
+	std::optional<bool> revert_ts_;
 
 	void terminate_msbuild();
 };

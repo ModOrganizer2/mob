@@ -69,6 +69,10 @@ private:
 	static int output_log_level_;
 	static int file_log_level_;
 	static bool dry_;
+
+	static std::optional<std::string> find_for_task(
+		const std::string& task_name,
+		const std::string& section, const std::string& key);
 };
 
 

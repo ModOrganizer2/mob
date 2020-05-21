@@ -319,12 +319,16 @@ clipp::group build_command::do_group()
 		(clipp::option("-n", "--new") >> clean_)
 			% "deletes everything and starts from scratch",
 
-		(clipp::option("-p", "--no-pull") >> nopull_)
-			% "clones repos if necessary, but never pulls once cloned",
+		(
+			clipp::option("--pull").call([&]{ nopull_ = false; }) |
+			clipp::option("--no-pull").call([&]{ nopull_ = true; })
+		) % "whether to pull repos that are already cloned; global override",
 
-		(clipp::option("--revert-ts") >> revert_ts_)
-			% "reverts all the .ts files in a repo before pulling to avoid "
-			  "merge errors",
+		(
+			clipp::option("--revert-ts").call([&]{ revert_ts_ = true; }) |
+			clipp::option("--no-revert-ts").call([&]{ revert_ts_ = false; })
+		) % "whether to revert all the .ts files in a repo before pulling to "
+		    "avoid merge errors; global override",
 
 		(clipp::option("--keep-msbuild") >> keep_msbuild_)
 			% "don't terminate msbuild.exe instances after building",
@@ -349,10 +353,20 @@ void build_command::convert_cl_to_conf()
 		common.options.push_back("global/rebuild=true");
 
 	if (nopull_)
-		common.options.push_back("options/no_pull=true");
+	{
+		if (*nopull_)
+			common.options.push_back("_override:options/no_pull=true");
+		else
+			common.options.push_back("_override:options/no_pull=false");
+	}
 
 	if (revert_ts_)
-		common.options.push_back("options/revert_ts=true");
+	{
+		if (*revert_ts_)
+			common.options.push_back("_override:options/revert_ts=true");
+		else
+			common.options.push_back("_override:options/revert_ts=false");
+	}
 }
 
 int build_command::do_run()

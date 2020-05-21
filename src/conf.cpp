@@ -73,43 +73,59 @@ void conf::add_global(
 	map_[""][section][key] = value;
 }
 
+std::optional<std::string> conf::find_for_task(
+	const std::string& task_name,
+	const std::string& section_name, const std::string& key)
+{
+	auto titor = map_.find(task_name);
+	if (titor == map_.end())
+		return {};
+
+	const auto& task = titor->second;
+
+	auto sitor = task.find(section_name);
+	if (sitor == task.end())
+		return {};
+
+	const auto& section = sitor->second;
+
+	auto itor = section.find(key);
+	if (itor == section.end())
+		return {};
+
+	return itor->second;
+}
+
 std::string conf::get_for_task(
 	const std::vector<std::string>& task_names,
 	const std::string& section, const std::string& key)
 {
 	task_map::iterator task = map_.end();
 
+	auto v = find_for_task("_override", section, key);
+	if (v)
+		return *v;
+
 	for (auto&& tn : task_names)
 	{
-		task = map_.find(tn);
-		if (task != map_.end())
-			break;
+		v = find_for_task(tn, section, key);
+		if (v)
+			return *v;
 	}
 
-	if (task == map_.end())
+	for (auto&& tn : task_names)
 	{
-		for (auto&& tn : task_names)
+		if (is_super_task(tn))
 		{
-			if (is_super_task(tn))
-			{
-				task = map_.find("super");
-				break;
-			}
+			v = find_for_task("super", section, key);
+			if (v)
+				return *v;
+
+			break;
 		}
 	}
 
-	if (task == map_.end())
-		return get_global(section, key);
-
-	auto sitor = task->second.find(section);
-	if (sitor == task->second.end())
-		return get_global(section, key);
-
-	auto kitor = sitor->second.find(key);
-	if (kitor == sitor->second.end())
-		return get_global(section, key);
-
-	return kitor->second;
+	return get_global(section, key);
 }
 
 void conf::set_for_task(
@@ -692,7 +708,7 @@ void parse_section(
 		}
 		else
 		{
-			if (!task_exists(task))
+			if (!task_exists(task) && task != "_override")
 				ini_error(ini, i, "task '" + task + "' doesn't exist");
 
 			conf::set_for_task(task, section, k, v);
@@ -929,7 +945,7 @@ void init_options(
 			}
 			else
 			{
-				if (!task_exists(po.task))
+				if (!task_exists(po.task) && po.task != "_override")
 				{
 					gcx().bail_out(context::generic,
 						"task '{}' doesn't exist (command line option)",
