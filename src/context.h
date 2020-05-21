@@ -191,6 +191,11 @@ private:
 		do_log_impl(bail, r, lv, s);
 	}
 
+	void do_log(bool bail, reason r, level lv, const char* f) const
+	{
+		do_log_string(bail, r, lv, f);
+	}
+
 	template <class... Args>
 	void do_log(bool bail, reason r, level lv, const char* f, Args&&... args) const
 	{

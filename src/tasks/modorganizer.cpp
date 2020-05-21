@@ -135,24 +135,7 @@ void modorganizer::do_build_and_install()
 
 	const auto build_path = instrument(times_.configure, [&]
 	{
-		return run_tool(cmake()
-			.generator(cmake::vs)
-			.def("CMAKE_INSTALL_PREFIX:PATH", paths::install())
-			.def("DEPENDENCIES_DIR",   paths::build())
-			.def("BOOST_ROOT",         boost::source_path())
-			.def("BOOST_LIBRARYDIR",   boost::lib_path(arch::x64))
-			.def("FMT_ROOT",           fmt::source_path())
-			.def("SPDLOG_ROOT",        spdlog::source_path())
-			.def("LOOT_PATH",          libloot::source_path())
-			.def("LZ4_ROOT",           lz4::source_path())
-			.def("QT_ROOT",            qt::installation_path())
-			.def("ZLIB_ROOT",          zlib::source_path())
-			.def("PYTHON_ROOT",        python::source_path())
-			.def("SEVENZ_ROOT",        sevenz::source_path())
-			.def("LIBBSARCH_ROOT",     libbsarch::source_path())
-			.def("BOOST_DI_ROOT",      boost_di::source_path())
-			.def("GTEST_ROOT",         gtest::source_path())
-			.root(this_source_path()));
+		return run_tool(create_cmake_tool(this_source_path()));
 	});
 
 	// run the project file instead of the .sln and giving INSTALL as a

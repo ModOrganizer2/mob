@@ -8,8 +8,8 @@
 namespace mob
 {
 
-const DWORD pipe_timeout = 50;
-const DWORD process_wait_timeout = 50;
+const DWORD wait_timeout = 50;
+static std::atomic<int> g_next_pipe_id(0);
 
 
 HANDLE get_bit_bucket()
@@ -18,8 +18,8 @@ HANDLE get_bit_bucket()
 	return ::CreateFileW(L"NUL", GENERIC_WRITE, 0, &sa, OPEN_EXISTING, 0, 0);
 }
 
-async_pipe::async_pipe()
-	:  pending_(false), closed_(true)
+async_pipe::async_pipe(const context& cx)
+	:  cx_(cx), pending_(false), closed_(true)
 {
 	buffer_ = std::make_unique<char[]>(buffer_size);
 	std::memset(buffer_.get(), 0, buffer_size);
@@ -44,7 +44,8 @@ handle_ptr async_pipe::create()
 	if (ov_.hEvent == NULL)
 	{
 		const auto e = GetLastError();
-		bail_out("CreateEvent failed", error_message(e));
+		cx_.bail_out(context::cmd,
+			"CreateEvent failed, {}", error_message(e));
 	}
 
 	event_.reset(ov_.hEvent);
@@ -53,23 +54,34 @@ handle_ptr async_pipe::create()
 	return out;
 }
 
-std::string_view async_pipe::read()
+std::string_view async_pipe::read(bool finish)
 {
+	std::string_view s;
+
 	if (closed_)
-		return {};
+		return s;
 
 	if (pending_)
-		return check_pending();
+		s = check_pending();
 	else
-		return try_read();
+		s = try_read();
+
+	if (finish && s.empty())
+	{
+		cx_.trace(context::cmd, "read: finish=true and read is empty, closing");
+		::CancelIo(stdout_.get());
+		closed_ = true;
+	}
+
+	return s;
 }
 
 HANDLE async_pipe::create_pipe()
 {
-	static std::atomic<int> pipe_id(0);
+	const auto pipe_id = g_next_pipe_id.fetch_add(1) + 1;
 
 	const std::wstring pipe_name =
-		L"\\\\.\\pipe\\mob_pipe" + std::to_wstring(++pipe_id);
+		LR"(\\.\pipe\mob_pipe)" + std::to_wstring(pipe_id);
 
 	SECURITY_ATTRIBUTES sa = {};
 	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -80,14 +92,16 @@ HANDLE async_pipe::create_pipe()
 	// creating pipe
 	{
 		HANDLE pipe_handle = ::CreateNamedPipeW(
-			pipe_name.c_str(), PIPE_ACCESS_DUPLEX|FILE_FLAG_OVERLAPPED,
+			pipe_name.c_str(),
+			PIPE_ACCESS_DUPLEX|FILE_FLAG_OVERLAPPED|FILE_FLAG_FIRST_PIPE_INSTANCE,
 			PIPE_TYPE_BYTE|PIPE_READMODE_BYTE|PIPE_WAIT,
-			1, buffer_size, buffer_size, pipe_timeout, &sa);
+			1, buffer_size, buffer_size, wait_timeout, &sa);
 
 		if (pipe_handle == INVALID_HANDLE_VALUE)
 		{
 			const auto e = GetLastError();
-			bail_out("CreateNamedPipeW failed", error_message(e));
+			cx_.bail_out(context::cmd,
+				"CreateNamedPipeW failed, {}", error_message(e));
 		}
 
 		pipe.reset(pipe_handle);
@@ -104,7 +118,8 @@ HANDLE async_pipe::create_pipe()
 		if (!r)
 		{
 			const auto e = GetLastError();
-			bail_out("DuplicateHandle for pipe", error_message(e));
+			cx_.bail_out(context::cmd,
+				"DuplicateHandle for pipe failed, {}", error_message(e));
 		}
 
 		stdout_.reset(output_read);
@@ -119,7 +134,8 @@ HANDLE async_pipe::create_pipe()
 	if (output_write == INVALID_HANDLE_VALUE)
 	{
 		const auto e = GetLastError();
-		bail_out("CreateFileW for pipe failed", error_message(e));
+		cx_.bail_out(context::cmd,
+			"CreateFileW for pipe failed, {}", error_message(e));
 	}
 
 	return output_write;
@@ -150,7 +166,8 @@ std::string_view async_pipe::try_read()
 
 			default:
 			{
-				bail_out("async_pipe read failed", error_message(e));
+				cx_.bail_out(context::cmd,
+					"async_pipe read failed, {}", error_message(e));
 				break;
 			}
 		}
@@ -167,11 +184,12 @@ std::string_view async_pipe::check_pending()
 {
 	DWORD bytes_read = 0;
 
-	const auto r = WaitForSingleObject(event_.get(), pipe_timeout);
+	const auto r = WaitForSingleObject(event_.get(), wait_timeout);
 
 	if (r == WAIT_FAILED) {
 		const auto e = GetLastError();
-		bail_out("WaitForSingleObject in async_pipe failed", error_message(e));
+		cx_.bail_out(context::cmd,
+			"WaitForSingleObject in async_pipe failed, {}", error_message(e));
 	}
 
 	if (!::GetOverlappedResult(stdout_.get(), &ov_, &bytes_read, FALSE))
@@ -199,8 +217,8 @@ std::string_view async_pipe::check_pending()
 
 			default:
 			{
-				bail_out(
-					"GetOverlappedResult failed in async_pipe",
+				cx_.bail_out(context::cmd,
+					"GetOverlappedResult failed in async_pipe, {}",
 					error_message(e));
 
 				break;
@@ -437,16 +455,18 @@ void process::do_run(const std::string& what)
 
 
 	{
+		SetLastError(0);
 		HANDLE job = CreateJobObjectW(nullptr, nullptr);
+		const auto e = GetLastError();
 
 		if (job == 0)
 		{
-			const auto e = GetLastError();
 			cx_->warning(context::cmd,
 				"failed to create job, {}", error_message(e));
 		}
 		else
 		{
+			MOB_ASSERT(e != ERROR_ALREADY_EXISTS);
 			impl_.job.reset(job);
 		}
 	}
@@ -460,12 +480,15 @@ void process::do_run(const std::string& what)
 
 	handle_ptr stdout_pipe, stderr_pipe, stdin_pipe;
 
+	impl_.stdout_pipe.reset(new async_pipe(*cx_));
+	impl_.stderr_pipe.reset(new async_pipe(*cx_));
+
 	switch (stdout_.flags)
 	{
 		case forward_to_log:
 		case keep_in_string:
 		{
-			stdout_pipe = impl_.stdout_pipe.create();
+			stdout_pipe = impl_.stdout_pipe->create();
 			si.hStdOutput = stdout_pipe.get();
 			break;
 		}
@@ -488,7 +511,7 @@ void process::do_run(const std::string& what)
 		case forward_to_log:
 		case keep_in_string:
 		{
-			stderr_pipe = impl_.stderr_pipe.create();
+			stderr_pipe = impl_.stderr_pipe->create();
 			si.hStdError = stderr_pipe.get();
 			break;
 		}
@@ -519,7 +542,9 @@ void process::do_run(const std::string& what)
 
 	if (!cwd_.empty())
 	{
-		op::create_directories(*cx_, cwd_);
+		if (!fs::exists(cwd_))
+			op::create_directories(*cx_, cwd_);
+
 		cwd_s = cwd_.native();
 		cwd_p = (cwd_s.empty() ? nullptr : cwd_s.c_str());
 	}
@@ -590,8 +615,7 @@ void process::join()
 
 	for (;;)
 	{
-		const auto r = WaitForSingleObject(
-			impl_.handle.get(), process_wait_timeout);
+		const auto r = WaitForSingleObject(impl_.handle.get(), wait_timeout);
 
 		if (r == WAIT_OBJECT_0)
 		{
@@ -616,8 +640,8 @@ void process::join()
 
 void process::read_pipes(bool finish)
 {
-	read_pipe(finish, stdout_, impl_.stdout_pipe, context::std_out);
-	read_pipe(finish, stderr_, impl_.stderr_pipe, context::std_err);
+	read_pipe(finish, stdout_, *impl_.stdout_pipe, context::std_out);
+	read_pipe(finish, stderr_, *impl_.stderr_pipe, context::std_err);
 }
 
 void process::read_pipe(
@@ -627,7 +651,7 @@ void process::read_pipe(
 	{
 		case forward_to_log:
 		{
-			s.buffer.add(pipe.read());
+			s.buffer.add(pipe.read(finish));
 
 			s.buffer.next_utf8_lines(finish, [&](std::string&& line)
 			{
@@ -649,7 +673,7 @@ void process::read_pipe(
 
 		case keep_in_string:
 		{
-			s.buffer.add(pipe.read());
+			s.buffer.add(pipe.read(finish));
 			break;
 		}
 
@@ -661,18 +685,6 @@ void process::read_pipe(
 
 void process::on_completed()
 {
-	// one last time
-	for (;;)
-	{
-		read_pipes(false);
-
-		if (impl_.stdout_pipe.closed() && impl_.stderr_pipe.closed())
-			break;
-	}
-
-	read_pipes(true);
-
-
 	if (impl_.interrupt)
 		return;
 
@@ -684,6 +696,14 @@ void process::on_completed()
 			"failed to get exit code, ", error_message(e));
 
 		code_ = 0xffff;
+	}
+
+	for (;;)
+	{
+		read_pipes(true);
+
+		if (impl_.stdout_pipe->closed() && impl_.stderr_pipe->closed())
+			break;
 	}
 
 	// success

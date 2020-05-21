@@ -13,15 +13,16 @@ class url;
 class async_pipe
 {
 public:
-    async_pipe();
+    async_pipe(const context& cx);
 
     handle_ptr create();
-	std::string_view read();
+	std::string_view read(bool finish);
 	bool closed() const;
 
 private:
     static const std::size_t buffer_size = 50'000;
 
+	const context& cx_;
     handle_ptr stdout_;
     handle_ptr event_;
     std::unique_ptr<char[]> buffer_;
@@ -295,7 +296,8 @@ private:
 		handle_ptr handle;
 		handle_ptr job;
 		std::atomic<bool> interrupt{false};
-		async_pipe stdout_pipe, stderr_pipe;
+		std::unique_ptr<async_pipe> stdout_pipe;
+		std::unique_ptr<async_pipe> stderr_pipe;
 
 		impl() = default;
 		impl(const impl&);
