@@ -79,7 +79,7 @@ void usvfs::fetch_from_source()
 	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
-			.url(make_github_url(task_conf().mo_org(), "usvfs"))
+			.url(task_conf().make_git_url(task_conf().mo_org(), "usvfs"))
 			.branch(version())
 			.root(source_path()));
 	});

@@ -73,7 +73,7 @@ void modorganizer::do_fetch()
 	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
-			.url(make_github_url(task_conf().mo_org(), repo_))
+			.url(task_conf().make_git_url(task_conf().mo_org(), repo_))
 			.branch(task_conf().mo_branch())
 			.root(this_source_path()));
 	});
@@ -109,7 +109,7 @@ void modorganizer::do_build_and_install()
 {
 	git_submodule_adder::instance().queue(std::move(
 		task_conf().make_git(git::ops::add_submodule)
-			.url(make_github_url(task_conf().mo_org(), repo_))
+			.url(task_conf().make_git_url(task_conf().mo_org(), repo_))
 			.branch(task_conf().mo_branch())
 			.submodule_name(name())
 			.root(super_path())));

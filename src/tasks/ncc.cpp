@@ -38,7 +38,7 @@ void ncc::do_fetch()
 	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
-			.url(make_github_url(task_conf().mo_org(), "modorganizer-NCC"))
+			.url(task_conf().make_git_url(task_conf().mo_org(), "modorganizer-NCC"))
 			.branch(task_conf().mo_branch())
 			.root(source_path()));
 	});

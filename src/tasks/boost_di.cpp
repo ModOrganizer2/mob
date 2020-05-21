@@ -29,7 +29,7 @@ void boost_di::do_fetch()
 	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
-			.url(make_github_url("boost-experimental", "di"))
+			.url(task_conf().make_git_url("boost-experimental", "di"))
 			.branch("cpp14")
 			.root(source_path()));
 	});

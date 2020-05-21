@@ -29,7 +29,7 @@ void spdlog::do_fetch()
 	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
-			.url(make_github_url("gabime", "spdlog"))
+			.url(task_conf().make_git_url("gabime", "spdlog"))
 			.branch(version())
 			.root(source_path()));
 	});

@@ -39,6 +39,7 @@ public:
 	bool no_pull() const;
 	bool revert_ts() const;
 	bool ignore_ts()const;
+	std::string git_url_prefix() const;
 	bool git_shallow() const;
 	std::string git_user() const;
 	std::string git_email() const;
@@ -49,6 +50,9 @@ public:
 	bool remote_push_default_origin() const;
 
 	git make_git(git::ops o=git::ops::none) const;
+
+	std::string make_git_url(
+		const std::string& org, const std::string& repo) const;
 
 private:
 	const task& task_;

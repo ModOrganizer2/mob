@@ -37,7 +37,7 @@ void nmm::do_fetch()
 	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
-			.url(make_github_url("Nexus-Mods", "Nexus-Mod-Manager"))
+			.url(task_conf().make_git_url("Nexus-Mods", "Nexus-Mod-Manager"))
 			.branch(version())
 			.root(source_path()));
 

@@ -29,7 +29,7 @@ void libffi::do_fetch()
 	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
-			.url(make_github_url("python","cpython-bin-deps"))
+			.url(task_conf().make_git_url("python","cpython-bin-deps"))
 			.branch("libffi")
 			.root(source_path()));
 	});

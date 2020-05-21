@@ -84,7 +84,7 @@ void lz4::fetch_from_source()
 	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
-			.url(make_github_url("lz4","lz4"))
+			.url(task_conf().make_git_url("lz4","lz4"))
 			.branch(version())
 			.root(source_path()));
 

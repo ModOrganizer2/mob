@@ -286,11 +286,6 @@ void mob_assertion_failed(
 		DebugBreak();
 }
 
-url make_github_url(const std::string& org, const std::string& repo)
-{
-	return "https://github.com/" + org + "/" + repo + ".git";
-}
-
 url make_prebuilt_url(const std::string& filename)
 {
 	return

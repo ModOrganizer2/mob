@@ -290,7 +290,6 @@ enum class arch
 };
 
 
-url make_github_url(const std::string& org, const std::string& repo);
 url make_prebuilt_url(const std::string& filename);
 url make_appveyor_artifact_url(
 	arch a, const std::string& project, const std::string& filename);

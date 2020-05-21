@@ -230,6 +230,11 @@ bool task_conf_holder::ignore_ts()const
 	return conf::bool_option_by_name(task_.names(), "ignore_ts");
 }
 
+std::string task_conf_holder::git_url_prefix() const
+{
+	return conf::option_by_name(task_.names(), "git_url_prefix");
+}
+
 bool task_conf_holder::git_shallow() const
 {
 	return conf::bool_option_by_name(task_.names(), "git_shallow");
@@ -296,6 +301,12 @@ git task_conf_holder::make_git(git::ops o) const
 	}
 
 	return g;
+}
+
+std::string task_conf_holder::make_git_url(
+	const std::string& org, const std::string& repo) const
+{
+	return git_url_prefix() + org + "/" + repo + ".git";
 }
 
 
