@@ -81,28 +81,35 @@ BOOL WINAPI signal_handler(DWORD) noexcept
 
 void add_tasks()
 {
-	add_task<sevenz>();
-	add_task<zlib>();
-	add_task<fmt>();
-	add_task<gtest>();
-	add_task<libbsarch>();
-	add_task<libloot>();
-	add_task<openssl>();
-	add_task<libffi>();
-	add_task<bzip2>();
-	add_task<python>();
-	add_task<boost>();
-	add_task<boost_di>();
-	add_task<lz4>();
-	add_task<nmm>();
-	add_task<ncc>();
-	add_task<spdlog>();
-	add_task<usvfs>();
-	add_task<sip>();
-	add_task<pyqt>();
-	add_task<stylesheets>();
-	add_task<licenses>();
-	add_task<explorerpp>();
+	add_task<parallel_tasks>(false)
+		.add_task<sevenz>()
+		.add_task<zlib>()
+		.add_task<fmt>()
+		.add_task<gtest>()
+		.add_task<libbsarch>()
+		.add_task<libloot>()
+		.add_task<openssl>()
+		.add_task<libffi>()
+		.add_task<bzip2>()
+		.add_task<nmm>();
+
+	add_task<parallel_tasks>(false)
+		.add_task<python>()
+		.add_task<boost>()
+		.add_task<boost_di>()
+		.add_task<lz4>()
+		.add_task<spdlog>();
+
+	add_task<parallel_tasks>(false)
+		.add_task<sip>()
+		.add_task<ncc>();
+
+	add_task<parallel_tasks>(false)
+		.add_task<pyqt>()
+		.add_task<usvfs>()
+		.add_task<stylesheets>()
+		.add_task<licenses>()
+		.add_task<explorerpp>();
 
 	add_task<parallel_tasks>(true)
 		.add_task<modorganizer>("cmake_common")
