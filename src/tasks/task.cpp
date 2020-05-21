@@ -230,6 +230,11 @@ bool task_conf_holder::ignore_ts()const
 	return conf::bool_option_by_name(task_.names(), "ignore_ts");
 }
 
+bool task_conf_holder::git_shallow() const
+{
+	return conf::bool_option_by_name(task_.names(), "git_shallow");
+}
+
 std::string task_conf_holder::git_user() const
 {
 	return conf::option_by_name(task_.names(), "git_username");
@@ -280,6 +285,7 @@ git task_conf_holder::make_git(git::ops o) const
 	g.ignore_ts_on_clone(ignore_ts());
 	g.revert_ts_on_pull(revert_ts());
 	g.credentials(git_user(), git_email());
+	g.shallow(git_shallow());
 
 	if (set_origin_remote())
 	{

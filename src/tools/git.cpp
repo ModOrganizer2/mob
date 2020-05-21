@@ -6,7 +6,7 @@ namespace mob
 {
 
 git::git(ops o)
-	: basic_process_runner("git"), op_(o), ignore_ts_(false)
+	: basic_process_runner("git"), op_(o)
 {
 }
 
@@ -139,6 +139,12 @@ git& git::revert_ts_on_pull(bool b)
 	return *this;
 }
 
+git& git::shallow(bool b)
+{
+	shallow_ = b;
+	return *this;
+}
+
 void git::do_run()
 {
 	if (url_.empty() || root_.empty())
@@ -232,8 +238,12 @@ bool git::do_clone()
 	process_ = make_process()
 		.stderr_level(context::level::trace)
 		.arg("clone")
-		.arg("--recurse-submodules")
-		.arg("--depth", "1")
+		.arg("--recurse-submodules");
+
+	if (shallow_)
+		process_.arg("--depth", "1");
+
+	process_
 		.arg("--branch", branch_)
 		.arg("--quiet", process::log_quiet)
 		.arg("-c", "advice.detachedHead=false", process::log_quiet)

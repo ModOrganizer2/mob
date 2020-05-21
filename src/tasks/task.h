@@ -39,6 +39,7 @@ public:
 	bool no_pull() const;
 	bool revert_ts() const;
 	bool ignore_ts()const;
+	bool git_shallow() const;
 	std::string git_user() const;
 	std::string git_email() const;
 	bool set_origin_remote() const;

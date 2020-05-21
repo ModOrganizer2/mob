@@ -180,6 +180,7 @@ public:
 	const std::string& submodule_name() const;
 	git& ignore_ts_on_clone(bool b);
 	git& revert_ts_on_pull(bool b);
+	git& shallow(bool b);
 
 	git& remote(
 		std::string org, std::string key,
@@ -202,6 +203,7 @@ private:
 	bool push_default_origin_ = false;
 	bool ignore_ts_ = false;
 	bool revert_ts_ = false;
+	bool shallow_ = false;
 
 	process make_process();
 
