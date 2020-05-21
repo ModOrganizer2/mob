@@ -308,10 +308,10 @@ std::string_view context::make_log_string(reason r, level, std::string_view s) c
 
 	append(ls, timestamp_string(), total_timestamp);
 	ls.append(1, ' ');
-	append_brackets(ls, task_, total_task_name);
+	append_brackets(ls, task_.substr(0, longest_task_name), total_task_name);
 
 	if (tool_)
-		append_brackets(ls, tool_->name(), total_tool_name);
+		append_brackets(ls, tool_->name().substr(0, longest_tool_name), total_tool_name);
 	else
 		ls.append(total_tool_name, ' ');
 
