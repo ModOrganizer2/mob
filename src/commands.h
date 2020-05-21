@@ -115,6 +115,7 @@ private:
 	bool clean_ = false;
 	bool nopull_ = false;
 	bool keep_msbuild_ = false;
+	bool revert_ts_ = false;
 
 	void terminate_msbuild();
 };

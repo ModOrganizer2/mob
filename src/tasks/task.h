@@ -34,11 +34,20 @@ class task_conf_holder
 public:
 	task_conf_holder(const task& t);
 
-	std::string mo_org();
-	std::string mo_branch();
-	bool no_pull();
+	std::string mo_org() const;
+	std::string mo_branch() const;
+	bool no_pull() const;
+	bool revert_ts() const;
+	bool ignore_ts()const;
+	std::string git_user() const;
+	std::string git_email() const;
+	bool set_origin_remote() const;
+	std::string remote_org() const;
+	std::string remote_key() const;
+	bool remote_no_push_upstream() const;
+	bool remote_push_default_origin() const;
 
-	git make_git(git::ops o=git::ops::none);
+	git make_git(git::ops o=git::ops::none) const;
 
 private:
 	const task& task_;

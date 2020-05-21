@@ -320,7 +320,11 @@ clipp::group build_command::do_group()
 			% "deletes everything and starts from scratch",
 
 		(clipp::option("-p", "--no-pull") >> nopull_)
-		% "clones repos if necessary, but never pulls once cloned",
+			% "clones repos if necessary, but never pulls once cloned",
+
+		(clipp::option("--revert-ts") >> revert_ts_)
+			% "reverts all the .ts files in a repo before pulling to avoid "
+			  "merge errors",
 
 		(clipp::option("--keep-msbuild") >> keep_msbuild_)
 			% "don't terminate msbuild.exe instances after building",
@@ -346,6 +350,9 @@ void build_command::convert_cl_to_conf()
 
 	if (nopull_)
 		common.options.push_back("options/no_pull=true");
+
+	if (revert_ts_)
+		common.options.push_back("options/revert_ts=true");
 }
 
 int build_command::do_run()

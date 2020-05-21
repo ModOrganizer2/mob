@@ -35,7 +35,7 @@ void git::ignore_ts(const fs::path& repo, bool b)
 {
 	git(ops::none)
 		.root(repo)
-		.ignore_ts(b)
+		.ignore_ts_on_clone(b)
 		.do_ignore_ts();
 }
 
@@ -122,9 +122,15 @@ git& git::remote(
 	return *this;
 }
 
-git& git::ignore_ts(bool b)
+git& git::ignore_ts_on_clone(bool b)
 {
 	ignore_ts_ = b;
+	return *this;
+}
+
+git& git::revert_ts_on_pull(bool b)
+{
+	revert_ts_ = b;
 	return *this;
 }
 
@@ -246,6 +252,9 @@ bool git::do_clone()
 
 void git::do_pull()
 {
+	if (revert_ts_)
+		do_revert_ts();
+
 	process_ = make_process()
 		.stderr_level(context::level::trace)
 		.arg("pull")
@@ -293,9 +302,10 @@ void git::do_set_remote()
 		set_config("remote.origin.puttykeyfile", remote_key_);
 }
 
-void git::do_ignore_ts()
+template <class F>
+void for_each_ts(const fs::path& root, F&& f)
 {
-	for (auto&& e : fs::recursive_directory_iterator(root_))
+	for (auto&& e : fs::recursive_directory_iterator(root))
 	{
 		if (!e.is_regular_file())
 			continue;
@@ -305,6 +315,14 @@ void git::do_ignore_ts()
 		if (!path_to_utf8(p.extension()).ends_with(".ts"))
 			continue;
 
+		f(p);
+	}
+}
+
+void git::do_ignore_ts()
+{
+	for_each_ts(root_, [&](auto&& p)
+	{
 		const auto rp = fs::relative(p, root_);
 
 		if (is_tracked(rp))
@@ -316,7 +334,21 @@ void git::do_ignore_ts()
 		{
 			cx().trace(context::generic, "  . {} (skipping, not tracked)", rp);
 		}
-	}
+	});
+}
+
+void git::do_revert_ts()
+{
+	for_each_ts(root_, [&](auto&& p)
+	{
+		process_ = make_process()
+			.stderr_level(context::level::trace)
+			.arg("checkout")
+			.arg(p)
+			.cwd(root_);
+
+		execute_and_join();
+	});
 }
 
 void git::set_config(const std::string& key, const std::string& value)

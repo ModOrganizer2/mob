@@ -177,7 +177,8 @@ public:
 	git& root(const fs::path& dir);
 	git& credentials(const std::string& username, const std::string& email);
 	git& submodule_name(const std::string& name);
-	git& ignore_ts(bool b);
+	git& ignore_ts_on_clone(bool b);
+	git& revert_ts_on_pull(bool b);
 
 	git& remote(
 		std::string org, std::string key,
@@ -198,7 +199,8 @@ private:
 	std::string remote_key_;
 	bool no_push_upstream_ = false;
 	bool push_default_origin_ = false;
-	bool ignore_ts_;
+	bool ignore_ts_ = false;
+	bool revert_ts_ = false;
 
 	process make_process();
 
@@ -210,6 +212,7 @@ private:
 	void do_set_credentials();
 	void do_set_remote();
 	void do_ignore_ts();
+	void do_revert_ts();
 
 	void set_config(const std::string& key, const std::string& value);
 	bool has_remote(const std::string& name);

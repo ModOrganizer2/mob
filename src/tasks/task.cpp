@@ -205,22 +205,67 @@ task_conf_holder::task_conf_holder(const task& t)
 {
 }
 
-std::string task_conf_holder::mo_org()
+std::string task_conf_holder::mo_org() const
 {
 	return conf::option_by_name(task_.names(), "mo_org");
 }
 
-std::string task_conf_holder::mo_branch()
+std::string task_conf_holder::mo_branch() const
 {
 	return conf::option_by_name(task_.names(), "mo_branch");
 }
 
-bool task_conf_holder::no_pull()
+bool task_conf_holder::no_pull() const
 {
 	return conf::bool_option_by_name(task_.names(), "no_pull");
 }
 
-git task_conf_holder::make_git(git::ops o)
+bool task_conf_holder::revert_ts() const
+{
+	return conf::bool_option_by_name(task_.names(), "revert_ts");
+}
+
+bool task_conf_holder::ignore_ts()const
+{
+	return conf::bool_option_by_name(task_.names(), "ignore_ts");
+}
+
+std::string task_conf_holder::git_user() const
+{
+	return conf::option_by_name(task_.names(), "git_username");
+}
+
+std::string task_conf_holder::git_email() const
+{
+	return conf::option_by_name(task_.names(), "git_email");
+}
+
+bool task_conf_holder::set_origin_remote() const
+{
+	return conf::bool_option_by_name(task_.names(), "set_origin_remote");
+}
+
+std::string task_conf_holder::remote_org() const
+{
+	return conf::option_by_name(task_.names(), "remote_org");
+}
+
+std::string task_conf_holder::remote_key() const
+{
+	return conf::option_by_name(task_.names(), "remote_key");
+}
+
+bool task_conf_holder::remote_no_push_upstream() const
+{
+	return conf::bool_option_by_name(task_.names(), "remote_no_push_upstream");
+}
+
+bool task_conf_holder::remote_push_default_origin() const
+{
+	return conf::bool_option_by_name(task_.names(), "remote_push_default_origin");
+}
+
+git task_conf_holder::make_git(git::ops o) const
 {
 	if (o == git::ops::none)
 	{
@@ -232,21 +277,16 @@ git task_conf_holder::make_git(git::ops o)
 
 	git g(o);
 
-	g.ignore_ts(conf::bool_option_by_name(task_.names(), "ignore_ts"));
+	g.ignore_ts_on_clone(ignore_ts());
+	g.revert_ts_on_pull(revert_ts());
+	g.credentials(git_user(), git_email());
 
-	g.credentials(
-		conf::option_by_name(task_.names(), "git_username"),
-		conf::option_by_name(task_.names(), "git_email")
-	);
-
-	if (conf::bool_option_by_name(task_.names(), "set_origin_remote"))
+	if (set_origin_remote())
 	{
 		g.remote(
-			conf::option_by_name(task_.names(), "remote_org"),
-			conf::option_by_name(task_.names(), "remote_key"),
-			conf::bool_option_by_name(task_.names(), "remote_no_push_upstream"),
-			conf::bool_option_by_name(task_.names(), "remote_push_default_origin")
-		);
+			remote_org(), remote_key(),
+			remote_no_push_upstream(),
+			remote_push_default_origin());
 	}
 
 	return g;
