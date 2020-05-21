@@ -67,7 +67,7 @@ void python::do_clean_for_rebuild()
 	if (prebuilt())
 		return;
 
-	instrument(times_.clean, [&]
+	instrument<times::clean>([&]
 	{
 		const fs::path pcbuild = source_path() / "PCBuild";
 
@@ -94,12 +94,12 @@ void python::do_build_and_install()
 
 void python::fetch_prebuilt()
 {
-	const auto file = instrument(times_.fetch, [&]
+	const auto file = instrument<times::fetch>([&]
 	{
 		return run_tool(downloader(prebuilt_url()));
 	});
 
-	instrument(times_.extract, [&]
+	instrument<times::extract>([&]
 	{
 		run_tool(extractor()
 			.file(file)
@@ -109,7 +109,7 @@ void python::fetch_prebuilt()
 
 void python::build_and_install_prebuilt()
 {
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		op::copy_glob_to_dir_if_better(cx(),
 			openssl::bin_path() / "*.dll",
@@ -123,7 +123,7 @@ void python::build_and_install_prebuilt()
 
 void python::fetch_from_source()
 {
-	instrument(times_.fetch, [&]
+	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
 			.url(make_github_url("python", "cpython"))
@@ -131,7 +131,7 @@ void python::fetch_from_source()
 			.root(source_path()));
 	});
 
-	instrument(times_.configure, [&]
+	instrument<times::configure>([&]
 	{
 		run_tool(vs(vs::upgrade)
 			.solution(solution_file()));
@@ -140,7 +140,7 @@ void python::fetch_from_source()
 
 void python::build_and_install_from_source()
 {
-	instrument(times_.build, [&]
+	instrument<times::build>([&]
 	{
 		run_tool(msbuild()
 			.solution(solution_file())
@@ -158,7 +158,7 @@ void python::build_and_install_from_source()
 		package();
 	});
 
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		install_pip();
 

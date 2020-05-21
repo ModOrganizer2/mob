@@ -26,7 +26,7 @@ fs::path boost_di::source_path()
 
 void boost_di::do_fetch()
 {
-	instrument(times_.fetch, [&]
+	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
 			.url(make_github_url("boost-experimental", "di"))

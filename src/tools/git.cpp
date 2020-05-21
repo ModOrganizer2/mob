@@ -110,6 +110,11 @@ git& git::submodule_name(const std::string& name)
 	return *this;
 }
 
+const std::string& git::submodule_name() const
+{
+	return submodule_;
+}
+
 git& git::remote(
 	std::string org, std::string key,
 	bool no_push_upstream, bool push_default_origin)
@@ -498,6 +503,109 @@ std::string git::make_url(
 	const std::string& org, const std::string& git_file)
 {
 	return "git@github.com:" + org + "/" + git_file;
+}
+
+
+
+static std::unique_ptr<git_submodule_adder> g_sa_instance;
+static std::mutex g_sa_instance_mutex;
+
+git_submodule_adder::git_submodule_adder() :
+	instrumentable("submodule_adder",
+		{"add_submodule_wait", "add_submodule"}),
+	cx_("submodule_adder"), quit_(false)
+{
+	run();
+}
+
+git_submodule_adder::~git_submodule_adder()
+{
+	stop();
+
+	if (thread_.joinable())
+		thread_.join();
+}
+
+git_submodule_adder& git_submodule_adder::instance()
+{
+	std::scoped_lock lock(g_sa_instance_mutex);
+	if (!g_sa_instance)
+		g_sa_instance.reset(new git_submodule_adder);
+
+	return *g_sa_instance;
+}
+
+void git_submodule_adder::queue(git g)
+{
+	std::scoped_lock lock(queue_mutex_);
+	queue_.emplace_back(std::move(g));
+	wakeup();
+}
+
+void git_submodule_adder::run()
+{
+	thread_ = start_thread([&]{ thread_fun(); });
+}
+
+void git_submodule_adder::stop()
+{
+	quit_ = true;
+	wakeup();
+}
+
+void git_submodule_adder::thread_fun()
+{
+	while (!quit_)
+	{
+		instrument<times::add_submodule_wait>([&]
+		{
+			std::unique_lock lk(sleeper_.m);
+			sleeper_.cv.wait(lk, [&]{ return sleeper_.ready; });
+			sleeper_.ready = false;
+		});
+
+		if (quit_)
+			break;
+
+		process();
+	}
+}
+
+void git_submodule_adder::wakeup()
+{
+	{
+		std::scoped_lock lk(sleeper_.m);
+		sleeper_.ready = true;
+	}
+
+	sleeper_.cv.notify_one();
+}
+
+void git_submodule_adder::process()
+{
+	std::vector<git> v;
+
+	{
+		std::scoped_lock lock(queue_mutex_);
+		v.swap(queue_);
+	}
+
+	cx_.trace(context::generic,
+		"git_submodule_adder: woke up, {} to process", v.size());
+
+	for (auto&& g : v)
+	{
+		instrument<times::add_submodule>([&]
+		{
+			cx_.trace(context::generic,
+				"git_submodule_adder: running {}", g.submodule_name());
+
+			g.run(cx_);
+		});
+
+		if (quit_)
+			break;
+	}
 }
 
 }	// namespace

@@ -326,13 +326,16 @@ url make_appveyor_artifact_url(
 std::string replace_all(
 	std::string s, const std::string& from, const std::string& to)
 {
+	std::size_t start = 0;
+
 	for (;;)
 	{
-		const auto pos = s.find(from);
+		const auto pos = s.find(from, start);
 		if (pos == std::string::npos)
 			break;
 
 		s.replace(pos, from.size(), to);
+		start = pos + to.size();
 	}
 
 	return s;

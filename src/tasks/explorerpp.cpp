@@ -26,19 +26,19 @@ fs::path explorerpp::source_path()
 
 void explorerpp::do_fetch()
 {
-	const auto file = instrument(times_.fetch, [&]
+	const auto file = instrument<times::fetch>([&]
 	{
 		return run_tool(downloader(source_url()));
 	});
 
-	instrument(times_.extract, [&]
+	instrument<times::extract>([&]
 	{
 		run_tool(extractor()
 			.file(file)
 			.output(source_path()));
 	});
 
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		op::copy_glob_to_dir_if_better(cx(),
 			source_path() / "*",

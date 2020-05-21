@@ -49,7 +49,7 @@ fs::path stylesheets::source_path()
 
 void stylesheets::do_fetch()
 {
-	instrument(times_.fetch, [&]
+	instrument<times::fetch>([&]
 	{
 		// this isn't very generic, but 6788 is the only repo so far
 
@@ -70,7 +70,7 @@ void stylesheets::do_fetch()
 
 void stylesheets::do_build_and_install()
 {
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		for (auto&& r : releases())
 		{

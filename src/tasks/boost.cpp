@@ -75,12 +75,12 @@ void boost::fetch_prebuilt()
 {
 	cx().trace(context::generic, "using prebuilt boost");
 
-	const auto file = instrument(times_.fetch, [&]
+	const auto file = instrument<times::fetch>([&]
 	{
 		return run_tool(downloader(prebuilt_url()));
 	});
 
-	instrument(times_.extract, [&]
+	instrument<times::extract>([&]
 	{
 		run_tool(extractor()
 			.file(file)
@@ -90,7 +90,7 @@ void boost::fetch_prebuilt()
 
 void boost::build_and_install_prebuilt()
 {
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			lib_path(arch::x64) / python_dll(),
@@ -100,12 +100,12 @@ void boost::build_and_install_prebuilt()
 
 void boost::fetch_from_source()
 {
-	const auto file = instrument(times_.fetch, [&]
+	const auto file = instrument<times::fetch>([&]
 	{
 		return run_tool(downloader(source_url()));
 	});
 
-	instrument(times_.extract, [&]
+	instrument<times::extract>([&]
 	{
 		run_tool(extractor()
 		.file(file)
@@ -115,7 +115,7 @@ void boost::fetch_from_source()
 
 void boost::bootstrap()
 {
-	instrument(times_.configure, [&]
+	instrument<times::configure>([&]
 	{
 		write_config_jam();
 
@@ -140,7 +140,7 @@ void boost::build_and_install_from_source()
 		bootstrap();
 	}
 
-	instrument(times_.build, [&]
+	instrument<times::build>([&]
 	{
 		do_b2(
 			{"thread", "date_time", "filesystem", "locale"},
@@ -159,7 +159,7 @@ void boost::build_and_install_from_source()
 			"shared", "shared", arch::x64);
 	});
 
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			lib_path(arch::x64) / python_dll(),

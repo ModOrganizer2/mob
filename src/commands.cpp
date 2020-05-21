@@ -371,29 +371,25 @@ int build_command::do_run()
 
 			std::ofstream out("timings.txt");
 
-			for (auto&& tk : get_all_tasks())
+			auto write = [&](auto&& inst)
 			{
-				const auto t = tk->times();
-
-				auto write = [&](auto&& name, auto&& tp)
+				for (auto&& t : inst.instrumented_tasks())
 				{
-					out
-						<< replace_all(tk->name(), "_", "") << "\t"
-						<< (duration_cast<milliseconds>(tp.start).count() / 1000.0) << "\t"
-						<< (duration_cast<milliseconds>(tp.end).count() / 1000.0) << "\t"
-						<< name << "\n";
-				};
+					for (auto&& tp : t.tps)
+					{
+						out
+							<< inst.instrumentable_name() << "\t"
+							<< (duration_cast<milliseconds>(tp.start).count() / 1000.0) << "\t"
+							<< (duration_cast<milliseconds>(tp.end).count() / 1000.0) << "\t"
+							<< t.name << "\n";
+					}
+				}
+			};
 
-				write("initsuper", t.init_super);
-				write("fetch", t.fetch);
-				write("extract", t.extract);
-				write("addsubmodulelock", t.add_submodule_lock);
-				write("addsubmodule", t.add_submodule);
-				write("configure", t.configure);
-				write("build", t.build);
-				write("install", t.install);
-				write("clean", t.clean);
-			}
+			for (auto&& tk : get_all_tasks())
+				write(*tk);
+
+			write(git_submodule_adder::instance());
 		}
 
 		if (!keep_msbuild_)

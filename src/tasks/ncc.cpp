@@ -26,7 +26,7 @@ fs::path ncc::source_path()
 
 void ncc::do_clean_for_rebuild()
 {
-	instrument(times_.clean, [&]
+	instrument<times::clean>([&]
 	{
 		op::delete_directory(
 			cx(), source_path() / "NexusClientCLI" / "obj", op::optional);
@@ -35,7 +35,7 @@ void ncc::do_clean_for_rebuild()
 
 void ncc::do_fetch()
 {
-	instrument(times_.fetch, [&]
+	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
 			.url(make_github_url(task_conf().mo_org(), "modorganizer-NCC"))
@@ -46,7 +46,7 @@ void ncc::do_fetch()
 
 void ncc::do_build_and_install()
 {
-	instrument(times_.build, [&]
+	instrument<times::build>([&]
 	{
 		run_tool(msbuild()
 			.solution(source_path() / "NexusClient.sln")
@@ -54,7 +54,7 @@ void ncc::do_build_and_install()
 			.platform("Any CPU"));
 	});
 
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		const auto publish = source_path() / "publish.bat";
 

@@ -29,7 +29,7 @@ void usvfs::do_clean_for_rebuild()
 	if (prebuilt())
 		return;
 
-	instrument(times_.clean, [&]
+	instrument<times::clean>([&]
 	{
 		op::delete_directory(cx(), source_path() / "bin", op::optional);
 		op::delete_directory(cx(), source_path() / "lib", op::optional);
@@ -57,7 +57,7 @@ void usvfs::do_build_and_install()
 
 void usvfs::fetch_prebuilt()
 {
-	instrument(times_.fetch, [&]
+	instrument<times::fetch>([&]
 	{
 		fetch_from_source();
 		download_from_appveyor(arch::x64);
@@ -67,7 +67,7 @@ void usvfs::fetch_prebuilt()
 
 void usvfs::build_and_install_prebuilt()
 {
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		copy_prebuilt(arch::x86);
 		copy_prebuilt(arch::x64);
@@ -76,7 +76,7 @@ void usvfs::build_and_install_prebuilt()
 
 void usvfs::fetch_from_source()
 {
-	instrument(times_.fetch, [&]
+	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
 			.url(make_github_url(task_conf().mo_org(), "usvfs"))
@@ -87,7 +87,7 @@ void usvfs::fetch_from_source()
 
 void usvfs::build_and_install_from_source()
 {
-	instrument(times_.build, [&]
+	instrument<times::build>([&]
 	{
 		// usvfs doesn't use "Win32" for 32-bit, it uses "x86"
 		//

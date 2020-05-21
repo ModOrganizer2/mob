@@ -31,12 +31,12 @@ fs::path libloot::source_path()
 
 void libloot::do_fetch()
 {
-	const auto file = instrument(times_.fetch, [&]
+	const auto file = instrument<times::fetch>([&]
 	{
 		return run_tool(downloader(source_url()));
 	});
 
-	instrument(times_.extract, [&]
+	instrument<times::extract>([&]
 	{
 		run_tool(extractor()
 			.file(file)
@@ -46,7 +46,7 @@ void libloot::do_fetch()
 
 void libloot::do_build_and_install()
 {
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			source_path() / "loot.dll",

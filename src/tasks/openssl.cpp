@@ -43,7 +43,7 @@ void openssl::do_clean_for_rebuild()
 		"openssl puts object files everywhere, so the whole tree will be "
 		"deleted for a rebuild");
 
-	instrument(times_.clean, [&]
+	instrument<times::clean>([&]
 	{
 		op::delete_directory(cx(), source_path(), op::optional);
 	});
@@ -69,12 +69,12 @@ void openssl::fetch_prebuilt()
 {
 	cx().trace(context::generic, "using prebuilt openssl");
 
-	const auto file = instrument(times_.fetch, [&]
+	const auto file = instrument<times::fetch>([&]
 	{
 		return run_tool(downloader(prebuilt_url()));
 	});
 
-	instrument(times_.extract, [&]
+	instrument<times::extract>([&]
 	{
 		run_tool(extractor()
 			.file(file)
@@ -84,12 +84,12 @@ void openssl::fetch_prebuilt()
 
 void openssl::fetch_from_source()
 {
-	const auto file = instrument(times_.fetch, [&]
+	const auto file = instrument<times::fetch>([&]
 	{
 		return run_tool(downloader(source_url()));
 	});
 
-	instrument(times_.extract, [&]
+	instrument<times::extract>([&]
 	{
 		run_tool(extractor()
 			.file(file)
@@ -99,7 +99,7 @@ void openssl::fetch_from_source()
 
 void openssl::build_and_install_prebuilt()
 {
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		copy_files();
 	});
@@ -107,7 +107,7 @@ void openssl::build_and_install_prebuilt()
 
 void openssl::build_and_install_from_source()
 {
-	instrument(times_.configure, [&]
+	instrument<times::configure>([&]
 	{
 		if (fs::exists(source_path() / "makefile"))
 			cx().trace(context::bypass, "openssl already configured");
@@ -115,12 +115,12 @@ void openssl::build_and_install_from_source()
 			configure();
 	});
 
-	instrument(times_.build, [&]
+	instrument<times::build>([&]
 	{
 		install_engines();
 	});
 
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			source_path() / "ms" / "applink.c",

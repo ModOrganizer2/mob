@@ -59,7 +59,7 @@ fs::path sip::module_source_path()
 
 void sip::do_clean_for_rebuild()
 {
-	instrument(times_.clean, [&]
+	instrument<times::clean>([&]
 	{
 		op::delete_directory(cx(), source_path() / "build", op::optional);
 	});
@@ -72,19 +72,19 @@ void sip::do_fetch()
 
 void sip::do_build_and_install()
 {
-	instrument(times_.fetch, [&]
+	instrument<times::fetch>([&]
 	{
 		download();
 	});
 
-	instrument(times_.extract, [&]
+	instrument<times::extract>([&]
 	{
 		run_tool(extractor()
 			.file(download_file())
 			.output(source_path()));
 	});
 
-	instrument(times_.build, [&]
+	instrument<times::build>([&]
 	{
 		generate();
 	});

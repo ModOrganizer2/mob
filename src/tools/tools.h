@@ -177,6 +177,7 @@ public:
 	git& root(const fs::path& dir);
 	git& credentials(const std::string& username, const std::string& email);
 	git& submodule_name(const std::string& name);
+	const std::string& submodule_name() const;
 	git& ignore_ts_on_clone(bool b);
 	git& revert_ts_on_pull(bool b);
 
@@ -228,6 +229,46 @@ private:
 
 	static std::string make_url(
 		const std::string& org, const std::string& git_file);
+};
+
+
+class git_submodule_adder : public instrumentable<2>
+{
+public:
+	enum class times
+	{
+		add_submodule_wait,
+		add_submodule
+	};
+
+	~git_submodule_adder();
+
+	static git_submodule_adder& instance();
+
+	void queue(git g);
+	void stop();
+
+private:
+	struct sleeper
+	{
+		std::mutex m;
+		std::condition_variable cv;
+		bool ready = false;
+	};
+
+	context cx_;
+	std::thread thread_;
+	std::vector<git> queue_;
+	mutable std::mutex queue_mutex_;
+	std::atomic<bool> quit_;
+	sleeper sleeper_;
+
+	git_submodule_adder();
+	void run();
+
+	void thread_fun();
+	void wakeup();
+	void process();
 };
 
 

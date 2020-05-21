@@ -26,12 +26,12 @@ fs::path fmt::source_path()
 
 void fmt::do_fetch()
 {
-	const auto file = instrument(times_.fetch, [&]
+	const auto file = instrument<times::fetch>([&]
 	{
 		return run_tool(downloader(source_url()));
 	});
 
-	instrument(times_.extract, [&]
+	instrument<times::extract>([&]
 	{
 		run_tool(extractor()
 			.file(file)
@@ -41,7 +41,7 @@ void fmt::do_fetch()
 
 void fmt::do_clean_for_rebuild()
 {
-	instrument(times_.clean, [&]
+	instrument<times::clean>([&]
 	{
 		cmake::clean(cx(), source_path());
 	});
@@ -49,7 +49,7 @@ void fmt::do_clean_for_rebuild()
 
 void fmt::do_build_and_install()
 {
-	const auto build_path = instrument(times_.configure, [&]
+	const auto build_path = instrument<times::configure>([&]
 	{
 		return run_tool(cmake()
 			.generator(cmake::vs)
@@ -59,7 +59,7 @@ void fmt::do_build_and_install()
 			.def("FMT_DOC", "OFF"));
 	});
 
-	instrument(times_.build, [&]
+	instrument<times::build>([&]
 	{
 		run_tool(msbuild()
 			.solution(build_path / "INSTALL.vcxproj"));

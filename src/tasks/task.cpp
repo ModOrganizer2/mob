@@ -293,9 +293,23 @@ git task_conf_holder::make_git(git::ops o) const
 }
 
 
+std::array<std::string, 7> time_names()
+{
+	return {
+		"init_super",
+		"fetch",
+		"extract",
+		"configure",
+		"build",
+		"install",
+		"clean"
+	};
+}
 
-task::task(std::vector<std::string> names)
-	: names_(std::move(names)), interrupted_(false)
+
+task::task(std::vector<std::string> names) :
+	instrumentable(names[0], time_names()),
+	names_(std::move(names)), interrupted_(false)
 {
 	contexts_.push_back(std::make_unique<thread_context>(
 		std::this_thread::get_id(), context(name())));
@@ -449,11 +463,6 @@ void task::interrupt()
 
 	for (auto* t : tools_)
 		t->interrupt();
-}
-
-task::times_t task::times() const
-{
-	return times_;
 }
 
 void task::join()

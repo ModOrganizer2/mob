@@ -56,7 +56,7 @@ fs::path modorganizer::super_path()
 
 void modorganizer::do_clean_for_rebuild()
 {
-	instrument(times_.clean, [&]
+	instrument<times::fetch>([&]
 	{
 		op::delete_directory(cx(),
 			this_source_path() / "vsbuild", op::optional);
@@ -65,12 +65,12 @@ void modorganizer::do_clean_for_rebuild()
 
 void modorganizer::do_fetch()
 {
-	instrument(times_.init_super, [&]
+	instrument<times::init_super>([&]
 	{
 		initialize_super(super_path());
 	});
 
-	instrument(times_.fetch, [&]
+	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
 			.url(make_github_url(task_conf().mo_org(), repo_))
@@ -107,23 +107,12 @@ cmake modorganizer::create_cmake_tool(const fs::path& root)
 
 void modorganizer::do_build_and_install()
 {
-	{
-		std::unique_lock<std::mutex> lock(g_super_mutex, std::defer_lock);
-
-		instrument(times_.add_submodule_lock, [&]
-		{
-			lock.lock();
-		});
-
-		instrument(times_.add_submodule, [&]
-		{
-			run_tool(task_conf().make_git(git::ops::add_submodule)
-				.url(make_github_url(task_conf().mo_org(), repo_))
-				.branch(task_conf().mo_branch())
-				.submodule_name(name())
-				.root(super_path()));
-		});
-	}
+	git_submodule_adder::instance().queue(std::move(
+		task_conf().make_git(git::ops::add_submodule)
+			.url(make_github_url(task_conf().mo_org(), repo_))
+			.branch(task_conf().mo_branch())
+			.submodule_name(name())
+			.root(super_path())));
 
 	if (!fs::exists(this_source_path() / "CMakeLists.txt"))
 	{
@@ -133,7 +122,7 @@ void modorganizer::do_build_and_install()
 		return;
 	}
 
-	const auto build_path = instrument(times_.configure, [&]
+	const auto build_path = instrument<times::configure>([&]
 	{
 		return run_tool(create_cmake_tool(this_source_path()));
 	});
@@ -147,7 +136,7 @@ void modorganizer::do_build_and_install()
 	// because the creation of the CMakePredefinedTarget actually depends on
 	// the USE_FOLDERS variable in the cmake file, just use the project
 	// instead
-	instrument(times_.build, [&]
+	instrument<times::build>([&]
 	{
 		run_tool(msbuild()
 			.solution(build_path / ("INSTALL.vcxproj"))

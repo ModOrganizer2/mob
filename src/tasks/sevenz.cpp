@@ -26,12 +26,12 @@ fs::path sevenz::source_path()
 
 void sevenz::do_fetch()
 {
-	const auto file = instrument(times_.fetch, [&]
+	const auto file = instrument<times::fetch>([&]
 	{
 		return run_tool(downloader(source_url()));
 	});
 
-	instrument(times_.extract, [&]
+	instrument<times::extract>([&]
 	{
 		run_tool(extractor()
 			.file(file)
@@ -41,12 +41,12 @@ void sevenz::do_fetch()
 
 void sevenz::do_build_and_install()
 {
-	instrument(times_.build, [&]
+	instrument<times::build>([&]
 	{
 		build();
 	});
 
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			module_to_build() / "x64/7z.dll",
@@ -92,7 +92,7 @@ void sevenz::build()
 
 void sevenz::do_clean_for_rebuild()
 {
-	instrument(times_.clean, [&]
+	instrument<times::clean>([&]
 	{
 		op::delete_directory(cx(), module_to_build() / "x64", op::optional);
 	});

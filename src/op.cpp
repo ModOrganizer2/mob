@@ -610,7 +610,8 @@ void do_delete_file(const context& cx, const fs::path& p)
 void do_copy_file_to_dir(
 	const context& cx, const fs::path& f, const fs::path& d)
 {
-	op::create_directories(cx, d);
+	if (!fs::exists(d))
+		op::create_directories(cx, d);
 
 	std::error_code ec;
 	fs::copy_file(

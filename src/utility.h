@@ -104,6 +104,73 @@ struct file_closer
 
 using file_ptr = std::unique_ptr<FILE, file_closer>;
 
+// time since mob started
+//
+std::chrono::nanoseconds timestamp();
+
+
+template <std::size_t N>
+class instrumentable
+{
+public:
+	struct time_pair
+	{
+		std::chrono::nanoseconds start{}, end{};
+	};
+
+	struct task
+	{
+		std::string name;
+		std::vector<time_pair> tps;
+	};
+
+	struct timing_ender
+	{
+		timing_ender(time_pair& tp)
+			: tp(tp)
+		{
+		}
+
+		~timing_ender()
+		{
+			tp.end = timestamp();
+		}
+
+		time_pair& tp;
+	};
+
+	instrumentable(std::string name, std::array<std::string, N> names)
+		: name_(std::move(name))
+	{
+		for (std::size_t i=0; i<N; ++i)
+			tasks_[i].name = names[i];
+	}
+
+	const std::string& instrumentable_name() const
+	{
+		return name_;
+	}
+
+	template <auto E, class F>
+	auto instrument(F&& f)
+	{
+		auto& t = std::get<static_cast<std::size_t>(E)>(tasks_);
+		t.tps.push_back({});
+		t.tps.back().start = timestamp();
+		timing_ender te(t.tps.back());
+		return f();
+	}
+
+	const std::array<task, N>& instrumented_tasks() const
+	{
+		return tasks_;
+	}
+
+private:
+	std::string name_;
+	std::array<task, N> tasks_;
+};
+
 
 template <class F>
 class guard

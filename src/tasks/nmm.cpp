@@ -26,7 +26,7 @@ fs::path nmm::source_path()
 
 void nmm::do_clean_for_rebuild()
 {
-	instrument(times_.clean, [&]
+	instrument<times::clean>([&]
 	{
 		op::delete_directory(cx(), source_path() / "Stage", op::optional);
 	});
@@ -34,7 +34,7 @@ void nmm::do_clean_for_rebuild()
 
 void nmm::do_fetch()
 {
-	instrument(times_.fetch, [&]
+	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
 			.url(make_github_url("Nexus-Mods", "Nexus-Mod-Manager"))
@@ -48,7 +48,7 @@ void nmm::do_fetch()
 
 void nmm::do_build_and_install()
 {
-	instrument(times_.build, [&]
+	instrument<times::build>([&]
 	{
 		// nmm sometimes fails with files being locked
 		const int max_tries = 3;

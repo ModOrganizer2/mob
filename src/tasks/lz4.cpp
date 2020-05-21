@@ -52,12 +52,12 @@ void lz4::fetch_prebuilt()
 {
 	cx().trace(context::generic, "using prebuilt lz4");
 
-	const auto file = instrument(times_.fetch, [&]
+	const auto file = instrument<times::fetch>([&]
 	{
 		return run_tool(downloader(prebuilt_url()));
 	});
 
-	instrument(times_.extract, [&]
+	instrument<times::extract>([&]
 	{
 		run_tool(extractor()
 			.file(file)
@@ -67,7 +67,7 @@ void lz4::fetch_prebuilt()
 
 void lz4::build_and_install_prebuilt()
 {
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			source_path() / "bin" / "liblz4.pdb",
@@ -81,7 +81,7 @@ void lz4::build_and_install_prebuilt()
 
 void lz4::fetch_from_source()
 {
-	instrument(times_.fetch, [&]
+	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
 			.url(make_github_url("lz4","lz4"))
@@ -95,14 +95,14 @@ void lz4::fetch_from_source()
 
 void lz4::build_and_install_from_source()
 {
-	instrument(times_.build, [&]
+	instrument<times::build>([&]
 	{
 		run_tool(msbuild()
 			.solution(solution_file())
 			.projects({"liblz4-dll"}));
 	});
 
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		op::copy_glob_to_dir_if_better(cx(),
 			out_dir() / "*",

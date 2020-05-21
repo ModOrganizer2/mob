@@ -26,7 +26,7 @@ fs::path gtest::source_path()
 
 void gtest::do_clean_for_rebuild()
 {
-	instrument(times_.clean, [&]
+	instrument<times::clean>([&]
 	{
 		cmake::clean(cx(), source_path());
 	});
@@ -34,7 +34,7 @@ void gtest::do_clean_for_rebuild()
 
 void gtest::do_fetch()
 {
-	instrument(times_.fetch, [&]
+	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
 			.url(make_github_url("google", "googletest"))
@@ -45,7 +45,7 @@ void gtest::do_fetch()
 
 void gtest::do_build_and_install()
 {
-	instrument(times_.build, [&]{ parallel({
+	instrument<times::build>([&]{ parallel({
 		{"gtest64", [&] {
 			// x64
 			const auto build_path_x64 = run_tool(cmake()

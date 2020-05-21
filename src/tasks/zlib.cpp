@@ -26,7 +26,7 @@ fs::path zlib::source_path()
 
 void zlib::do_clean_for_rebuild()
 {
-	instrument(times_.clean, [&]
+	instrument<times::clean>([&]
 	{
 		cmake::clean(cx(), source_path());
 	});
@@ -34,12 +34,12 @@ void zlib::do_clean_for_rebuild()
 
 void zlib::do_fetch()
 {
-	const auto file = instrument(times_.fetch, [&]
+	const auto file = instrument<times::fetch>([&]
 	{
 		return run_tool(downloader(source_url()));
 	});
 
-	instrument(times_.extract, [&]
+	instrument<times::extract>([&]
 	{
 		run_tool(extractor()
 			.file(file)
@@ -49,7 +49,7 @@ void zlib::do_fetch()
 
 void zlib::do_build_and_install()
 {
-	const auto build_path = instrument(times_.configure, [&]
+	const auto build_path = instrument<times::configure>([&]
 	{
 		return run_tool(cmake()
 			.generator(cmake::vs)
@@ -57,13 +57,13 @@ void zlib::do_build_and_install()
 			.prefix(source_path()));
 	});
 
-	instrument(times_.build, [&]
+	instrument<times::build>([&]
 	{
 		run_tool(msbuild()
 			.solution(build_path / "INSTALL.vcxproj"));
 	});
 
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			build_path / "zconf.h",

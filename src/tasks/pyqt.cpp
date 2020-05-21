@@ -39,7 +39,7 @@ void pyqt::do_clean_for_rebuild()
 	if (prebuilt())
 		return;
 
-	instrument(times_.clean, [&]
+	instrument<times::clean>([&]
 	{
 		op::delete_file(cx(),
 			paths::cache() / sip_install_file(),
@@ -65,12 +65,12 @@ void pyqt::do_build_and_install()
 
 void pyqt::fetch_prebuilt()
 {
-	const auto file = instrument(times_.fetch, [&]
+	const auto file = instrument<times::fetch>([&]
 	{
 		return run_tool(downloader(prebuilt_url()));
 	});
 
-	instrument(times_.extract, [&]
+	instrument<times::extract>([&]
 	{
 		run_tool(extractor()
 			.file(file)
@@ -80,7 +80,7 @@ void pyqt::fetch_prebuilt()
 
 void pyqt::build_and_install_prebuilt()
 {
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		op::copy_glob_to_dir_if_better(cx(),
 			source_path() / "*",
@@ -93,12 +93,12 @@ void pyqt::build_and_install_prebuilt()
 
 void pyqt::fetch_from_source()
 {
-	const auto file = instrument(times_.fetch, [&]
+	const auto file = instrument<times::fetch>([&]
 	{
 		return run_tool(downloader(source_url()));
 	});
 
-	instrument(times_.extract, [&]
+	instrument<times::extract>([&]
 	{
 		run_tool(extractor()
 			.file(file)
@@ -108,7 +108,7 @@ void pyqt::fetch_from_source()
 
 void pyqt::build_and_install_from_source()
 {
-	instrument(times_.build, [&]
+	instrument<times::build>([&]
 	{
 		run_tool(pip_install()
 			.package("PyQt-builder")
@@ -122,7 +122,7 @@ void pyqt::build_and_install_from_source()
 		sip_build();
 	});
 
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		install_sip_file();
 		copy_files();

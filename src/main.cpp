@@ -154,9 +154,7 @@ void add_tasks()
 		.add_task<modorganizer>("modorganizer-fnistool")
 		.add_task<modorganizer>("modorganizer-script_extender_plugin_checker")
 		.add_task<modorganizer>("modorganizer-form43_checker")
-		.add_task<modorganizer>("modorganizer-preview_dds");
-
-	add_task<parallel_tasks>(true)
+		.add_task<modorganizer>("modorganizer-preview_dds")
 		.add_task<modorganizer>("modorganizer");
 }
 

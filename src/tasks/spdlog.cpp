@@ -26,7 +26,7 @@ fs::path spdlog::source_path()
 
 void spdlog::do_fetch()
 {
-	instrument(times_.fetch, [&]
+	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
 			.url(make_github_url("gabime", "spdlog"))

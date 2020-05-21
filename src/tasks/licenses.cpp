@@ -26,7 +26,7 @@ fs::path licenses::source_path()
 
 void licenses::do_build_and_install()
 {
-	instrument(times_.install, [&]
+	instrument<times::install>([&]
 	{
 		op::copy_glob_to_dir_if_better(cx(),
 			paths::licenses() / "*",
