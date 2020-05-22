@@ -217,6 +217,7 @@ private:
 	void do_ignore_ts();
 	void do_revert_ts();
 
+	void delete_root_if_needed();
 	void set_config(const std::string& key, const std::string& value);
 	bool has_remote(const std::string& name);
 	void rename_remote(const std::string& from, const std::string& to);

@@ -150,12 +150,6 @@ void git::do_run()
 	if (url_.empty() || root_.empty())
 		bail_out("git missing parameters");
 
-	if (conf::redownload() || conf::reextract())
-	{
-		cx().trace(context::rebuild, "deleting directory controlled by git");
-		op::delete_directory(cx(), root_, op::optional);
-	}
-
 
 	switch (op_)
 	{
@@ -220,14 +214,30 @@ void git::do_add_submodule()
 	execute_and_join();
 }
 
+void git::delete_root_if_needed()
+{
+	if (conf::redownload() || conf::reextract())
+	{
+		if (fs::exists(root_))
+		{
+			cx().trace(context::rebuild, "deleting directory controlled by git");
+			op::delete_directory(cx(), root_, op::optional);
+		}
+	}
+}
+
 void git::do_clone_or_pull()
 {
+	delete_root_if_needed();
+
 	if (!do_clone())
 		do_pull();
 }
 
 bool git::do_clone()
 {
+	delete_root_if_needed();
+
 	const fs::path dot_git = root_ / ".git";
 	if (fs::exists(dot_git))
 	{
@@ -267,6 +277,8 @@ bool git::do_clone()
 
 void git::do_pull()
 {
+	delete_root_if_needed();
+
 	if (revert_ts_)
 		do_revert_ts();
 
