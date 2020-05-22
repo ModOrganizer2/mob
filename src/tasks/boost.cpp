@@ -58,16 +58,23 @@ void boost::do_build_and_install()
 		build_and_install_from_source();
 }
 
-void boost::do_clean_for_rebuild()
+void boost::do_clean_for_reconfigure()
 {
 	if (prebuilt())
 		return;
 
 	op::delete_directory(cx(), source_path() / "bin.v2", op::optional);
+	op::delete_file(cx(), b2_exe(), op::optional);
+}
+
+void boost::do_clean_for_rebuild()
+{
+	if (prebuilt())
+		return;
+
 	op::delete_directory(cx(), root_lib_path(arch::x86), op::optional);
 	op::delete_directory(cx(), root_lib_path(arch::x64), op::optional);
 	op::delete_file(cx(), config_jam_file(), op::optional);
-	op::delete_file(cx(), b2_exe(), op::optional);
 	op::delete_file(cx(), source_path() / "project-config.jam", op::optional);
 }
 

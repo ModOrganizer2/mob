@@ -345,6 +345,15 @@ public:
 	cmake& architecture(arch a);
 	cmake& cmd(const std::string& s);
 
+	// returns the path given in output(), if it was set
+	//
+	// if not, returns the build path based on the parameters (for example,
+	// `vsbuild_32/` for a 32-bit arch with the VS generator
+	//
+	fs::path build_path() const;
+
+	// returns build_path(), used by task::run_tool()
+	//
 	fs::path result() const;
 
 protected:
@@ -422,7 +431,7 @@ public:
 	static fs::path binary();
 
 	msbuild& solution(const fs::path& sln);
-	msbuild& projects(const std::vector<std::string>& names);
+	msbuild& targets(const std::vector<std::string>& names);
 	msbuild& parameters(const std::vector<std::string>& params);
 	msbuild& config(const std::string& s);
 	msbuild& platform(const std::string& s);
@@ -436,7 +445,7 @@ protected:
 
 private:
 	fs::path sln_;
-	std::vector<std::string> projects_;
+	std::vector<std::string> targets_;
 	std::vector<std::string> params_;
 	std::string config_;
 	std::string platform_;

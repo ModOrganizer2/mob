@@ -50,7 +50,7 @@ void ncc::do_build_and_install()
 	{
 		run_tool(msbuild()
 			.solution(source_path() / "NexusClient.sln")
-			.projects({"NexusClientCLI"})
+			.targets({"NexusClientCLI"})
 			.platform("Any CPU"));
 	});
 

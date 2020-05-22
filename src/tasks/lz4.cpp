@@ -99,7 +99,7 @@ void lz4::build_and_install_from_source()
 	{
 		run_tool(msbuild()
 			.solution(solution_file())
-			.projects({"liblz4-dll"}));
+			.targets({"liblz4-dll"}));
 	});
 
 	instrument<times::install>([&]

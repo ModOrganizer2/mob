@@ -49,17 +49,44 @@ fs::path modorganizer::this_source_path() const
 	return super_path() / name();
 }
 
+fs::path modorganizer::this_solution_path() const
+{
+	// run the project file instead of the .sln and giving INSTALL as a
+	// target, because the target name depends on the folders in the solution
+	//
+	// since cmake can put INSTALL inside CMakePredefinedTarget, the target has
+	// to be "CMakePredefinedTarget\\INSTALL" instead of just "INSTALL"
+	//
+	// because the creation of the CMakePredefinedTarget actually depends on
+	// the USE_FOLDERS variable in the cmake file, just use the project
+	// instead
+	const auto build_path = create_cmake_tool(this_source_path()).build_path();
+	return build_path / "INSTALL.vcxproj";
+}
+
 fs::path modorganizer::super_path()
 {
 	return paths::build() / "modorganizer_super";
 }
 
-void modorganizer::do_clean_for_rebuild()
+void modorganizer::do_clean_for_reconfigure()
 {
 	instrument<times::fetch>([&]
 	{
 		op::delete_directory(cx(),
 			this_source_path() / "vsbuild", op::optional);
+	});
+}
+
+void modorganizer::do_clean_for_rebuild()
+{
+	instrument<times::clean>([&]
+	{
+		run_tool(msbuild()
+			.solution(this_solution_path())
+			.config("RelWithDebInfo")
+			.architecture(arch::x64)
+			.targets({"Clean"}));
 	});
 }
 
@@ -127,19 +154,10 @@ void modorganizer::do_build_and_install()
 		return run_tool(create_cmake_tool(this_source_path()));
 	});
 
-	// run the project file instead of the .sln and giving INSTALL as a
-	// target, because the target name depends on the folders in the solution
-	//
-	// since cmake can put INSTALL inside CMakePredefinedTarget, the target has
-	// to be "CMakePredefinedTarget\\INSTALL" instead of just "INSTALL"
-	//
-	// because the creation of the CMakePredefinedTarget actually depends on
-	// the USE_FOLDERS variable in the cmake file, just use the project
-	// instead
 	instrument<times::build>([&]
 	{
 		run_tool(msbuild()
-			.solution(build_path / ("INSTALL.vcxproj"))
+			.solution(this_solution_path())
 			.config("RelWithDebInfo")
 			.architecture(arch::x64));
 	});

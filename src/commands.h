@@ -112,7 +112,8 @@ private:
 	bool redownload_ = false;
 	bool reextract_ = false;
 	bool rebuild_ = false;
-	bool clean_ = false;
+	bool reconfigure_ = false;
+	bool new_ = false;
 	std::optional<bool> nopull_;
 	bool keep_msbuild_ = false;
 	std::optional<bool> revert_ts_;

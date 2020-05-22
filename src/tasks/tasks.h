@@ -31,6 +31,7 @@ public:
 protected:
 	void do_fetch() override;
 	void do_build_and_install() override;
+	void do_clean_for_reconfigure() override;
 	void do_clean_for_rebuild() override;
 
 private:
@@ -274,6 +275,7 @@ public:
 protected:
 	void do_fetch() override;
 	void do_build_and_install() override;
+	void do_clean_for_reconfigure() override;
 	void do_clean_for_rebuild() override;
 
 private:
@@ -282,6 +284,7 @@ private:
 	void initialize_super(const fs::path& super_root);
 
 	fs::path this_source_path() const;
+	fs::path this_solution_path() const;
 };
 
 

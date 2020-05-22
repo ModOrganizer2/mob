@@ -144,7 +144,7 @@ void python::build_and_install_from_source()
 	{
 		run_tool(msbuild()
 			.solution(solution_file())
-			.projects({
+			.targets({
 				"python", "pythonw", "python3dll", "select", "pyexpat",
 				"unicodedata", "_queue", "_bz2", "_ssl"})
 			.parameters({

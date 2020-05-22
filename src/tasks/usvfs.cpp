@@ -97,12 +97,12 @@ void usvfs::build_and_install_from_source()
 
 		run_tool(msbuild()
 			.platform("x64")
-			.projects({"usvfs_proxy"})
+			.targets({"usvfs_proxy"})
 			.solution(source_path() / "vsbuild" / "usvfs.sln"));
 
 		run_tool(msbuild()
 			.platform("x86")
-			.projects({"usvfs_proxy"})
+			.targets({"usvfs_proxy"})
 			.solution(source_path() / "vsbuild" / "usvfs.sln"));
 	});
 }

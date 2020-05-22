@@ -90,6 +90,15 @@ cmake& cmake::cmd(const std::string& s)
 	return *this;
 }
 
+fs::path cmake::build_path() const
+{
+	if (!output_.empty())
+		return output_;
+
+	const auto& g = get_generator(gen_);
+	return root_ / (g.output_dir(arch_));
+}
+
 fs::path cmake::result() const
 {
 	return output_;
@@ -100,10 +109,8 @@ void cmake::do_run()
 	if (root_.empty())
 		cx().bail_out(context::generic, "cmake output path is empty");
 
+	const fs::path output = output_.empty() ? build_path() : output_;
 	const auto& g = get_generator(gen_);
-
-	if (output_.empty())
-		output_ = root_ / (g.output_dir(arch_));
 
 	process_
 		.stdout_encoding(encodings::utf8)
@@ -136,7 +143,7 @@ void cmake::do_run()
 	process_
 		.env(env::vs(arch_)
 			.set("CXXFLAGS", "/wd4566"))
-		.cwd(output_);
+		.cwd(output);
 
 	execute_and_join();
 }

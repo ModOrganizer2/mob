@@ -313,10 +313,16 @@ clipp::group build_command::do_group()
 		(clipp::option("-e", "--reextract") >> reextract_)
 			% "deletes source directories and re-extracts archives",
 
-		(clipp::option("-b", "--rebuild") >> rebuild_)
-			%  "cleans and rebuilds projects",
+		(clipp::option("-c", "--reconfigure") >> reconfigure_)
+			% "reconfigures the task by running cmake, configure scripts, "
+			   "etc.; some tasks might have to delete the whole source "
+			   "directory",
 
-		(clipp::option("-n", "--new") >> clean_)
+		(clipp::option("-b", "--rebuild") >> rebuild_)
+			%  "cleans and rebuilds projects; some tasks might have to "
+			   "delete the whole source directory",
+
+		(clipp::option("-n", "--new") >> new_)
 			% "deletes everything and starts from scratch",
 
 		(
@@ -343,13 +349,16 @@ void build_command::convert_cl_to_conf()
 {
 	command::convert_cl_to_conf();
 
-	if (redownload_ || clean_)
+	if (redownload_ || new_)
 		common.options.push_back("global/redownload=true");
 
-	if (reextract_ || clean_)
+	if (reextract_ || new_)
 		common.options.push_back("global/reextract=true");
 
-	if (rebuild_ || clean_)
+	if (reconfigure_ || new_)
+		common.options.push_back("global/reconfigure=true");
+
+	if (rebuild_ || new_)
 		common.options.push_back("global/rebuild=true");
 
 	if (nopull_)

@@ -22,9 +22,9 @@ msbuild& msbuild::solution(const fs::path& sln)
 	return *this;
 }
 
-msbuild& msbuild::projects(const std::vector<std::string>& names)
+msbuild& msbuild::targets(const std::vector<std::string>& names)
 {
-	projects_ = names;
+	targets_ = names;
 	return *this;
 }
 
@@ -122,8 +122,8 @@ void msbuild::do_run()
 		.arg("-verbosity:minimal", process::log_quiet)
 		.arg("-consoleLoggerParameters:ErrorsOnly", process::log_quiet);
 
-	if (!projects_.empty())
-		process_.arg("-target:" + mob::join(projects_, ","));
+	if (!targets_.empty())
+		process_.arg("-target:" + mob::join(targets_, ","));
 
 	for (auto&& p : params_)
 		process_.arg("-property:" + p);

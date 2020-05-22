@@ -73,6 +73,17 @@ public:
 		clean
 	};
 
+
+	enum class clean
+	{
+		nothing     = 0x00,
+		redownload  = 0x01,
+		reextract   = 0x02,
+		reconfigure = 0x04,
+		rebuild     = 0x08,
+		everything  = redownload+reextract+reconfigure+rebuild
+	};
+
 	task(const task&) = delete;
 	task& operator=(const task&) = delete;
 
@@ -111,6 +122,7 @@ protected:
 
 	virtual void do_fetch() {}
 	virtual void do_build_and_install() {}
+	virtual void do_clean_for_reconfigure() {}
 	virtual void do_clean_for_rebuild() {}
 
 	template <class Tool>
@@ -143,6 +155,9 @@ private:
 	void clean_for_rebuild();
 	void run_tool_impl(tool* t);
 };
+
+
+MOB_ENUM_OPERATORS(task::clean);
 
 
 template <class Task>
