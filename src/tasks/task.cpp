@@ -143,6 +143,13 @@ void run_tasks(const std::vector<std::string>& names)
 		}
 	}
 
+	auto task_it = [](task* t) {
+		return std::find(std::begin(g_all_tasks), std::end(g_all_tasks), t);
+	};
+	std::sort(std::begin(tasks), std::end(tasks), [task_it](auto t1, auto t2) {
+		return task_it(t1) < task_it(t2);
+	});
+
 	run_tasks(tasks);
 }
 
