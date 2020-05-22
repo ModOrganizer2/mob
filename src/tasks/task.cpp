@@ -53,12 +53,16 @@ task* find_task(const std::string& name)
 	throw bailed("");
 }
 
-void run_tasks(const std::vector<task*> tasks)
+void run_tasks(const std::vector<task*>& tasks)
 {
+	auto task_comp = [](task* t1, task* t2) {
+		return std::find(std::begin(g_all_tasks), std::end(g_all_tasks), t1) 
+			< std::find(std::begin(g_all_tasks), std::end(g_all_tasks), t2);
+	};
 	try
 	{
 		{
-			std::set<task*> set(tasks.begin(), tasks.end());
+			std::set<task*, decltype(task_comp)> set(tasks.begin(), tasks.end(), task_comp);
 			MOB_ASSERT(set.size() == tasks.size());
 		}
 
