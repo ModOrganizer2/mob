@@ -1060,17 +1060,7 @@ clipp::group inis_command::do_group()
 
 int inis_command::do_run()
 {
-	const auto r = prepare_options(true);
-	if (r != 0)
-		return r;
-
-	u8cout << "\nhigher number overrides lower\n";
-
-	const auto v = inis();
-	for (std::size_t i=0; i<v.size(); ++i)
-		u8cout << (i + 1) << ") " << path_to_utf8(v[i]) << "\n";
-
-	return 0;
+	return prepare_options(true);
 }
 
 std::string inis_command::do_doc()

@@ -534,10 +534,11 @@ template <
 }
 
 
-template <class F>
-std::vector<std::string> map(const std::vector<std::string>& v, F&& f)
+template <class F, class T>
+auto map(const std::vector<T>& v, F&& f)
 {
-	std::vector<std::string> out;
+	using mapped_type = decltype(f(std::declval<T>()));
+	std::vector<mapped_type> out;
 
 	for (auto&& e : v)
 		out.push_back(f(e));

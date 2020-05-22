@@ -831,46 +831,44 @@ void set_special_options()
 std::vector<fs::path> find_inis(
 	bool auto_detect, const std::vector<std::string>& from_cl, bool verbose)
 {
-	std::vector<fs::path> v;
+	// the string is just for verbose
+	std::vector<std::pair<std::string, fs::path>> v;
 
-	auto add_or_move_up = [&](fs::path p)
+	// adds a path to the vector; if the path already exists, moves it to
+	// the last element
+	auto add_or_move_up = [&](std::string where, fs::path p)
 	{
 		for (auto itor=v.begin(); itor!=v.end(); ++itor)
 		{
-			if (fs::equivalent(p, *itor))
+			if (fs::equivalent(p, itor->second))
 			{
+				auto pair = std::move(*itor);
 				v.erase(itor);
-				v.push_back(p);
+				v.push_back({where + ", was " + pair.first, p});
 				return;
 			}
 		}
 
-		v.push_back(p);
+		v.push_back({where, p});
 	};
 
 
-	// auto detect from exe directory and cwd
+	fs::path master;
+
+	// auto detect from exe directory
 	if (auto_detect)
 	{
 		if (verbose)
 			u8cout << "root is " << path_to_utf8(find_root()) << "\n";
 
-		const auto master = find_in_root(master_ini_filename());
+		master = find_in_root(master_ini_filename());
 
 		if (verbose)
 			u8cout << "found master " << master_ini_filename() << "\n";
 
-		v.push_back(master);
-
-		const auto in_cwd = fs::current_path() / master_ini_filename();
-		if (fs::exists(in_cwd) && !fs::equivalent(in_cwd, master))
-		{
-			if (verbose)
-				u8cout << "also found in cwd " << path_to_utf8(in_cwd) << "\n";
-
-			v.push_back(fs::canonical(in_cwd));
-		}
+		v.push_back({"master", master});
 	}
+
 
 	// MOBINI environment variable
 	if (auto e=this_env::get_opt("MOBINI"))
@@ -895,10 +893,28 @@ std::vector<fs::path> find_inis(
 			if (verbose)
 				u8cout << "ini from env: " << path_to_utf8(p) << "\n";
 
-			add_or_move_up(p);
+			add_or_move_up("env", p);
 		}
 	}
 
+
+	// auto detect from the current directory
+	if (auto_detect)
+	{
+		MOB_ASSERT(!master.empty());
+
+		const auto in_cwd = fs::current_path() / master_ini_filename();
+		if (fs::exists(in_cwd) && !fs::equivalent(in_cwd, master))
+		{
+			if (verbose)
+				u8cout << "also found in cwd " << path_to_utf8(in_cwd) << "\n";
+
+			v.push_back({"cwd", fs::canonical(in_cwd)});
+		}
+	}
+
+
+	// command line
 	for (auto&& i : from_cl)
 	{
 		auto p = fs::path(i);
@@ -913,10 +929,24 @@ std::vector<fs::path> find_inis(
 		if (verbose)
 			u8cout << "ini from command line: " << path_to_utf8(p) << "\n";
 
-		add_or_move_up(p);
+		add_or_move_up("cl", p);
 	}
 
-	return v;
+
+	if (verbose)
+	{
+		u8cout << "\nhigher number overrides lower\n";
+
+		for (std::size_t i=0; i<v.size(); ++i)
+		{
+			u8cout
+				<< (i + 1) << ") "
+				<< path_to_utf8(v[i].second) << " (" << v[i].first << ")\n";
+		}
+	}
+
+
+	return map(v, [&](auto&& p){ return p.second; });
 }
 
 void init_options(
