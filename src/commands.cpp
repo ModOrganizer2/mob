@@ -169,6 +169,35 @@ int command::gather_inis(bool verbose)
 	}
 }
 
+void command::set_task_enabled_flags(const std::vector<std::string>& names)
+{
+	common.options.push_back("task/enabled=false");
+
+	bool failed = false;
+
+	for (auto&& pattern : names)
+	{
+		const auto tasks = find_tasks(pattern);
+
+		if (tasks.empty())
+		{
+			u8cout << "no task matching '" << pattern<< "' found\n";
+
+			u8cout << "valid tasks:\n";
+			for (auto&& t : get_all_tasks())
+				u8cout << " - " << join(t->names(), ", ") << "\n";
+
+			failed = true;
+		}
+
+		for (auto&& t : tasks)
+			common.options.push_back(t->name() + ":task/enabled=true");
+	}
+
+	if (failed)
+		throw bailed();
+}
+
 int command::prepare_options(bool verbose)
 {
 	convert_cl_to_conf();
@@ -185,15 +214,9 @@ int command::run()
 
 	if (flags_ & requires_options)
 	{
-		const int r = prepare_options(false);
+		const auto r = load_options();
 		if (r != 0)
 			return r;
-
-		init_options(inis_, common.options);
-		log_options();
-
-		if (!verify_options())
-			return 1;
 	}
 
 	const auto r = do_run();
@@ -202,6 +225,21 @@ int command::run()
 		return *code_;
 
 	return r;
+}
+
+int command::load_options()
+{
+	const int r = prepare_options(false);
+	if (r != 0)
+		return r;
+
+	init_options(inis_, common.options);
+	log_options();
+
+	if (!verify_options())
+		return 1;
+
+	return 0;
 }
 
 const std::vector<fs::path>& command::inis() const
@@ -425,12 +463,7 @@ void build_command::convert_cl_to_conf()
 	}
 
 	if (!tasks_.empty())
-	{
-		common.options.push_back("task/enabled=false");
-
-		for (auto&& t : tasks_)
-			common.options.push_back(t + ":task/enabled=true");
-	}
+		set_task_enabled_flags(tasks_);
 }
 
 int build_command::do_run()
@@ -495,14 +528,52 @@ clipp::group list_command::do_group()
 		clipp::command("list").set(picked_),
 
 		(clipp::option("-h", "--help") >> help_)
-			% ("shows this message")
+			% "shows this message",
+
+		(clipp::option("-a", "--all") >> all_)
+			% "shows all the tasks, including pseudo parallel tasks",
+
+		(clipp::opt_values(
+			clipp::match::prefix_not("-"), "task", tasks_))
+			% "with -a; when given, acts like the tasks given to `build` and "
+			  "shows only the tasks that would run"
 	);
 }
 
 int list_command::do_run()
 {
-	list_tasks();
+	if (all_)
+	{
+		if (!tasks_.empty())
+			set_task_enabled_flags(tasks_);
+
+		load_options();
+		dump(get_top_level_tasks(), 0);
+	}
+	else
+	{
+		for (auto&& t : get_all_tasks())
+			u8cout << " - " << join(t->names(), ", ") << "\n";
+	}
+
 	return 0;
+}
+
+void list_command::dump(const std::vector<task*>& v, std::size_t indent) const
+{
+	for (auto&& t : v)
+	{
+		if (!t->enabled())
+			continue;
+
+		u8cout
+			<< std::string(indent*4, ' ')
+			<< " - " << join(t->names(), ",")
+			<< "\n";
+
+		if (auto* ct=dynamic_cast<container_task*>(t))
+			dump(ct->children(), indent + 1);
+	}
 }
 
 std::string list_command::do_doc()

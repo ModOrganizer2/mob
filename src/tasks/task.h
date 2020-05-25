@@ -21,13 +21,13 @@ Task& add_task(Args&&... args)
 	return *p;
 }
 
-void run_task(const std::string& name);
-void run_tasks(const std::vector<std::string>& names);;
 void run_all_tasks();
-void list_tasks(bool err=false);
-bool task_exists(const std::string& name);
 bool is_super_task(const std::string& name);
-const std::vector<task*>& get_all_tasks();
+std::vector<task*> find_tasks(const std::string& pattern);
+
+std::vector<task*> get_all_tasks();
+std::vector<task*> get_top_level_tasks();
+
 
 class task_conf_holder
 {
@@ -90,7 +90,7 @@ public:
 
 	static void interrupt_all();
 
-	bool enabled() const;
+	virtual bool enabled() const;
 	const std::string& name() const;
 	const std::vector<std::string>& names() const;
 
@@ -184,10 +184,24 @@ public:
 };
 
 
-class parallel_tasks : public task
+class container_task : public task
+{
+public:
+	using task::task;
+
+	virtual std::vector<task*> children() const = 0;
+};
+
+
+class parallel_tasks : public container_task
 {
 public:
 	parallel_tasks(bool super);
+
+	bool enabled() const override
+	{
+		return true;
+	}
 
 	template <class Task, class... Args>
 	parallel_tasks& add_task(Args&&... args)
@@ -221,6 +235,8 @@ public:
 
 	void fetch() override;
 	void build_and_install() override;
+
+	std::vector<task*> children() const override;
 
 protected:
 	void do_fetch() override;

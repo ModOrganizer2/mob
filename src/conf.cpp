@@ -724,10 +724,20 @@ void parse_section(
 		}
 		else
 		{
-			if (!task_exists(task) && task != "_override")
-				ini_error(ini, i, "task '" + task + "' doesn't exist");
+			if (task == "_override")
+			{
+				conf::set_for_task("_override", section, k, v);
+			}
+			else
+			{
+				const auto& tasks = find_tasks(task);
 
-			conf::set_for_task(task, section, k, v);
+				if (tasks.empty())
+					ini_error(ini, i, "no task matching '" + task + "' found");
+
+				for (auto& t : tasks)
+					conf::set_for_task(t->name(), section, k, v);
+			}
 		}
 
 		++i;
@@ -991,14 +1001,24 @@ void init_options(
 			}
 			else
 			{
-				if (!task_exists(po.task) && po.task != "_override")
+				if (po.task == "_override")
 				{
-					gcx().bail_out(context::generic,
-						"task '{}' doesn't exist (command line option)",
-						po.task);
+					conf::set_for_task("override", po.section, po.key, po.value);
 				}
+				else
+				{
+					const auto& tasks = find_tasks(po.task);
 
-				conf::set_for_task(po.task, po.section, po.key, po.value);
+					if (tasks.empty())
+					{
+						gcx().bail_out(context::generic,
+							"no task matching '{}' found (command line option)",
+							po.task);
+					}
+
+					for (auto& t : tasks)
+						conf::set_for_task(t->name(), po.section, po.key, po.value);
+				}
 			}
 		}
 	}

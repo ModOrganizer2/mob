@@ -3,6 +3,8 @@
 namespace mob
 {
 
+class task;
+
 class command
 {
 public:
@@ -50,6 +52,9 @@ protected:
 	command(flags f=noflags);
 
 	virtual void convert_cl_to_conf();
+
+	void set_task_enabled_flags(const std::vector<std::string>& tasks);
+	int load_options();
 	int prepare_options(bool verbose);
 
 	virtual clipp::group do_group() = 0;
@@ -134,6 +139,12 @@ protected:
 	clipp::group do_group() override;
 	int do_run() override;
 	std::string do_doc() override;
+
+private:
+	bool all_ = false;
+	std::vector<std::string> tasks_;
+
+	void dump(const std::vector<task*>& v, std::size_t indent) const;
 };
 
 

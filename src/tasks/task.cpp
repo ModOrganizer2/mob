@@ -14,64 +14,63 @@ static std::vector<task*> g_all_tasks;
 static std::atomic<bool> g_interrupt = false;
 std::mutex task::interrupt_mutex_;
 
+
 void add_task(std::unique_ptr<task> t)
 {
 	g_tasks.push_back(std::move(t));
 }
 
-const std::vector<task*>& get_all_tasks()
+std::vector<task*> get_all_tasks()
 {
-	return g_all_tasks;
+	std::vector<task*> v;
+
+	for (auto&& t : g_all_tasks)
+		v.push_back(t);
+
+	return v;
 }
 
-void list_tasks(bool err)
+std::vector<task*> get_top_level_tasks()
 {
-	for (auto&& t : g_all_tasks)
-	{
-		if (err)
-			u8cerr << " - " << join(t->names(), ", ") << "\n";
-		else
-			u8cout << " - " << join(t->names(), ", ") << "\n";
-	}
+	std::vector<task*> v;
+
+	for (auto&& t : g_tasks)
+		v.push_back(t.get());
+
+	return v;
 }
 
 std::vector<task*> find_tasks(const std::string& pattern)
 {
 	std::vector<task*> tasks;
+
 	for (auto&& t : g_all_tasks)
 	{
-		for (auto&& n : t->names())
+		if (pattern == "super" && t->is_super())
 		{
-			if (mob::glob_match(pattern, n))
+			tasks.push_back(t);
+		}
+		else
+		{
+			for (auto&& n : t->names())
 			{
-				tasks.push_back(t);
-				break;
+				if (mob::glob_match(pattern, n))
+				{
+					tasks.push_back(t);
+					break;
+				}
 			}
 		}
-	}
-
-	if (tasks.empty())
-	{
-		u8cout << "no task matching " << pattern << " found\n";
-		u8cout << "valid tasks:\n";
-		list_tasks(true);
-
-		throw bailed("");
 	}
 
 	return tasks;
 }
 
-void run_tasks(const std::vector<task*> tasks)
+void run_all_tasks()
 {
 	try
 	{
-		{
-			std::set<task*> set(tasks.begin(), tasks.end());
-			MOB_ASSERT(set.size() == tasks.size());
-		}
-
-		for (auto* t : tasks)
+		for (auto& t : g_tasks)
 		{
 			t->fetch();
 
@@ -79,7 +78,7 @@ void run_tasks(const std::vector<task*> tasks)
 				throw interrupted();
 		}
 
-		for (auto* t : tasks)
+		for (auto& t : g_tasks)
 		{
 			t->join();
 
@@ -100,88 +99,6 @@ void run_tasks(const std::vector<task*> tasks)
 	catch(interrupted&)
 	{
 	}
-}
-
-void gather_super_tasks(std::vector<task*>& tasks, std::set<task*>& seen)
-{
-	for (auto& t : g_tasks)
-	{
-		if (t->is_super())
-		{
-			if (!seen.contains(t.get()))
-			{
-				tasks.push_back(t.get());
-				seen.insert(t.get());
-			}
-		}
-	}
-}
-
-void run_task(const std::string& name)
-{
-	run_tasks({name});
-}
-
-void run_tasks(const std::vector<std::string>& names)
-{
-	if (names.empty())
-		return;
-
-	if (names.size() == 1)
-		gcx().debug(context::generic, "specified task: {}", names[0]);
-	else
-		gcx().debug(context::generic, "specified tasks: {}", join(names, " "));
-
-	std::vector<task*> tasks;
-	std::set<task*> seen;
-
-	for (auto&& name : names)
-	{
-		if (name == "super")
-		{
-			gather_super_tasks(tasks, seen);
-		}
-		else
-		{
-			for (auto* t : find_tasks(name))
-			{
-				if (!seen.contains(t))
-				{
-					tasks.push_back(t);
-					seen.insert(t);
-				}
-			}
-		}
-	}
-
-	run_tasks(tasks);
-}
-
-void run_all_tasks()
-{
-	std::vector<task*> tasks;
-
-	for (auto&& t : g_tasks)
-		tasks.push_back(t.get());
-
-	run_tasks(tasks);
-}
-
-bool task_exists(const std::string& name)
-{
-	if (name == "super")
-		return true;
-
-	for (auto&& t : g_all_tasks)
-	{
-		for (auto&& n : t->names())
-		{
-			if (n == name)
-				return true;
-		}
-	}
-
-	return false;
 }
 
 bool is_super_task(const std::string& name)
@@ -677,8 +594,18 @@ void task::run_tool_impl(tool* t)
 
 
 parallel_tasks::parallel_tasks(bool super)
-	: task("parallel"), super_(super)
+	: container_task("parallel"), super_(super)
 {
+}
+
+std::vector<task*> parallel_tasks::children() const
+{
+	std::vector<task*> v;
+
+	for (auto&& t : children_)
+		v.push_back(t.get());
+
+	return v;
 }
 
 bool parallel_tasks::is_super() const
