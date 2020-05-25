@@ -179,17 +179,8 @@ public:
 		std::memset(&old_, 0, sizeof(old_));
 		old_.cbSize = sizeof(old_);
 
-		if (!GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &old_))
-		{
-			const auto e = GetLastError();
-			std::wcerr
-				<< L"failed to get console font, "
-				<< utf8_to_utf16(error_message(e)) << L"\n";
-
-			return;
-		}
-
-		restore_ = true;
+		if (GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &old_))
+			restore_ = true;
 	}
 
 	~font_restorer()
@@ -201,14 +192,7 @@ public:
 		now.cbSize = sizeof(now);
 
 		if (!GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &now))
-		{
-			const auto e = GetLastError();
-			std::wcerr
-				<< L"failed to get console font, "
-				<< utf8_to_utf16(error_message(e)) << L"\n";
-
 			return;
-		}
 
 		if (std::wcsncmp(old_.FaceName, now.FaceName, LF_FACESIZE) != 0)
 			restore();
@@ -216,15 +200,7 @@ public:
 
 	void restore()
 	{
-		if (!::SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &old_))
-		{
-			const auto e = GetLastError();
-			std::wcerr
-				<< L"failed to set console font, "
-				<< utf8_to_utf16(error_message(e)) << L"\n";
-
-			return;
-		}
+		::SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &old_);
 	}
 
 private:
