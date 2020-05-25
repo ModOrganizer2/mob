@@ -42,15 +42,16 @@ std::vector<task*> find_tasks(const std::string& pattern)
 	{
 		for (auto&& n : t->names())
 		{
-			if (mob::glob_match(pattern, n)) {
+			if (mob::glob_match(pattern, n))
+			{
 				tasks.push_back(t);
 				break;
 			}
 		}
 	}
 
-	if (tasks.empty()) {
-
+	if (tasks.empty())
+	{
 		u8cout << "no task matching " << pattern << " found\n";
 		u8cout << "valid tasks:\n";
 		list_tasks(true);
@@ -133,6 +134,7 @@ void run_tasks(const std::vector<std::string>& names)
 
 	std::vector<task*> tasks;
 	std::set<task*> seen;
+
 	for (auto&& name : names)
 	{
 		if (name == "super")
@@ -141,7 +143,8 @@ void run_tasks(const std::vector<std::string>& names)
 		}
 		else
 		{
-			for (auto* t : find_tasks(name)) {
+			for (auto* t : find_tasks(name))
+			{
 				if (!seen.contains(t))
 				{
 					tasks.push_back(t);

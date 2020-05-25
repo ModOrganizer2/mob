@@ -320,7 +320,7 @@ url make_appveyor_artifact_url(
 
 bool glob_match(const std::string& pattern, const std::string& s)
 {
-	return std::regex_match(s, std::regex{ replace_all(pattern, "*", ".*") });
+	return std::regex_match(s, std::regex(replace_all(pattern, "*", ".*")));
 }
 
 std::string replace_all(
