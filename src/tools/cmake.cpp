@@ -85,7 +85,7 @@ fs::path cmake::build_path() const
 
 fs::path cmake::result() const
 {
-	return output_;
+	return build_path();
 }
 
 void cmake::do_run()

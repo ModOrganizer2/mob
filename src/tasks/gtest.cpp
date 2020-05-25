@@ -75,7 +75,7 @@ msbuild gtest::create_msbuild_tool(arch a, msbuild::ops o)
 	const fs::path build_path = create_cmake_tool(a).build_path();
 
 	return std::move(msbuild(o)
-		.architecture(arch::x86)
+		.architecture(a)
 		.solution(build_path / "INSTALL.vcxproj"));
 }
 
