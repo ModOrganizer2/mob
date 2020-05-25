@@ -361,16 +361,32 @@ fs::path find_root()
 {
 	gcx().trace(context::conf, "looking for root directory");
 
-	fs::path p = mob_exe_path().parent_path();
+	fs::path mob_exe_dir = mob_exe_path().parent_path();
 
-	if (try_parts(p, {"..", "..", "..", "third-party"}))
+	auto third_party = mob_exe_dir / "third-party";
+
+	if (!fs::exists(third_party))
 	{
-		p = fs::canonical(p.parent_path());
-		gcx().trace(context::conf, "found root directory at {}", p);
-		return p;
+		auto p = mob_exe_dir;
+
+		if (p.filename().u8string() == u8"x64")
+		{
+			p = p.parent_path();
+			if (p.filename().u8string() == u8"Debug" ||
+			    p.filename().u8string() == u8"Release")
+			{
+				// mob_exe_dir is in the build folder
+				third_party = mob_exe_dir / ".." / ".." / ".." / "third-party";
+			}
+		}
 	}
 
-	gcx().bail_out(context::conf, "root directory not found");
+	if (!fs::exists(third_party))
+		gcx().bail_out(context::conf, "root directory not found");
+
+	const auto p = fs::canonical(third_party.parent_path());
+	gcx().trace(context::conf, "found root directory at {}", p);
+	return p;
 }
 
 fs::path find_in_root(const fs::path& file)
