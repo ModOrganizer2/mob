@@ -59,13 +59,18 @@ fs::path sip::module_source_path()
 
 void sip::do_clean(clean c)
 {
-	if (is_set(c, clean::rebuild))
+	instrument<times::clean>([&]
 	{
-		instrument<times::clean>([&]
+		if (is_set(c, clean::reextract))
 		{
+			cx().trace(context::reextract, "deleting {}", source_path());
+			op::delete_directory(cx(), source_path(), op::optional);
+			return;
+		}
+
+		if (is_set(c, clean::rebuild))
 			op::delete_directory(cx(), source_path() / "build", op::optional);
-		});
-	}
+	});
 }
 
 void sip::do_fetch()

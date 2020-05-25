@@ -568,6 +568,8 @@ private:
 	downloader make_downloader_tool(
 		const release& r, downloader::ops=downloader::download) const;
 
+	fs::path release_build_path(const release& r) const;
+
 	static std::vector<release> releases();
 };
 

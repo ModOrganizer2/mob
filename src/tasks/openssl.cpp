@@ -47,15 +47,13 @@ void openssl::do_clean(clean c)
 		{
 			if (is_set(c, clean::redownload))
 				run_tool(downloader(source_url(), downloader::clean));
+		}
 
-			if (is_any_set(c, clean::reconfigure|clean::rebuild))
-			{
-				cx().debug(context::rebuild,
-					"openssl puts object files everywhere, so the whole tree "
-					"will be deleted for a rebuild");
-
-				op::delete_directory(cx(), source_path(), op::optional);
-			}
+		if (is_any_set(c, clean::reextract|clean::reconfigure|clean::rebuild))
+		{
+			cx().trace(context::reextract, "deleting {}", source_path());
+			op::delete_directory(cx(), source_path(), op::optional);
+			return;
 		}
 	});
 }

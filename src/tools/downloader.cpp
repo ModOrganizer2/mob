@@ -121,6 +121,7 @@ void downloader::do_clean()
 {
 	if (!file_.empty())
 	{
+		cx().debug(context::redownload, "deleting {}", file_);
 		op::delete_file(cx(), file_, op::optional);
 	}
 	else
@@ -128,6 +129,8 @@ void downloader::do_clean()
 		for (auto&& u : urls_)
 		{
 			const auto file = path_for_url(u);
+
+			cx().debug(context::redownload, "deleting {}", file);
 			op::delete_file(cx(), file, op::optional);
 		}
 	}

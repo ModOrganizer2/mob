@@ -31,6 +31,13 @@ void zlib::do_clean(clean c)
 		if (is_set(c, clean::redownload))
 			run_tool(downloader(source_url(), downloader::clean));
 
+		if (is_set(c, clean::reextract))
+		{
+			cx().trace(context::reextract, "deleting {}", source_path());
+			op::delete_directory(cx(), source_path(), op::optional);
+			return;
+		}
+
 		if (is_set(c, clean::reconfigure))
 			run_tool(create_cmake_tool(cmake::clean));
 

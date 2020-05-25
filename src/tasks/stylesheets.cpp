@@ -56,6 +56,17 @@ void stylesheets::do_clean(clean c)
 			for (auto&& r : releases())
 				run_tool(make_downloader_tool(r, downloader::clean));
 		}
+
+		if (is_set(c, clean::reextract))
+		{
+			for (auto&& r : releases())
+			{
+				const auto p = release_build_path(r);
+
+				cx().trace(context::reextract, "deleting {}", p);
+				op::delete_directory(cx(), p, op::optional);
+			}
+		}
 	});
 }
 
@@ -69,9 +80,14 @@ void stylesheets::do_fetch()
 
 			run_tool(extractor()
 				.file(file)
-				.output(paths::build() / (r.name + "-v" + r.version)));
+				.output(release_build_path(r)));
 		}
 	});
+}
+
+fs::path stylesheets::release_build_path(const release& r) const
+{
+	return paths::build() / (r.name + "-v" + r.version);
 }
 
 downloader stylesheets::make_downloader_tool(

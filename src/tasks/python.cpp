@@ -70,6 +70,13 @@ void python::do_clean(clean c)
 		{
 			if (is_set(c, clean::redownload))
 				run_tool(downloader(prebuilt_url(), downloader::clean));
+
+			if (is_set(c, clean::reextract))
+			{
+				cx().trace(context::reextract, "deleting {}", source_path());
+				op::delete_directory(cx(), source_path(), op::optional);
+				return;
+			}
 		}
 		else
 		{
