@@ -12,6 +12,32 @@ git::git(ops o)
 {
 }
 
+void git::delete_directory(const context& cx, const fs::path& p)
+{
+	git g(no_op);
+	g.root(p);
+
+	if (!conf::ignore_uncommitted())
+	{
+		if (g.has_uncommitted_changes())
+		{
+			cx.bail_out(context::redownload,
+				"will not delete {}, has uncommitted changes; "
+				"see --ignore-uncommitted-changes", p);
+		}
+
+		if (g.has_stashed_changes())
+		{
+			cx.bail_out(context::redownload,
+				"will not delete {}, has stashed changes; "
+				"see --ignore-uncommitted-changes", p);
+		}
+	}
+
+	cx.trace(context::redownload, "deleting directory controlled by git{}", p);
+	op::delete_directory(cx, p, op::optional);
+}
+
 void git::set_credentials(
 	const fs::path& repo,
 	const std::string& username, const std::string& email)
@@ -215,30 +241,14 @@ void git::do_add_submodule()
 	execute_and_join();
 }
 
-void git::delete_root_if_needed()
-{
-	if (conf::redownload() || conf::reextract())
-	{
-		if (fs::exists(root_))
-		{
-			cx().trace(context::rebuild, "deleting directory controlled by git");
-			op::delete_directory(cx(), root_, op::optional);
-		}
-	}
-}
-
 void git::do_clone_or_pull()
 {
-	delete_root_if_needed();
-
 	if (!do_clone())
 		do_pull();
 }
 
 bool git::do_clone()
 {
-	delete_root_if_needed();
-
 	const fs::path dot_git = root_ / ".git";
 	if (fs::exists(dot_git))
 	{
@@ -278,8 +288,6 @@ bool git::do_clone()
 
 void git::do_pull()
 {
-	delete_root_if_needed();
-
 	if (revert_ts_)
 		do_revert_ts();
 
@@ -477,6 +485,32 @@ bool git::is_repo()
 				f.lv = context::level::trace;
 		})
 		.flags(process::allow_failure)
+		.cwd(root_);
+
+	return (execute_and_join() == 0);
+}
+
+bool git::has_uncommitted_changes()
+{
+	process_ = make_process()
+		.flags(process::allow_failure)
+		.stdout_flags(process::keep_in_string)
+		.arg("status")
+		.arg("-s")
+		.arg("--porcelain")
+		.cwd(root_);
+
+	execute_and_join();
+
+	return (process_.stdout_string() != "");
+}
+
+bool git::has_stashed_changes()
+{
+	process_ = make_process()
+		.flags(process::allow_failure)
+		.stderr_level(context::level::trace)
+		.arg("stash show")
 		.cwd(root_);
 
 	return (execute_and_join() == 0);

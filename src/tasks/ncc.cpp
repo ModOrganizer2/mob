@@ -26,13 +26,17 @@ fs::path ncc::source_path()
 
 void ncc::do_clean(clean c)
 {
-	if (is_set(c, clean::rebuild))
+	instrument<times::clean>([&]
 	{
-		instrument<times::clean>([&]
+		if (is_any_set(c, clean::redownload|clean::reextract))
 		{
+			git::delete_directory(cx(), source_path());
+			return;
+		}
+
+		if (is_set(c, clean::rebuild))
 			run_tool(create_msbuild_tool(msbuild::clean));
-		});
-	}
+	});
 }
 
 void ncc::do_fetch()

@@ -62,21 +62,20 @@ fs::path modorganizer::super_path()
 
 void modorganizer::do_clean(clean c)
 {
-	if (is_set(c, clean::reconfigure))
+	instrument<times::clean>([&]
 	{
-		instrument<times::clean>([&]
+		if (is_any_set(c, clean::redownload|clean::reextract))
 		{
-			run_tool(create_this_cmake_tool(cmake::clean));
-		});
-	}
+			git::delete_directory(cx(), this_source_path());
+			return;
+		}
 
-	if (is_set(c, clean::rebuild))
-	{
-		instrument<times::clean>([&]
-		{
+		if (is_set(c, clean::reconfigure))
+			run_tool(create_this_cmake_tool(cmake::clean));
+
+		if (is_set(c, clean::rebuild))
 			run_tool(create_this_msbuild_tool(msbuild::clean));
-		});
-	}
+	});
 }
 
 void modorganizer::do_fetch()

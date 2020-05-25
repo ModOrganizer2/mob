@@ -118,6 +118,7 @@ private:
 	std::optional<bool> fetch_;
 	std::optional<bool> build_;
 	std::optional<bool> nopull_;
+	bool ignore_uncommitted_ = false;
 	bool keep_msbuild_ = false;
 	std::optional<bool> revert_ts_;
 

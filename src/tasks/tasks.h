@@ -76,6 +76,7 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 };
 
@@ -214,6 +215,7 @@ public:
 	static fs::path lib_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 };
 
@@ -531,6 +533,7 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 };
 

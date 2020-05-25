@@ -24,6 +24,18 @@ fs::path spdlog::source_path()
 	return paths::build() / ("spdlog-" + version());
 }
 
+void spdlog::do_clean(clean c)
+{
+	instrument<times::clean>([&]
+	{
+		if (is_any_set(c, clean::redownload|clean::reextract))
+		{
+			git::delete_directory(cx(), source_path());
+			return;
+		}
+	});
+}
+
 void spdlog::do_fetch()
 {
 	instrument<times::fetch>([&]

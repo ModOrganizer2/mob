@@ -159,6 +159,8 @@ public:
 
 	git(ops o);
 
+	static void delete_directory(const context& cx, const fs::path& p);
+
 	static fs::path binary();
 
 	static void set_credentials(
@@ -226,7 +228,6 @@ private:
 	void do_ignore_ts();
 	void do_revert_ts();
 
-	void delete_root_if_needed();
 	void set_config(const std::string& key, const std::string& value);
 	bool has_remote(const std::string& name);
 	void rename_remote(const std::string& from, const std::string& to);
@@ -235,6 +236,8 @@ private:
 	void set_assume_unchanged(const fs::path& relative_file, bool on);
 	bool is_tracked(const fs::path& relative_file);
 	bool is_repo();
+	bool has_uncommitted_changes();
+	bool has_stashed_changes();
 	void init();
 
 	std::string git_file();
@@ -396,8 +399,6 @@ private:
 
 	void do_clean();
 	void do_generate();
-
-	fs::path real_output_path();
 
 	static const std::map<generators, gen_info>& all_generators();
 	static const gen_info& get_generator(generators g);

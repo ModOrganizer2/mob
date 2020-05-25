@@ -42,6 +42,12 @@ void lz4::do_clean(clean c)
 		}
 		else
 		{
+			if (is_any_set(c, clean::redownload|clean::reextract))
+			{
+				git::delete_directory(cx(), source_path());
+				return;
+			}
+
 			if (is_set(c, clean::rebuild))
 				run_tool(create_msbuild_tool(msbuild::clean));
 		}

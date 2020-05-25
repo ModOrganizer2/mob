@@ -24,6 +24,18 @@ fs::path boost_di::source_path()
 	return paths::build() / "di";
 }
 
+void boost_di::do_clean(clean c)
+{
+	instrument<times::clean>([&]
+	{
+		if (is_any_set(c, clean::redownload|clean::reextract))
+		{
+			git::delete_directory(cx(), source_path());
+			return;
+		}
+	});
+}
+
 void boost_di::do_fetch()
 {
 	instrument<times::fetch>([&]

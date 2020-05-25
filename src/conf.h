@@ -60,6 +60,11 @@ public:
 	static bool fetch()        { return bool_global_by_name("fetch_task"); }
 	static bool build()        { return bool_global_by_name("build_task"); }
 
+	static bool ignore_uncommitted()
+	{
+		return bool_global_by_name("ignore_uncommitted");
+	}
+
 	static std::vector<std::string> format_options();
 
 private:

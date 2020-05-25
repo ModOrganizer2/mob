@@ -26,23 +26,26 @@ fs::path gtest::source_path()
 
 void gtest::do_clean(clean c)
 {
-	if (is_set(c, clean::reconfigure))
+	instrument<times::clean>([&]
 	{
-		instrument<times::clean>([&]
+		if (is_any_set(c, clean::redownload|clean::reextract))
+		{
+			git::delete_directory(cx(), source_path());
+			return;
+		}
+
+		if (is_set(c, clean::reconfigure))
 		{
 			run_tool(create_cmake_tool(arch::x86, cmake::clean));
 			run_tool(create_cmake_tool(arch::x64, cmake::clean));
-		});
-	}
+		}
 
-	if (is_set(c, clean::rebuild))
-	{
-		instrument<times::clean>([&]
+		if (is_set(c, clean::rebuild))
 		{
 			run_tool(create_msbuild_tool(arch::x86, msbuild::clean));
 			run_tool(create_msbuild_tool(arch::x64, msbuild::clean));
-		});
-	}
+		}
+	});
 }
 
 void gtest::do_fetch()

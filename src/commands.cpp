@@ -351,6 +351,11 @@ clipp::group build_command::do_group()
 		) % "whether to revert all the .ts files in a repo before pulling to "
 		    "avoid merge errors; global override",
 
+		(clipp::option("--ignore-uncommitted-changes") >> ignore_uncommitted_)
+			% "when --redownload or --reextract is given, directories "
+			  "controlled by git will be deleted even if they contain "
+			  "uncommitted changes",
+
 		(clipp::option("--keep-msbuild") >> keep_msbuild_)
 			% "don't terminate msbuild.exe instances after building",
 
@@ -375,6 +380,9 @@ void build_command::convert_cl_to_conf()
 
 	if (rebuild_ || new_)
 		common.options.push_back("global/rebuild=true");
+
+	if (ignore_uncommitted_)
+		common.options.push_back("global/ignore_uncommitted=true");
 
 	if (clean_)
 	{
