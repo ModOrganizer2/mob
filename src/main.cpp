@@ -165,8 +165,78 @@ void add_tasks()
 		.add_task<modorganizer>("modorganizer");
 }
 
+
+// see https://github.com/isanae/mob/issues/4
+//
+// this restores the original console font if it changed
+//
+class font_restorer
+{
+public:
+	font_restorer()
+		: restore_(false)
+	{
+		std::memset(&old_, 0, sizeof(old_));
+		old_.cbSize = sizeof(old_);
+
+		if (!GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &old_))
+		{
+			const auto e = GetLastError();
+			std::wcerr
+				<< L"failed to get console font, "
+				<< utf8_to_utf16(error_message(e)) << L"\n";
+
+			return;
+		}
+
+		restore_ = true;
+	}
+
+	~font_restorer()
+	{
+		if (!restore_)
+			return;
+
+		CONSOLE_FONT_INFOEX now = {};
+		now.cbSize = sizeof(now);
+
+		if (!GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &now))
+		{
+			const auto e = GetLastError();
+			std::wcerr
+				<< L"failed to get console font, "
+				<< utf8_to_utf16(error_message(e)) << L"\n";
+
+			return;
+		}
+
+		if (std::wcsncmp(old_.FaceName, now.FaceName, LF_FACESIZE) != 0)
+			restore();
+	}
+
+	void restore()
+	{
+		if (!::SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &old_))
+		{
+			const auto e = GetLastError();
+			std::wcerr
+				<< L"failed to set console font, "
+				<< utf8_to_utf16(error_message(e)) << L"\n";
+
+			return;
+		}
+	}
+
+private:
+	CONSOLE_FONT_INFOEX old_;
+	bool restore_;
+};
+
+
 int run(const std::vector<std::string>& args)
 {
+	font_restorer fr;
+
 	add_tasks();
 
 	try
