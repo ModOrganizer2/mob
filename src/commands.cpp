@@ -11,7 +11,7 @@ namespace mob
 
 std::string version()
 {
-	return "mob 3.0";
+	return "mob 4.0";
 }
 
 
