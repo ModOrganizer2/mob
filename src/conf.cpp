@@ -785,19 +785,6 @@ void parse_ini(const fs::path& ini, bool add)
 	}
 }
 
-bool check_missing_options()
-{
-	if (paths::prefix().empty())
-	{
-		u8cerr
-			<< "missing prefix; either specify it the [paths] section of "
-			<< "the ini or pass '-d path'\n";
-
-		return false;
-	}
-
-	return true;
-}
 
 template <class F>
 void set_path_if_empty(const std::string& k, F&& f)
@@ -1074,7 +1061,25 @@ void init_options(
 
 bool verify_options()
 {
-	return check_missing_options();
+	if (paths::prefix().empty())
+	{
+		u8cerr
+			<< "missing prefix; either specify it the [paths] section of "
+			<< "the ini or pass '-d path'\n";
+
+		return false;
+	}
+
+	if (fs::equivalent(paths::prefix(), mob_exe_path().parent_path()))
+	{
+		u8cerr
+			<< "the prefix cannot be where mob.exe is, there's already a "
+			<< "build directory in there\n";
+
+		return false;
+	}
+
+	return true;
 }
 
 void log_options()
