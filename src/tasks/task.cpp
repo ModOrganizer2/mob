@@ -249,72 +249,72 @@ task_conf_holder::task_conf_holder(const task& t)
 
 std::string task_conf_holder::mo_org() const
 {
-	return conf::option_by_name(task_.names(), "mo_org");
+	return conf::task_option_by_name(task_.names(), "mo_org");
 }
 
 std::string task_conf_holder::mo_branch() const
 {
-	return conf::option_by_name(task_.names(), "mo_branch");
+	return conf::task_option_by_name(task_.names(), "mo_branch");
 }
 
 bool task_conf_holder::no_pull() const
 {
-	return conf::bool_option_by_name(task_.names(), "no_pull");
+	return conf::bool_task_option_by_name(task_.names(), "no_pull");
 }
 
 bool task_conf_holder::revert_ts() const
 {
-	return conf::bool_option_by_name(task_.names(), "revert_ts");
+	return conf::bool_task_option_by_name(task_.names(), "revert_ts");
 }
 
 bool task_conf_holder::ignore_ts()const
 {
-	return conf::bool_option_by_name(task_.names(), "ignore_ts");
+	return conf::bool_task_option_by_name(task_.names(), "ignore_ts");
 }
 
 std::string task_conf_holder::git_url_prefix() const
 {
-	return conf::option_by_name(task_.names(), "git_url_prefix");
+	return conf::task_option_by_name(task_.names(), "git_url_prefix");
 }
 
 bool task_conf_holder::git_shallow() const
 {
-	return conf::bool_option_by_name(task_.names(), "git_shallow");
+	return conf::bool_task_option_by_name(task_.names(), "git_shallow");
 }
 
 std::string task_conf_holder::git_user() const
 {
-	return conf::option_by_name(task_.names(), "git_username");
+	return conf::task_option_by_name(task_.names(), "git_username");
 }
 
 std::string task_conf_holder::git_email() const
 {
-	return conf::option_by_name(task_.names(), "git_email");
+	return conf::task_option_by_name(task_.names(), "git_email");
 }
 
 bool task_conf_holder::set_origin_remote() const
 {
-	return conf::bool_option_by_name(task_.names(), "set_origin_remote");
+	return conf::bool_task_option_by_name(task_.names(), "set_origin_remote");
 }
 
 std::string task_conf_holder::remote_org() const
 {
-	return conf::option_by_name(task_.names(), "remote_org");
+	return conf::task_option_by_name(task_.names(), "remote_org");
 }
 
 std::string task_conf_holder::remote_key() const
 {
-	return conf::option_by_name(task_.names(), "remote_key");
+	return conf::task_option_by_name(task_.names(), "remote_key");
 }
 
 bool task_conf_holder::remote_no_push_upstream() const
 {
-	return conf::bool_option_by_name(task_.names(), "remote_no_push_upstream");
+	return conf::bool_task_option_by_name(task_.names(), "remote_no_push_upstream");
 }
 
 bool task_conf_holder::remote_push_default_origin() const
 {
-	return conf::bool_option_by_name(task_.names(), "remote_push_default_origin");
+	return conf::bool_task_option_by_name(task_.names(), "remote_push_default_origin");
 }
 
 git task_conf_holder::make_git(git::ops o) const
@@ -382,6 +382,11 @@ task::~task()
 	{
 		// ignore
 	}
+}
+
+bool task::enabled() const
+{
+	return conf::bool_task_option_by_name(names(), "enabled");
 }
 
 bool task::is_super() const
@@ -495,6 +500,12 @@ void task::run()
 {
 	threaded_run(name(), [&]
 	{
+		if (!enabled())
+		{
+			cx().debug(context::generic, "task is disabled");
+			return;
+		}
+
 		cx().info(context::generic, "running task");
 
 		fetch();
@@ -530,6 +541,13 @@ void task::clean_task()
 	if (!conf::clean())
 		return;
 
+	if (!enabled())
+	{
+		cx().debug(context::generic, "cleaning (skipping, task disabled)");
+		return;
+	}
+
+
 	const auto cf = make_clean_flags();
 
 	if (cf != clean::nothing)
@@ -541,6 +559,12 @@ void task::clean_task()
 
 void task::fetch()
 {
+	if (!enabled())
+	{
+		cx().debug(context::generic, "fetching (skipping, task disabled)");
+		return;
+	}
+
 	thread_ = start_thread([&]
 	{
 		threaded_run(name(), [&]
@@ -574,6 +598,13 @@ void task::build_and_install()
 {
 	if (!conf::build())
 		return;
+
+	if (!enabled())
+	{
+		cx().debug(context::generic,
+			"build and install (skipping, task disabled)");
+		return;
+	}
 
 	thread_ = start_thread([&]
 	{

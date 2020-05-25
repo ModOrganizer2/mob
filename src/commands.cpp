@@ -411,17 +411,25 @@ void build_command::convert_cl_to_conf()
 	if (nopull_)
 	{
 		if (*nopull_)
-			common.options.push_back("_override:options/no_pull=true");
+			common.options.push_back("_override:task/no_pull=true");
 		else
-			common.options.push_back("_override:options/no_pull=false");
+			common.options.push_back("_override:task/no_pull=false");
 	}
 
 	if (revert_ts_)
 	{
 		if (*revert_ts_)
-			common.options.push_back("_override:options/revert_ts=true");
+			common.options.push_back("_override:task/revert_ts=true");
 		else
-			common.options.push_back("_override:options/revert_ts=false");
+			common.options.push_back("_override:task/revert_ts=false");
+	}
+
+	if (!tasks_.empty())
+	{
+		common.options.push_back("task/enabled=false");
+
+		for (auto&& t : tasks_)
+			common.options.push_back(t + ":task/enabled=true");
 	}
 }
 
@@ -431,10 +439,7 @@ int build_command::do_run()
 	{
 		curl_init curl;
 
-		if (!tasks_.empty())
-			run_tasks(tasks_);
-		else
-			run_all_tasks();
+		run_all_tasks();
 
 		{
 			using namespace std::chrono;

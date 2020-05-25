@@ -35,10 +35,10 @@ public:
 	static std::string global_by_name(const std::string& name);
 	static bool bool_global_by_name(const std::string& name);
 
-	static std::string option_by_name(
+	static std::string task_option_by_name(
 		const std::vector<std::string>& task_names, const std::string& name);
 
-	static bool bool_option_by_name(
+	static bool bool_task_option_by_name(
 		const std::vector<std::string>& task_names, const std::string& name);
 
 

@@ -170,16 +170,16 @@ bool conf::bool_global_by_name(const std::string& name)
 	return (s == "true" || s == "yes" || s == "1");
 }
 
-std::string conf::option_by_name(
+std::string conf::task_option_by_name(
 	const std::vector<std::string>& task_names, const std::string& name)
 {
-	return get_for_task(task_names, "options", name);
+	return get_for_task(task_names, "task", name);
 }
 
-bool conf::bool_option_by_name(
+bool conf::bool_task_option_by_name(
 	const std::vector<std::string>& task_names, const std::string& name)
 {
-	const std::string s = option_by_name(task_names, name);
+	const std::string s = task_option_by_name(task_names, name);
 	return (s == "true" || s == "yes" || s == "1");
 }
 

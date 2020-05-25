@@ -86,10 +86,11 @@ public:
 
 	task(const task&) = delete;
 	task& operator=(const task&) = delete;
-
 	virtual ~task();
+
 	static void interrupt_all();
 
+	bool enabled() const;
 	const std::string& name() const;
 	const std::vector<std::string>& names() const;
 
