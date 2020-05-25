@@ -310,6 +310,8 @@ url make_prebuilt_url(const std::string& filename);
 url make_appveyor_artifact_url(
 	arch a, const std::string& project, const std::string& filename);
 
+bool glob_match(const std::string& pattern, const std::string& s);
+
 std::string replace_all(
 	std::string s, const std::string& from, const std::string& to);
 

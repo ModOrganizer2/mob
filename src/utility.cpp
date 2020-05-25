@@ -318,6 +318,11 @@ url make_appveyor_artifact_url(
 		project + "/artifacts/" + filename + "?job=Platform:%20" + arch_s;
 }
 
+bool glob_match(const std::string& pattern, const std::string& s)
+{
+	return std::regex_match(s, std::regex{ replace_all(pattern, "*", ".*") });
+}
+
 std::string replace_all(
 	std::string s, const std::string& from, const std::string& to)
 {

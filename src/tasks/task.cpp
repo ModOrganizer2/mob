@@ -35,22 +35,30 @@ void list_tasks(bool err)
 	}
 }
 
-task* find_task(const std::string& name)
+std::vector<task*> find_tasks(const std::string& pattern)
 {
+	std::vector<task*> tasks;
 	for (auto&& t : g_all_tasks)
 	{
 		for (auto&& n : t->names())
 		{
-			if (n == name)
-				return t;
+			if (mob::glob_match(pattern, n)) {
+				tasks.push_back(t);
+				break;
+			}
 		}
 	}
 
-	u8cout << "task " << name << " not found\n";
-	u8cout << "valid tasks:\n";
-	list_tasks(true);
+	if (tasks.empty()) {
 
-	throw bailed("");
+		u8cout << "no task matching " << pattern << " found\n";
+		u8cout << "valid tasks:\n";
+		list_tasks(true);
+
+		throw bailed("");
+	}
+
+	return tasks;
 }
 
 void run_tasks(const std::vector<task*> tasks)
@@ -110,7 +118,7 @@ void gather_super_tasks(std::vector<task*>& tasks, std::set<task*>& seen)
 
 void run_task(const std::string& name)
 {
-	run_tasks({find_task(name)});
+	run_tasks({name});
 }
 
 void run_tasks(const std::vector<std::string>& names)
@@ -133,12 +141,12 @@ void run_tasks(const std::vector<std::string>& names)
 		}
 		else
 		{
-			auto* t = find_task(name);
-
-			if (!seen.contains(t))
-			{
-				tasks.push_back(t);
-				seen.insert(t);
+			for (auto* t : find_tasks(name)) {
+				if (!seen.contains(t))
+				{
+					tasks.push_back(t);
+					seen.insert(t);
+				}
 			}
 		}
 	}
