@@ -4,13 +4,13 @@
 namespace mob
 {
 
-downloader::downloader()
-	: tool("dl")
+downloader::downloader(ops o)
+	: tool("dl"), op_(o)
 {
 }
 
-downloader::downloader(mob::url u)
-	: downloader()
+downloader::downloader(mob::url u, ops o)
+	: downloader(o)
 {
 	urls_.push_back(std::move(u));
 }
@@ -33,6 +33,29 @@ fs::path downloader::result() const
 }
 
 void downloader::do_run()
+{
+	switch (op_)
+	{
+		case clean:
+		{
+			do_clean();
+			break;
+		}
+
+		case download:
+		{
+			do_download();
+			break;
+		}
+
+		default:
+		{
+			cx().bail_out(context::net, "bad downloader op {}", op_);
+		}
+	}
+}
+
+void downloader::do_download()
 {
 	dl_.reset(new curl_downloader(&cx()));
 
@@ -94,6 +117,25 @@ void downloader::do_run()
 	cx().bail_out(context::net, "all urls failed to download");
 }
 
+void downloader::do_clean()
+{
+	if (!file_.empty())
+	{
+		cx().debug(context::redownload, "deleting {}", file_);
+		op::delete_file(cx(), file_, op::optional);
+	}
+	else
+	{
+		for (auto&& u : urls_)
+		{
+			const auto file = path_for_url(u);
+
+			cx().debug(context::redownload, "deleting {}", file);
+			op::delete_file(cx(), file, op::optional);
+		}
+	}
+}
+
 void downloader::do_interrupt()
 {
 	if (dl_)
@@ -104,16 +146,8 @@ bool downloader::try_picking(const fs::path& file)
 {
 	if (fs::exists(file))
 	{
-		if (conf::redownload())
-		{
-			cx().trace(context::redownload, "deleting {}", file);
-			op::delete_file(cx(), file, op::optional);
-		}
-		else
-		{
-			cx().trace(context::bypass, "picking {}", file_);
-			return true;
-		}
+		cx().trace(context::bypass, "picking {}", file_);
+		return true;
 	}
 	else
 	{

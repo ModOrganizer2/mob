@@ -24,12 +24,18 @@ fs::path ncc::source_path()
 	return paths::build() / "NexusClientCli";
 }
 
-void ncc::do_clean_for_rebuild()
+void ncc::do_clean(clean c)
 {
 	instrument<times::clean>([&]
 	{
-		op::delete_directory(
-			cx(), source_path() / "NexusClientCLI" / "obj", op::optional);
+		if (is_any_set(c, clean::redownload|clean::reextract))
+		{
+			git::delete_directory(cx(), source_path());
+			return;
+		}
+
+		if (is_set(c, clean::rebuild))
+			run_tool(create_msbuild_tool(msbuild::clean));
 	});
 }
 
@@ -50,7 +56,7 @@ void ncc::do_build_and_install()
 	{
 		run_tool(msbuild()
 			.solution(source_path() / "NexusClient.sln")
-			.projects({"NexusClientCLI"})
+			.targets({"NexusClientCLI"})
 			.platform("Any CPU"));
 	});
 
@@ -63,6 +69,14 @@ void ncc::do_build_and_install()
 			.stderr_level(context::level::trace)
 			.arg(paths::install_bin())));
 	});
+}
+
+msbuild ncc::create_msbuild_tool(msbuild::ops o)
+{
+	return std::move(msbuild(o)
+		.solution(source_path() / "NexusClient.sln")
+		.targets({"NexusClientCLI"})
+		.platform("Any CPU"));
 }
 
 }	// namespace

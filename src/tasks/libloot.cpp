@@ -29,6 +29,22 @@ fs::path libloot::source_path()
 	return paths::build() / dir_name();
 }
 
+void libloot::do_clean(clean c)
+{
+	instrument<times::clean>([&]
+	{
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(source_url(), downloader::clean));
+
+		if (is_set(c, clean::reextract))
+		{
+			cx().trace(context::reextract, "deleting {}", source_path());
+			op::delete_directory(cx(), source_path(), op::optional);
+			return;
+		}
+	});
+}
+
 void libloot::do_fetch()
 {
 	const auto file = instrument<times::fetch>([&]

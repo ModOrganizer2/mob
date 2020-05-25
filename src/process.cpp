@@ -68,7 +68,6 @@ std::string_view async_pipe::read(bool finish)
 
 	if (finish && s.empty())
 	{
-		cx_.trace(context::cmd, "read: finish=true and read is empty, closing");
 		::CancelIo(stdout_.get());
 		closed_ = true;
 	}
@@ -655,7 +654,7 @@ void process::read_pipe(
 
 			s.buffer.next_utf8_lines(finish, [&](std::string&& line)
 			{
-				filter f = {line, r, s.level, false};
+				filter f(line, r, s.level, false);
 
 				if (s.filter)
 				{

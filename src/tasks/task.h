@@ -49,7 +49,7 @@ public:
 	bool remote_no_push_upstream() const;
 	bool remote_push_default_origin() const;
 
-	git make_git(git::ops o=git::ops::none) const;
+	git make_git(git::ops o=git::clone_or_pull) const;
 
 	std::string make_git_url(
 		const std::string& org, const std::string& repo) const;
@@ -73,6 +73,17 @@ public:
 		clean
 	};
 
+
+	enum class clean
+	{
+		nothing     = 0x00,
+		redownload  = 0x01,
+		reextract   = 0x02,
+		reconfigure = 0x04,
+		rebuild     = 0x08,
+		everything  = redownload+reextract+reconfigure+rebuild
+	};
+
 	task(const task&) = delete;
 	task& operator=(const task&) = delete;
 
@@ -92,6 +103,7 @@ public:
 	virtual void interrupt();
 	virtual void join();
 
+	virtual void clean_task();
 	virtual void fetch();
 	virtual void build_and_install();
 
@@ -109,9 +121,9 @@ protected:
 
 	void check_interrupted();
 
+	virtual void do_clean(clean) {};
 	virtual void do_fetch() {}
 	virtual void do_build_and_install() {}
-	virtual void do_clean_for_rebuild() {}
 
 	template <class Tool>
 	auto run_tool(Tool&& t)
@@ -140,9 +152,12 @@ private:
 
 	static std::mutex interrupt_mutex_;
 
-	void clean_for_rebuild();
+	clean make_clean_flags() const;
 	void run_tool_impl(tool* t);
 };
+
+
+MOB_ENUM_OPERATORS(task::clean);
 
 
 template <class Task>
@@ -209,7 +224,7 @@ public:
 protected:
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
+	void do_clean(clean c) override;
 
 private:
 	bool super_;

@@ -65,8 +65,14 @@ struct qt
 class downloader : public tool
 {
 public:
-	downloader();
-	downloader(mob::url u);
+	enum ops
+	{
+		clean = 1,
+		download
+	};
+
+	downloader(ops o=download);
+	downloader(mob::url u, ops o=download);
 
 	downloader& url(const mob::url& u);
 	downloader& file(const fs::path& p);
@@ -78,9 +84,13 @@ protected:
 	void do_interrupt() override;
 
 private:
+	ops op_;
 	std::unique_ptr<curl_downloader> dl_;
 	fs::path file_;
 	std::vector<mob::url> urls_;
+
+	void do_clean();
+	void do_download();
 
 	fs::path path_for_url(const mob::url& u) const;
 	bool try_picking(const fs::path& file);
@@ -132,10 +142,9 @@ private:
 class git : public basic_process_runner
 {
 public:
-	enum class ops
+	enum ops
 	{
-		none = 0,
-		clone,
+		clone = 1,
 		pull,
 		clone_or_pull,
 		add_submodule
@@ -149,6 +158,8 @@ public:
 
 
 	git(ops o);
+
+	static void delete_directory(const context& cx, const fs::path& p);
 
 	static fs::path binary();
 
@@ -217,7 +228,6 @@ private:
 	void do_ignore_ts();
 	void do_revert_ts();
 
-	void delete_root_if_needed();
 	void set_config(const std::string& key, const std::string& value);
 	bool has_remote(const std::string& name);
 	void rename_remote(const std::string& from, const std::string& to);
@@ -226,6 +236,8 @@ private:
 	void set_assume_unchanged(const fs::path& relative_file, bool on);
 	bool is_tracked(const fs::path& relative_file);
 	bool is_repo();
+	bool has_uncommitted_changes();
+	bool has_stashed_changes();
 	void init();
 
 	std::string git_file();
@@ -329,10 +341,15 @@ public:
 		jom   = 0x02
 	};
 
-	cmake();
+	enum ops
+	{
+		generate =1 ,
+		clean
+	};
+
+	cmake(ops o=generate);
 
 	static fs::path binary();
-	static void clean(const context& cx, const fs::path& root);
 
 	cmake& generator(generators g);
 	cmake& generator(const std::string& g);
@@ -345,6 +362,15 @@ public:
 	cmake& architecture(arch a);
 	cmake& cmd(const std::string& s);
 
+	// returns the path given in output(), if it was set
+	//
+	// if not, returns the build path based on the parameters (for example,
+	// `vsbuild_32/` for a 32-bit arch with the VS generator
+	//
+	fs::path build_path() const;
+
+	// returns build_path(), used by task::run_tool()
+	//
 	fs::path result() const;
 
 protected:
@@ -362,6 +388,7 @@ private:
 		std::string output_dir(arch a) const;
 	};
 
+	ops op_;
 	fs::path root_;
 	generators gen_;
 	std::string genstring_;
@@ -369,6 +396,9 @@ private:
 	fs::path output_;
 	arch arch_;
 	std::string cmd_;
+
+	void do_clean();
+	void do_generate();
 
 	static const std::map<generators, gen_info>& all_generators();
 	static const gen_info& get_generator(generators g);
@@ -417,12 +447,18 @@ public:
 		allow_failure  = 0x02
 	};
 
-	msbuild();
+	enum ops
+	{
+		build = 1,
+		clean
+	};
+
+	msbuild(ops o=build);
 
 	static fs::path binary();
 
 	msbuild& solution(const fs::path& sln);
-	msbuild& projects(const std::vector<std::string>& names);
+	msbuild& targets(const std::vector<std::string>& names);
 	msbuild& parameters(const std::vector<std::string>& params);
 	msbuild& config(const std::string& s);
 	msbuild& platform(const std::string& s);
@@ -435,14 +471,23 @@ protected:
 	void do_run() override;
 
 private:
+	ops op_;
 	fs::path sln_;
-	std::vector<std::string> projects_;
+	std::vector<std::string> targets_;
 	std::vector<std::string> params_;
 	std::string config_;
 	std::string platform_;
 	arch arch_;
 	flags_t flags_;
+
+	void do_clean();
+	void do_build();
+	void do_run(const std::vector<std::string>& targets);
+
+	void error_filter(process::filter& f) const;
 };
+
+MOB_ENUM_OPERATORS(msbuild::flags_t);
 
 
 class vs : public basic_process_runner

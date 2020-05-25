@@ -5,16 +5,44 @@
 namespace mob
 {
 
+constexpr git::ops no_op(git::ops(0));
+
 git::git(ops o)
 	: basic_process_runner("git"), op_(o)
 {
+}
+
+void git::delete_directory(const context& cx, const fs::path& p)
+{
+	git g(no_op);
+	g.root(p);
+
+	if (!conf::ignore_uncommitted())
+	{
+		if (g.has_uncommitted_changes())
+		{
+			cx.bail_out(context::redownload,
+				"will not delete {}, has uncommitted changes; "
+				"see --ignore-uncommitted-changes", p);
+		}
+
+		if (g.has_stashed_changes())
+		{
+			cx.bail_out(context::redownload,
+				"will not delete {}, has stashed changes; "
+				"see --ignore-uncommitted-changes", p);
+		}
+	}
+
+	cx.trace(context::redownload, "deleting directory controlled by git{}", p);
+	op::delete_directory(cx, p, op::optional);
 }
 
 void git::set_credentials(
 	const fs::path& repo,
 	const std::string& username, const std::string& email)
 {
-	git(ops::none)
+	git(no_op)
 		.root(repo)
 		.credentials(username, email)
 		.do_set_credentials();
@@ -25,7 +53,7 @@ void git::set_remote(
 	std::string org, std::string key,
 	bool no_push_upstream, bool push_default_origin)
 {
-	git(ops::none)
+	git(no_op)
 		.root(repo)
 		.remote(org, key, no_push_upstream, push_default_origin)
 		.do_set_remote();
@@ -33,7 +61,7 @@ void git::set_remote(
 
 void git::ignore_ts(const fs::path& repo, bool b)
 {
-	git(ops::none)
+	git(no_op)
 		.root(repo)
 		.ignore_ts_on_clone(b)
 		.do_ignore_ts();
@@ -43,7 +71,7 @@ void git::add_remote(
 	const fs::path& repo, const std::string& remote_name,
 	const std::string& username, const std::string& key, bool push_default)
 {
-	git g(ops::none);
+	git g(no_op);
 	g.root(repo);
 
 	const auto gf = g.git_file();
@@ -62,14 +90,14 @@ void git::add_remote(
 
 bool git::is_git_repo(const fs::path& p)
 {
-	git g(ops::none);
+	git g(no_op);
 	g.root(p);
 	return g.is_repo();
 }
 
 void git::init_repo(const fs::path& p)
 {
-	git g(ops::none);
+	git g(no_op);
 	g.root(p);
 	g.init();
 }
@@ -177,7 +205,6 @@ void git::do_run()
 			break;
 		}
 
-		case ops::none:
 		default:
 		{
 			cx().bail_out(context::generic, "git unknown op {}", op_);
@@ -214,30 +241,14 @@ void git::do_add_submodule()
 	execute_and_join();
 }
 
-void git::delete_root_if_needed()
-{
-	if (conf::redownload() || conf::reextract())
-	{
-		if (fs::exists(root_))
-		{
-			cx().trace(context::rebuild, "deleting directory controlled by git");
-			op::delete_directory(cx(), root_, op::optional);
-		}
-	}
-}
-
 void git::do_clone_or_pull()
 {
-	delete_root_if_needed();
-
 	if (!do_clone())
 		do_pull();
 }
 
 bool git::do_clone()
 {
-	delete_root_if_needed();
-
 	const fs::path dot_git = root_ / ".git";
 	if (fs::exists(dot_git))
 	{
@@ -277,8 +288,6 @@ bool git::do_clone()
 
 void git::do_pull()
 {
-	delete_root_if_needed();
-
 	if (revert_ts_)
 		do_revert_ts();
 
@@ -476,6 +485,32 @@ bool git::is_repo()
 				f.lv = context::level::trace;
 		})
 		.flags(process::allow_failure)
+		.cwd(root_);
+
+	return (execute_and_join() == 0);
+}
+
+bool git::has_uncommitted_changes()
+{
+	process_ = make_process()
+		.flags(process::allow_failure)
+		.stdout_flags(process::keep_in_string)
+		.arg("status")
+		.arg("-s")
+		.arg("--porcelain")
+		.cwd(root_);
+
+	execute_and_join();
+
+	return (process_.stdout_string() != "");
+}
+
+bool git::has_stashed_changes()
+{
+	process_ = make_process()
+		.flags(process::allow_failure)
+		.stderr_level(context::level::trace)
+		.arg("stash show")
 		.cwd(root_);
 
 	return (execute_and_join() == 0);

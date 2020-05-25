@@ -313,11 +313,32 @@ clipp::group build_command::do_group()
 		(clipp::option("-e", "--reextract") >> reextract_)
 			% "deletes source directories and re-extracts archives",
 
-		(clipp::option("-b", "--rebuild") >> rebuild_)
-			%  "cleans and rebuilds projects",
+		(clipp::option("-c", "--reconfigure") >> reconfigure_)
+			% "reconfigures the task by running cmake, configure scripts, "
+			   "etc.; some tasks might have to delete the whole source "
+			   "directory",
 
-		(clipp::option("-n", "--new") >> clean_)
+		(clipp::option("-b", "--rebuild") >> rebuild_)
+			%  "cleans and rebuilds projects; some tasks might have to "
+			   "delete the whole source directory",
+
+		(clipp::option("-n", "--new") >> new_)
 			% "deletes everything and starts from scratch",
+
+		(
+			clipp::option("--clean-task").call([&]{ clean_ = true; }) |
+			clipp::option("--no-clean-task").call([&]{ clean_ = false; })
+		) % "sets whether tasks are cleaned",
+
+		(
+			clipp::option("--fetch-task").call([&]{ fetch_ = true; }) |
+			clipp::option("--no-fetch-task").call([&]{ fetch_ = false; })
+		) % "sets whether tasks are fetched",
+
+		(
+			clipp::option("--build-task").call([&]{ build_ = true; }) |
+			clipp::option("--no-build-task").call([&]{ build_ = false; })
+		) % "sets whether tasks are built",
 
 		(
 			clipp::option("--pull").call([&]{ nopull_ = false; }) |
@@ -329,6 +350,11 @@ clipp::group build_command::do_group()
 			clipp::option("--no-revert-ts").call([&]{ revert_ts_ = false; })
 		) % "whether to revert all the .ts files in a repo before pulling to "
 		    "avoid merge errors; global override",
+
+		(clipp::option("--ignore-uncommitted-changes") >> ignore_uncommitted_)
+			% "when --redownload or --reextract is given, directories "
+			  "controlled by git will be deleted even if they contain "
+			  "uncommitted changes",
 
 		(clipp::option("--keep-msbuild") >> keep_msbuild_)
 			% "don't terminate msbuild.exe instances after building",
@@ -343,14 +369,44 @@ void build_command::convert_cl_to_conf()
 {
 	command::convert_cl_to_conf();
 
-	if (redownload_ || clean_)
+	if (redownload_ || new_)
 		common.options.push_back("global/redownload=true");
 
-	if (reextract_ || clean_)
+	if (reextract_ || new_)
 		common.options.push_back("global/reextract=true");
 
-	if (rebuild_ || clean_)
+	if (reconfigure_ || new_)
+		common.options.push_back("global/reconfigure=true");
+
+	if (rebuild_ || new_)
 		common.options.push_back("global/rebuild=true");
+
+	if (ignore_uncommitted_)
+		common.options.push_back("global/ignore_uncommitted=true");
+
+	if (clean_)
+	{
+		if (*clean_)
+			common.options.push_back("global/clean_task=true");
+		else
+			common.options.push_back("global/clean_task=false");
+	}
+
+	if (fetch_)
+	{
+		if (*fetch_)
+			common.options.push_back("global/fetch_task=true");
+		else
+			common.options.push_back("global/fetch_task=false");
+	}
+
+	if (build_)
+	{
+		if (*build_)
+			common.options.push_back("global/build_task=true");
+		else
+			common.options.push_back("global/build_task=false");
+	}
 
 	if (nopull_)
 	{

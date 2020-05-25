@@ -54,7 +54,16 @@ public:
 	static fs::path log_file() { return global_by_name("log_file"); }
 	static bool redownload()   { return bool_global_by_name("redownload"); }
 	static bool reextract()    { return bool_global_by_name("reextract"); }
+	static bool reconfigure()  { return bool_global_by_name("reconfigure"); }
 	static bool rebuild()      { return bool_global_by_name("rebuild"); }
+	static bool clean()        { return bool_global_by_name("clean_task"); }
+	static bool fetch()        { return bool_global_by_name("fetch_task"); }
+	static bool build()        { return bool_global_by_name("build_task"); }
+
+	static bool ignore_uncommitted()
+	{
+		return bool_global_by_name("ignore_uncommitted");
+	}
 
 	static std::vector<std::string> format_options();
 

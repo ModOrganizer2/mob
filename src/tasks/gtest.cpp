@@ -24,11 +24,27 @@ fs::path gtest::source_path()
 	return paths::build() / "googletest";
 }
 
-void gtest::do_clean_for_rebuild()
+void gtest::do_clean(clean c)
 {
 	instrument<times::clean>([&]
 	{
-		cmake::clean(cx(), source_path());
+		if (is_any_set(c, clean::redownload|clean::reextract))
+		{
+			git::delete_directory(cx(), source_path());
+			return;
+		}
+
+		if (is_set(c, clean::reconfigure))
+		{
+			run_tool(create_cmake_tool(arch::x86, cmake::clean));
+			run_tool(create_cmake_tool(arch::x64, cmake::clean));
+		}
+
+		if (is_set(c, clean::rebuild))
+		{
+			run_tool(create_msbuild_tool(arch::x86, msbuild::clean));
+			run_tool(create_msbuild_tool(arch::x64, msbuild::clean));
+		}
 	});
 }
 
@@ -43,34 +59,41 @@ void gtest::do_fetch()
 	});
 }
 
+cmake gtest::create_cmake_tool(arch a, cmake::ops o)
+{
+	const std::string build_dir = (a == arch::x64 ? "build" : "build_32");
+
+	return std::move(cmake(o)
+		.generator(cmake::vs)
+		.architecture(a)
+		.prefix(source_path() / build_dir)
+		.root(source_path()));
+}
+
+msbuild gtest::create_msbuild_tool(arch a, msbuild::ops o)
+{
+	const fs::path build_path = create_cmake_tool(a).build_path();
+
+	return std::move(msbuild(o)
+		.architecture(a)
+		.solution(build_path / "INSTALL.vcxproj"));
+}
+
 void gtest::do_build_and_install()
 {
-	instrument<times::build>([&]{ parallel({
-		{"gtest64", [&] {
-			// x64
-			const auto build_path_x64 = run_tool(cmake()
-				.generator(cmake::vs)
-				.architecture(arch::x64)
-				.prefix(source_path() / "build")
-				.root(source_path()));
+	instrument<times::build>([&]{
+		parallel({
+			{"gtest64", [&] {
+				run_tool(create_cmake_tool(arch::x64));
+				run_tool(create_msbuild_tool(arch::x64));
+			}},
 
-			run_tool(msbuild()
-				.solution(build_path_x64 / "INSTALL.vcxproj"));
-		}},
-
-		{"gtest32", [&] {
-			// x86
-			const auto build_path_x86 = run_tool(cmake()
-				.generator(cmake::vs)
-				.architecture(arch::x86)
-				.prefix(source_path() / "build_32")
-				.root(source_path()));
-
-			run_tool(msbuild()
-				.architecture(arch::x86)
-				.solution(build_path_x86 / "INSTALL.vcxproj"));
-		}}
-	});});
+			{"gtest32", [&] {
+				run_tool(create_cmake_tool(arch::x86));
+				run_tool(create_msbuild_tool(arch::x86));
+			}}
+		});
+	});
 }
 
 }	// namespace

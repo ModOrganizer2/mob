@@ -47,25 +47,61 @@ fs::path stylesheets::source_path()
 	return {};
 }
 
+void stylesheets::do_clean(clean c)
+{
+	instrument<times::clean>([&]
+	{
+		if (is_set(c, clean::redownload))
+		{
+			for (auto&& r : releases())
+				run_tool(make_downloader_tool(r, downloader::clean));
+		}
+
+		if (is_set(c, clean::reextract))
+		{
+			for (auto&& r : releases())
+			{
+				const auto p = release_build_path(r);
+
+				cx().trace(context::reextract, "deleting {}", p);
+				op::delete_directory(cx(), p, op::optional);
+			}
+		}
+	});
+}
+
 void stylesheets::do_fetch()
 {
 	instrument<times::fetch>([&]
 	{
-		// this isn't very generic, but 6788 is the only repo so far
-
 		for (auto&& r : releases())
 		{
-			const auto file = run_tool(downloader()
-				.url(
-					"https://github.com/" + r.repo + "/" + r.name + "/releases/"
-					"download/v" + r.version + "/" + r.file + ".7z")
-				.file(paths::cache() / (r.name + ".7z")));
+			const auto file = run_tool(make_downloader_tool(r));
 
 			run_tool(extractor()
 				.file(file)
-				.output(paths::build() / (r.name + "-v" + r.version)));
+				.output(release_build_path(r)));
 		}
 	});
+}
+
+fs::path stylesheets::release_build_path(const release& r) const
+{
+	return paths::build() / (r.name + "-v" + r.version);
+}
+
+downloader stylesheets::make_downloader_tool(
+	const release& r, downloader::ops o) const
+{
+	// this isn't very generic, but 6788 is the only repo so far
+
+	url u =
+		"https://github.com/" + r.repo + "/" + r.name + "/releases/"
+		"download/v" + r.version + "/" + r.file + ".7z";
+
+	return std::move(downloader(o)
+		.url(u)
+		.file(paths::cache() / (r.name + ".7z")));
 }
 
 void stylesheets::do_build_and_install()

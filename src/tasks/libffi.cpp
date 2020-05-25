@@ -24,6 +24,18 @@ fs::path libffi::source_path()
 	return paths::build() / "libffi";
 }
 
+void libffi::do_clean(clean c)
+{
+	instrument<times::clean>([&]
+	{
+		if (is_any_set(c, clean::redownload|clean::reextract))
+		{
+			git::delete_directory(cx(), source_path());
+			return;
+		}
+	});
+}
+
 void libffi::do_fetch()
 {
 	instrument<times::fetch>([&]

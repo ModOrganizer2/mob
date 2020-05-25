@@ -57,11 +57,19 @@ fs::path sip::module_source_path()
 	return source_path() / "sipbuild" / "module" / "source" / dir;
 }
 
-void sip::do_clean_for_rebuild()
+void sip::do_clean(clean c)
 {
 	instrument<times::clean>([&]
 	{
-		op::delete_directory(cx(), source_path() / "build", op::optional);
+		if (is_set(c, clean::reextract))
+		{
+			cx().trace(context::reextract, "deleting {}", source_path());
+			op::delete_directory(cx(), source_path(), op::optional);
+			return;
+		}
+
+		if (is_set(c, clean::rebuild))
+			op::delete_directory(cx(), source_path() / "build", op::optional);
 	});
 }
 

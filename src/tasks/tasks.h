@@ -29,9 +29,9 @@ public:
 	static fs::path root_lib_path(arch a);
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
 
 private:
 	void fetch_prebuilt();
@@ -76,6 +76,7 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 };
 
@@ -91,6 +92,7 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 
 private:
@@ -109,6 +111,7 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 
 private:
@@ -127,12 +130,18 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
 
 private:
 	static url source_url();
+	static fs::path solution_path();
+
+	static cmake create_cmake_tool(
+		const fs::path& src_path, cmake::ops o=cmake::ops::generate);
+
+	static msbuild create_msbuild_tool(msbuild::ops o=msbuild::ops::build);
 };
 
 
@@ -147,9 +156,13 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
+
+private:
+	cmake create_cmake_tool(arch a, cmake::ops o=cmake::generate);
+	msbuild create_msbuild_tool(arch a, msbuild::ops o=msbuild::build);
 };
 
 
@@ -179,6 +192,7 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
 
@@ -201,6 +215,7 @@ public:
 	static fs::path lib_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 };
 
@@ -217,6 +232,7 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
 
@@ -237,9 +253,9 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
 
 private:
 	static fs::path solution_dir();
@@ -252,6 +268,7 @@ private:
 	void fetch_from_source();
 	void build_and_install_from_source();
 
+	msbuild create_msbuild_tool(msbuild::ops o=msbuild::build);
 	static url prebuilt_url();
 };
 
@@ -267,21 +284,25 @@ public:
 	static fs::path source_path();
 	static fs::path super_path();
 
-	static cmake create_cmake_tool(const fs::path& root);
+	static cmake create_cmake_tool(
+		const fs::path& root, cmake::ops o=cmake::generate);
 
 	bool is_super() const override;
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
 
 private:
 	std::string repo_;
 
+	cmake create_this_cmake_tool(cmake::ops o=cmake::generate);
+	msbuild create_this_msbuild_tool(msbuild::ops o=msbuild::build);
 	void initialize_super(const fs::path& super_root);
 
 	fs::path this_source_path() const;
+	fs::path this_solution_path() const;
 };
 
 
@@ -296,9 +317,12 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
+
+private:
+	msbuild create_msbuild_tool(msbuild::ops o);
 };
 
 
@@ -313,9 +337,13 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
+
+private:
+	msbuild create_msbuild_tool(
+		msbuild::ops o=msbuild::build, msbuild::flags_t f=msbuild::noflags);
 };
 
 
@@ -338,9 +366,9 @@ public:
 	static fs::path bin_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
 
 private:
 	void fetch_prebuilt();
@@ -374,9 +402,9 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
 
 private:
 	void fetch_prebuilt();
@@ -420,9 +448,9 @@ public:
 	static fs::path site_packages_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
 
 private:
 	void fetch_prebuilt();
@@ -433,6 +461,8 @@ private:
 	void package();
 	void install_pip();
 	void copy_files();
+
+	msbuild create_msbuild_tool(msbuild::ops o=msbuild::build);
 
 	static std::string version_without_v();
 	static url prebuilt_url();
@@ -456,9 +486,9 @@ public:
 	static fs::path module_source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
 
 private:
 	void download();
@@ -479,9 +509,9 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
 
 private:
 	static url source_url();
@@ -503,6 +533,7 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 };
 
@@ -520,10 +551,11 @@ public:
 	static std::string paper_mono_6788_version();
 	static std::string dark_mode_1809_6788_version();
 
-	// dummy, doesn't applly
+	// dummy, doesn't apply
 	static std::string version();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
 
@@ -535,6 +567,11 @@ private:
 		std::string version;
 		std::string file;
 	};
+
+	downloader make_downloader_tool(
+		const release& r, downloader::ops=downloader::download) const;
+
+	fs::path release_build_path(const release& r) const;
 
 	static std::vector<release> releases();
 };
@@ -551,9 +588,9 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
 
 private:
 	void fetch_prebuilt();
@@ -564,7 +601,12 @@ private:
 	void download_from_appveyor(arch a);
 	void copy_prebuilt(arch a);
 
-	std::string prebuilt_directory_name(arch a);
+	msbuild create_msbuild_tool(arch a, msbuild::ops o=msbuild::build) const;
+
+	std::vector<std::shared_ptr<downloader>> create_appveyor_downloaders(
+		arch a, downloader::ops o=downloader::download) const;
+
+	std::string prebuilt_directory_name(arch a) const;
 };
 
 
@@ -579,11 +621,14 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-	void do_clean_for_rebuild() override;
 
 private:
+	cmake create_cmake_tool(cmake::ops o=cmake::generate);
+	msbuild create_msbuild_tool(msbuild::ops o=msbuild::build);
+
 	static url source_url();
 };
 
