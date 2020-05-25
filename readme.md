@@ -12,8 +12,8 @@
 `mob` builds a list of available INI files in order of priority. Higher numbers override lower numbers:
 
  1) The master INI `mob.ini` in the directory where `mob.exe` lives (required).
- 2) Another `mob.ini` in the current directory.
- 3) Any files set in `MOBINI` (separated by semicolons).
+ 2) Any files set in `MOBINI` (separated by semicolons).
+ 3) Another `mob.ini` in the current directory.
  4) Files given with `--ini`.
 
 Use `mob inis` to see the list of INI files in order. If `--no-default-inis` is given, `mob` will skip 1) and 2). The first INI it finds after that is considered the master.
@@ -43,7 +43,12 @@ Inside the INI file are `[sections]` and `key = value` pairs. The `[options]` se
 | `log_file`         | path | The path to a log file. |
 | `ignore_uncommitted` | bool | When `--redownload` or `--reextract` is given, directories controlled by git will be deleted even if they contain uncommitted changes.|
 
-### `[options]`
+### `[task]`
+Options for individual tasks. Can be `[taskname:task]`, where `taskname` is the name of a task (see `mob list`) , `super` for all MO tasks or a glob like `installer_*`.
+
+| Option      | Type   | Description |
+| ---         | ---    | ---         |
+| `enabled`   | bool   | Whether this task is enabled. Disabled tasks are never built. When specifying task names with `mob build task1 task2...`, all tasks except those given are turned off. |
 
 #### Common git options
 Unless otherwise stated, applies to any task that is a git repo.
