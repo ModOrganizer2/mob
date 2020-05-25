@@ -24,12 +24,23 @@ fs::path zlib::source_path()
 	return paths::build() / ("zlib-" + version());
 }
 
-void zlib::do_clean_for_rebuild()
+void zlib::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	if (is_set(c, clean::reconfigure))
 	{
-		cmake::clean(cx(), source_path());
-	});
+		instrument<times::clean>([&]
+		{
+			run_tool(create_cmake_tool(cmake::clean));
+		});
+	}
+
+	if (is_set(c, clean::rebuild))
+	{
+		instrument<times::clean>([&]
+		{
+			run_tool(create_msbuild_tool(msbuild::clean));
+		});
+	}
 }
 
 void zlib::do_fetch()
@@ -49,18 +60,14 @@ void zlib::do_fetch()
 
 void zlib::do_build_and_install()
 {
-	const auto build_path = instrument<times::configure>([&]
+	const fs::path build_path = instrument<times::configure>([&]
 	{
-		return run_tool(cmake()
-			.generator(cmake::vs)
-			.root(source_path())
-			.prefix(source_path()));
+		return run_tool(create_cmake_tool());
 	});
 
 	instrument<times::build>([&]
 	{
-		run_tool(msbuild()
-			.solution(build_path / "INSTALL.vcxproj"));
+		run_tool(create_msbuild_tool());
 	});
 
 	instrument<times::install>([&]
@@ -69,6 +76,22 @@ void zlib::do_build_and_install()
 			build_path / "zconf.h",
 			source_path());
 	});
+}
+
+cmake zlib::create_cmake_tool(cmake::ops o)
+{
+	return std::move(cmake(o)
+		.generator(cmake::vs)
+		.root(source_path())
+		.prefix(source_path()));
+}
+
+msbuild zlib::create_msbuild_tool(msbuild::ops o)
+{
+	const fs::path build_path = create_cmake_tool().build_path();
+
+	return std::move(msbuild(o)
+		.solution(build_path / "INSTALL.vcxproj"));
 }
 
 url zlib::source_url()

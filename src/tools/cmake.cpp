@@ -4,30 +4,14 @@
 namespace mob
 {
 
-cmake::cmake()
-	: basic_process_runner("cmake"), gen_(jom), arch_(arch::def)
+cmake::cmake(ops o)
+	: basic_process_runner("cmake"), op_(o), gen_(jom), arch_(arch::def)
 {
-	process_
-		.binary(binary());
 }
 
 fs::path cmake::binary()
 {
 	return conf::tool_by_name("cmake");
-}
-
-void cmake::clean(const context& cx, const fs::path& root)
-{
-	cx.trace(context::rebuild, "deleting all generator directories");
-
-	for (auto&& [k, g] : all_generators())
-	{
-		op::delete_directory(cx,
-			root / g.output_dir(arch::x86), op::optional);
-
-		op::delete_directory(cx,
-			root / g.output_dir(arch::x64), op::optional);
-	}
 }
 
 cmake& cmake::generator(generators g)
@@ -106,15 +90,39 @@ fs::path cmake::result() const
 
 void cmake::do_run()
 {
+	switch (op_)
+	{
+		case clean:
+		{
+			do_clean();
+			break;
+		}
+
+		case generate:
+		{
+			do_generate();
+			break;
+		}
+
+		default:
+		{
+			cx().bail_out(context::generic, "bad cmake op {}", op_);
+		}
+	}
+}
+
+
+void cmake::do_generate()
+{
 	if (root_.empty())
 		cx().bail_out(context::generic, "cmake output path is empty");
 
-	const fs::path output = output_.empty() ? build_path() : output_;
 	const auto& g = get_generator(gen_);
 
 	process_
 		.stdout_encoding(encodings::utf8)
 		.stderr_encoding(encodings::utf8)
+		.binary(binary())
 		.arg("-DCMAKE_BUILD_TYPE=Release")
 		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", process::log_quiet)
 		.arg("--log-level", "WARNING", process::log_quiet)
@@ -143,9 +151,15 @@ void cmake::do_run()
 	process_
 		.env(env::vs(arch_)
 			.set("CXXFLAGS", "/wd4566"))
-		.cwd(output);
+		.cwd(build_path());
 
 	execute_and_join();
+}
+
+void cmake::do_clean()
+{
+	cx().trace(context::rebuild, "deleting all generator directories");
+	op::delete_directory(cx(), build_path(), op::optional);
 }
 
 const std::map<cmake::generators, cmake::gen_info>& cmake::all_generators()

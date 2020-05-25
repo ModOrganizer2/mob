@@ -42,6 +42,32 @@ fs::path boost::root_lib_path(arch a)
 	return source_path() / lib;
 }
 
+void boost::do_clean(clean c)
+{
+	if (prebuilt())
+		return;
+
+	if (is_set(c, clean::reconfigure))
+	{
+		instrument<times::clean>([&]
+		{
+			op::delete_directory(cx(), source_path() / "bin.v2", op::optional);
+			op::delete_file(cx(), b2_exe(), op::optional);
+		});
+	}
+
+	if (is_set(c, clean::rebuild))
+	{
+		instrument<times::clean>([&]
+		{
+			op::delete_directory(cx(), root_lib_path(arch::x86), op::optional);
+			op::delete_directory(cx(), root_lib_path(arch::x64), op::optional);
+			op::delete_file(cx(), config_jam_file(), op::optional);
+			op::delete_file(cx(), source_path() / "project-config.jam", op::optional);
+		});
+	}
+}
+
 void boost::do_fetch()
 {
 	if (prebuilt())
@@ -56,26 +82,6 @@ void boost::do_build_and_install()
 		build_and_install_prebuilt();
 	else
 		build_and_install_from_source();
-}
-
-void boost::do_clean_for_reconfigure()
-{
-	if (prebuilt())
-		return;
-
-	op::delete_directory(cx(), source_path() / "bin.v2", op::optional);
-	op::delete_file(cx(), b2_exe(), op::optional);
-}
-
-void boost::do_clean_for_rebuild()
-{
-	if (prebuilt())
-		return;
-
-	op::delete_directory(cx(), root_lib_path(arch::x86), op::optional);
-	op::delete_directory(cx(), root_lib_path(arch::x64), op::optional);
-	op::delete_file(cx(), config_jam_file(), op::optional);
-	op::delete_file(cx(), source_path() / "project-config.jam", op::optional);
 }
 
 void boost::fetch_prebuilt()

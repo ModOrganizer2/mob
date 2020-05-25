@@ -24,12 +24,15 @@ fs::path nmm::source_path()
 	return paths::build() / "Nexus-Mod-Manager";
 }
 
-void nmm::do_clean_for_rebuild()
+void nmm::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	if (is_set(c, clean::rebuild))
 	{
-		op::delete_directory(cx(), source_path() / "Stage", op::optional);
-	});
+		instrument<times::clean>([&]
+		{
+			run_tool(create_msbuild_tool(msbuild::clean));
+		});
+	}
 }
 
 void nmm::do_fetch()
@@ -55,10 +58,8 @@ void nmm::do_build_and_install()
 
 		for (int tries=0; tries<max_tries; ++tries)
 		{
-			const int exit_code = run_tool(msbuild()
-				.solution(source_path() / "NexusClient.sln")
-				.platform("Any CPU")
-				.flags(msbuild::allow_failure));
+			const int exit_code = run_tool(create_msbuild_tool(
+				msbuild::build, msbuild::allow_failure));
 
 			if (exit_code == 0)
 				return;
@@ -73,11 +74,16 @@ void nmm::do_build_and_install()
 			"restarting one last time single process; that one should work",
 			max_tries);
 
-		run_tool(msbuild()
-			.solution(source_path() / "NexusClient.sln")
-			.platform("Any CPU")
-			.flags(msbuild::single_job));
+		run_tool(create_msbuild_tool(msbuild::build, msbuild::single_job));
 	});
+}
+
+msbuild nmm::create_msbuild_tool(msbuild::ops o, msbuild::flags_t f)
+{
+	return std::move(msbuild(o)
+		.solution(source_path() / "NexusClient.sln")
+		.platform("Any CPU")
+		.flags(f));
 }
 
 }	// namespace

@@ -24,12 +24,18 @@ fs::path lz4::source_path()
 	return paths::build() / ("lz4-" + version());
 }
 
-void lz4::do_clean_for_rebuild()
+void lz4::do_clean(clean c)
 {
 	if (prebuilt())
 		return;
 
-	op::delete_directory(cx(), solution_dir() / "bin", op::optional);
+	if (is_set(c, clean::rebuild))
+	{
+		instrument<times::clean>([&]
+		{
+			run_tool(create_msbuild_tool(msbuild::clean));
+		});
+	}
 }
 
 void lz4::do_fetch()
@@ -97,9 +103,7 @@ void lz4::build_and_install_from_source()
 {
 	instrument<times::build>([&]
 	{
-		run_tool(msbuild()
-			.solution(solution_file())
-			.targets({"liblz4-dll"}));
+		run_tool(create_msbuild_tool());
 	});
 
 	instrument<times::install>([&]
@@ -117,6 +121,13 @@ void lz4::build_and_install_from_source()
 			out_dir() / "liblz4.pdb",
 			paths::install_pdbs());
 	});
+}
+
+msbuild lz4::create_msbuild_tool(msbuild::ops o)
+{
+	return std::move(msbuild(o)
+		.solution(solution_file())
+		.targets({"liblz4-dll"}));
 }
 
 fs::path lz4::solution_dir()

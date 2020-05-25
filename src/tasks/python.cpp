@@ -62,18 +62,18 @@ fs::path python::build_path()
 	return source_path() / "PCBuild" / "amd64";
 }
 
-void python::do_clean_for_rebuild()
+void python::do_clean(clean c)
 {
 	if (prebuilt())
 		return;
 
-	instrument<times::clean>([&]
+	if (is_set(c, clean::rebuild))
 	{
-		const fs::path pcbuild = source_path() / "PCBuild";
-
-		op::delete_directory(cx(), pcbuild / "amd64", op::optional);
-		op::delete_directory(cx(), pcbuild / "obj", op::optional);
-	});
+		instrument<times::clean>([&]
+		{
+			run_tool(create_msbuild_tool(msbuild::clean));
+		});
+	}
 }
 
 void python::do_fetch()
@@ -142,19 +142,7 @@ void python::build_and_install_from_source()
 {
 	instrument<times::build>([&]
 	{
-		run_tool(msbuild()
-			.solution(solution_file())
-			.targets({
-				"python", "pythonw", "python3dll", "select", "pyexpat",
-				"unicodedata", "_queue", "_bz2", "_ssl"})
-			.parameters({
-				"bz2Dir=" + path_to_utf8(bzip2::source_path()),
-				"zlibDir=" + path_to_utf8(zlib::source_path()),
-				"opensslIncludeDir=" + path_to_utf8(openssl::include_path()),
-				"opensslOutDir=" + path_to_utf8(openssl::source_path()),
-				"libffiIncludeDir=" + path_to_utf8(libffi::include_path()),
-				"libffiOutDir=" + path_to_utf8(libffi::lib_path())}));
-
+		run_tool(create_msbuild_tool());
 		package();
 	});
 
@@ -240,6 +228,22 @@ void python::install_pip()
 		.arg("-m pip")
 		.arg("install")
 		.arg("--upgrade pip")));
+}
+
+msbuild python::create_msbuild_tool(msbuild::ops o)
+{
+	return std::move(msbuild(o)
+		.solution(solution_file())
+		.targets({
+			"python", "pythonw", "python3dll", "select", "pyexpat",
+			"unicodedata", "_queue", "_bz2", "_ssl"})
+		.parameters({
+			"bz2Dir=" + path_to_utf8(bzip2::source_path()),
+			"zlibDir=" + path_to_utf8(zlib::source_path()),
+			"opensslIncludeDir=" + path_to_utf8(openssl::include_path()),
+			"opensslOutDir=" + path_to_utf8(openssl::source_path()),
+			"libffiIncludeDir=" + path_to_utf8(libffi::include_path()),
+			"libffiOutDir=" + path_to_utf8(libffi::lib_path())}));
 }
 
 fs::path python::python_exe()

@@ -24,6 +24,18 @@ fs::path sevenz::source_path()
 	return paths::build() / ("7zip-" + version());
 }
 
+void sevenz::do_clean(clean c)
+{
+	if (is_set(c, clean::rebuild))
+	{
+		instrument<times::clean>([&]
+		{
+			op::delete_directory(cx(),
+				module_to_build() / "x64", op::optional);
+		});
+	}
+}
+
 void sevenz::do_fetch()
 {
 	const auto file = instrument<times::fetch>([&]
@@ -88,14 +100,6 @@ void sevenz::build()
 		.def("MY_STATIC_LINK=1")
 		.def("NO_BUFFEROVERFLOWU=1")
 		.flag(jom::single_job));
-}
-
-void sevenz::do_clean_for_rebuild()
-{
-	instrument<times::clean>([&]
-	{
-		op::delete_directory(cx(), module_to_build() / "x64", op::optional);
-	});
 }
 
 url sevenz::source_url()

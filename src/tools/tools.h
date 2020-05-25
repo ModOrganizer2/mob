@@ -132,10 +132,9 @@ private:
 class git : public basic_process_runner
 {
 public:
-	enum class ops
+	enum ops
 	{
-		none = 0,
-		clone,
+		clone = 1,
 		pull,
 		clone_or_pull,
 		add_submodule
@@ -329,10 +328,15 @@ public:
 		jom   = 0x02
 	};
 
-	cmake();
+	enum ops
+	{
+		generate =1 ,
+		clean
+	};
+
+	cmake(ops o=generate);
 
 	static fs::path binary();
-	static void clean(const context& cx, const fs::path& root);
 
 	cmake& generator(generators g);
 	cmake& generator(const std::string& g);
@@ -371,6 +375,7 @@ private:
 		std::string output_dir(arch a) const;
 	};
 
+	ops op_;
 	fs::path root_;
 	generators gen_;
 	std::string genstring_;
@@ -378,6 +383,11 @@ private:
 	fs::path output_;
 	arch arch_;
 	std::string cmd_;
+
+	void do_clean();
+	void do_generate();
+
+	fs::path real_output_path();
 
 	static const std::map<generators, gen_info>& all_generators();
 	static const gen_info& get_generator(generators g);
@@ -426,7 +436,13 @@ public:
 		allow_failure  = 0x02
 	};
 
-	msbuild();
+	enum ops
+	{
+		build = 1,
+		clean
+	};
+
+	msbuild(ops o=build);
 
 	static fs::path binary();
 
@@ -444,6 +460,7 @@ protected:
 	void do_run() override;
 
 private:
+	ops op_;
 	fs::path sln_;
 	std::vector<std::string> targets_;
 	std::vector<std::string> params_;
@@ -451,7 +468,15 @@ private:
 	std::string platform_;
 	arch arch_;
 	flags_t flags_;
+
+	void do_clean();
+	void do_build();
+	void do_run(const std::vector<std::string>& targets);
+
+	void error_filter(process::filter& f) const;
 };
+
+MOB_ENUM_OPERATORS(msbuild::flags_t);
 
 
 class vs : public basic_process_runner

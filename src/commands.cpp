@@ -326,6 +326,16 @@ clipp::group build_command::do_group()
 			% "deletes everything and starts from scratch",
 
 		(
+			clipp::option("--fetch").call([&]{ fetch_ = true; }) |
+			clipp::option("--no-fetch").call([&]{ fetch_ = false; })
+		) % "sets whether tasks are fetched (includes cleaning)",
+
+		(
+			clipp::option("--build").call([&]{ build_ = true; }) |
+			clipp::option("--no-build").call([&]{ build_ = false; })
+		) % "sets whether tasks are built",
+
+		(
 			clipp::option("--pull").call([&]{ nopull_ = false; }) |
 			clipp::option("--no-pull").call([&]{ nopull_ = true; })
 		) % "whether to pull repos that are already cloned; global override",
@@ -360,6 +370,22 @@ void build_command::convert_cl_to_conf()
 
 	if (rebuild_ || new_)
 		common.options.push_back("global/rebuild=true");
+
+	if (fetch_)
+	{
+		if (*fetch_)
+			common.options.push_back("global/fetch=true");
+		else
+			common.options.push_back("global/fetch=false");
+	}
+
+	if (build_)
+	{
+		if (*build_)
+			common.options.push_back("global/build=true");
+		else
+			common.options.push_back("global/build=false");
+	}
 
 	if (nopull_)
 	{

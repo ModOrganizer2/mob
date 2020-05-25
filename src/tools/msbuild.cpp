@@ -5,9 +5,9 @@
 namespace mob
 {
 
-msbuild::msbuild() :
-	basic_process_runner("msbuild"), config_("Release"), arch_(arch::def),
-	flags_(noflags)
+msbuild::msbuild(ops o) :
+	basic_process_runner("msbuild"),
+	op_(o), config_("Release"), arch_(arch::def), flags_(noflags)
 {
 }
 
@@ -65,6 +65,34 @@ int msbuild::result() const
 
 void msbuild::do_run()
 {
+	switch (op_)
+	{
+		case clean:
+		{
+			do_clean();
+			break;
+		}
+
+		case build:
+		{
+			do_build();
+			break;
+		}
+
+		default:
+		{
+			cx().bail_out(context::generic, "bad msbuild op {}", op_);
+		}
+	}
+}
+
+void msbuild::do_build()
+{
+	do_run(targets_);
+}
+
+void msbuild::do_run(const std::vector<std::string>& targets)
+{
 	// 14.2 to v142
 	const auto toolset = "v" + replace_all(vs::toolset(), ".", "");
 
@@ -93,10 +121,15 @@ void msbuild::do_run()
 	}
 
 	process::flags_t pflags = process::noflags;
-	if (flags_ & allow_failure)
+
+	if (is_set(flags_, allow_failure))
 	{
 		process_.stderr_level(context::level::trace);
 		pflags |= process::allow_failure;
+	}
+	else
+	{
+		process_.stdout_filter([&](auto& f){ error_filter(f); });
 	}
 
 	process_
@@ -106,7 +139,7 @@ void msbuild::do_run()
 		.stderr_encoding(encodings::utf8)
 		.arg("-nologo");
 
-	if ((flags_ & single_job) == 0)
+	if (!is_set(flags_, single_job))
 	{
 		process_
 			.arg("-maxCpuCount")
@@ -122,8 +155,8 @@ void msbuild::do_run()
 		.arg("-verbosity:minimal", process::log_quiet)
 		.arg("-consoleLoggerParameters:ErrorsOnly", process::log_quiet);
 
-	if (!targets_.empty())
-		process_.arg("-target:" + mob::join(targets_, ","));
+	if (!targets.empty())
+		process_.arg("-target:" + mob::join(targets, ";"));
 
 	for (auto&& p : params_)
 		process_.arg("-property:" + p);
@@ -135,6 +168,21 @@ void msbuild::do_run()
 		.env(env::vs(arch_));
 
 	execute_and_join();
+}
+
+void msbuild::do_clean()
+{
+	flags_ |= allow_failure;
+	do_run(map(targets_, [&](auto&& t){ return t + ":Clean"; }));
+}
+
+void msbuild::error_filter(process::filter& f) const
+{
+	// ": error C2065"
+	// ": error MSB1009"
+	static std::regex re(": error [A-Z]");
+	if (std::regex_search(f.line.begin(), f.line.end(), re))
+		f.lv = context::level::error;
 }
 
 }	// namespace

@@ -56,6 +56,8 @@ public:
 	static bool reextract()    { return bool_global_by_name("reextract"); }
 	static bool reconfigure()  { return bool_global_by_name("reconfigure"); }
 	static bool rebuild()      { return bool_global_by_name("rebuild"); }
+	static bool fetch()      { return bool_global_by_name("fetch"); }
+	static bool build()      { return bool_global_by_name("build"); }
 
 	static std::vector<std::string> format_options();
 

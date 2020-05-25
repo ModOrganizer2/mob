@@ -24,6 +24,32 @@ fs::path fmt::source_path()
 	return paths::build() / ("fmt-" + version());
 }
 
+fs::path fmt::solution_path()
+{
+	const auto build_path = create_cmake_tool(source_path()).build_path();
+	return build_path / "INSTALL.vcxproj";
+}
+
+void fmt::do_clean(clean c)
+{
+	// reconfigure deletes the whole thing, so it ignores the rebuild flag
+
+	if (is_set(c, clean::reconfigure))
+	{
+		instrument<times::clean>([&]
+		{
+			run_tool(create_cmake_tool(source_path(), cmake::clean));
+		});
+	}
+	else if (is_set(c, clean::rebuild))
+	{
+		instrument<times::clean>([&]
+		{
+			run_tool(create_msbuild_tool(msbuild::clean));
+		});
+	}
+}
+
 void fmt::do_fetch()
 {
 	const auto file = instrument<times::fetch>([&]
@@ -39,30 +65,32 @@ void fmt::do_fetch()
 	});
 }
 
-void fmt::do_clean_for_rebuild()
+cmake fmt::create_cmake_tool(const fs::path& src_path, cmake::ops o)
 {
-	instrument<times::clean>([&]
-	{
-		cmake::clean(cx(), source_path());
-	});
+	return std::move(cmake(o)
+		.generator(cmake::vs)
+		.root(src_path)
+		.prefix(src_path / "build")
+		.def("FMT_TEST", "OFF")
+		.def("FMT_DOC", "OFF"));
+}
+
+msbuild fmt::create_msbuild_tool(msbuild::ops o)
+{
+	return std::move(msbuild(o)
+		.solution(solution_path()));
 }
 
 void fmt::do_build_and_install()
 {
 	const auto build_path = instrument<times::configure>([&]
 	{
-		return run_tool(cmake()
-			.generator(cmake::vs)
-			.root(source_path())
-			.prefix(source_path() / "build")
-			.def("FMT_TEST", "OFF")
-			.def("FMT_DOC", "OFF"));
+		return run_tool(create_cmake_tool(source_path()));
 	});
 
 	instrument<times::build>([&]
 	{
-		run_tool(msbuild()
-			.solution(build_path / "INSTALL.vcxproj"));
+		run_tool(create_msbuild_tool());
 	});
 }
 

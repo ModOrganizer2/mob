@@ -34,17 +34,20 @@ fs::path pyqt::build_path()
 	return source_path() / "build";
 }
 
-void pyqt::do_clean_for_rebuild()
+void pyqt::do_clean(clean c)
 {
 	if (prebuilt())
 		return;
 
-	instrument<times::clean>([&]
+	if (is_set(c, clean::rebuild))
 	{
-		op::delete_file(cx(),
-			paths::cache() / sip_install_file(),
-			op::optional);
-	});
+		instrument<times::clean>([&]
+		{
+			op::delete_file(cx(),
+				paths::cache() / sip_install_file(),
+				op::optional);
+		});
+	}
 }
 
 void pyqt::do_fetch()

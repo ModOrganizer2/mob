@@ -24,19 +24,22 @@ fs::path usvfs::source_path()
 	return paths::build() / "usvfs";
 }
 
-void usvfs::do_clean_for_rebuild()
+void usvfs::do_clean(clean c)
 {
 	if (prebuilt())
 		return;
 
-	instrument<times::clean>([&]
+	if (is_set(c, clean::rebuild))
 	{
-		op::delete_directory(cx(), source_path() / "bin", op::optional);
-		op::delete_directory(cx(), source_path() / "lib", op::optional);
+		instrument<times::clean>([&]
+		{
+			op::delete_directory(cx(), source_path() / "bin", op::optional);
+			op::delete_directory(cx(), source_path() / "lib", op::optional);
 
-		op::delete_directory(cx(),
-			source_path() / "vsbuild" / "Release", op::optional);
-	});
+			run_tool(create_msbuild_tool(arch::x86, msbuild::clean));
+			run_tool(create_msbuild_tool(arch::x64, msbuild::clean));
+		});
+	}
 }
 
 void usvfs::do_fetch()
@@ -95,15 +98,8 @@ void usvfs::build_and_install_from_source()
 		// usvfs/vsbuild/stage_helper.cmd, which copies everything into
 		// install/
 
-		run_tool(msbuild()
-			.platform("x64")
-			.targets({"usvfs_proxy"})
-			.solution(source_path() / "vsbuild" / "usvfs.sln"));
-
-		run_tool(msbuild()
-			.platform("x86")
-			.targets({"usvfs_proxy"})
-			.solution(source_path() / "vsbuild" / "usvfs.sln"));
+		run_tool(create_msbuild_tool(arch::x86));
+		run_tool(create_msbuild_tool(arch::x64));
 	});
 }
 
@@ -169,6 +165,22 @@ void usvfs::copy_prebuilt(arch a)
 		paths::build() / dir / "*.exe",
 		paths::install_bin(),
 		op::copy_files);
+}
+
+msbuild usvfs::create_msbuild_tool(arch a, msbuild::ops o)
+{
+	// usvfs doesn't use "Win32" for 32-bit, it uses "x86"
+	//
+	// note that usvfs_proxy has a custom build step in Release that runs
+	// usvfs/vsbuild/stage_helper.cmd, which copies everything into
+	// install/
+
+	const std::string plat = (a == arch::x64 ? "x64" : "x86");
+
+	return std::move(msbuild(o)
+		.platform(plat)
+		.targets({"usvfs_proxy"})
+		.solution(source_path() / "vsbuild" / "usvfs.sln"));
 }
 
 std::string usvfs::prebuilt_directory_name(arch a)

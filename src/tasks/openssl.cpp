@@ -34,19 +34,22 @@ fs::path openssl::bin_path()
 	return build_path() / "bin";
 }
 
-void openssl::do_clean_for_rebuild()
+void openssl::do_clean(clean c)
 {
 	if (prebuilt())
 		return;
 
-	cx().debug(context::rebuild,
-		"openssl puts object files everywhere, so the whole tree will be "
-		"deleted for a rebuild");
-
-	instrument<times::clean>([&]
+	if (is_any_set(c, clean::reconfigure|clean::rebuild))
 	{
-		op::delete_directory(cx(), source_path(), op::optional);
-	});
+		cx().debug(context::rebuild,
+			"openssl puts object files everywhere, so the whole tree will be "
+			"deleted for a rebuild");
+
+		instrument<times::clean>([&]
+		{
+			op::delete_directory(cx(), source_path(), op::optional);
+		});
+	}
 }
 
 void openssl::do_fetch()

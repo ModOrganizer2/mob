@@ -51,15 +51,6 @@ fs::path modorganizer::this_source_path() const
 
 fs::path modorganizer::this_solution_path() const
 {
-	// run the project file instead of the .sln and giving INSTALL as a
-	// target, because the target name depends on the folders in the solution
-	//
-	// since cmake can put INSTALL inside CMakePredefinedTarget, the target has
-	// to be "CMakePredefinedTarget\\INSTALL" instead of just "INSTALL"
-	//
-	// because the creation of the CMakePredefinedTarget actually depends on
-	// the USE_FOLDERS variable in the cmake file, just use the project
-	// instead
 	const auto build_path = create_cmake_tool(this_source_path()).build_path();
 	return build_path / "INSTALL.vcxproj";
 }
@@ -69,25 +60,23 @@ fs::path modorganizer::super_path()
 	return paths::build() / "modorganizer_super";
 }
 
-void modorganizer::do_clean_for_reconfigure()
+void modorganizer::do_clean(clean c)
 {
-	instrument<times::fetch>([&]
+	if (is_set(c, clean::reconfigure))
 	{
-		op::delete_directory(cx(),
-			this_source_path() / "vsbuild", op::optional);
-	});
-}
+		instrument<times::clean>([&]
+		{
+			run_tool(create_this_cmake_tool(cmake::clean));
+		});
+	}
 
-void modorganizer::do_clean_for_rebuild()
-{
-	instrument<times::clean>([&]
+	if (is_set(c, clean::rebuild))
 	{
-		run_tool(msbuild()
-			.solution(this_solution_path())
-			.config("RelWithDebInfo")
-			.architecture(arch::x64)
-			.targets({"Clean"}));
-	});
+		instrument<times::clean>([&]
+		{
+			run_tool(create_this_msbuild_tool(msbuild::clean));
+		});
+	}
 }
 
 void modorganizer::do_fetch()
@@ -104,32 +93,6 @@ void modorganizer::do_fetch()
 			.branch(task_conf().mo_branch())
 			.root(this_source_path()));
 	});
-}
-
-cmake modorganizer::create_cmake_tool(const fs::path& root)
-{
-	cmake m;
-
-	m
-		.generator(cmake::vs)
-		.def("CMAKE_INSTALL_PREFIX:PATH", paths::install())
-		.def("DEPENDENCIES_DIR",   paths::build())
-		.def("BOOST_ROOT",         boost::source_path())
-		.def("BOOST_LIBRARYDIR",   boost::lib_path(arch::x64))
-		.def("FMT_ROOT",           fmt::source_path())
-		.def("SPDLOG_ROOT",        spdlog::source_path())
-		.def("LOOT_PATH",          libloot::source_path())
-		.def("LZ4_ROOT",           lz4::source_path())
-		.def("QT_ROOT",            qt::installation_path())
-		.def("ZLIB_ROOT",          zlib::source_path())
-		.def("PYTHON_ROOT",        python::source_path())
-		.def("SEVENZ_ROOT",        sevenz::source_path())
-		.def("LIBBSARCH_ROOT",     libbsarch::source_path())
-		.def("BOOST_DI_ROOT",      boost_di::source_path())
-		.def("GTEST_ROOT",         gtest::source_path())
-		.root(root);
-
-	return m;
 }
 
 void modorganizer::do_build_and_install()
@@ -149,18 +112,50 @@ void modorganizer::do_build_and_install()
 		return;
 	}
 
-	const auto build_path = instrument<times::configure>([&]
+	instrument<times::configure>([&]
 	{
-		return run_tool(create_cmake_tool(this_source_path()));
+		run_tool(create_this_cmake_tool());
 	});
 
 	instrument<times::build>([&]
 	{
-		run_tool(msbuild()
-			.solution(this_solution_path())
-			.config("RelWithDebInfo")
-			.architecture(arch::x64));
+		run_tool(create_this_msbuild_tool());
 	});
+}
+
+cmake modorganizer::create_this_cmake_tool(cmake::ops o)
+{
+	return create_cmake_tool(this_source_path(), o);
+}
+
+cmake modorganizer::create_cmake_tool(const fs::path& root, cmake::ops o)
+{
+	return std::move(cmake(o)
+		.generator(cmake::vs)
+		.def("CMAKE_INSTALL_PREFIX:PATH", paths::install())
+		.def("DEPENDENCIES_DIR",   paths::build())
+		.def("BOOST_ROOT",         boost::source_path())
+		.def("BOOST_LIBRARYDIR",   boost::lib_path(arch::x64))
+		.def("FMT_ROOT",           fmt::source_path())
+		.def("SPDLOG_ROOT",        spdlog::source_path())
+		.def("LOOT_PATH",          libloot::source_path())
+		.def("LZ4_ROOT",           lz4::source_path())
+		.def("QT_ROOT",            qt::installation_path())
+		.def("ZLIB_ROOT",          zlib::source_path())
+		.def("PYTHON_ROOT",        python::source_path())
+		.def("SEVENZ_ROOT",        sevenz::source_path())
+		.def("LIBBSARCH_ROOT",     libbsarch::source_path())
+		.def("BOOST_DI_ROOT",      boost_di::source_path())
+		.def("GTEST_ROOT",         gtest::source_path())
+		.root(root));
+}
+
+msbuild modorganizer::create_this_msbuild_tool(msbuild::ops o)
+{
+	return std::move(msbuild(o)
+		.solution(this_solution_path())
+		.config("RelWithDebInfo")
+		.architecture(arch::x64));
 }
 
 void modorganizer::initialize_super(const fs::path& super_root)

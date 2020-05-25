@@ -655,7 +655,7 @@ void process::read_pipe(
 
 			s.buffer.next_utf8_lines(finish, [&](std::string&& line)
 			{
-				filter f = {line, r, s.level, false};
+				filter f(line, r, s.level, false);
 
 				if (s.filter)
 				{

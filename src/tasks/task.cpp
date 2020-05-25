@@ -188,6 +188,37 @@ bool is_super_task(const std::string& name)
 }
 
 
+std::string to_string(task::clean c)
+{
+	// generate warnings if something is added
+	switch (c)
+	{
+		case task::clean::nothing: break;
+		case task::clean::redownload: break;
+		case task::clean::reextract: break;
+		case task::clean::reconfigure: break;
+		case task::clean::rebuild: break;
+		case task::clean::everything: break;
+	}
+
+	std::vector<std::string> v;
+
+	if (is_set(c, task::clean::redownload))
+		v.push_back("redownload");
+
+	if (is_set(c, task::clean::reextract))
+		v.push_back("reextract");
+
+	if (is_set(c, task::clean::reconfigure))
+		v.push_back("reconfigure");
+
+	if (is_set(c, task::clean::rebuild))
+		v.push_back("rebuild");
+
+	return join(v, "|");
+}
+
+
 struct task::thread_context
 {
 	std::thread::id tid;
@@ -277,13 +308,8 @@ bool task_conf_holder::remote_push_default_origin() const
 
 git task_conf_holder::make_git(git::ops o) const
 {
-	if (o == git::ops::none)
-	{
-		if (no_pull())
-			o = git::ops::clone;
-		else
-			o = git::ops::clone_or_pull;
-	}
+	if (o == git::clone_or_pull && no_pull())
+		o = git::clone;
 
 	git g(o);
 
@@ -488,15 +514,27 @@ void task::join()
 		thread_.join();
 }
 
+void task::clean_task()
+{
+	const auto cf = make_clean_flags();
+
+	if (cf != clean::nothing)
+	{
+		cx().info(context::rebuild, "cleaning ({})", to_string(cf));
+		do_clean(cf);
+	}
+}
+
 void task::fetch()
 {
+	if (!conf::fetch())
+		return;
+
 	thread_ = start_thread([&]
 	{
 		threaded_run(name(), [&]
 		{
-			if (conf::rebuild())
-				clean_for_rebuild();
-
+			clean_task();
 			check_interrupted();
 
 			cx().info(context::generic, "fetching");
@@ -520,6 +558,9 @@ void task::fetch()
 
 void task::build_and_install()
 {
+	if (!conf::build())
+		return;
+
 	thread_ = start_thread([&]
 	{
 		threaded_run(name(), [&]
@@ -534,10 +575,23 @@ void task::build_and_install()
 	});
 }
 
-void task::clean_for_rebuild()
+task::clean task::make_clean_flags() const
 {
-	cx().info(context::rebuild, "cleaning");
-	do_clean_for_rebuild();
+	clean c = clean::nothing;
+
+	if (conf::redownload())
+		c |= clean::redownload;
+
+	if (conf::reextract())
+		c |= clean::reextract;
+
+	if (conf::reconfigure())
+		c |= clean::reconfigure;
+
+	if (conf::rebuild())
+		c |= clean::rebuild;
+
+	return c;
 }
 
 void task::check_interrupted()
@@ -642,8 +696,17 @@ void parallel_tasks::do_build_and_install()
 {
 }
 
-void parallel_tasks::do_clean_for_rebuild()
+void parallel_tasks::do_clean(clean)
 {
+	for (auto& t : children_)
+	{
+		threads_.push_back(start_thread([&]
+		{
+			t->clean_task();
+		}));
+	}
+
+	join();
 }
 
 }	// namespace

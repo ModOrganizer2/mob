@@ -195,6 +195,19 @@ public:
 		context::reason r;
 		context::level lv;
 		bool ignore;
+
+		filter(
+			std::string_view line, context::reason r, context::level lv,
+			bool ignore)
+				: line(line), r(r), lv(lv), ignore(ignore)
+		{
+		}
+
+
+		// this is only used by filter_fun, where copying a `filter` wouldn't
+		// make any sense
+		filter(const filter&) = delete;
+		filter& operator=(const filter&) = delete;
 	};
 
 	using filter_fun = std::function<void (filter&)>;

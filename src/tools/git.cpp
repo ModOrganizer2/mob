@@ -5,6 +5,8 @@
 namespace mob
 {
 
+constexpr git::ops no_op(git::ops(0));
+
 git::git(ops o)
 	: basic_process_runner("git"), op_(o)
 {
@@ -14,7 +16,7 @@ void git::set_credentials(
 	const fs::path& repo,
 	const std::string& username, const std::string& email)
 {
-	git(ops::none)
+	git(no_op)
 		.root(repo)
 		.credentials(username, email)
 		.do_set_credentials();
@@ -25,7 +27,7 @@ void git::set_remote(
 	std::string org, std::string key,
 	bool no_push_upstream, bool push_default_origin)
 {
-	git(ops::none)
+	git(no_op)
 		.root(repo)
 		.remote(org, key, no_push_upstream, push_default_origin)
 		.do_set_remote();
@@ -33,7 +35,7 @@ void git::set_remote(
 
 void git::ignore_ts(const fs::path& repo, bool b)
 {
-	git(ops::none)
+	git(no_op)
 		.root(repo)
 		.ignore_ts_on_clone(b)
 		.do_ignore_ts();
@@ -43,7 +45,7 @@ void git::add_remote(
 	const fs::path& repo, const std::string& remote_name,
 	const std::string& username, const std::string& key, bool push_default)
 {
-	git g(ops::none);
+	git g(no_op);
 	g.root(repo);
 
 	const auto gf = g.git_file();
@@ -62,14 +64,14 @@ void git::add_remote(
 
 bool git::is_git_repo(const fs::path& p)
 {
-	git g(ops::none);
+	git g(no_op);
 	g.root(p);
 	return g.is_repo();
 }
 
 void git::init_repo(const fs::path& p)
 {
-	git g(ops::none);
+	git g(no_op);
 	g.root(p);
 	g.init();
 }
@@ -177,7 +179,6 @@ void git::do_run()
 			break;
 		}
 
-		case ops::none:
 		default:
 		{
 			cx().bail_out(context::generic, "git unknown op {}", op_);
