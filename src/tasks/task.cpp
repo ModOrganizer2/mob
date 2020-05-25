@@ -466,9 +466,9 @@ void task::parallel(std::vector<std::pair<std::string, std::function<void ()>>> 
 		cx().trace(context::generic, "running in parallel: {}", name);
 
 		ts.push_back(start_thread([this, name, f]
-			{
-				threaded_run(name, f);
-			}));
+		{
+			threaded_run(name, f);
+		}));
 	}
 
 	for (auto&& t : ts)
@@ -516,6 +516,9 @@ void task::join()
 
 void task::clean_task()
 {
+	if (!conf::clean())
+		return;
+
 	const auto cf = make_clean_flags();
 
 	if (cf != clean::nothing)
@@ -527,9 +530,6 @@ void task::clean_task()
 
 void task::fetch()
 {
-	if (!conf::fetch())
-		return;
-
 	thread_ = start_thread([&]
 	{
 		threaded_run(name(), [&]
@@ -537,21 +537,24 @@ void task::fetch()
 			clean_task();
 			check_interrupted();
 
-			cx().info(context::generic, "fetching");
-			do_fetch();
-
-			check_interrupted();
-
-			if (!get_source_path().empty())
+			if (conf::fetch())
 			{
-				cx().debug(context::generic, "patching");
+				cx().info(context::generic, "fetching");
+				do_fetch();
 
-				run_tool(patcher()
-					.task(name(), get_prebuilt())
-					.root(get_source_path()));
+				check_interrupted();
+
+				if (!get_source_path().empty())
+				{
+					cx().debug(context::generic, "patching");
+
+					run_tool(patcher()
+						.task(name(), get_prebuilt())
+						.root(get_source_path()));
+				}
+
+				check_interrupted();
 			}
-
-			check_interrupted();
 		});
 	});
 }

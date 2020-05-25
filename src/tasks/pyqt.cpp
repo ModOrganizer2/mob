@@ -36,18 +36,26 @@ fs::path pyqt::build_path()
 
 void pyqt::do_clean(clean c)
 {
-	if (prebuilt())
-		return;
-
-	if (is_set(c, clean::rebuild))
+	instrument<times::clean>([&]
 	{
-		instrument<times::clean>([&]
+		if (prebuilt())
 		{
-			op::delete_file(cx(),
-				paths::cache() / sip_install_file(),
-				op::optional);
-		});
-	}
+			if (is_set(c, clean::redownload))
+				run_tool(downloader(prebuilt_url(), downloader::clean));
+		}
+		else
+		{
+			if (is_set(c, clean::redownload))
+				run_tool(downloader(source_url(), downloader::clean));
+
+			if (is_set(c, clean::rebuild))
+			{
+				op::delete_file(cx(),
+					paths::cache() / sip_install_file(),
+					op::optional);
+			}
+		}
+	});
 }
 
 void pyqt::do_fetch()

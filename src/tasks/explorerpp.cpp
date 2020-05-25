@@ -24,6 +24,15 @@ fs::path explorerpp::source_path()
 	return paths::build() / "explorer++";
 }
 
+void explorerpp::do_clean(clean c)
+{
+	instrument<times::clean>([&]
+	{
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(source_url(), downloader::clean));
+	});
+}
+
 void explorerpp::do_fetch()
 {
 	const auto file = instrument<times::fetch>([&]

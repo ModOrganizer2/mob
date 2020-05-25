@@ -26,14 +26,17 @@ fs::path sevenz::source_path()
 
 void sevenz::do_clean(clean c)
 {
-	if (is_set(c, clean::rebuild))
+	instrument<times::clean>([&]
 	{
-		instrument<times::clean>([&]
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(source_url(), downloader::clean));
+
+		if (is_set(c, clean::rebuild))
 		{
 			op::delete_directory(cx(),
 				module_to_build() / "x64", op::optional);
-		});
-	}
+		}
+	});
 }
 
 void sevenz::do_fetch()

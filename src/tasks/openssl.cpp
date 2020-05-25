@@ -36,20 +36,28 @@ fs::path openssl::bin_path()
 
 void openssl::do_clean(clean c)
 {
-	if (prebuilt())
-		return;
-
-	if (is_any_set(c, clean::reconfigure|clean::rebuild))
+	instrument<times::clean>([&]
 	{
-		cx().debug(context::rebuild,
-			"openssl puts object files everywhere, so the whole tree will be "
-			"deleted for a rebuild");
-
-		instrument<times::clean>([&]
+		if (prebuilt())
 		{
-			op::delete_directory(cx(), source_path(), op::optional);
-		});
-	}
+			if (is_set(c, clean::redownload))
+				run_tool(downloader(prebuilt_url(), downloader::clean));
+		}
+		else
+		{
+			if (is_set(c, clean::redownload))
+				run_tool(downloader(source_url(), downloader::clean));
+
+			if (is_any_set(c, clean::reconfigure|clean::rebuild))
+			{
+				cx().debug(context::rebuild,
+					"openssl puts object files everywhere, so the whole tree "
+					"will be deleted for a rebuild");
+
+				op::delete_directory(cx(), source_path(), op::optional);
+			}
+		}
+	});
 }
 
 void openssl::do_fetch()

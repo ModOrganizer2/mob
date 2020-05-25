@@ -64,16 +64,19 @@ fs::path python::build_path()
 
 void python::do_clean(clean c)
 {
-	if (prebuilt())
-		return;
-
-	if (is_set(c, clean::rebuild))
+	instrument<times::clean>([&]
 	{
-		instrument<times::clean>([&]
+		if (prebuilt())
 		{
-			run_tool(create_msbuild_tool(msbuild::clean));
-		});
-	}
+			if (is_set(c, clean::redownload))
+				run_tool(downloader(prebuilt_url(), downloader::clean));
+		}
+		else
+		{
+			if (is_set(c, clean::rebuild))
+				run_tool(create_msbuild_tool(msbuild::clean));
+		}
+	});
 }
 
 void python::do_fetch()

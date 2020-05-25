@@ -326,13 +326,18 @@ clipp::group build_command::do_group()
 			% "deletes everything and starts from scratch",
 
 		(
-			clipp::option("--fetch").call([&]{ fetch_ = true; }) |
-			clipp::option("--no-fetch").call([&]{ fetch_ = false; })
-		) % "sets whether tasks are fetched (includes cleaning)",
+			clipp::option("--clean-task").call([&]{ clean_ = true; }) |
+			clipp::option("--no-clean-task").call([&]{ clean_ = false; })
+		) % "sets whether tasks are cleaned",
 
 		(
-			clipp::option("--build").call([&]{ build_ = true; }) |
-			clipp::option("--no-build").call([&]{ build_ = false; })
+			clipp::option("--fetch-task").call([&]{ fetch_ = true; }) |
+			clipp::option("--no-fetch-task").call([&]{ fetch_ = false; })
+		) % "sets whether tasks are fetched",
+
+		(
+			clipp::option("--build-task").call([&]{ build_ = true; }) |
+			clipp::option("--no-build-task").call([&]{ build_ = false; })
 		) % "sets whether tasks are built",
 
 		(
@@ -371,20 +376,28 @@ void build_command::convert_cl_to_conf()
 	if (rebuild_ || new_)
 		common.options.push_back("global/rebuild=true");
 
+	if (clean_)
+	{
+		if (*clean_)
+			common.options.push_back("global/clean_task=true");
+		else
+			common.options.push_back("global/clean_task=false");
+	}
+
 	if (fetch_)
 	{
 		if (*fetch_)
-			common.options.push_back("global/fetch=true");
+			common.options.push_back("global/fetch_task=true");
 		else
-			common.options.push_back("global/fetch=false");
+			common.options.push_back("global/fetch_task=false");
 	}
 
 	if (build_)
 	{
 		if (*build_)
-			common.options.push_back("global/build=true");
+			common.options.push_back("global/build_task=true");
 		else
-			common.options.push_back("global/build=false");
+			common.options.push_back("global/build_task=false");
 	}
 
 	if (nopull_)

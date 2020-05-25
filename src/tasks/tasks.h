@@ -91,6 +91,7 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 
 private:
@@ -109,6 +110,7 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 
 private:
@@ -189,6 +191,7 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
 
@@ -227,6 +230,7 @@ public:
 	static fs::path source_path();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
 
@@ -548,6 +552,7 @@ public:
 	static std::string version();
 
 protected:
+	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
 
@@ -559,6 +564,9 @@ private:
 		std::string version;
 		std::string file;
 	};
+
+	downloader make_downloader_tool(
+		const release& r, downloader::ops=downloader::download) const;
 
 	static std::vector<release> releases();
 };
@@ -588,9 +596,12 @@ private:
 	void download_from_appveyor(arch a);
 	void copy_prebuilt(arch a);
 
-	msbuild create_msbuild_tool(arch a, msbuild::ops o=msbuild::build);
+	msbuild create_msbuild_tool(arch a, msbuild::ops o=msbuild::build) const;
 
-	std::string prebuilt_directory_name(arch a);
+	std::vector<std::shared_ptr<downloader>> create_appveyor_downloaders(
+		arch a, downloader::ops o=downloader::download) const;
+
+	std::string prebuilt_directory_name(arch a) const;
 };
 
 

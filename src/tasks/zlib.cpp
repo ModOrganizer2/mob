@@ -26,21 +26,17 @@ fs::path zlib::source_path()
 
 void zlib::do_clean(clean c)
 {
-	if (is_set(c, clean::reconfigure))
+	instrument<times::clean>([&]
 	{
-		instrument<times::clean>([&]
-		{
-			run_tool(create_cmake_tool(cmake::clean));
-		});
-	}
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(source_url(), downloader::clean));
 
-	if (is_set(c, clean::rebuild))
-	{
-		instrument<times::clean>([&]
-		{
+		if (is_set(c, clean::reconfigure))
+			run_tool(create_cmake_tool(cmake::clean));
+
+		if (is_set(c, clean::rebuild))
 			run_tool(create_msbuild_tool(msbuild::clean));
-		});
-	}
+	});
 }
 
 void zlib::do_fetch()

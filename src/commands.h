@@ -114,6 +114,7 @@ private:
 	bool rebuild_ = false;
 	bool reconfigure_ = false;
 	bool new_ = false;
+	std::optional<bool> clean_;
 	std::optional<bool> fetch_;
 	std::optional<bool> build_;
 	std::optional<bool> nopull_;

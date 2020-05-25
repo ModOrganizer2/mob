@@ -26,20 +26,38 @@ fs::path usvfs::source_path()
 
 void usvfs::do_clean(clean c)
 {
-	if (prebuilt())
-		return;
-
-	if (is_set(c, clean::rebuild))
+	instrument<times::clean>([&]
 	{
-		instrument<times::clean>([&]
+		if (prebuilt())
 		{
-			op::delete_directory(cx(), source_path() / "bin", op::optional);
-			op::delete_directory(cx(), source_path() / "lib", op::optional);
+			if (is_set(c, clean::redownload))
+			{
+				const auto x86_dls =
+					create_appveyor_downloaders(arch::x86, downloader::clean);
 
-			run_tool(create_msbuild_tool(arch::x86, msbuild::clean));
-			run_tool(create_msbuild_tool(arch::x64, msbuild::clean));
-		});
-	}
+				for (auto dl : x86_dls)
+					run_tool(*dl);
+
+
+				const auto x64_dls =
+					create_appveyor_downloaders(arch::x64, downloader::clean);
+
+				for (auto dl : x64_dls)
+					run_tool(*dl);
+			}
+		}
+		else
+		{
+			if (is_set(c, clean::rebuild))
+			{
+				op::delete_directory(cx(), source_path() / "bin", op::optional);
+				op::delete_directory(cx(), source_path() / "lib", op::optional);
+
+				run_tool(create_msbuild_tool(arch::x86, msbuild::clean));
+				run_tool(create_msbuild_tool(arch::x64, msbuild::clean));
+			}
+		}
+	});
 }
 
 void usvfs::do_fetch()
@@ -105,41 +123,12 @@ void usvfs::build_and_install_from_source()
 
 void usvfs::download_from_appveyor(arch a)
 {
-	std::string arch_s;
-	const std::string dir = prebuilt_directory_name(a);
+	std::vector<std::pair<std::string, std::function<void ()>>> v;
 
-	switch (a)
-	{
-		case arch::x86:
-			arch_s = "x86";
-			break;
+	for (auto dl : create_appveyor_downloaders(a))
+		v.emplace_back("usvfs", [this, dl]{ run_tool(*dl); });
 
-		case arch::x64:
-			arch_s = "x64";
-			break;
-
-		case arch::dont_care:
-		default:
-			cx().bail_out(context::generic, "bad arch");
-	}
-
-	auto dl = [&](std::string filename)
-	{
-		const auto u = make_appveyor_artifact_url(a, "usvfs", filename);
-
-		return run_tool(downloader()
-			.url(u)
-			.file(paths::build() / dir / u.filename()));
-	};
-
-	parallel(
-	{
-		{"usvfs", [&]{ dl("lib/usvfs_" + arch_s + ".pdb"); }},
-		{"usvfs", [&]{ dl("lib/usvfs_" + arch_s + ".dll"); }},
-		{"usvfs", [&]{ dl("lib/usvfs_" + arch_s + ".lib"); }},
-		{"usvfs", [&]{ dl("bin/usvfs_proxy_" + arch_s + ".exe"); }},
-		{"usvfs", [&]{ dl("bin/usvfs_proxy_" + arch_s + ".pdb"); }}
-	});
+	parallel(v);
 }
 
 void usvfs::copy_prebuilt(arch a)
@@ -167,7 +156,7 @@ void usvfs::copy_prebuilt(arch a)
 		op::copy_files);
 }
 
-msbuild usvfs::create_msbuild_tool(arch a, msbuild::ops o)
+msbuild usvfs::create_msbuild_tool(arch a, msbuild::ops o) const
 {
 	// usvfs doesn't use "Win32" for 32-bit, it uses "x86"
 	//
@@ -183,7 +172,51 @@ msbuild usvfs::create_msbuild_tool(arch a, msbuild::ops o)
 		.solution(source_path() / "vsbuild" / "usvfs.sln"));
 }
 
-std::string usvfs::prebuilt_directory_name(arch a)
+std::vector<std::shared_ptr<downloader>>
+usvfs::create_appveyor_downloaders(arch a, downloader::ops o) const
+{
+	std::string arch_s;
+	const std::string dir = prebuilt_directory_name(a);
+
+	switch (a)
+	{
+		case arch::x86:
+			arch_s = "x86";
+			break;
+
+		case arch::x64:
+			arch_s = "x64";
+			break;
+
+		case arch::dont_care:
+		default:
+			cx().bail_out(context::generic, "bad arch");
+	}
+
+	auto make_dl = [&](std::string filename)
+	{
+		const auto u = make_appveyor_artifact_url(a, "usvfs", filename);
+
+		auto dl = std::make_shared<downloader>(o);
+
+		dl->url(u);
+		dl->file(paths::build() / dir / u.filename());
+
+		return dl;
+	};
+
+	std::vector<std::shared_ptr<downloader>> v;
+
+	v.push_back(make_dl("lib/usvfs_" + arch_s + ".pdb"));
+	v.push_back(make_dl("lib/usvfs_" + arch_s + ".dll"));
+	v.push_back(make_dl("lib/usvfs_" + arch_s + ".lib"));
+	v.push_back(make_dl("bin/usvfs_proxy_" + arch_s + ".exe"));
+	v.push_back(make_dl("bin/usvfs_proxy_" + arch_s + ".pdb"));
+
+	return v;
+}
+
+std::string usvfs::prebuilt_directory_name(arch a) const
 {
 	switch (a)
 	{

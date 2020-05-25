@@ -32,22 +32,17 @@ fs::path fmt::solution_path()
 
 void fmt::do_clean(clean c)
 {
-	// reconfigure deletes the whole thing, so it ignores the rebuild flag
+	instrument<times::clean>([&]
+	{
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(source_url(), downloader::clean));
 
-	if (is_set(c, clean::reconfigure))
-	{
-		instrument<times::clean>([&]
-		{
+		if (is_set(c, clean::reconfigure))
 			run_tool(create_cmake_tool(source_path(), cmake::clean));
-		});
-	}
-	else if (is_set(c, clean::rebuild))
-	{
-		instrument<times::clean>([&]
-		{
+
+		if (is_set(c, clean::rebuild))
 			run_tool(create_msbuild_tool(msbuild::clean));
-		});
-	}
+	});
 }
 
 void fmt::do_fetch()

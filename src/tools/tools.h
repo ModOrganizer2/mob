@@ -65,8 +65,14 @@ struct qt
 class downloader : public tool
 {
 public:
-	downloader();
-	downloader(mob::url u);
+	enum ops
+	{
+		clean = 1,
+		download
+	};
+
+	downloader(ops o=download);
+	downloader(mob::url u, ops o=download);
 
 	downloader& url(const mob::url& u);
 	downloader& file(const fs::path& p);
@@ -78,9 +84,13 @@ protected:
 	void do_interrupt() override;
 
 private:
+	ops op_;
 	std::unique_ptr<curl_downloader> dl_;
 	fs::path file_;
 	std::vector<mob::url> urls_;
+
+	void do_clean();
+	void do_download();
 
 	fs::path path_for_url(const mob::url& u) const;
 	bool try_picking(const fs::path& file);

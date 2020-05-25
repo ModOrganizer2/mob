@@ -24,6 +24,15 @@ fs::path libbsarch::source_path()
 	return paths::build() / dir_name();
 }
 
+void libbsarch::do_clean(clean c)
+{
+	instrument<times::clean>([&]
+	{
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(source_url(), downloader::clean));
+	});
+}
+
 void libbsarch::do_fetch()
 {
 	const auto file = instrument<times::fetch>([&]
