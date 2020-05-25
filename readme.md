@@ -6,32 +6,23 @@
 ```
 
 ## Changing options
-`mob` has two ways of setting options: from an INI file, or from the command line. Options set on the command line will always override options from INI files.
+`mob` has two ways of setting options: from INI files, the `MOBINI` environment variable, or from the command line.
 
 ### INI files
-By default, `mob` will look for a master INI `mob.ini` in the current directory and up to three of its parents (so it can also be found from the build directory). Once `mob` found the master INI, it will also look for any other `.ini` file in the same directory.
+`mob` builds a list of available INI files in order of priority. Higher numbers override lower numbers:
 
-These additional INI files will be loaded after the master, in lexicographical order, overriding anything the previous INI file may have set. This makes it easy to have a file `mob-mine.ini` next to `mob.ini` with only the settings that need to be set or overriden, such as the build prefix.
+ 1) The master INI `mob.ini` in the directory where `mob.exe` lives (required).
+ 2) Another `mob.ini` in the current directory.
+ 3) Any files set in `MOBINI` (separated by semicolons).
+ 4) Files given with `--ini`.
 
-Additional INI files may be specified with `--ini`. They will be loaded in order after the ones that were auto detected. If the same INI file is found in the directory and on the command line, its position in the load order will be moved to that of the command line.
-
-If `--no-default-inis` is given, `mob` will not look for any `.ini` files and will only rely on the file(s) given with `--ini`. In this case, the master INI should be given first.
-
-Inside the INI file are `[sections]` and `key = value` pairs. The `[options]` section is special because it can be changed for specific tasks instead of globally. Any value under a `[task:options]` section will only apply to a task named `task`. The list of available tasks can be seen with `mob list`. The task `super` is a shortcut for any task that's from the `ModOrganizer2` repository, except for `libbsarch`, `NexusClientCli` and `usvfs`.
-
-For example, in a file `mob-mine.ini` that resides next to `mob.ini`:
-
-```
-[paths]
-prefix = C:\dev\modorganizer
-
-[super:options]
-git_username = isanae
-git_email    = isanae@users.noreply.github.com
-```
+Use `mob inis` to see the list of INI files in order. If `--no-default-inis` is given, `mob` will skip 1) and 2). The first INI it finds after that is considered the master.
 
 ### Command line
-Any option can be overriden from the command like with `-s task:section/key=value`, where `task:` is optional. Some options have shortcuts, such as `--dry` for `-s global/dry=true` and `-l5` for `-s global:output_log_level=5`.
+Any option can be overriden from the command like with `-s task:section/key=value`, where `task:` is optional. Some options have shortcuts, such as `--dry` for `-s global/dry=true` and `-l5` for `-s global:output_log_level=5`. See `mob options` for the list of options.
+
+### INI format
+Inside the INI file are `[sections]` and `key = value` pairs. The `[options]` section is special because it can be changed for specific tasks instead of globally. Any value under a `[task:options]` section will only apply to a task named `task`. The list of available tasks can be seen with `mob list`. The task `super` is a shortcut for any task that's from the `ModOrganizer2` repository, except for `libbsarch`, `NexusClientCli` and `usvfs`.
 
 
 ## Options
@@ -42,10 +33,15 @@ Any option can be overriden from the command like with `-s task:section/key=valu
 | `dry`              | bool | Whether filesystem operations are simulated. Note that many operations will fail and that the build process will most probably not complete. This is mostly useful to get a dump of the options. |
 | `redownload`       | bool | For `build`, re-downloads archives even if they already exist. |
 | `reextract`        | bool | For `build`, re-extracts archives even if the target directory already exists, in which case it is deleted first. |
-| `rebuild`          | bool | For `build`, does its best to clean the directory of build files before building. Some tasks will delete the whole directory and re-extract. |
+| `reconfigure`      | bool | For `build`, tries to delete just enough so that configure tools (such as cmake) will run from scratch. |
+| `rebuild`          | bool | For `build`, tries to delete just enough so that build tools (such as msbuild) will run from scratch. |
+| `clean_task`       | bool | For `build`, whether tasks are cleaned. |
+| `fetch_task`       | bool | For `build`, whether tasks are fetched (download, git, etc.) |
+| `build_task`       | bool | For `build`, whether tasks are built (msbuild, jobm etc.) |
 | `output_log_level` | [0-6]| The log level for stdout: 0=silent, 1=errors, 2=warnings, 3=info (default), 4=debug, 5=trace, 6=dump. Note that 6 will dump _a lot_ of stuff, such as debug information from curl during downloads.
 | `file_log_level`   | [0-6]| The log level for the log file. |
 | `log_file`         | path | The path to a log file. |
+| `ignore_uncommitted` | bool | When `--redownload` or `--reextract` is given, directories controlled by git will be deleted even if they contain uncommitted changes.|
 
 ### `[options]`
 
@@ -58,6 +54,8 @@ Unless otherwise stated, applies to any task that is a git repo.
 | `mo_branch` | string | The branch name when pulling from Github. Only applies to ModOrganizer projects, plus NCC and usvfs. |
 | `no_pull`   | bool   | If a repo is already cloned, a `git pull` will be done on it every time `mob build` is run. Set to `false` to never pull and build with whatever is in there. |
 | `ignore_ts` | bool   | Marks all the `.ts` files in a repo with `--assume-unchanged`. Note that `mob git ignore-ts off` can be used to revert it. |
+| `git_url_prefix` | string | When cloning a repo, the URL will be `$(git_url_prefix)mo_org/repo.git`. |
+| `git_shallow` | bool | When true, clones with `--depth 1` to avoid having to fetch all the history. Defaults to true for third-parties. |
 
 #### Git credentials
 These are used to set `user.name` and `user.email`. Applies to any task that is a git repo.
