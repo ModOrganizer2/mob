@@ -1,1 +1,1 @@
-@powershell .\bootstrap.ps1
+@type bootstrap.ps1 | powershell -
