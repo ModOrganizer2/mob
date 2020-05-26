@@ -323,7 +323,7 @@ T join(const std::vector<T>& v, const Sep& sep)
 
 	for (auto&& e : v)
 	{
-		if (first)
+		if (!first)
 			s += sep;
 
 		s += e;

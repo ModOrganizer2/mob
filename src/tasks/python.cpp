@@ -248,7 +248,7 @@ void python::install_pip()
 	// ssl errors while downloading through python without certifi
 	run_tool(process_runner(process()
 		.binary(python_exe())
-		.arg("pip")
+		.arg("-m pip")
 		.arg("install")
 		.arg("certifi")));
 }
