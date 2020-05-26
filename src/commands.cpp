@@ -955,7 +955,10 @@ clipp::group git_command::do_group()
 				  "to 'nopushurl' to avoid accidental pushes"),
 
 			(clipp::option("-p", "--push-origin").set(push_default_)
-				% "sets the new 'origin' remote as the default push target")
+				% "sets the new 'origin' remote as the default push target"),
+
+			(clipp::opt_value("path") >> path_)
+				% "only use this repo"
 		)
 
 		|
@@ -975,7 +978,10 @@ clipp::group git_command::do_group()
 				% "path to putty key",
 
 			(clipp::option("-p", "--push-origin").set(push_default_)
-				% "sets this new remote as the default push target")
+				% "sets this new remote as the default push target"),
+
+			(clipp::opt_value("path") >> path_)
+				% "only use this repo"
 		)
 
 		|
@@ -1043,45 +1049,75 @@ std::string git_command::do_doc()
 
 void git_command::do_set_remotes()
 {
-	const auto repos = get_repos();
-
-	for (auto&& r : repos)
+	if (path_.empty())
 	{
-		u8cout << "setting up " << path_to_utf8(r.filename()) << "\n";
-		git::set_credentials(r, username_, email_);
-		git::set_remote(r, username_, key_, nopush_, push_default_);
+		const auto repos = get_repos();
+
+		for (auto&& r : repos)
+			do_set_remotes(r);
 	}
+	else
+	{
+		do_set_remotes(path_);
+	}
+}
+
+void git_command::do_set_remotes(const fs::path& r)
+{
+	u8cout << "setting up " << path_to_utf8(r.filename()) << "\n";
+	git::set_credentials(r, username_, email_);
+	git::set_remote(r, username_, key_, nopush_, push_default_);
 }
 
 void git_command::do_add_remote()
 {
-	const auto repos = get_repos();
-
 	u8cout
 		<< "adding remote '" << remote_ << "' "
 		<< "from '" << username_ << "' to repos\n";
 
-	for (auto&& r : repos)
+	if (path_.empty())
 	{
-		u8cout << path_to_utf8(r.filename()) << "\n";
-		git::add_remote(r, remote_, username_, key_, push_default_);
+		const auto repos = get_repos();
+
+		for (auto&& r : repos)
+			do_add_remote(r);
 	}
+	else
+	{
+		do_add_remote(path_);
+	}
+}
+
+void git_command::do_add_remote(const fs::path& r)
+{
+	u8cout << path_to_utf8(r.filename()) << "\n";
+	git::add_remote(r, remote_, username_, key_, push_default_);
 }
 
 void git_command::do_ignore_ts()
 {
-	const auto repos = get_repos();
-
 	if (tson_)
 		u8cout << "ignoring .ts files\n";
 	else
 		u8cout << "un-ignoring .ts files\n";
 
-	for (auto&& r : repos)
+	if (path_.empty())
 	{
-		u8cout << path_to_utf8(r.filename()) << "\n";
-		git::ignore_ts(r, tson_);
+		const auto repos = get_repos();
+
+		for (auto&& r : repos)
+			do_ignore_ts(r);
 	}
+	else
+	{
+		do_ignore_ts(path_);
+	}
+}
+
+void git_command::do_ignore_ts(const fs::path& r)
+{
+	u8cout << path_to_utf8(r.filename()) << "\n";
+	git::ignore_ts(r, tson_);
 }
 
 std::vector<fs::path> git_command::get_repos() const

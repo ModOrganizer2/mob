@@ -211,13 +211,19 @@ private:
 	std::string email_;
 	std::string key_;
 	std::string remote_;
+	std::string path_;
 	bool tson_ = false;
 	bool nopush_ = false;
 	bool push_default_ = false;
 
 	void do_set_remotes();
+	void do_set_remotes(const fs::path& r);
+
 	void do_add_remote();
+	void do_add_remote(const fs::path& r);
+
 	void do_ignore_ts();
+	void do_ignore_ts(const fs::path& r);
 
 	std::vector<fs::path> get_repos() const;
 };
