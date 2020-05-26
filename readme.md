@@ -1,3 +1,29 @@
+## Table of contents
+
+- [Quick start](#quick-start)
+- [Slow start](#slow-start)
+- [Changing options](#changing-options)
+  * [INI files](#ini-files)
+  * [Command line](#command-line)
+  * [INI format](#ini-format)
+- [Options](#options)
+  * [`[global]`](#global)
+  * [`[task]`](#task)
+  * [`[tools]`](#tools)
+  * [`[prebuilt]`](#prebuilt)
+  * [`[versions]`](#versions)
+  * [`[paths]`](#paths)
+- [Command line](#command-line-1)
+  * [Global options](#global-options)
+  * [`build`](#build)
+  * [`list`](#list)
+  * [`options`](#options)
+  * [`release`](#release)
+  * [`git`](#git)
+  * [`cmake`](#cmake)
+  * [`inis`](#inis)
+
+
 ## Quick start
 ```
 > git clone https://github.com/isanae/mob
@@ -6,7 +32,6 @@
 ```
 
 ## Slow start
-
 - Install Qt 5.14.2 ([Installer](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe))
   - MSVC 2017 64-bit
   - Qt WebEngine
@@ -25,8 +50,12 @@
 	bootstrap
 	mob -d C:\dev\modorganizer build
 	```
-
 - Once `mob` is finished, everything will be in `C:\dev\modorganizer`. Mod Organizer can be run from `install\bin\ModOrganizer.exe`. The Visual Studio solution for Mod Organizer itself is `build\modorganizer_super\modorganizer\vsbuild\organizer.sln`.
+
+
+### Prebuilts
+Some third-parties are not normally built from source, but this can be changed in the options by setting the various tasks in `[prebuilt]` to `false`. If OpenSSL is built from source, perl is required ([Strawberry Perl 5.30.2.1 installer](http://strawberryperl.com/download/5.30.2.1/strawberry-perl-5.30.2.1-64bit.msi)).
+
 
 ## Changing options
 `mob` has two ways of setting options: from INI files, the `MOBINI` environment variable, or from the command line.
@@ -42,10 +71,10 @@
 Use `mob inis` to see the list of INI files in order. If `--no-default-inis` is given, `mob` will skip 1) and 2). The first INI it finds after that is considered the master.
 
 ### Command line
-Any option can be overriden from the command like with `-s task:section/key=value`, where `task:` is optional. Some options have shortcuts, such as `--dry` for `-s global/dry=true` and `-l5` for `-s global:output_log_level=5`. See `mob options` for the list of options.
+Any option can be overridden from the command like with `-s task:section/key=value`, where `task:` is optional. Some options have shortcuts, such as `--dry` for `-s global/dry=true` and `-l5` for `-s global:output_log_level=5`. See `mob options` for the list of options.
 
 ### INI format
-Inside the INI file are `[sections]` and `key = value` pairs. The `[options]` section is special because it can be changed for specific tasks instead of globally. Any value under a `[task:options]` section will only apply to a task named `task`. The list of available tasks can be seen with `mob list`. The task `super` is a shortcut for any task that's from the `ModOrganizer2` repository, except for `libbsarch`, `NexusClientCli` and `usvfs`.
+Inside the INI file are `[sections]` and `key = value` pairs. The `[options]` section is special because it can be changed for specific tasks instead of globally. Any value under a `[task:options]` section will only apply to a task named `task`. The list of available tasks can be seen with `mob list`. See [Task names](#task-names).
 
 
 ## Options
@@ -78,7 +107,7 @@ Unless otherwise stated, applies to any task that is a git repo.
 
 | Option      | Type   | Description |
 | ---         | ---    | ---         |
-| `mo_org`    | string | The organization name when pulling from Github. Only applies to ModOrganizer projects, plus NCC and usvfs. |
+| `mo_org`    | string | The organisation name when pulling from Github. Only applies to ModOrganizer projects, plus NCC and usvfs. |
 | `mo_branch` | string | The branch name when pulling from Github. Only applies to ModOrganizer projects, plus NCC and usvfs. |
 | `no_pull`   | bool   | If a repo is already cloned, a `git pull` will be done on it every time `mob build` is run. Set to `false` to never pull and build with whatever is in there. |
 | `ignore_ts` | bool   | Marks all the `.ts` files in a repo with `--assume-unchanged`. Note that `mob git ignore-ts off` can be used to revert it. |
@@ -101,7 +130,7 @@ When `git` clones, it automatically creates a remote named `origin` for the URL 
 | Option                       | Type   | Description |
 | ---                          | ---    | --- |
 | `set_origin_remote`          | bool   | Enables the feature |
-| `remote_org`                 | string | Organization on Github for the new remote. The URL will be `git@github.com:org/git_file`, where `git_file` is the `repo.git` file for the current task. |
+| `remote_org`                 | string | Organisation on Github for the new remote. The URL will be `git@github.com:org/git_file`, where `git_file` is the `repo.git` file for the current task. |
 | `remote_key`                 | string | A PuTTY key, saved in `remote.origin.puttykeyfile`. Optional. |
 | `remote_no_push_upstream`    | bool   | Sets the push URL for `upstream` to `nopushurl` to avoid accidental pushes. |
 | `remote_push_default_origin` | bool   | Sets `origin` as the default push remote. |
@@ -133,3 +162,145 @@ The versions for all the tasks.
 The only path that's required is `prefix`, which is where `mob` will put everything. Within this directory will be `build/`, `downloads/` and `install/`. Everything else is derived from it.
 
 If `mob` is unable to find the Qt installation directory, it can be specified in `qt_install`. This directory should contain `bin/`, `include/`, etc. It's typically something like `C:\Qt\5.14.2\msvc2017_64\`. The other path `qt_bin` will be derived from it, it's just `$qt_install/bin/`.
+
+
+## Command line
+Do `mob --help` for global options and the list of available commands. Do `mob <command> --help` for more help about a command.
+
+### Global options
+
+| Option              | Description |
+| ---                 | --- |
+| `--ini`             | Adds an INI file, see [INI files](#ini-files). |
+| `--dry`             | Simulates filesystem operations. Note that many operations will fail and that the build process will stop with errors. This is mostly useful to get a dump of the options. |
+| `-log-level`        | The log level for stdout: 0=silent, 1=errors, 2=warnings, 3=info (default), 4=debug, 5=trace, 6=dump. Note that 6 will dump _a lot_ of stuff, such as debug information from curl during downloads.
+| `--destination`     | The build directory where `mob` will put everything.
+| `--set`             | Sets an option: `-s task:section/key=value`.
+| `--no-default-inis` | Does not auto detect INI files, only uses `--ini`. |
+
+
+### `build`
+Builds tasks. The order in which tasks have to be built is handled by `mob`, but dependencies will not be built automatically when specifying tasks manually. That is, `mob build` will build `python` before `pyqt`, but `mob build pyqt` will not build `python`. Many tasks will be able to run in parallel, but not all, either because they hog the CPU (such as `usvfs`) or because they have dependencies that have to be built first.
+
+If any task fails to build, all the active tasks are aborted as quickly as possible.
+
+#### Task names
+
+Each task has a name, some have more. MO tasks for example have a full name that corresponds to their git repo (such as `modorganizer-game_features`) and a shorter name (such as `game_features`). Both can be used interchangeably. The task name can also be `super`, which refers to all repos hosted on the Mod Organizer Github account, minus `libbsarch`, `usvfs` and `NexusClientCli`. Globs can be used, like `installer_*`. See `mob list` for a list of all available tasks.
+
+#### Options
+
+| Option | Description |
+| ---    | --- |
+| `--redownload`                       | Re-downloads files. If a download file is found in `prefix/downloads`, it is never re-downloaded. This will delete the file and download it again. |
+| `--reextract`                        | Deletes the source directory for a task and re-extracts archives. If the directory is controlled by git, deletes it and clones again. If git finds modifications in the directory, the operation is aborted (see `--ignore-uncommitted-changes`. |
+| `--reconfigure`                      | Reconfigures the task by running cmake, configure scripts, etc. Some tasks might have to delete the whole source directory. |
+| `--rebuild`                          | Cleans and rebuilds projects. Some tasks might have to delete the whole source directory |
+| `--new`                              | Implies all the four flags above. |
+| `--clean-task`,<br>`--no-clean-task` | Sets whether tasks are cleaned. With `--no-clean-task`, the flags above are ignored. |
+| `--fetch-task`,<br>`--no-fetch-task` | Sets whether tasks are fetched. With `--no-fetch-task`, nothing is downloaded, extracted, cloned or pulled. |
+| `--build-task`,<br>`--no-build-task` | Sets whether tasks are built. With `--no-build-task`, nothing is ever built or installed. |
+| `--pull`,<br>`--no-pull`             | For repos that are controlled by git, whether to pull repos that are already cloned. With `--no-pull`, once a repo is cloned, it is never updated automatically. |
+| `--revert-ts`,<br>`--no-revert-ts`   | Most projects will generate `.ts` files for translations. These files are typically not committed to Github and so will often conflict when trying to pull. With `--revert-ts`, any `.ts` file is reverted before pulling. |
+| `--ignore-uncommitted-changes`       | With `--reextract`, ignores repos that have uncommitted changes and deletes the directory without confirmation. |
+| `--keep-msbuild`                     | `mob` starts a lot of `msbuild.exe` processes, some of which hold locks on the build directory. Because that's pretty darn annoying, `mob` will kill all `msbuild.exe` processes when it finished, unless this flag is given. |
+| `<task>...`                          | List of tasks to run, see [Task names](#task-names). |
+
+
+
+### `list`
+Lists all the available task names. If a task has multiple names, they are all shown, separated by a comma.
+
+#### Options
+| Option | Description |
+| --- | --- |
+| `--all`     | Shows a task tree to see which are built in parallel. |
+| `<task>...` | This is the same list of tasks that can be given in the `build` command. With `--all`, this will only show the tasks that would be built. |
+
+
+### `options`
+Lists all the options after parsing the INIs and the command line.
+
+
+### `release`
+Creates a release in `prefix/releases`. Only supports devbuilds for now. A release is made out of three archives:
+ - Binaries from `prefix/install/bin`;
+ - PDBs from `prefix/install/pdb`;
+ - Sources from various directories in `prefix/build`.
+
+The archive filename is `Mod.Organizer-version-suffix-what.7z`, where:
+ - `version` is taken from `ModOrganizer.exe`, `version.rc` or from `--version`;
+ - `suffix` is the optional `--suffix` argument;
+ - `what` is either nothing, `src` or `pdbs`.
+
+
+
+#### Options
+| Option | Description |
+| --- | --- |
+| `--bin`,<br>`--no-bin`   | Whether the binary archive is created [default: yes] |
+| `--pdbs`,<br>`--no-pdbs` | Whether the PDBs archive is created [default: yes] |
+| `--src`,<br>`--no-src`   | Whether the source archive is created [default: yes] |
+| `--version-from-exe`     | Retrieves version information from ModOrganizer.exe [default] |
+| `--version-from-rc`      | Retrieves version information from `modorganizer/src/version.rc` |
+| `--rc <PATH>`            | Overrides the path to `version.rc` |
+| `--version <VERSION>`    | Overrides the version string, ignores `--version-from-exe` and `--version-from-rc` |
+| `--output-dir <PATH>`    | Sets the output directory to use instead of `prefix/releases` |
+| `--suffix <SUFFIX>`      | Optional suffix to add to the archive filenames
+| `--force`                | `mob` will refuse to create a source archive over 20MB because it would probably be incorrect. This ignores the file size warnings and creates the archive regardless of its size. |
+
+
+### `git`
+Various commands to manage the git repos. Includes `usvfs`, `NexusClientCli` and all the projects under `modorganizer_super`.
+
+#### `set-remotes`
+Does the same thing as the when `set_origin_remotes` is set in the INI: renames `origin` to `upstream` and adds a new `origin` with the options below. See [Origin and upstream remotes](#origin-and-upstream-remotes).
+
+| Option | Description |
+| --- | --- |
+| `--username <USERNAME>` | Git username |
+| `--email <EMAIL>`       | Git email |
+| `--key <PATH>`          | Path to a putty key |
+| `--no-push`             | Disables pushing to `upstream` by changing the push url to `nopushurl` to avoid accidental pushes |
+| `--push-origin`         | Sets the new `origin` remote as the default push target
+| `<path>`                | Only use this repo instead of going through all of them |
+
+#### `add-remote`
+Simply adds a new remote with the given parameters to all the git repos.
+
+| Option | Description |
+| --- | --- |
+| `-name <NAME>`          | Name of new remote |
+| `--username <USERNAME>` | Git username |
+| `--key <PATH>`          | Path to a putty key |
+| `--push-origin`         | Sets this new remote as the default push target |
+| `<path>`                | Only use this repo instead of going through all of them |
+
+
+### `cmake`
+Runs `cmake` in a directory, as if `mob` had done it as part of the build process for a `modorganizer` project. The `cmake` invocation will contain all variables required for `cmake_common` to work.
+
+By default, this runs:
+```
+cmake
+  -G "Visual Studio version year"
+  -A x64
+  -DCMAKE_BUILD_TYPE=Release
+  -DCMAKE_INSTALL_MESSAGE=NEVER
+  <all defines>
+  --log-level=ERROR
+  --no-warn-unused-cli
+  ..
+```
+
+#### Options
+| Option | Description |
+| --- | --- |
+| `--generator <GEN>` | Sets the `-G` option |
+| `--cmd` | Sets the last bit of the command, defaults to `..` |
+| `--x86`, `--x64` | Whether to use the 32-bit or 64-bit vcvars. If `--generator` is not given, also sets `-A`. |
+| `--install-prefix <PATH>` | Passes `-DCMAKE_INSTALL_PREFIX=<path>` to cmake |
+
+
+### `inis`
+Shows a list of the all the INIs that would be loaded, in order of priority. See [INI files](#ini-files).

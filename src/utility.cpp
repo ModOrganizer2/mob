@@ -327,8 +327,9 @@ bool glob_match(const std::string& pattern, const std::string& s)
 	catch(std::exception&)
 	{
 		u8cerr
-			<< "globs are actually bastardized regexes where '*' is replaced "
-			<< "by '.*', so don't push it\n";
+			<< "bad glob '" << pattern << "'\n"
+			<< "globs are actually bastardized regexes where '*' is "
+			<< "replaced by '.*', so don't push it\n";
 
 		throw bailed();
 	}

@@ -721,18 +721,18 @@ clipp::group release_command::do_group()
 			% ("shows this message"),
 
 		(
-			clipp::option("--no-bin").set(bin_, false) |
-			clipp::option("--bin").set(bin_, true)
+			clipp::option("--bin").set(bin_, true) |
+			clipp::option("--no-bin").set(bin_, false)
 		) % "sets whether the binary archive is created [default: yes]",
 
 		(
-			clipp::option("--no-pdbs").set(pdbs_, false) |
-			clipp::option("--pdbs").set(pdbs_, true)
+			clipp::option("--pdbs").set(pdbs_, true) |
+			clipp::option("--no-pdbs").set(pdbs_, false)
 		) % "sets whether the PDBs archive is created [default: yes]",
 
 		(
-			clipp::option("--no-src").set(src_, false) |
-			clipp::option("--src").set(src_, true)
+			clipp::option("--src").set(src_, true) |
+			clipp::option("--no-src").set(src_, false)
 		) % "sets whether the source archive is created [default: yes]",
 
 		clipp::option("--version-from-exe").set(version_exe_)
@@ -806,7 +806,7 @@ int release_command::do_run()
 std::string release_command::do_doc()
 {
 	return
-		"Creates three archives in the current directory: one from \n"
+		"Creates three archives in `$prefix/releases`: one from \n"
 		"`install/bin/*`, one from `install/pdbs/*` and another with the \n"
 		"sources of projects from modorganizer_super.\n"
 		"\n"
