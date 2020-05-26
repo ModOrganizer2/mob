@@ -8,6 +8,8 @@ namespace mob
 class env
 {
 public:
+	using map = std::map<std::wstring, std::wstring>;
+
 	enum flags
 	{
 		replace = 1,
@@ -36,12 +38,11 @@ public:
 	void set_from(const env& e);
 
 	std::string get(std::string_view k) const;
+	map get_map() const;
 
 	void* get_unicode_pointers() const;
 
 private:
-	using map = std::map<std::wstring, std::wstring>;
-
 	struct data
 	{
 		std::mutex m;

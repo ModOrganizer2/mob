@@ -268,6 +268,15 @@ std::string env::get(std::string_view k) const
 	return utf16_to_utf8(*current);
 }
 
+env::map env::get_map() const
+{
+	if (!data_)
+		return {};
+
+	std::scoped_lock lock(data_->m);
+	return data_->vars;
+}
+
 void env::set_from(const env& e)
 {
 	copy_for_write();
@@ -337,18 +346,20 @@ void* env::get_unicode_pointers() const
 void env::copy_for_write()
 {
 	if (own_)
+	{
+		if (data_)
+			data_->sys.clear();
+
 		return;
+	}
 
 	if (data_)
 	{
 		auto shared = data_;
 		data_.reset(new data);
-		data_->vars = shared->vars;
 
-		{
-			std::scoped_lock lock(shared->m);
-			data_->sys = shared->sys;
-		}
+		std::scoped_lock lock(shared->m);
+		data_->vars = shared->vars;
 	}
 	else
 	{
