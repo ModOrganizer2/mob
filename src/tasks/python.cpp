@@ -244,6 +244,13 @@ void python::install_pip()
 		.arg("-m pip")
 		.arg("install")
 		.arg("--upgrade pip")));
+
+	// ssl errors while downloading through python without certifi
+	run_tool(process_runner(process()
+		.binary(python_exe())
+		.arg("pip")
+		.arg("install")
+		.arg("certifi")));
 }
 
 msbuild python::create_msbuild_tool(msbuild::ops o)

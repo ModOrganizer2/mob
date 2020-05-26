@@ -25,8 +25,11 @@ public:
 	env& operator=(const env& e);
 	env& operator=(env&& e);
 
+	env& prepend_path(const fs::path& p);
+	env& prepend_path(const std::vector<fs::path>& v);
 	env& append_path(const fs::path& p);
 	env& append_path(const std::vector<fs::path>& v);
+
 	env& set(std::string_view k, std::string_view v, flags f=replace);
 	env& set(std::wstring k, std::wstring v, flags f=replace);
 
@@ -54,6 +57,7 @@ private:
 	const std::wstring* find(std::wstring_view name) const;
 	void set_impl(std::wstring k, std::wstring v, flags f);
 	void copy_for_write();
+	env& change_path(const std::vector<fs::path>& v, flags f);
 };
 
 

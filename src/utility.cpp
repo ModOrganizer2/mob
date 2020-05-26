@@ -352,21 +352,6 @@ std::string replace_all(
 	return s;
 }
 
-std::string join(const std::vector<std::string>& v, const std::string& sep)
-{
-	std::string s;
-
-	for (auto&& e : v)
-	{
-		if (!s.empty())
-			s += sep;
-
-		s += e;
-	}
-
-	return s;
-}
-
 std::vector<std::string> split(const std::string& s, const std::string& seps)
 {
 	std::vector<std::string> v;

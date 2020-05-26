@@ -172,10 +172,12 @@ msbuild usvfs::create_msbuild_tool(arch a, msbuild::ops o) const
 
 	const std::string plat = (a == arch::x64 ? "x64" : "x86");
 
+	// udis requires python in its custom build step
 	return std::move(msbuild(o)
 		.platform(plat)
 		.targets({"usvfs_proxy"})
-		.solution(source_path() / "vsbuild" / "usvfs.sln"));
+		.solution(source_path() / "vsbuild" / "usvfs.sln")
+		.prepend_path(python::build_path()));
 }
 
 std::vector<std::shared_ptr<downloader>>

@@ -464,6 +464,7 @@ public:
 	msbuild& platform(const std::string& s);
 	msbuild& architecture(arch a);
 	msbuild& flags(flags_t f);
+	msbuild& prepend_path(const fs::path& p);
 
 	int result() const;
 
@@ -479,6 +480,7 @@ private:
 	std::string platform_;
 	arch arch_;
 	flags_t flags_;
+	std::vector<fs::path> prepend_path_;
 
 	void do_clean();
 	void do_build();

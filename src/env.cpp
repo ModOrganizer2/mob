@@ -4,6 +4,7 @@
 #include "process.h"
 #include "op.h"
 #include "context.h"
+#include "utility.h"
 #include "tools/tools.h"
 
 namespace mob
@@ -135,27 +136,79 @@ env& env::operator=(env&& e)
 
 env& env::append_path(const fs::path& p)
 {
-	return append_path(std::vector<fs::path>{p});
+	append_path(std::vector<fs::path>{p});
+	return *this;
+}
+
+env& env::prepend_path(const fs::path& p)
+{
+	prepend_path(std::vector<fs::path>{p});
+	return *this;
+}
+
+env& env::prepend_path(const std::vector<fs::path>& v)
+{
+	change_path(v, prepend);
+	return *this;
 }
 
 env& env::append_path(const std::vector<fs::path>& v)
+{
+	change_path(v, append);
+	return *this;
+}
+
+env& env::change_path(const std::vector<fs::path>& v, flags f)
 {
 	copy_for_write();
 
 	std::wstring path;
 
+	switch (f)
 	{
-		auto current = find(L"PATH");
-		if (current)
-			path = *current;
-	}
+		case replace:
+		{
+			const auto strings =
+				mob::map(v, [&](auto&& p){ return p.native(); });
 
-	for (auto&& p : v)
-	{
-		if (!path.empty())
-			path += L";";
+			path = join(strings, L";");
 
-		path += p.native();
+			break;
+		}
+
+		case append:
+		{
+			auto current = find(L"PATH");
+			if (current)
+				path = *current;
+
+			for (auto&& p : v)
+			{
+				if (!path.empty())
+					path += L";";
+
+				path += p.native();
+			}
+
+			break;
+		}
+
+		case prepend:
+		{
+			auto current = find(L"PATH");
+			if (current)
+				path = *current;
+
+			for (auto&& p : v)
+			{
+				if (!path.empty())
+					path = L";" + path;
+
+				path = p.native() + path;
+			}
+
+			break;
+		}
 	}
 
 	set(L"PATH", path, replace);

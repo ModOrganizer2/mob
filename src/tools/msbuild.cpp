@@ -58,6 +58,12 @@ msbuild& msbuild::flags(flags_t f)
 	return *this;
 }
 
+msbuild& msbuild::prepend_path(const fs::path& p)
+{
+	prepend_path_.push_back(p);
+	return *this;
+}
+
 int msbuild::result() const
 {
 	return exit_code();
@@ -161,11 +167,16 @@ void msbuild::do_run(const std::vector<std::string>& targets)
 	for (auto&& p : params_)
 		process_.arg("-property:" + p);
 
+	env e = env::vs(arch_);
+
+	for (auto&& p : prepend_path_)
+		e.prepend_path(p);
+
 	process_
 		.arg(sln_)
 		.flags(pflags)
 		.cwd(sln_.parent_path())
-		.env(env::vs(arch_));
+		.env(e);
 
 	execute_and_join();
 }
