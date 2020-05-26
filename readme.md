@@ -5,6 +5,29 @@
 > mob -d prefix/path build
 ```
 
+## Slow start
+
+- Install Qt 5.14.2 ([Installer](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe))
+  - MSVC 2017 64-bit
+  - Qt WebEngine
+- Install Visual Studio 2019 ([Installer](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&rel=16))
+  - Desktop development with C++
+  - Git for Windows
+  - .NET Framework 3.5 development tools
+  - .NET Framework 4.6 targeting pack
+- Start the _x64 Native Tools Command Prompt for VS 2019_
+- Do:
+	```
+	mkdir C:\dev
+	cd C:\dev
+	git clone https://github.com/isanae/mob
+	cd mob
+	bootstrap
+	mob -d C:\dev\modorganizer build
+	```
+
+- Once `mob` is finished, everything will be in `C:\dev\modorganizer`. Mod Organizer can be run from `install\bin\ModOrganizer.exe`. The Visual Studio solution for Mod Organizer itself is `build\modorganizer_super\modorganizer\vsbuild\organizer.sln`.
+
 ## Changing options
 `mob` has two ways of setting options: from INI files, the `MOBINI` environment variable, or from the command line.
 
