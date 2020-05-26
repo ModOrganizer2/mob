@@ -320,7 +320,18 @@ url make_appveyor_artifact_url(
 
 bool glob_match(const std::string& pattern, const std::string& s)
 {
-	return std::regex_match(s, std::regex(replace_all(pattern, "*", ".*")));
+	try
+	{
+		return std::regex_match(s, std::regex(replace_all(pattern, "*", ".*")));
+	}
+	catch(std::exception&)
+	{
+		u8cerr
+			<< "globs are actually bastardized regexes where '*' is replaced "
+			<< "by '.*', so don't push it\n";
+
+		throw bailed();
+	}
 }
 
 std::string replace_all(
