@@ -1070,13 +1070,17 @@ bool verify_options()
 		return false;
 	}
 
-	if (fs::equivalent(paths::prefix(), mob_exe_path().parent_path()))
+	// will be created later if it doesn't exist
+	if (fs::exists(paths::prefix()))
 	{
-		u8cerr
-			<< "the prefix cannot be where mob.exe is, there's already a "
-			<< "build directory in there\n";
+		if (fs::equivalent(paths::prefix(), mob_exe_path().parent_path()))
+		{
+			u8cerr
+				<< "the prefix cannot be where mob.exe is, there's already a "
+				<< "build directory in there\n";
 
-		return false;
+			return false;
+		}
 	}
 
 	return true;
