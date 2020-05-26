@@ -299,7 +299,7 @@ std::wstring* env::find(std::wstring_view name)
 
 	for (auto itor=data_->vars.begin(); itor!=data_->vars.end(); ++itor)
 	{
-		if (_wcsnicmp(itor->first.c_str(), name.data(), name.size()) == 0)
+		if (_wcsicmp(itor->first.c_str(), name.data()) == 0)
 			return &itor->second;
 	}
 
@@ -313,7 +313,7 @@ const std::wstring* env::find(std::wstring_view name) const
 
 	for (auto itor=data_->vars.begin(); itor!=data_->vars.end(); ++itor)
 	{
-		if (_wcsnicmp(itor->first.c_str(), name.data(), name.size()) == 0)
+		if (_wcsicmp(itor->first.c_str(), name.data()) == 0)
 			return &itor->second;
 	}
 
