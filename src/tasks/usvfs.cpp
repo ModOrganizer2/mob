@@ -48,7 +48,7 @@ void usvfs::do_clean(clean c)
 		}
 		else
 		{
-			if (is_any_set(c, clean::redownload|clean::reextract))
+			if (is_set(c, clean::reclone))
 			{
 				git::delete_directory(cx(), source_path());
 				return;

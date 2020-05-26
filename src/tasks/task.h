@@ -79,6 +79,7 @@ public:
 		nothing     = 0x00,
 		redownload  = 0x01,
 		reextract   = 0x02,
+		reclone     = reextract,
 		reconfigure = 0x04,
 		rebuild     = 0x08,
 		everything  = redownload+reextract+reconfigure+rebuild

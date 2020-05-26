@@ -64,7 +64,7 @@ void modorganizer::do_clean(clean c)
 {
 	instrument<times::clean>([&]
 	{
-		if (is_any_set(c, clean::redownload|clean::reextract))
+		if (is_set(c, clean::reclone))
 		{
 			git::delete_directory(cx(), this_source_path());
 			return;

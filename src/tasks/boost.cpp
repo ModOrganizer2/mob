@@ -217,14 +217,20 @@ void boost::do_b2(
 
 void boost::write_config_jam()
 {
+	auto forward_slashes = [](auto&& p)
+	{
+		std::string s = path_to_utf8(p);
+		return replace_all(s, "\\", "/");
+	};
+
 	std::ostringstream oss;
 
 	oss
 		<< "using python\n"
 		<< "  : " << python_version_for_jam() << "\n"
-		<< "  : " << path_to_utf8(python::python_exe()) << "\n"
-		<< "  : " << path_to_utf8(python::include_path()) << "\n"
-		<< "  : " << path_to_utf8(python::build_path()) << "\n"
+		<< "  : " << forward_slashes(python::python_exe()) << "\n"
+		<< "  : " << forward_slashes(python::include_path()) << "\n"
+		<< "  : " << forward_slashes(python::build_path()) << "\n"
 		<< "  : <address-model>64\n"
 		<< "  : <define>BOOST_ALL_NO_LIB=1\n"
 		<< "  ;";

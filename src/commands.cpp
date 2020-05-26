@@ -390,9 +390,8 @@ clipp::group build_command::do_group()
 		    "avoid merge errors; global override",
 
 		(clipp::option("--ignore-uncommitted-changes") >> ignore_uncommitted_)
-			% "when --redownload or --reextract is given, directories "
-			  "controlled by git will be deleted even if they contain "
-			  "uncommitted changes",
+			% "when --reextract is given, directories controlled by git will "
+			  "be deleted even if they contain uncommitted changes",
 
 		(clipp::option("--keep-msbuild") >> keep_msbuild_)
 			% "don't terminate msbuild.exe instances after building",
