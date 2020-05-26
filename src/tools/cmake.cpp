@@ -124,8 +124,8 @@ void cmake::do_generate()
 		.stderr_encoding(encodings::utf8)
 		.binary(binary())
 		.arg("-DCMAKE_BUILD_TYPE=Release")
-		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER", process::log_quiet)
-		.arg("--log-level", "WARNING", process::log_quiet)
+		.arg("-DCMAKE_INSTALL_MESSAGE=NEVER")
+		.arg("--log-level", "ERROR")
 		.arg("--no-warn-unused-cli");
 
 	if (genstring_.empty())
