@@ -37,10 +37,10 @@
   - Qt WebEngine
 - Install Visual Studio 2019 ([Installer](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&rel=16))
   - Desktop development with C++
-  - Git for Windows
+  - Git for Windows (if you don't have git already installed)
   - .NET Framework 3.5 development tools
   - .NET Framework 4.6 targeting pack
-- Start the _x64 Native Tools Command Prompt for VS 2019_
+- Start the _x64 Native Tools Command Prompt for VS 2019_. (Note: If you already have a git install in your `PATH`, you can use a regular command prompt)
 - Do:
 	```
 	mkdir C:\dev
