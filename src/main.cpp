@@ -152,6 +152,7 @@ void add_tasks()
 		.add_task<modorganizer>("modorganizer-installer_bundle")
 		.add_task<modorganizer>("modorganizer-installer_quick")
 		.add_task<modorganizer>("modorganizer-installer_fomod")
+		.add_task<modorganizer>("modorganizer-installer_fomod_csharp")
 		.add_task<modorganizer>("modorganizer-installer_ncc")
 		.add_task<modorganizer>("modorganizer-bsa_extractor")
 		.add_task<modorganizer>("modorganizer-plugin_python");
