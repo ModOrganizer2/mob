@@ -379,7 +379,7 @@ void git::do_revert_ts()
 	{
 		process_ = make_process()
 			.stderr_level(context::level::trace)
-			.arg("checkout")
+			.arg("checkout").flags(process::allow_failure)
 			.arg(p)
 			.cwd(root_);
 
