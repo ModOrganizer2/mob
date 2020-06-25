@@ -1,4 +1,4 @@
-$installationPath = .\third-party\bin\vswhere.exe -nologo -prerelease -latest -property installationPath
+$installationPath = .\third-party\bin\vswhere.exe -products * -nologo -prerelease -latest -property installationPath
 if (! $?) {
     Write-Error "vswhere returned $LastExitCode"
     exit $LastExitCode
