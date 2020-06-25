@@ -592,6 +592,7 @@ fs::path find_vs()
 
 	auto p = process()
 		.binary(vs::vswhere())
+		.arg("-products", "*")
 		.arg("-prerelease")
 		.arg("-version", vs::version())
 		.arg("-property", "installationPath")
