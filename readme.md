@@ -74,7 +74,7 @@ Use `mob inis` to see the list of INI files in order. If `--no-default-inis` is 
 Any option can be overridden from the command like with `-s task:section/key=value`, where `task:` is optional. Some options have shortcuts, such as `--dry` for `-s global/dry=true` and `-l5` for `-s global:output_log_level=5`. See `mob options` for the list of options.
 
 ### INI format
-Inside the INI file are `[sections]` and `key = value` pairs. The `[options]` section is special because it can be changed for specific tasks instead of globally. Any value under a `[task:options]` section will only apply to a task named `task`. The list of available tasks can be seen with `mob list`. See [Task names](#task-names).
+Inside the INI file are `[sections]` and `key = value` pairs. The `[task]` section is special because it can be changed for specific tasks instead of globally. Any value under a `[task_name:task]` section will only apply to a task named `task_name`. The list of available tasks can be seen with `mob list`. See [Task names](#task-names).
 
 
 ## Options
@@ -96,7 +96,7 @@ Inside the INI file are `[sections]` and `key = value` pairs. The `[options]` se
 | `ignore_uncommitted` | bool | When `--redownload` or `--reextract` is given, directories controlled by git will be deleted even if they contain uncommitted changes.|
 
 ### `[task]`
-Options for individual tasks. Can be `[taskname:task]`, where `taskname` is the name of a task (see `mob list`) , `super` for all MO tasks or a glob like `installer_*`.
+Options for individual tasks. Can be `[task_name:task]`, where `task_name` is the name of a task (see `mob list`) , `super` for all MO tasks or a glob like `installer_*`.
 
 | Option      | Type   | Description |
 | ---         | ---    | ---         |
