@@ -9,6 +9,10 @@
 namespace mob
 {
 
+// in main.cpp
+void set_sigint_handler();
+
+
 std::string version()
 {
 	return "mob 4.0";
@@ -219,6 +223,9 @@ int command::run()
 			return r;
 	}
 
+	if (flags_ & handle_sigint)
+		set_sigint_handler();
+
 	const auto r = do_run();
 
 	if (code_)
@@ -248,6 +255,15 @@ const std::vector<fs::path>& command::inis() const
 }
 
 
+command::meta_t version_command::meta() const
+{
+	return
+	{
+		"version",
+		"shows the version"
+	};
+}
+
 clipp::group version_command::do_group()
 {
 	return clipp::group(
@@ -260,6 +276,25 @@ int version_command::do_run()
 	return 0;
 }
 
+
+command::meta_t help_command::meta() const
+{
+	return
+	{
+		"help",
+		"shows this message"
+	};
+}
+
+void help_command::set_commands(const std::vector<std::shared_ptr<command>>& v)
+{
+	std::vector<std::pair<std::string, std::string>> s;
+
+	for (auto&& c : v)
+		s.push_back({c->meta().name, c->meta().description});
+
+	commands_ = table(s, 4, 3);
+}
 
 clipp::group help_command::do_group()
 {
@@ -276,15 +311,7 @@ int help_command::do_run()
 
 	help(doc,
 		"Commands:\n"
-		"    help       shows this message\n"
-		"    version    shows the version\n"
-		"    list       lists available tasks\n"
-		"    options    lists all options and their values from the inis\n"
-		"    build      builds tasks\n"
-		"    release    creates a release or a devbuild\n"
-		"    git        manages the git repos\n"
-		"    cmake      runs cmake in a directory\n"
-		"    inis       lists the INIs used by mob (debug)\n"
+		+ commands_ +
 		"\n\n"
 		"Invoking `mob -d some/prefix build` builds everything. Do \n"
 		"`mob build <task name>...` to build specific tasks. See\n"
@@ -310,6 +337,15 @@ options_command::options_command()
 {
 }
 
+command::meta_t options_command::meta() const
+{
+	return
+	{
+		"options",
+		"lists all options and their values from the inis"
+	};
+}
+
 clipp::group options_command::do_group()
 {
 	return clipp::group(
@@ -333,8 +369,17 @@ std::string options_command::do_doc()
 
 
 build_command::build_command()
-	: command(requires_options)
+	: command(flags(requires_options | handle_sigint))
 {
+}
+
+command::meta_t build_command::meta() const
+{
+	return
+	{
+		"build",
+		"builds tasks"
+	};
 }
 
 clipp::group build_command::do_group()
@@ -527,6 +572,15 @@ void build_command::terminate_msbuild()
 }
 
 
+command::meta_t list_command::meta() const
+{
+	return
+	{
+		"list",
+		"lists available tasks"
+	};
+}
+
 clipp::group list_command::do_group()
 {
 	return clipp::group(
@@ -592,6 +646,15 @@ std::string list_command::do_doc()
 release_command::release_command()
 	: command(requires_options)
 {
+}
+
+command::meta_t release_command::meta() const
+{
+	return
+	{
+		"release",
+		"creates a release or a devbuild"
+	};
 }
 
 void release_command::make_bin()
@@ -933,6 +996,15 @@ git_command::git_command()
 {
 }
 
+command::meta_t git_command::meta() const
+{
+	return
+	{
+		"git",
+		"manages the git repos"
+	};
+}
+
 clipp::group git_command::do_group()
 {
 	return clipp::group(
@@ -1038,18 +1110,19 @@ std::string git_command::do_doc()
 		"All the commands will go through all modorganizer repos, plus usvfs\n"
 		"and NCC.\n"
 		"\n"
+		"Commands:\n"
 		"set-remotes\n"
-		"For each repo, this first sets the username and email. Then, it\n"
-		"will rename the remote 'origin' to 'upstream' and create a new\n"
-		"remote 'origin' with the given information. If the remote\n"
-		"'upstream' already exists in a repo, nothing happens.\n"
+		"  For each repo, this first sets the username and email. Then, it\n"
+		"  will rename the remote 'origin' to 'upstream' and create a new\n"
+		"  remote 'origin' with the given information. If the remote\n"
+		"  'upstream' already exists in a repo, nothing happens.\n"
 		"\n"
 		"add-remote\n"
-		"For each repo, adds a new remote with the given information. If a\n"
-		"remote with the same name already exists, nothing happens.\n"
+		"  For each repo, adds a new remote with the given information. If a\n"
+		"  remote with the same name already exists, nothing happens.\n"
 		"\n"
 		"ignore-ts\n"
-		"Toggles the --assume-changed status of all .ts files in all repos.";
+		"  Toggles the --assume-changed status of all .ts files in all repos.";
 }
 
 void git_command::do_set_remotes()
@@ -1162,6 +1235,15 @@ cmake_command::cmake_command()
 {
 }
 
+command::meta_t cmake_command::meta() const
+{
+	return
+	{
+		"cmake",
+		"runs cmake in a directory"
+	};
+}
+
 clipp::group cmake_command::do_group()
 {
 	return clipp::group(
@@ -1221,6 +1303,15 @@ std::string cmake_command::do_doc()
 }
 
 
+command::meta_t inis_command::meta() const
+{
+	return
+	{
+		"inis",
+		"lists the INIs used by mob"
+	};
+}
+
 clipp::group inis_command::do_group()
 {
 	return clipp::group(
@@ -1239,6 +1330,264 @@ int inis_command::do_run()
 std::string inis_command::do_doc()
 {
 	return "Shows which INIs are found.";
+}
+
+
+tx_command::tx_command()
+	: command(requires_options)
+{
+}
+
+command::meta_t tx_command::meta() const
+{
+	return
+	{
+		"tx",
+		"manages transifex translations"
+	};
+}
+
+clipp::group tx_command::do_group()
+{
+	return clipp::group(
+		clipp::command("tx").set(picked_),
+
+		(clipp::option("-h", "--help") >> help_)
+			% ("shows this message"),
+
+		"get" %
+		(clipp::command("get").set(mode_, modes::get),
+			(clipp::option("-m", "--minimum")
+				& clipp::value("PERCENT") >> min_)
+				% "minimum translation threshold to download [0-100]",
+
+			(clipp::option("-k", "--key")
+				& clipp::value("APIKEY") >> key_)
+				% "API key",
+
+			(clipp::option("-f", "--force").set(force_)
+				% "don't check timestamps, re-download all translation files"),
+
+			(clipp::option("-u", "--url")
+				& clipp::value("URL") >> url_)
+				% "project URL",
+
+			(clipp::value("path") >> path_)
+				% "path that will contain the .tx directory"
+		)
+
+		|
+
+		"build" %
+		(clipp::command("build").set(mode_, modes::build),
+
+			(clipp::value("source") >> path_)
+				% "path that contains the translation directories",
+
+			(clipp::value("destination") >> dest_)
+				% "path that will contain the .qm files"
+		)
+	);
+}
+
+int tx_command::do_run()
+{
+	switch (mode_)
+	{
+		case modes::get:
+			do_get();
+			break;
+
+		case modes::build:
+			do_build();
+			break;
+
+		case modes::none:
+		default:
+			u8cerr << "bad tx mode " << static_cast<int>(mode_) << "\n";
+			throw bailed();
+	}
+
+	return 0;
+}
+
+std::string tx_command::do_doc()
+{
+	return
+		"Values for --key, --minimum and --url will be taken from the INI\n"
+		"file if not specified.\n"
+		"\n"
+		"Commands:\n"
+		"get\n"
+		"  Initializes a Transifex project in the given directory if\n"
+		"  necessary and pulls all the translation files.\n"
+		"\n"
+		"build\n"
+		"  Builds all .qm files. The path can either be the transifex\n"
+		"  project (where .tx is) or the `translations` directory (where the\n"
+		"  individual translation directories are).";
+}
+
+void tx_command::do_get()
+{
+	if (min_ < 0)
+	{
+		const auto s = conf::get_global("transifex", "minimum");
+
+		try
+		{
+			min_ = std::stoi(s);
+		}
+		catch(std::exception&)
+		{
+			gcx().bail_out(context::generic,
+				"bad transifex minimum percentage '{}'", s);
+		}
+	}
+
+	if (key_.empty())
+		key_ = conf::get_global("transifex", "key");
+
+	if (url_.empty())
+	{
+		url_ =
+			conf::get_global("transifex", "url") + "/" +
+			conf::get_global("transifex", "team") + "/" +
+			conf::get_global("transifex", "project");
+	}
+
+	if (key_.empty() && !this_env::get_opt("TX_TOKEN"))
+	{
+		u8cout <<
+			"(no key was in the INI, --key wasn't given and TX_TOKEN env\n"
+			"variable doesn't exist, this will probably fail)\n\n";
+	}
+
+
+	context cxcopy = gcx();
+
+	u8cout << "initializing\n";
+	transifex(transifex::init)
+		.root(path_)
+		.run(cxcopy);
+
+	u8cout << "configuring\n";
+	transifex(transifex::config)
+		.stdout_level(context::level::info)
+		.root(path_)
+		.api_key(key_)
+		.url(url_)
+		.run(cxcopy);
+
+	u8cout << "pulling\n";
+	transifex(transifex::pull)
+		.stdout_level(context::level::info)
+		.root(path_)
+		.api_key(key_)
+		.minimum(min_)
+		.force(force_)
+		.run(cxcopy);
+}
+
+void tx_command::do_build()
+{
+	fs::path root = path_;
+	if (fs::exists(root / ".tx") && fs::exists(root / "translations"))
+		root = root / "translations";
+
+	fs::path dest = dest_;
+	op::create_directories(gcx(), dest, op::unsafe);
+
+	std::set<fs::path> warned;
+
+	for (auto e : fs::directory_iterator(root))
+	{
+		if (!e.is_directory())
+			continue;
+
+		const auto dir = path_to_utf8(e.path().filename());
+		const auto dir_cs = split(dir, ".");
+		if (dir_cs.size() != 2)
+		{
+			u8cerr << "bad directory name '" << dir << "'; skipping\n";
+			continue;
+		}
+
+		const auto project = trim_copy(dir_cs[1]);
+		if (project.empty())
+		{
+			u8cerr << "bad directory name '" << dir << "'; skipping\n";
+			continue;
+		}
+
+		u8cout << project << "\n";
+
+		const bool is_gamebryo_plugin = [&]
+		{
+			auto tasks = find_tasks(project);
+			if (tasks.empty())
+			{
+				u8cerr
+					<< "directory '" << dir << "' was parsed as project "
+					<< "'" << project << "', but there's no task with this "
+					<< "name\n";
+
+				return false;
+			}
+
+			const task& t = *tasks[0];
+
+			if (!t.is_super())
+				return false;
+
+			const auto& mo_task = static_cast<const modorganizer&>(t);
+			return mo_task.is_gamebryo_plugin();
+		}();
+
+
+		const fs::path gamebryo_dir =
+			conf::get_global("transifex", "project") + "." +
+			"game_gamebryo";
+
+
+		for (auto f : fs::directory_iterator(e.path()))
+		{
+			if (!f.is_regular_file())
+				continue;
+
+			lrelease lr;
+			lr
+				.project(project)
+				.add_source(f.path())
+				.out(dest_);
+
+			if (is_gamebryo_plugin)
+			{
+				const auto gb_f = root / gamebryo_dir / f.path().filename();
+
+				if (fs::exists(gb_f))
+				{
+					lr.add_source(gb_f);
+				}
+				else
+				{
+					if (!warned.contains(gb_f))
+					{
+						u8cerr
+							<< "this is a gamebryo plugin but there is no "
+							<< "'" << path_to_utf8(gb_f) << "'; "
+							<< "the .qm file will be missing some "
+							<< "translations (will only warn once)\n";
+
+						warned.insert(gb_f);
+					}
+				}
+			}
+
+			context cxcopy = gcx();
+			lr.run(cxcopy);
+		}
+	}
 }
 
 }	// namespace

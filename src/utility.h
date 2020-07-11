@@ -310,6 +310,9 @@ url make_prebuilt_url(const std::string& filename);
 url make_appveyor_artifact_url(
 	arch a, const std::string& project, const std::string& filename);
 
+// case insensitive, underscores and dashes are equivalent; gets converted to
+// a regex where * becomes .*
+//
 bool glob_match(const std::string& pattern, const std::string& s);
 
 std::string replace_all(
@@ -340,6 +343,10 @@ std::string pad_left(std::string s, std::size_t n, char c=' ');
 
 void trim(std::string& s, std::string_view what=" \t\r\n");
 void trim(std::wstring& s, std::wstring_view what=L" \t\r\n");
+
+std::string table(
+	const std::vector<std::pair<std::string, std::string>>& v,
+	std::size_t indent, std::size_t spacing);
 
 std::string trim_copy(std::string_view s, std::string_view what=" \t\r\n");
 std::wstring trim_copy(std::wstring_view s, std::wstring_view what=L" \t\r\n");

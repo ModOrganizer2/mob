@@ -25,9 +25,11 @@ std::shared_ptr<command> handle_command_line(const std::vector<std::string>& arg
 		std::make_unique<release_command>(),
 		std::make_unique<git_command>(),
 		std::make_unique<cmake_command>(),
-		std::make_unique<inis_command>()
+		std::make_unique<inis_command>(),
+		std::make_unique<tx_command>()
 	};
 
+	help->set_commands(commands);
 
 	std::vector<clipp::group> command_groups;
 	for (auto& c : commands)
@@ -111,59 +113,68 @@ void add_tasks()
 		.add_task<licenses>()
 		.add_task<explorerpp>();
 
-	add_task<parallel_tasks>(true)
-		.add_task<modorganizer>("cmake_common")
-		.add_task<modorganizer>("modorganizer-uibase");
+
+	using mo = modorganizer;
+
+	// most of the alternate names below are from the transifex slugs, which
+	// are sometimes different from the project names, for whatever reason
 
 	add_task<parallel_tasks>(true)
-		.add_task<modorganizer>("modorganizer-game_features")
-		.add_task<modorganizer>("modorganizer-archive")
-		.add_task<modorganizer>("modorganizer-lootcli")
-		.add_task<modorganizer>("modorganizer-esptk")
-		.add_task<modorganizer>("modorganizer-bsatk")
-		.add_task<modorganizer>("modorganizer-nxmhandler")
-		.add_task<modorganizer>("modorganizer-helper")
-		.add_task<modorganizer>("githubpp")
-		.add_task<modorganizer>("modorganizer-game_gamebryo")
-		.add_task<modorganizer>("modorganizer-bsapacker")
-		.add_task<modorganizer>("modorganizer-preview_bsa");
+		.add_task<mo>("cmake_common")
+		.add_task<mo>("modorganizer-uibase");
 
 	add_task<parallel_tasks>(true)
-		.add_task<modorganizer>("modorganizer-game_oblivion")
-		.add_task<modorganizer>("modorganizer-game_fallout3")
-		.add_task<modorganizer>("modorganizer-game_fallout4")
-		.add_task<modorganizer>("modorganizer-game_fallout4vr")
-		.add_task<modorganizer>("modorganizer-game_falloutnv")
-		.add_task<modorganizer>("modorganizer-game_morrowind")
-		.add_task<modorganizer>("modorganizer-game_skyrim")
-		.add_task<modorganizer>("modorganizer-game_skyrimse")
-		.add_task<modorganizer>("modorganizer-game_skyrimvr")
-		.add_task<modorganizer>("modorganizer-game_ttw")
-		.add_task<modorganizer>("modorganizer-game_enderal");
+		.add_task<mo>("modorganizer-game_features")
+		.add_task<mo>("modorganizer-archive")
+		.add_task<mo>("modorganizer-lootcli")
+		.add_task<mo>("modorganizer-esptk")
+		.add_task<mo>("modorganizer-bsatk")
+		.add_task<mo>("modorganizer-nxmhandler")
+		.add_task<mo>("modorganizer-helper")
+		.add_task<mo>("githubpp")
+		.add_task<mo>("modorganizer-game_gamebryo")
+		.add_task<mo>({"modorganizer-bsapacker", "bsa_packer"})
+		.add_task<mo>("modorganizer-preview_bsa");
 
 	add_task<parallel_tasks>(true)
-		.add_task<modorganizer>("modorganizer-tool_inieditor")
-		.add_task<modorganizer>("modorganizer-tool_inibakery")
-		.add_task<modorganizer>("modorganizer-preview_base")
-		.add_task<modorganizer>("modorganizer-diagnose_basic")
-		.add_task<modorganizer>("modorganizer-check_fnis")
-		.add_task<modorganizer>("modorganizer-installer_bain")
-		.add_task<modorganizer>("modorganizer-installer_manual")
-		.add_task<modorganizer>("modorganizer-installer_bundle")
-		.add_task<modorganizer>("modorganizer-installer_quick")
-		.add_task<modorganizer>("modorganizer-installer_fomod")
-		.add_task<modorganizer>("modorganizer-installer_fomod_csharp")
-		.add_task<modorganizer>("modorganizer-installer_ncc")
-		.add_task<modorganizer>("modorganizer-bsa_extractor")
-		.add_task<modorganizer>("modorganizer-plugin_python");
+		.add_task<mo>("modorganizer-game_oblivion", mo::gamebryo)
+		.add_task<mo>("modorganizer-game_fallout3", mo::gamebryo)
+		.add_task<mo>("modorganizer-game_fallout4", mo::gamebryo)
+		.add_task<mo>("modorganizer-game_fallout4vr", mo::gamebryo)
+		.add_task<mo>("modorganizer-game_falloutnv", mo::gamebryo)
+		.add_task<mo>("modorganizer-game_morrowind", mo::gamebryo)
+		.add_task<mo>("modorganizer-game_skyrim", mo::gamebryo)
+		.add_task<mo>("modorganizer-game_skyrimse", mo::gamebryo)
+		.add_task<mo>("modorganizer-game_skyrimvr", mo::gamebryo)
+		.add_task<mo>("modorganizer-game_ttw", mo::gamebryo)
+		.add_task<mo>("modorganizer-game_enderal", mo::gamebryo);
 
 	add_task<parallel_tasks>(true)
-		.add_task<modorganizer>("modorganizer-tool_configurator")
-		.add_task<modorganizer>("modorganizer-fnistool")
-		.add_task<modorganizer>("modorganizer-script_extender_plugin_checker")
-		.add_task<modorganizer>("modorganizer-form43_checker")
-		.add_task<modorganizer>("modorganizer-preview_dds")
-		.add_task<modorganizer>("modorganizer");
+		.add_task<mo>({"modorganizer-tool_inieditor", "inieditor"})
+		.add_task<mo>("modorganizer-tool_inibakery")
+		.add_task<mo>("modorganizer-preview_base")
+		.add_task<mo>("modorganizer-diagnose_basic")
+		.add_task<mo>("modorganizer-check_fnis")
+		.add_task<mo>("modorganizer-installer_bain")
+		.add_task<mo>("modorganizer-installer_manual")
+		.add_task<mo>("modorganizer-installer_bundle")
+		.add_task<mo>("modorganizer-installer_quick")
+		.add_task<mo>("modorganizer-installer_fomod")
+		.add_task<mo>("modorganizer-installer_fomod_csharp")
+		.add_task<mo>("modorganizer-installer_ncc")
+		.add_task<mo>("modorganizer-bsa_extractor")
+		.add_task<mo>("modorganizer-plugin_python");
+
+	add_task<parallel_tasks>(true)
+		.add_task<mo>({"modorganizer-tool_configurator", "pycfg"})
+		.add_task<mo>("modorganizer-fnistool")
+		.add_task<mo>({
+			"modorganizer-script_extender_plugin_checker",
+			"diagnose-script_extender_plugin_checker",
+			})
+		.add_task<mo>({"modorganizer-form43_checker", "form43checker"})
+		.add_task<mo>({"modorganizer-preview_dds", "ddspreview"})
+		.add_task<mo>({"modorganizer", "organizer"});
 }
 
 
@@ -209,6 +220,11 @@ private:
 	bool restore_;
 };
 
+void set_sigint_handler()
+{
+	::SetConsoleCtrlHandler(mob::signal_handler, TRUE);
+}
+
 
 int run(const std::vector<std::string>& args)
 {
@@ -238,7 +254,6 @@ int wmain(int argc, wchar_t** argv)
 {
 	mob::set_std_streams();
 	mob::set_thread_exception_handlers();
-	::SetConsoleCtrlHandler(mob::signal_handler, TRUE);
 
 	std::vector<std::string> args;
 	for (int i=1; i<argc; ++i)

@@ -29,10 +29,12 @@ void touch(const context& cx, const fs::path& p)
 		do_touch(cx ,p);
 }
 
-void create_directories(const context& cx, const fs::path& p)
+void create_directories(const context& cx, const fs::path& p, flags f)
 {
 	cx.trace(context::fs, "creating dir {}", p);
-	check(cx, p);
+
+	if (!is_set(f, unsafe))
+		check(cx, p);
 
 	if (!conf::dry())
 		do_create_directories(cx, p);

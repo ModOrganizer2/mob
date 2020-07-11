@@ -8,8 +8,6 @@ class task;
 class command
 {
 public:
-	virtual ~command() = default;
-
 	struct common_options
 	{
 		bool dry = false;
@@ -23,9 +21,15 @@ public:
 		std::string prefix;
 	};
 
-	static common_options common;
+	struct meta_t
+	{
+		std::string name, description;
+	};
 
+	static common_options common;
 	static clipp::group common_options_group();
+
+	virtual ~command() = default;
 
 	void force_exit_code(int code);
 	void force_pick();
@@ -39,11 +43,14 @@ public:
 
 	const std::vector<fs::path>& inis() const;
 
+	virtual meta_t meta() const = 0;
+
 protected:
 	enum flags
 	{
 		noflags           = 0x00,
 		requires_options  = 0x01,
+		handle_sigint     = 0x02
 	};
 
 	bool picked_;
@@ -73,6 +80,7 @@ private:
 class version_command : public command
 {
 public:
+	meta_t meta() const override;
 
 protected:
 	clipp::group do_group() override;
@@ -83,10 +91,15 @@ protected:
 class help_command : public command
 {
 public:
+	meta_t meta() const override;
+	void set_commands(const std::vector<std::shared_ptr<command>>& v);
 
 protected:
 	clipp::group do_group() override;
 	int do_run() override;
+
+private:
+	std::string commands_;
 };
 
 
@@ -94,6 +107,7 @@ class options_command : public command
 {
 public:
 	options_command();
+	meta_t meta() const override;
 
 protected:
 	clipp::group do_group() override;
@@ -106,6 +120,7 @@ class build_command : public command
 {
 public:
 	build_command();
+	meta_t meta() const override;
 
 protected:
 	void convert_cl_to_conf() override;
@@ -134,6 +149,7 @@ private:
 class list_command : public command
 {
 public:
+	meta_t meta() const override;
 
 protected:
 	clipp::group do_group() override;
@@ -152,6 +168,7 @@ class release_command : public command
 {
 public:
 	release_command();
+	meta_t meta() const override;
 
 	void make_bin();
 	void make_pdbs();
@@ -191,6 +208,7 @@ class git_command : public command
 {
 public:
 	git_command();
+	meta_t meta() const override;
 
 protected:
 	clipp::group do_group() override;
@@ -233,6 +251,7 @@ class cmake_command : public command
 {
 public:
 	cmake_command();
+	meta_t meta() const override;
 
 protected:
 	clipp::group do_group() override;
@@ -251,11 +270,44 @@ private:
 class inis_command : public command
 {
 public:
+	meta_t meta() const override;
 
 protected:
 	clipp::group do_group() override;
 	int do_run() override;
 	std::string do_doc() override;
+};
+
+
+class tx_command : public command
+{
+public:
+	tx_command();
+	meta_t meta() const override;
+
+protected:
+	clipp::group do_group() override;
+	int do_run() override;
+	std::string do_doc() override;
+
+private:
+	enum class modes
+	{
+		none = 0,
+		get,
+		build
+	};
+
+	modes mode_ = modes::none;
+	int min_ = -1;
+	std::string key_;
+	std::string url_;
+	bool force_ = false;
+	std::string path_;
+	std::string dest_;
+
+	void do_get();
+	void do_build();
 };
 
 }	// namespace

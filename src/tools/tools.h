@@ -558,4 +558,67 @@ private:
 	fs::path file_;
 };
 
+
+class transifex : public basic_process_runner
+{
+public:
+	enum ops
+	{
+		init = 1,
+		config,
+		pull
+	};
+
+	static fs::path binary();
+
+
+	transifex(ops op);
+
+	transifex& root(const fs::path& p);
+	transifex& api_key(const std::string& key);
+	transifex& url(const mob::url& u);
+	transifex& minimum(int percent);
+	transifex& stdout_level(context::level lv);
+	transifex& force(bool b);
+
+protected:
+	void do_run() override;
+
+private:
+	ops op_;
+	context::level stdout_;
+	fs::path root_;
+	std::string key_;
+	mob::url url_;
+	int min_;
+	bool force_;
+
+	void do_init();
+	void do_config();
+	void do_pull();
+};
+
+
+class lrelease : public basic_process_runner
+{
+public:
+	static fs::path binary();
+
+	lrelease();
+
+	lrelease& project(const std::string& name);
+	lrelease& add_source(const fs::path& ts_file);
+	lrelease& out(const fs::path& dir);
+
+	fs::path qm_file() const;
+
+protected:
+	void do_run() override;
+
+private:
+	std::string project_;
+	std::vector<fs::path> sources_;
+	fs::path out_;
+};
+
 }	// namespace

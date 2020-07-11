@@ -164,9 +164,10 @@ class process
 public:
 	enum flags_t
 	{
-		noflags                = 0x00,
-		allow_failure          = 0x01,
-		terminate_on_interrupt = 0x02
+		noflags                  = 0x00,
+		allow_failure            = 0x01,
+		terminate_on_interrupt   = 0x02,
+		ignore_output_on_success = 0x04
 	};
 
 	enum arg_flags
@@ -261,6 +262,8 @@ public:
 	process& flags(flags_t f);
 	flags_t flags() const;
 
+	process& success_exit_codes(std::set<int> v);
+
 	template <class T, class=std::enable_if_t<!std::is_same_v<T, arg_flags>>>
 	process& arg(const T& value, arg_flags f=noargflags)
 	{
@@ -338,6 +341,7 @@ private:
 	bool unicode_;
 	int chcp_;
 	flags_t flags_;
+	std::set<int> success_;
 	stream stdout_;
 	stream stderr_;
 	mob::env env_;
@@ -371,6 +375,7 @@ private:
 	std::string arg_to_string(const std::string& s, arg_flags f);
 	std::string arg_to_string(const fs::path& p, arg_flags f);
 	std::string arg_to_string(const url& u, arg_flags f);
+	std::string arg_to_string(int i, arg_flags f);
 };
 
 
