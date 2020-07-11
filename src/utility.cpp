@@ -436,6 +436,34 @@ std::string pad_left(std::string s, std::size_t n, char c)
 }
 
 
+std::string table(
+	const std::vector<std::pair<std::string, std::string>>& v,
+	std::size_t indent, std::size_t spacing)
+{
+	std::size_t longest = 0;
+
+	for (auto&& p : v)
+		longest = std::max(longest, p.first.size());
+
+	std::string s;
+
+	for (auto&& p : v)
+	{
+		if (!s.empty())
+			s += "\n";
+
+		s +=
+			std::string(indent, ' ') +
+			pad_right(p.first, longest) + " " +
+			std::string(spacing, ' ') +
+			p.second;
+	}
+
+	return s;
+
+}
+
+
 file_deleter::file_deleter(const context& cx, fs::path p)
 	: cx_(cx), p_(std::move(p)), delete_(true)
 {
@@ -705,7 +733,9 @@ std::optional<std::string> to_multibyte(UINT to, std::wstring_view ws)
 	if (ws.empty())
 		return s;
 
-	s.resize(static_cast<std::size_t>(ws.size() * 1.5));
+
+	s.resize(static_cast<std::size_t>(
+		static_cast<double>(ws.size()) * 1.5));
 
 	for (int t=0; t<3; ++t)
 	{

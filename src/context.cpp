@@ -117,7 +117,7 @@ std::string_view timestamp_string()
 	using namespace std::chrono;
 
 	const auto ms = duration_cast<milliseconds>(timestamp());
-	const auto frac = ms.count() / 1000.0;
+	const auto frac = static_cast<float>(ms.count()) / 1000.0;
 
 	const auto r = std::to_chars(
 		std::begin(buffer), std::end(buffer), frac,

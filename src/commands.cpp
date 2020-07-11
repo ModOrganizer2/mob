@@ -248,6 +248,15 @@ const std::vector<fs::path>& command::inis() const
 }
 
 
+command::meta_t version_command::meta() const
+{
+	return
+	{
+		"version",
+		"shows the version"
+	};
+}
+
 clipp::group version_command::do_group()
 {
 	return clipp::group(
@@ -260,6 +269,25 @@ int version_command::do_run()
 	return 0;
 }
 
+
+command::meta_t help_command::meta() const
+{
+	return
+	{
+		"help",
+		"shows this message"
+	};
+}
+
+void help_command::set_commands(const std::vector<std::shared_ptr<command>>& v)
+{
+	std::vector<std::pair<std::string, std::string>> s;
+
+	for (auto&& c : v)
+		s.push_back({c->meta().name, c->meta().description});
+
+	commands_ = table(s, 4, 3);
+}
 
 clipp::group help_command::do_group()
 {
@@ -276,15 +304,7 @@ int help_command::do_run()
 
 	help(doc,
 		"Commands:\n"
-		"    help       shows this message\n"
-		"    version    shows the version\n"
-		"    list       lists available tasks\n"
-		"    options    lists all options and their values from the inis\n"
-		"    build      builds tasks\n"
-		"    release    creates a release or a devbuild\n"
-		"    git        manages the git repos\n"
-		"    cmake      runs cmake in a directory\n"
-		"    inis       lists the INIs used by mob (debug)\n"
+		+ commands_ +
 		"\n\n"
 		"Invoking `mob -d some/prefix build` builds everything. Do \n"
 		"`mob build <task name>...` to build specific tasks. See\n"
@@ -308,6 +328,15 @@ int help_command::do_run()
 options_command::options_command()
 	: command(requires_options)
 {
+}
+
+command::meta_t options_command::meta() const
+{
+	return
+	{
+		"options",
+		"lists all options and their values from the inis"
+	};
 }
 
 clipp::group options_command::do_group()
@@ -335,6 +364,15 @@ std::string options_command::do_doc()
 build_command::build_command()
 	: command(requires_options)
 {
+}
+
+command::meta_t build_command::meta() const
+{
+	return
+	{
+		"build",
+		"builds tasks"
+	};
 }
 
 clipp::group build_command::do_group()
@@ -527,6 +565,15 @@ void build_command::terminate_msbuild()
 }
 
 
+command::meta_t list_command::meta() const
+{
+	return
+	{
+		"list",
+		"lists available tasks"
+	};
+}
+
 clipp::group list_command::do_group()
 {
 	return clipp::group(
@@ -592,6 +639,15 @@ std::string list_command::do_doc()
 release_command::release_command()
 	: command(requires_options)
 {
+}
+
+command::meta_t release_command::meta() const
+{
+	return
+	{
+		"release",
+		"creates a release or a devbuild"
+	};
 }
 
 void release_command::make_bin()
@@ -933,6 +989,15 @@ git_command::git_command()
 {
 }
 
+command::meta_t git_command::meta() const
+{
+	return
+	{
+		"git",
+		"manages the git repos"
+	};
+}
+
 clipp::group git_command::do_group()
 {
 	return clipp::group(
@@ -1162,6 +1227,15 @@ cmake_command::cmake_command()
 {
 }
 
+command::meta_t cmake_command::meta() const
+{
+	return
+	{
+		"cmake",
+		"runs cmake in a directory"
+	};
+}
+
 clipp::group cmake_command::do_group()
 {
 	return clipp::group(
@@ -1221,6 +1295,15 @@ std::string cmake_command::do_doc()
 }
 
 
+command::meta_t inis_command::meta() const
+{
+	return
+	{
+		"inis",
+		"lists the INIs used by mob"
+	};
+}
+
 clipp::group inis_command::do_group()
 {
 	return clipp::group(
@@ -1239,6 +1322,37 @@ int inis_command::do_run()
 std::string inis_command::do_doc()
 {
 	return "Shows which INIs are found.";
+}
+
+
+
+command::meta_t tx_command::meta() const
+{
+	return
+	{
+		"tx",
+		"manages transifex translations"
+	};
+}
+
+clipp::group tx_command::do_group()
+{
+	return clipp::group(
+		clipp::command("tx").set(picked_),
+
+		(clipp::option("-h", "--help") >> help_)
+			% ("shows this message")
+	);
+}
+
+int tx_command::do_run()
+{
+	return prepare_options(true);
+}
+
+std::string tx_command::do_doc()
+{
+	return "";
 }
 
 }	// namespace

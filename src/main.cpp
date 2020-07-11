@@ -25,9 +25,11 @@ std::shared_ptr<command> handle_command_line(const std::vector<std::string>& arg
 		std::make_unique<release_command>(),
 		std::make_unique<git_command>(),
 		std::make_unique<cmake_command>(),
-		std::make_unique<inis_command>()
+		std::make_unique<inis_command>(),
+		std::make_unique<tx_command>()
 	};
 
+	help->set_commands(commands);
 
 	std::vector<clipp::group> command_groups;
 	for (auto& c : commands)
