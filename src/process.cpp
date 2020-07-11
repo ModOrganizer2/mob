@@ -257,6 +257,7 @@ process::process() :
 	cx_(&gcx()), unicode_(false), chcp_(-1), flags_(process::noflags),
 	stdout_(context::level::trace), stderr_(context::level::error), code_(0)
 {
+	success_.insert(0);
 }
 
 process::~process()
@@ -396,6 +397,12 @@ process& process::flags(flags_t f)
 process::flags_t process::flags() const
 {
 	return flags_;
+}
+
+process& process::success_exit_codes(std::set<int> v)
+{
+	success_ = v;
+	return *this;
 }
 
 process& process::env(const mob::env& e)
@@ -663,7 +670,9 @@ void process::read_pipe(
 						return;
 				}
 
-				cx_->log_string(f.r, f.lv, f.line);
+				if (!is_set(flags_, ignore_output_on_success))
+					cx_->log_string(f.r, f.lv, f.line);
+
 				logs_[f.lv].emplace_back(std::move(line));
 			});
 
@@ -706,16 +715,23 @@ void process::on_completed()
 	}
 
 	// success
-	if (code_ == 0)
+	if (success_.contains(static_cast<int>(code_)))
 	{
+		const bool ignore_output = is_set(flags_, ignore_output_on_success);
 		const auto& warnings = logs_[context::level::warning];
 		const auto& errors = logs_[context::level::error];
 
-		if (!warnings.empty() || !errors.empty())
+		if (ignore_output || (warnings.empty() && errors.empty()))
+		{
+			cx_->trace(context::cmd,
+				"process exit code is {} (considered success)", code_);
+		}
+		else
 		{
 			cx_->warning(
 				context::cmd,
-				"process exit code is 0, but stderr had something");
+				"process exit code is {} (considered success), "
+				"but stderr had something", code_);
 
 			cx_->warning(context::cmd, "process was: {}", make_cmd());
 			cx_->warning(context::cmd, "stderr:");
@@ -725,10 +741,6 @@ void process::on_completed()
 
 			for (auto&& line : errors)
 				cx_->warning(context::std_err, "        {}", line);
-		}
-		else
-		{
-			cx_->trace(context::cmd, "process exit code is 0");
 		}
 
 		return;
@@ -938,6 +950,11 @@ std::string process::arg_to_string(const url& u, arg_flags f)
 		return "\"" + u.string() + "\"";
 	else
 		return u.string();
+}
+
+std::string process::arg_to_string(int i, arg_flags)
+{
+	return std::to_string(i);
 }
 
 

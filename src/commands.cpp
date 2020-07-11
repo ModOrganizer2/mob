@@ -1103,18 +1103,19 @@ std::string git_command::do_doc()
 		"All the commands will go through all modorganizer repos, plus usvfs\n"
 		"and NCC.\n"
 		"\n"
+		"Commands:\n"
 		"set-remotes\n"
-		"For each repo, this first sets the username and email. Then, it\n"
-		"will rename the remote 'origin' to 'upstream' and create a new\n"
-		"remote 'origin' with the given information. If the remote\n"
-		"'upstream' already exists in a repo, nothing happens.\n"
+		"  For each repo, this first sets the username and email. Then, it\n"
+		"  will rename the remote 'origin' to 'upstream' and create a new\n"
+		"  remote 'origin' with the given information. If the remote\n"
+		"  'upstream' already exists in a repo, nothing happens.\n"
 		"\n"
 		"add-remote\n"
-		"For each repo, adds a new remote with the given information. If a\n"
-		"remote with the same name already exists, nothing happens.\n"
+		"  For each repo, adds a new remote with the given information. If a\n"
+		"  remote with the same name already exists, nothing happens.\n"
 		"\n"
 		"ignore-ts\n"
-		"Toggles the --assume-changed status of all .ts files in all repos.";
+		"  Toggles the --assume-changed status of all .ts files in all repos.";
 }
 
 void git_command::do_set_remotes()
@@ -1325,6 +1326,10 @@ std::string inis_command::do_doc()
 }
 
 
+tx_command::tx_command()
+	: command(requires_options)
+{
+}
 
 command::meta_t tx_command::meta() const
 {
@@ -1341,18 +1346,114 @@ clipp::group tx_command::do_group()
 		clipp::command("tx").set(picked_),
 
 		(clipp::option("-h", "--help") >> help_)
-			% ("shows this message")
+			% ("shows this message"),
+
+		"get" %
+		(clipp::command("get").set(mode_, modes::get),
+			(clipp::option("-m", "--minimum")
+				& clipp::value("PERCENT") >> min_)
+				% "minimum translation threshold to download [0-100]",
+
+			(clipp::option("-k", "--key")
+				& clipp::value("APIKEY") >> key_)
+				% "API key",
+
+			(clipp::option("-f", "--force").set(force_)
+				% "don't check timestamps, re-download all translation files"),
+
+			(clipp::option("-u", "--url")
+				& clipp::value("URL") >> url_)
+				% "project URL",
+
+			(clipp::value("path") >> path_)
+				% "path that will contain the .tx directory"
+		)
 	);
 }
 
 int tx_command::do_run()
 {
-	return prepare_options(true);
+	switch (mode_)
+	{
+		case modes::get:
+			do_get();
+			break;
+
+		case modes::none:
+		default:
+			u8cerr << "bad tx mode " << static_cast<int>(mode_) << "\n";
+			throw bailed();
+	}
+
+	return 0;
 }
 
 std::string tx_command::do_doc()
 {
-	return "";
+	return
+		"Values for --key, --minimum and --url will be taken from the INI\n"
+		"file if not specified.\n"
+		"\n"
+		"Commands:\n"
+		"get\n"
+		"  Initializes a Transifex project in the given directory if\n"
+		"  necessary and pulls all the translation files.";
+}
+
+void tx_command::do_get()
+{
+	if (min_ < 0)
+	{
+		const auto s = conf::get_global("transifex", "minimum");
+
+		try
+		{
+			min_ = std::stoi(s);
+		}
+		catch(std::exception&)
+		{
+			gcx().bail_out(context::generic,
+				"bad transifex minimum percentage '{}'", s);
+		}
+	}
+
+	if (key_.empty())
+		key_ = conf::get_global("transifex", "key");
+
+	if (url_.empty())
+		url_ = conf::get_global("transifex", "url");
+
+	if (key_.empty() && !this_env::get_opt("TX_TOKEN"))
+	{
+		u8cout <<
+			"(no key was in the INI, --key wasn't given and TX_TOKEN env\n"
+			"variable doesn't exist, this will probably fail)\n\n";
+	}
+
+
+	context cxcopy = gcx();
+
+	u8cout << "initializing\n";
+	transifex(transifex::init)
+		.root(path_)
+		.run(cxcopy);
+
+	u8cout << "configuring\n";
+	transifex(transifex::config)
+		.stdout_level(context::level::info)
+		.root(path_)
+		.api_key(key_)
+		.url(url_)
+		.run(cxcopy);
+
+	u8cout << "pulling\n";
+	transifex(transifex::pull)
+		.stdout_level(context::level::info)
+		.root(path_)
+		.api_key(key_)
+		.minimum(min_)
+		.force(force_)
+		.run(cxcopy);
 }
 
 }	// namespace

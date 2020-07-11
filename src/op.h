@@ -22,7 +22,7 @@ MOB_ENUM_OPERATORS(flags);
 void touch(const context& cx, const fs::path& p);
 
 void create_directories(
-	const context& cx, const fs::path& p);
+	const context& cx, const fs::path& p, flags f=noflags);
 
 void delete_directory(
 	const context& cx, const fs::path& p, flags f=noflags);

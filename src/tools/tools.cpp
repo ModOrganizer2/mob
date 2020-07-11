@@ -256,4 +256,132 @@ void pip_install::do_run()
 	execute_and_join();
 }
 
+
+transifex::transifex(ops o) :
+	basic_process_runner("transifex"), op_(o),
+	stdout_(context::level::trace), min_(100), force_(false)
+{
+}
+
+fs::path transifex::binary()
+{
+	return conf::tool_by_name("tx");
+}
+
+transifex& transifex::root(const fs::path& p)
+{
+	root_ = p;
+	return *this;
+}
+
+transifex& transifex::api_key(const std::string& key)
+{
+	key_ = key;
+	return *this;
+}
+
+transifex& transifex::url(const mob::url& u)
+{
+	url_ = u;
+	return *this;
+}
+
+transifex& transifex::minimum(int percent)
+{
+	min_ = percent;
+	return *this;
+}
+
+transifex& transifex::stdout_level(context::level lv)
+{
+	stdout_ = lv;
+	return *this;
+}
+
+transifex& transifex::force(bool b)
+{
+	force_ = b;
+	return *this;
+}
+
+void transifex::do_run()
+{
+	switch (op_)
+	{
+		case init:
+			do_init();
+			break;
+
+		case config:
+			do_config();
+			break;
+
+		case pull:
+			do_pull();
+			break;
+
+		default:
+			cx().bail_out(context::generic, "tx unknown op {}", op_);
+	}
+}
+
+void transifex::do_init()
+{
+	op::create_directories(cx(), root_, op::unsafe);
+
+	// exit code is 2 when the directory already contains a .tx
+
+	process_ = process()
+		.binary(binary())
+		.success_exit_codes({0, 2})
+		.flags(process::ignore_output_on_success)
+		.arg("init")
+		.arg("--no-interactive")
+		.cwd(root_);
+
+	execute_and_join();
+}
+
+void transifex::do_config()
+{
+	if (url_.empty())
+		cx().bail_out(context::generic, "missing transifex url");
+
+	op::create_directories(cx(), root_, op::unsafe);
+
+	process_ = process()
+		.binary(binary())
+		.stdout_level(stdout_)
+		.arg("config")
+		.arg("mapping-remote")
+		.arg(url_)
+		.env(this_env::get()
+			.set("TX_TOKEN", key_))
+		.cwd(root_);
+
+	execute_and_join();
+}
+
+void transifex::do_pull()
+{
+	op::create_directories(cx(), root_, op::unsafe);
+
+	process_ = process()
+		.binary(binary())
+		.stdout_level(stdout_)
+		.arg("pull")
+		.arg("--all")
+		.arg("--parallel")
+		.arg("--no-interactive")
+		.arg("--minimum-perc", min_)
+		.env(this_env::get()
+			.set("TX_TOKEN", key_))
+		.cwd(root_);
+
+	if (force_)
+		process_.arg("--force");
+
+	execute_and_join();
+}
+
 }	// namespace

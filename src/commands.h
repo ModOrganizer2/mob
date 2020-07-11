@@ -281,12 +281,29 @@ protected:
 class tx_command : public command
 {
 public:
+	tx_command();
 	meta_t meta() const override;
 
 protected:
 	clipp::group do_group() override;
 	int do_run() override;
 	std::string do_doc() override;
+
+private:
+	enum class modes
+	{
+		none = 0,
+		get
+	};
+
+	modes mode_ = modes::none;
+	int min_ = -1;
+	std::string key_;
+	std::string url_;
+	bool force_ = false;
+	std::string path_;
+
+	void do_get();
 };
 
 }	// namespace
