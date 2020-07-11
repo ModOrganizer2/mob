@@ -186,12 +186,14 @@ public:
 	git& url(const mob::url& u);
 	git& branch(const std::string& name);
 	git& root(const fs::path& dir);
+	const fs::path& root() const;
 	git& credentials(const std::string& username, const std::string& email);
 	git& submodule_name(const std::string& name);
 	const std::string& submodule_name() const;
 	git& ignore_ts_on_clone(bool b);
 	git& revert_ts_on_pull(bool b);
 	git& shallow(bool b);
+	bool is_tracked(const fs::path& relative_file);
 
 	git& remote(
 		std::string org, std::string key,
@@ -234,7 +236,6 @@ private:
 	void add_remote(const std::string& name, const std::string& url);
 	void set_remote_push(const std::string& remote, const std::string& url);
 	void set_assume_unchanged(const fs::path& relative_file, bool on);
-	bool is_tracked(const fs::path& relative_file);
 	bool is_repo();
 	bool has_uncommitted_changes();
 	bool has_stashed_changes();

@@ -125,6 +125,11 @@ git& git::root(const fs::path& dir)
 	return *this;
 }
 
+const fs::path& git::root() const
+{
+	return root_;
+}
+
 git& git::credentials(const std::string& username, const std::string& email)
 {
 	creds_username_ = username;
@@ -377,6 +382,16 @@ void git::do_revert_ts()
 {
 	for_each_ts(root_, [&](auto&& p)
 	{
+		const auto rp = fs::relative(p, root_);
+
+		if (!is_tracked(rp))
+		{
+			cx().debug(context::generic,
+				"won't try to revert ts file '{}', not tracked", rp);
+
+			return;
+		}
+
 		process_ = make_process()
 			.stderr_level(context::level::trace)
 			.arg("checkout")

@@ -991,7 +991,7 @@ void init_options(
 			{
 				if (po.task == "_override")
 				{
-					conf::set_for_task("override", po.section, po.key, po.value);
+					conf::set_for_task("_override", po.section, po.key, po.value);
 				}
 				else
 				{

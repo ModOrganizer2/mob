@@ -484,10 +484,16 @@ int build_command::do_run()
 				{
 					for (auto&& tp : t.tps)
 					{
+						const auto start_ms = static_cast<double>(
+							duration_cast<milliseconds>(tp.start).count());
+
+						const auto end_ms = static_cast<double>(
+							duration_cast<milliseconds>(tp.end).count());
+
 						out
 							<< inst.instrumentable_name() << "\t"
-							<< (duration_cast<milliseconds>(tp.start).count() / 1000.0) << "\t"
-							<< (duration_cast<milliseconds>(tp.end).count() / 1000.0) << "\t"
+							<< (start_ms / 1000.0) << "\t"
+							<< (end_ms / 1000.0) << "\t"
 							<< t.name << "\n";
 					}
 				}
