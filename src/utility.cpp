@@ -322,7 +322,16 @@ bool glob_match(const std::string& pattern, const std::string& s)
 {
 	try
 	{
-		return std::regex_match(s, std::regex(replace_all(pattern, "*", ".*")));
+		std::string fixed_pattern = pattern;
+		fixed_pattern = replace_all(fixed_pattern, "*", ".*");
+		fixed_pattern = replace_all(fixed_pattern, "_", "-");
+
+		std::string fixed_string = s;
+		fixed_string = replace_all(fixed_string, "_", "-");
+
+		std::regex re(fixed_pattern, std::regex::icase);
+
+		return std::regex_match(fixed_string, re);
 	}
 	catch(std::exception&)
 	{

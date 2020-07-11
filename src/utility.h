@@ -310,6 +310,9 @@ url make_prebuilt_url(const std::string& filename);
 url make_appveyor_artifact_url(
 	arch a, const std::string& project, const std::string& filename);
 
+// case insensitive, underscores and dashes are equivalent; gets converted to
+// a regex where * becomes .*
+//
 bool glob_match(const std::string& pattern, const std::string& s);
 
 std::string replace_all(

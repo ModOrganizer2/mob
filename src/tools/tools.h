@@ -598,4 +598,27 @@ private:
 	void do_pull();
 };
 
+
+class lrelease : public basic_process_runner
+{
+public:
+	static fs::path binary();
+
+	lrelease();
+
+	lrelease& project(const std::string& name);
+	lrelease& add_source(const fs::path& ts_file);
+	lrelease& out(const fs::path& dir);
+
+	fs::path qm_file() const;
+
+protected:
+	void do_run() override;
+
+private:
+	std::string project_;
+	std::vector<fs::path> sources_;
+	fs::path out_;
+};
+
 }	// namespace

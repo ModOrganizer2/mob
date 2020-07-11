@@ -384,4 +384,73 @@ void transifex::do_pull()
 	execute_and_join();
 }
 
+
+lrelease::lrelease()
+	: basic_process_runner("lrelease")
+{
+}
+
+fs::path lrelease::binary()
+{
+	return conf::path_by_name("qt_bin") / conf::tool_by_name("lrelease");
+}
+
+lrelease& lrelease::project(const std::string& name)
+{
+	project_ = name;
+	return *this;
+}
+
+lrelease& lrelease::add_source(const fs::path& ts_file)
+{
+	sources_.push_back(ts_file);
+	return *this;
+}
+
+lrelease& lrelease::out(const fs::path& dir)
+{
+	out_ = dir;
+	return *this;
+}
+
+fs::path lrelease::qm_file() const
+{
+	if (sources_.empty())
+		cx().bail_out(context::generic, "lrelease: no sources");
+
+	const auto lang = trim_copy(path_to_utf8(sources_[0].stem()));
+	if (lang.empty())
+	{
+		cx().bail_out(context::generic,
+			"lrelease: bad file name '{}'", sources_[0]);
+	}
+
+	return project_ + "_" + lang + ".qm";
+}
+
+void lrelease::do_run()
+{
+	const auto qm = qm_file();
+
+	process_ = process()
+		.binary(binary())
+		.arg("-silent")
+		.stderr_filter([](auto&& f)
+		{
+			if (f.line.find("dropping duplicate") != -1)
+				f.lv = context::level::debug;
+			else if (f.line.find("try -verbose") != -1)
+				f.lv = context::level::debug;
+		});
+
+
+	for (auto&& s : sources_)
+		process_.arg(s);
+
+	process_
+		.arg("-qm", (out_ / qm));
+
+	execute_and_join();
+}
+
 }	// namespace

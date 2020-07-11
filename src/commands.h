@@ -50,6 +50,7 @@ protected:
 	{
 		noflags           = 0x00,
 		requires_options  = 0x01,
+		handle_sigint     = 0x02
 	};
 
 	bool picked_;
@@ -293,7 +294,8 @@ private:
 	enum class modes
 	{
 		none = 0,
-		get
+		get,
+		build
 	};
 
 	modes mode_ = modes::none;
@@ -302,8 +304,10 @@ private:
 	std::string url_;
 	bool force_ = false;
 	std::string path_;
+	std::string dest_;
 
 	void do_get();
+	void do_build();
 };
 
 }	// namespace

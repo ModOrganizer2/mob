@@ -276,7 +276,15 @@ private:
 class modorganizer : public basic_task<modorganizer>
 {
 public:
-	modorganizer(std::string name);
+	enum flags
+	{
+		noflags  = 0x00,
+		gamebryo = 0x01
+	};
+
+	modorganizer(std::string name, flags f=noflags);
+	modorganizer(std::vector<std::string> names, flags f=noflags);
+	modorganizer(std::vector<const char*> names, flags f=noflags);
 
 	static std::string version();
 	static bool prebuilt();
@@ -288,6 +296,7 @@ public:
 		const fs::path& root, cmake::ops o=cmake::generate);
 
 	bool is_super() const override;
+	bool is_gamebryo_plugin() const;
 
 protected:
 	void do_clean(clean c) override;
@@ -296,6 +305,7 @@ protected:
 
 private:
 	std::string repo_;
+	flags flags_;
 
 	cmake create_this_cmake_tool(cmake::ops o=cmake::generate);
 	msbuild create_this_msbuild_tool(msbuild::ops o=msbuild::build);

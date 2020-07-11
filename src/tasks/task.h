@@ -213,6 +213,15 @@ public:
 		return *this;
 	}
 
+	template <class Task, class T, class... Args>
+	parallel_tasks& add_task(std::initializer_list<T> il, Args&&... args)
+	{
+		children_.push_back(
+			std::make_unique<Task>(std::move(il), std::forward<Args>(args)...));
+
+		return *this;
+	}
+
 	fs::path get_source_path() const override
 	{
 		return {};

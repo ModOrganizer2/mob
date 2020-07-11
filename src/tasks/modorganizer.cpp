@@ -17,11 +17,21 @@ std::string make_short_name(const std::string& name)
 }
 
 
-modorganizer::modorganizer(std::string long_name)
-	: basic_task(make_short_name(long_name)), repo_(long_name)
+modorganizer::modorganizer(std::string long_name, flags f)
+	: modorganizer(std::vector<std::string>{long_name}, f)
 {
-	if (long_name != name())
-		add_name(long_name);
+}
+
+modorganizer::modorganizer(std::vector<const char*> names, flags f)
+	: modorganizer(std::vector<std::string>(names.begin(), names.end()), f)
+{
+}
+
+modorganizer::modorganizer(std::vector<std::string> names, flags f)
+	: basic_task(make_short_name(names[0])), repo_(names[0]), flags_(f)
+{
+	for (auto&& n : names)
+		add_name(std::move(n));
 }
 
 std::string modorganizer::version()
@@ -37,6 +47,11 @@ bool modorganizer::prebuilt()
 bool modorganizer::is_super() const
 {
 	return true;
+}
+
+bool modorganizer::is_gamebryo_plugin() const
+{
+	return is_set(flags_, gamebryo);
 }
 
 fs::path modorganizer::source_path()

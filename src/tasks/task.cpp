@@ -330,6 +330,10 @@ const context& task::cx() const
 
 void task::add_name(std::string s)
 {
+	auto itor = std::find(names_.begin(), names_.end(), s);
+	if (itor != names_.end())
+		return;
+
 	names_.push_back(s);
 }
 

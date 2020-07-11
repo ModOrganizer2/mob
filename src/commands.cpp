@@ -9,6 +9,10 @@
 namespace mob
 {
 
+// in main.cpp
+void set_sigint_handler();
+
+
 std::string version()
 {
 	return "mob 4.0";
@@ -219,6 +223,9 @@ int command::run()
 			return r;
 	}
 
+	if (flags_ & handle_sigint)
+		set_sigint_handler();
+
 	const auto r = do_run();
 
 	if (code_)
@@ -362,7 +369,7 @@ std::string options_command::do_doc()
 
 
 build_command::build_command()
-	: command(requires_options)
+	: command(flags(requires_options | handle_sigint))
 {
 }
 
@@ -1368,6 +1375,18 @@ clipp::group tx_command::do_group()
 			(clipp::value("path") >> path_)
 				% "path that will contain the .tx directory"
 		)
+
+		|
+
+		"build" %
+		(clipp::command("build").set(mode_, modes::build),
+
+			(clipp::value("source") >> path_)
+				% "path that contains the translation directories",
+
+			(clipp::value("destination") >> dest_)
+				% "path that will contain the .qm files"
+		)
 	);
 }
 
@@ -1377,6 +1396,10 @@ int tx_command::do_run()
 	{
 		case modes::get:
 			do_get();
+			break;
+
+		case modes::build:
+			do_build();
 			break;
 
 		case modes::none:
@@ -1397,7 +1420,12 @@ std::string tx_command::do_doc()
 		"Commands:\n"
 		"get\n"
 		"  Initializes a Transifex project in the given directory if\n"
-		"  necessary and pulls all the translation files.";
+		"  necessary and pulls all the translation files.\n"
+		"\n"
+		"build\n"
+		"  Builds all .qm files. The path can either be the transifex\n"
+		"  project (where .tx is) or the `translations` directory (where the\n"
+		"  individual translation directories are).";
 }
 
 void tx_command::do_get()
@@ -1421,7 +1449,12 @@ void tx_command::do_get()
 		key_ = conf::get_global("transifex", "key");
 
 	if (url_.empty())
-		url_ = conf::get_global("transifex", "url");
+	{
+		url_ =
+			conf::get_global("transifex", "url") + "/" +
+			conf::get_global("transifex", "team") + "/" +
+			conf::get_global("transifex", "project");
+	}
 
 	if (key_.empty() && !this_env::get_opt("TX_TOKEN"))
 	{
@@ -1454,6 +1487,107 @@ void tx_command::do_get()
 		.minimum(min_)
 		.force(force_)
 		.run(cxcopy);
+}
+
+void tx_command::do_build()
+{
+	fs::path root = path_;
+	if (fs::exists(root / ".tx") && fs::exists(root / "translations"))
+		root = root / "translations";
+
+	fs::path dest = dest_;
+	op::create_directories(gcx(), dest, op::unsafe);
+
+	std::set<fs::path> warned;
+
+	for (auto e : fs::directory_iterator(root))
+	{
+		if (!e.is_directory())
+			continue;
+
+		const auto dir = path_to_utf8(e.path().filename());
+		const auto dir_cs = split(dir, ".");
+		if (dir_cs.size() != 2)
+		{
+			u8cerr << "bad directory name '" << dir << "'; skipping\n";
+			continue;
+		}
+
+		const auto project = trim_copy(dir_cs[1]);
+		if (project.empty())
+		{
+			u8cerr << "bad directory name '" << dir << "'; skipping\n";
+			continue;
+		}
+
+		u8cout << project << "\n";
+
+		const bool is_gamebryo_plugin = [&]
+		{
+			auto tasks = find_tasks(project);
+			if (tasks.empty())
+			{
+				u8cerr
+					<< "directory '" << dir << "' was parsed as project "
+					<< "'" << project << "', but there's no task with this "
+					<< "name\n";
+
+				return false;
+			}
+
+			const task& t = *tasks[0];
+
+			if (!t.is_super())
+				return false;
+
+			const auto& mo_task = static_cast<const modorganizer&>(t);
+			return mo_task.is_gamebryo_plugin();
+		}();
+
+
+		const fs::path gamebryo_dir =
+			conf::get_global("transifex", "project") + "." +
+			"game_gamebryo";
+
+
+		for (auto f : fs::directory_iterator(e.path()))
+		{
+			if (!f.is_regular_file())
+				continue;
+
+			lrelease lr;
+			lr
+				.project(project)
+				.add_source(f.path())
+				.out(dest_);
+
+			if (is_gamebryo_plugin)
+			{
+				const auto gb_f = root / gamebryo_dir / f.path().filename();
+
+				if (fs::exists(gb_f))
+				{
+					lr.add_source(gb_f);
+				}
+				else
+				{
+					if (!warned.contains(gb_f))
+					{
+						u8cerr
+							<< "this is a gamebryo plugin but there is no "
+							<< "'" << path_to_utf8(gb_f) << "'; "
+							<< "the .qm file will be missing some "
+							<< "translations (will only warn once)\n";
+
+						warned.insert(gb_f);
+					}
+				}
+			}
+
+			context cxcopy = gcx();
+			lr.run(cxcopy);
+		}
+	}
 }
 
 }	// namespace
