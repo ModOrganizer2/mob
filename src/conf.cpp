@@ -963,6 +963,41 @@ std::vector<fs::path> find_inis(
 	return map(v, [&](auto&& p){ return p.second; });
 }
 
+fs::path find_iscc()
+{
+	const auto tasks = find_tasks("installer");
+	MOB_ASSERT(tasks.size() == 1);
+
+	if (!tasks[0]->enabled())
+		return {};
+
+	const auto iscc = conf::tool_by_name("iscc");
+	if (iscc.is_absolute())
+	{
+		if (!fs::exists(iscc))
+		{
+			gcx().bail_out(context::conf,
+				"{} doesn't exist (from ini, absolute path)", iscc);
+		}
+
+		return iscc;
+	}
+
+	for (int v : {5, 6, 7, 8})
+	{
+		const fs::path inno = ::fmt::format("inno setup {}", v);
+
+		for (fs::path pf : {paths::pf_x86(), paths::pf_x64()})
+		{
+			fs::path p = pf / inno / iscc;
+			if (fs::exists(p))
+				return fs::canonical(fs::absolute(p));
+		}
+	}
+
+	gcx().bail_out(context::conf, "can't find {} anywhere", iscc);
+}
+
 void init_options(
 	const std::vector<fs::path>& inis, const std::vector<std::string>& opts)
 {
@@ -1037,19 +1072,22 @@ void init_options(
 	find_vcvars();
 	validate_qt();
 
-	if (!paths::prefix().empty())
-		make_canonical_path("prefix",           fs::current_path(), "");
+	this_env::append_to_path(conf::path_by_name("qt_bin"));
 
-	make_canonical_path("cache",            paths::prefix(), "downloads");
-	make_canonical_path("build",            paths::prefix(), "build");
-	make_canonical_path("install",          paths::prefix(), "install");
-	make_canonical_path("install_bin",      paths::install(), "bin");
-	make_canonical_path("install_libs",     paths::install(), "libs");
-	make_canonical_path("install_pdbs",     paths::install(), "pdb");
-	make_canonical_path("install_dlls",     paths::install_bin(), "dlls");
-	make_canonical_path("install_loot",     paths::install_bin(), "loot");
-	make_canonical_path("install_plugins",  paths::install_bin(), "plugins");
-	make_canonical_path("install_licenses", paths::install_bin(), "licenses");
+	if (!paths::prefix().empty())
+		make_canonical_path("prefix", fs::current_path(), "");
+
+	make_canonical_path("cache",             paths::prefix(), "downloads");
+	make_canonical_path("build",             paths::prefix(), "build");
+	make_canonical_path("install",           paths::prefix(), "install");
+	make_canonical_path("install_installer", paths::install(), "installer");
+	make_canonical_path("install_bin",       paths::install(), "bin");
+	make_canonical_path("install_libs",      paths::install(), "libs");
+	make_canonical_path("install_pdbs",      paths::install(), "pdb");
+	make_canonical_path("install_dlls",      paths::install_bin(), "dlls");
+	make_canonical_path("install_loot",      paths::install_bin(), "loot");
+	make_canonical_path("install_plugins",   paths::install_bin(), "plugins");
+	make_canonical_path("install_licenses",  paths::install_bin(), "licenses");
 
 	make_canonical_path(
 		"install_pythoncore",
@@ -1058,6 +1096,8 @@ void init_options(
 	make_canonical_path(
 		"install_stylesheets",
 		paths::install_bin(), "stylesheets");
+
+	conf::set_global("tools", "iscc", path_to_utf8(find_iscc()));
 }
 
 bool verify_options()

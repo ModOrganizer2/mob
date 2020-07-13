@@ -326,7 +326,7 @@ int help_command::do_run()
 		"be loaded, but the one in the current directory will override the\n"
 		"the other. Additional INIs can be specified with --ini, those will\n"
 		"be loaded after the two mentioned above. Use --no-default-inis to\n"
-		"only disable auto detection and only use --ini.");
+		"disable auto detection and only use --ini.");
 
 	return 0;
 }

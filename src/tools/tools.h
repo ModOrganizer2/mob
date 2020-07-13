@@ -621,4 +621,21 @@ private:
 	fs::path out_;
 };
 
+
+class iscc : public basic_process_runner
+{
+public:
+	static fs::path binary();
+
+	iscc(fs::path iss = {});
+
+	iscc& iss(const fs::path& p);
+
+protected:
+	void do_run() override;
+
+private:
+	fs::path iss_;
+};
+
 }	// namespace

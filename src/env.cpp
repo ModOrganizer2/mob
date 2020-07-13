@@ -449,6 +449,12 @@ void this_env::prepend_to_path(const fs::path& p)
 	set("PATH", path_to_utf8(p) + ";", env::prepend);
 }
 
+void this_env::append_to_path(const fs::path& p)
+{
+	gcx().trace(context::generic, "appending to PATH: {}", p);
+	set("PATH", ";" + path_to_utf8(p), env::append);
+}
+
 std::string this_env::get(const std::string& name)
 {
 	auto v = get_impl(name);

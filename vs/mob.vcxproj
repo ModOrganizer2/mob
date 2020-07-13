@@ -76,6 +76,7 @@
     <ClCompile Include="..\src\tasks\explorerpp.cpp" />
     <ClCompile Include="..\src\tasks\fmt.cpp" />
     <ClCompile Include="..\src\tasks\gtest.cpp" />
+    <ClCompile Include="..\src\tasks\installer.cpp" />
     <ClCompile Include="..\src\tasks\libbsarch.cpp" />
     <ClCompile Include="..\src\tasks\libffi.cpp" />
     <ClCompile Include="..\src\tasks\libloot.cpp" />

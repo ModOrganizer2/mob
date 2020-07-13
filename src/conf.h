@@ -98,6 +98,7 @@ struct paths
 	VALUE(build);
 
 	VALUE(install);
+	VALUE(install_installer);
 	VALUE(install_bin);
 	VALUE(install_libs);
 	VALUE(install_pdbs);

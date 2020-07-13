@@ -175,6 +175,8 @@ void add_tasks()
 		.add_task<mo>({"modorganizer-form43_checker", "form43checker"})
 		.add_task<mo>({"modorganizer-preview_dds", "ddspreview"})
 		.add_task<mo>({"modorganizer", "organizer"});
+
+	add_task<installer>();
 }
 
 
