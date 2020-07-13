@@ -918,4 +918,63 @@ std::string path_to_utf8(fs::path p)
 	return utf16_to_utf8(p.native());
 }
 
+
+
+thread_pool::thread_pool(std::size_t count)
+	: count_(std::max<std::size_t>(1, count))
+{
+	for (std::size_t i=0; i<count_; ++i)
+		threads_.emplace_back(std::make_unique<thread_info>());
+}
+
+thread_pool::~thread_pool()
+{
+	join();
+}
+
+void thread_pool::join()
+{
+	for (auto&& t : threads_)
+	{
+		if (t->thread.joinable())
+			t->thread.join();
+	}
+}
+
+void thread_pool::add(fun thread_fun)
+{
+	for (;;)
+	{
+		if (try_add(thread_fun))
+			break;
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+}
+
+bool thread_pool::try_add(fun thread_fun)
+{
+	for (auto& t : threads_)
+	{
+		if (!t->running)
+		{
+			if (t->thread.joinable())
+				t->thread.join();
+
+			t->running = true;
+			t->thread_fun = thread_fun;
+
+			t->thread = std::thread([&]
+			{
+				t->thread_fun();
+				t->running = false;
+			});
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
 }	// namespace

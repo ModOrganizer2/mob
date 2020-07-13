@@ -608,6 +608,7 @@ public:
 
 	lrelease& project(const std::string& name);
 	lrelease& add_source(const fs::path& ts_file);
+	lrelease& sources(const std::vector<fs::path>& v);
 	lrelease& out(const fs::path& dir);
 
 	fs::path qm_file() const;

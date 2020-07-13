@@ -136,6 +136,9 @@ void add_tasks()
 		.add_task<mo>({"modorganizer-bsapacker", "bsa_packer"})
 		.add_task<mo>("modorganizer-preview_bsa");
 
+	// the gamebryo flag must be set for all game plugins that inherit from
+	// the gamebryo classes; this will merge the .ts file from gamebryo with
+	// the one from the specific plugin
 	add_task<parallel_tasks>(true)
 		.add_task<mo>("modorganizer-game_oblivion", mo::gamebryo)
 		.add_task<mo>("modorganizer-game_fallout3", mo::gamebryo)
@@ -163,7 +166,8 @@ void add_tasks()
 		.add_task<mo>("modorganizer-installer_fomod_csharp")
 		.add_task<mo>("modorganizer-installer_ncc")
 		.add_task<mo>("modorganizer-bsa_extractor")
-		.add_task<mo>("modorganizer-plugin_python");
+		.add_task<mo>("modorganizer-plugin_python")
+		.add_task<translations>();
 
 	add_task<parallel_tasks>(true)
 		.add_task<mo>({"modorganizer-tool_configurator", "pycfg"})

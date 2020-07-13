@@ -407,6 +407,12 @@ lrelease& lrelease::add_source(const fs::path& ts_file)
 	return *this;
 }
 
+lrelease& lrelease::sources(const std::vector<fs::path>& v)
+{
+	sources_ = v;
+	return *this;
+}
+
 lrelease& lrelease::out(const fs::path& dir)
 {
 	out_ = dir;

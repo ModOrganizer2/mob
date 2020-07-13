@@ -590,6 +590,22 @@ private:
 };
 
 
+class translations : public basic_task<translations>
+{
+public:
+	translations();
+
+	static bool prebuilt();
+	static std::string version();
+	static fs::path source_path();
+
+protected:
+	void do_clean(clean c) override;
+	void do_fetch() override;
+	void do_build_and_install() override;
+};
+
+
 class usvfs : public basic_task<usvfs>
 {
 public:
