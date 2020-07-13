@@ -1505,97 +1505,28 @@ void tx_command::do_build()
 	if (fs::exists(root / ".tx") && fs::exists(root / "translations"))
 		root = root / "translations";
 
+	translations::projects ps(root);
+
 	fs::path dest = dest_;
 	op::create_directories(gcx(), dest, op::unsafe);
 
-	std::set<fs::path> warned;
+	for (auto&& w : ps.warnings())
+		u8cerr << w << "\n";
 
-	for (auto e : fs::directory_iterator(root))
+	thread_pool tp;
+
+	for (auto& p : ps.get())
 	{
-		if (!e.is_directory())
-			continue;
-
-		const auto dir = path_to_utf8(e.path().filename());
-		const auto dir_cs = split(dir, ".");
-		if (dir_cs.size() != 2)
+		for (auto& lg : p.langs)
 		{
-			u8cerr << "bad directory name '" << dir << "'; skipping\n";
-			continue;
-		}
-
-		const auto project = trim_copy(dir_cs[1]);
-		if (project.empty())
-		{
-			u8cerr << "bad directory name '" << dir << "'; skipping\n";
-			continue;
-		}
-
-		u8cout << project << "\n";
-
-		const bool is_gamebryo_plugin = [&]
-		{
-			auto tasks = find_tasks(project);
-			if (tasks.empty())
+			tp.add([&, cxcopy=gcx()]() mutable
 			{
-				u8cerr
-					<< "directory '" << dir << "' was parsed as project "
-					<< "'" << project << "', but there's no task with this "
-					<< "name\n";
-
-				return false;
-			}
-
-			const task& t = *tasks[0];
-
-			if (!t.is_super())
-				return false;
-
-			const auto& mo_task = static_cast<const modorganizer&>(t);
-			return mo_task.is_gamebryo_plugin();
-		}();
-
-
-		const fs::path gamebryo_dir =
-			conf::get_global("transifex", "project") + "." +
-			"game_gamebryo";
-
-
-		for (auto f : fs::directory_iterator(e.path()))
-		{
-			if (!f.is_regular_file())
-				continue;
-
-			lrelease lr;
-			lr
-				.project(project)
-				.add_source(f.path())
-				.out(dest_);
-
-			if (is_gamebryo_plugin)
-			{
-				const auto gb_f = root / gamebryo_dir / f.path().filename();
-
-				if (fs::exists(gb_f))
-				{
-					lr.add_source(gb_f);
-				}
-				else
-				{
-					if (!warned.contains(gb_f))
-					{
-						u8cerr
-							<< "this is a gamebryo plugin but there is no "
-							<< "'" << path_to_utf8(gb_f) << "'; "
-							<< "the .qm file will be missing some "
-							<< "translations (will only warn once)\n";
-
-						warned.insert(gb_f);
-					}
-				}
-			}
-
-			context cxcopy = gcx();
-			lr.run(cxcopy);
+				lrelease()
+					.project(p.name)
+					.sources(lg.ts_files)
+					.out(dest)
+					.run(cxcopy);
+			});
 		}
 	}
 }

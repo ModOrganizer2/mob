@@ -4,161 +4,140 @@
 namespace mob
 {
 
-class translation_projects
+translations::projects::lang::lang(std::string n)
+	: name(std::move(n))
 {
-public:
-	struct lang
+}
+
+translations::projects::project::project(std::string n)
+	: name(std::move(n))
+{
+}
+
+
+translations::projects::projects(fs::path root)
+	: root_(std::move(root))
+{
+	create();
+}
+
+const std::vector<translations::projects::project>&
+translations::projects::get() const
+{
+	return projects_;
+}
+
+const std::vector<std::string>& translations::projects::warnings() const
+{
+	return warnings_;
+}
+
+void translations::projects::create()
+{
+	for (auto e : fs::directory_iterator(root_))
 	{
-		std::string name;
-		std::vector<fs::path> ts_files;
+		if (!e.is_directory())
+			continue;
 
-		lang(std::string n)
-			: name(std::move(n))
-		{
-		}
-	};
+		handle_project_dir(e.path());
+	}
+}
 
-	struct project
+bool translations::projects::is_gamebryo_plugin(
+	const std::string& dir, const std::string& project)
+{
+	auto tasks = find_tasks(project);
+	if (tasks.empty())
 	{
-		std::string name;
-		std::vector<lang> langs;
+		warnings_.push_back(::fmt::format(
+			"directory '{}' was parsed as project '{}', but there's "
+			"no task with this name", dir, project));
 
-		project(std::string n)
-			: name(std::move(n))
-		{
-		}
-	};
-
-
-	translation_projects(fs::path root)
-		: root_(std::move(root))
-	{
-		get();
+		return false;
 	}
 
-	const std::vector<project>& projects() const
+	const task& t = *tasks[0];
+
+	if (!t.is_super())
+		return false;
+
+	const auto& mo_task = static_cast<const modorganizer&>(t);
+	return mo_task.is_gamebryo_plugin();
+}
+
+void translations::projects::handle_project_dir(const fs::path& dir)
+{
+	const auto dir_name = path_to_utf8(dir.filename());
+	const auto dir_cs = split(dir_name, ".");
+
+	if (dir_cs.size() != 2)
 	{
-		return projects_;
+		warnings_.push_back(::fmt::format(
+			"bad directory name '{}'; skipping", dir_name));
+
+		return;
 	}
 
-	const std::vector<std::string>& warnings() const
+	const auto project_name = trim_copy(dir_cs[1]);
+	if (project_name.empty())
 	{
-		return warnings_;
+		warnings_.push_back(::fmt::format(
+			"bad directory name '{}', skipping", dir_name));
+
+		return;
 	}
 
-	void get()
-	{
-		for (auto e : fs::directory_iterator(root_))
-		{
-			if (!e.is_directory())
-				continue;
+	project p(project_name);
 
-			handle_project_dir(e.path());
-		}
+	const bool gamebryo = is_gamebryo_plugin(dir_name, project_name);
+
+	for (auto f : fs::directory_iterator(dir))
+	{
+		if (!f.is_regular_file())
+			continue;
+
+		p.langs.push_back(handle_ts_file(gamebryo, project_name, f.path()));
 	}
 
-	bool is_gamebryo_plugin(const std::string& dir, const std::string& project)
+	projects_.push_back(p);
+}
+
+translations::projects::lang translations::projects::handle_ts_file(
+	bool gamebryo, const std::string& project_name, const fs::path& f)
+{
+	lang lg(path_to_utf8(f.stem()));
+
+	lg.ts_files.push_back(f);
+
+	if (gamebryo)
 	{
-		auto tasks = find_tasks(project);
-		if (tasks.empty())
-		{
-			warnings_.push_back(::fmt::format(
-				"directory '{}' was parsed as project '{}', but there's "
-				"no task with this name", dir, project));
+		const fs::path gamebryo_dir =
+			conf::get_global("transifex", "project") + "." +
+			"game_gamebryo";
 
-			return false;
+		const auto gb_f = root_ / gamebryo_dir / f.filename();
+
+		if (fs::exists(gb_f))
+		{
+			lg.ts_files.push_back(gb_f);
 		}
-
-		const task& t = *tasks[0];
-
-		if (!t.is_super())
-			return false;
-
-		const auto& mo_task = static_cast<const modorganizer&>(t);
-		return mo_task.is_gamebryo_plugin();
-	}
-
-	void handle_project_dir(const fs::path& dir)
-	{
-		const auto dir_name = path_to_utf8(dir.filename());
-		const auto dir_cs = split(dir_name, ".");
-
-		if (dir_cs.size() != 2)
+		else
 		{
-			warnings_.push_back(::fmt::format(
-				"bad directory name '{}'; skipping", dir_name));
-
-			return;
-		}
-
-		const auto project_name = trim_copy(dir_cs[1]);
-		if (project_name.empty())
-		{
-			warnings_.push_back(::fmt::format(
-				"bad directory name '{}', skipping", dir_name));
-
-			return;
-		}
-
-		project p(project_name);
-
-		const bool gamebryo = is_gamebryo_plugin(dir_name, project_name);
-
-		for (auto f : fs::directory_iterator(dir))
-		{
-			if (!f.is_regular_file())
-				continue;
-
-			p.langs.push_back(handle_ts_file(gamebryo, project_name, f.path()));
-		}
-
-		projects_.push_back(p);
-	}
-
-	lang handle_ts_file(
-		bool gamebryo, const std::string& project_name, const fs::path& f)
-	{
-		lang lg(path_to_utf8(f.stem()));
-
-		lg.ts_files.push_back(f);
-
-		if (gamebryo)
-		{
-			const fs::path gamebryo_dir =
-				conf::get_global("transifex", "project") + "." +
-				"game_gamebryo";
-
-			const auto gb_f = root_ / gamebryo_dir / f.filename();
-
-			if (fs::exists(gb_f))
+			if (!warned_.contains(gb_f))
 			{
-				lg.ts_files.push_back(gb_f);
-			}
-			else
-			{
-				if (!warned_.contains(gb_f))
-				{
-					warned_.insert(gb_f);
+				warned_.insert(gb_f);
 
-					warnings_.push_back(::fmt::format(
-						"{} is a gamebryo plugin but there is no '{}'; the "
-						".qm file will be missing some translations (will "
-						"only warn once)",
-						project_name, path_to_utf8(gb_f)));
-				}
+				warnings_.push_back(::fmt::format(
+					"{} is a gamebryo plugin but there is no '{}'; the "
+					".qm file will be missing some translations (will "
+					"only warn once)",
+					project_name, path_to_utf8(gb_f)));
 			}
 		}
-
-		return lg;
 	}
 
-private:
-	const fs::path root_;
-	std::vector<project> projects_;
-	std::vector<std::string> warnings_;
-	std::set<fs::path> warned_;
-};
-
+	return lg;
+}
 
 
 translations::translations()
@@ -243,22 +222,22 @@ void translations::do_build_and_install()
 {
 	instrument<times::build>([&]
 	{
-		thread_pool threads;
-
 		const auto root = source_path() / "translations";
 		const auto dest = paths::install_translations();
-		const translation_projects tp(root);
+		const projects ps(root);
 
 		op::create_directories(cx(), dest);
 
-		for (auto&& w : tp.warnings())
+		for (auto&& w : ps.warnings())
 			cx().warning(context::generic, "{}", w);
 
-		for (auto& p : tp.projects())
+		thread_pool tp;
+
+		for (auto& p : ps.get())
 		{
 			for (auto& lg : p.langs)
 			{
-				threads.add([&]
+				tp.add([&]
 				{
 					threaded_run(lg.name + "." + p.name, [&]
 					{
