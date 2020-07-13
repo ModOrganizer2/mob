@@ -706,6 +706,8 @@ void process::on_completed()
 		code_ = 0xffff;
 	}
 
+	read_pipes(false);
+
 	for (;;)
 	{
 		read_pipes(true);
