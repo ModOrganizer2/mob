@@ -164,6 +164,14 @@ void translations::do_clean(clean c)
 {
 	instrument<times::clean>([&]
 	{
+		if (is_set(c, clean::redownload))
+			op::delete_directory(cx(), source_path(), op::optional);
+
+		if (is_set(c, clean::rebuild))
+		{
+			op::delete_file_glob(
+				cx(), paths::install_translations() / "*.qm", op::optional);
+		}
 	});
 }
 

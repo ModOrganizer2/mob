@@ -30,6 +30,9 @@ void delete_directory(
 void delete_file(
 	const context& cx, const fs::path& p, flags f=noflags);
 
+void delete_file_glob(
+	const context& cx, const fs::path& glob, flags f=noflags);
+
 void remove_readonly(
 	const context& cx, const fs::path& first);
 

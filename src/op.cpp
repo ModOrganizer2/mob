@@ -84,10 +84,44 @@ void delete_file(const context& cx, const fs::path& p, flags f)
 	}
 
 	if (fs::exists(p) && !fs::is_regular_file(p))
-		cx.bail_out(context::fs, "can't delete {}, not a file", p);
+	{
+		if (f & optional)
+			cx.warning(context::fs, "can't delete {}, not a file", p);
+		else
+			cx.bail_out(context::fs, "can't delete {}, not a file", p);
+
+		return;
+	}
 
 	if (!conf::dry())
 		do_delete_file(cx, p);
+}
+
+void delete_file_glob(const context& cx, const fs::path& glob, flags f)
+{
+	cx.trace(context::fs, "deleting glob {}", glob);
+
+	const auto parent = glob.parent_path();
+	const auto wildcard = glob.filename().native();
+
+	if (!fs::exists(parent))
+		return;
+
+	for (auto&& e : fs::directory_iterator(parent))
+	{
+		const auto p = e.path();
+		const auto name = p.filename().native();
+
+		if (!PathMatchSpecW(name.c_str(), wildcard.c_str()))
+		{
+			cx.trace(context::fs,
+				"{} did not match {}; skipping", name, wildcard);
+
+			continue;
+		}
+
+		delete_file(cx, p, f);
+	}
 }
 
 void remove_readonly(const context& cx, const fs::path& first)
