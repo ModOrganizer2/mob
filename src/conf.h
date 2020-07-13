@@ -9,6 +9,13 @@ public:
 	static std::string get_global(
 		const std::string& section, const std::string& key);
 
+	static int get_global_int(
+		const std::string& section, const std::string& key);
+
+	static bool get_global_bool(
+		const std::string& section, const std::string& key);
+
+
 	static void set_global(
 		const std::string& section,
 		const std::string& key, const std::string& value);
@@ -98,6 +105,7 @@ struct paths
 	VALUE(build);
 
 	VALUE(install);
+	VALUE(install_installer);
 	VALUE(install_bin);
 	VALUE(install_libs);
 	VALUE(install_pdbs);
@@ -108,6 +116,7 @@ struct paths
 	VALUE(install_stylesheets);
 	VALUE(install_licenses);
 	VALUE(install_pythoncore);
+	VALUE(install_translations);
 
 	VALUE(pf_x86);
 	VALUE(pf_x64);

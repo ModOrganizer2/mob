@@ -137,14 +137,17 @@ private:
 			}
 		}
 
-		if (line.empty() && finished)
+		if (line.empty())
 		{
-			line = {
-				reinterpret_cast<const CharT*>(bytes.data() + byte_offset),
-				size - byte_offset
-			};
+			if (finished)
+			{
+				line = {
+					reinterpret_cast<const CharT*>(bytes.data() + byte_offset),
+					size - byte_offset
+				};
 
-			byte_offset = bytes.size();
+				byte_offset = bytes.size();
+			}
 		}
 		else
 		{

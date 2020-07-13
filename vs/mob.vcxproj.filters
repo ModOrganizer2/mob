@@ -141,6 +141,12 @@
     <ClCompile Include="..\src\commands.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\tasks\installer.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\tasks\translations.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">

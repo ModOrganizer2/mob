@@ -70,6 +70,7 @@ struct this_env
 		env::flags f=env::replace);
 
 	static void prepend_to_path(const fs::path& p);
+	static void append_to_path(const fs::path& p);
 
 	static env get();
 

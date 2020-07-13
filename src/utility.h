@@ -588,4 +588,35 @@ auto map(const std::vector<T>& v, F&& f)
 	return out;
 }
 
+
+class thread_pool
+{
+public:
+	typedef std::function<void ()> fun;
+
+	thread_pool(std::size_t count=std::thread::hardware_concurrency());
+	~thread_pool();
+
+	// non-copyable
+	thread_pool(const thread_pool&) = delete;
+	thread_pool& operator=(const thread_pool&) = delete;
+
+	void add(fun f);
+	void join();
+
+private:
+	struct thread_info
+	{
+		std::atomic<bool> running = false;
+		fun thread_fun;
+		std::thread thread;
+	};
+
+
+	const std::size_t count_;
+	std::vector<std::unique_ptr<thread_info>> threads_;
+
+	bool try_add(fun thread_fun);
+};
+
 }	// namespace

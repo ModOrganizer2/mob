@@ -326,7 +326,7 @@ int help_command::do_run()
 		"be loaded, but the one in the current directory will override the\n"
 		"the other. Additional INIs can be specified with --ini, those will\n"
 		"be loaded after the two mentioned above. Use --no-default-inis to\n"
-		"only disable auto detection and only use --ini.");
+		"disable auto detection and only use --ini.");
 
 	return 0;
 }
@@ -1357,20 +1357,28 @@ clipp::group tx_command::do_group()
 
 		"get" %
 		(clipp::command("get").set(mode_, modes::get),
-			(clipp::option("-m", "--minimum")
-				& clipp::value("PERCENT") >> min_)
-				% "minimum translation threshold to download [0-100]",
-
 			(clipp::option("-k", "--key")
 				& clipp::value("APIKEY") >> key_)
 				% "API key",
 
-			(clipp::option("-f", "--force").set(force_)
-				% "don't check timestamps, re-download all translation files"),
+			(clipp::option("-t", "--team")
+				& clipp::value("TEAM") >> team_)
+				% "team name",
+
+			(clipp::option("-p", "--project")
+				& clipp::value("PROJECT") >> project_)
+				% "project name",
 
 			(clipp::option("-u", "--url")
 				& clipp::value("URL") >> url_)
 				% "project URL",
+
+			(clipp::option("-m", "--minimum")
+				& clipp::value("PERCENT").set(min_))
+				% "minimum translation threshold to download [0-100]",
+
+			(clipp::option("-f", "--force").call([&]{ force_ = true; }))
+				% "don't check timestamps, re-download all translation files",
 
 			(clipp::value("path") >> path_)
 				% "path that will contain the .tx directory"
@@ -1388,6 +1396,29 @@ clipp::group tx_command::do_group()
 				% "path that will contain the .qm files"
 		)
 	);
+}
+
+void tx_command::convert_cl_to_conf()
+{
+	command::convert_cl_to_conf();
+
+	if (!key_.empty())
+		common.options.push_back("transifex/key=" + key_);
+
+	if (!team_.empty())
+		common.options.push_back("transifex/team=" + team_);
+
+	if (!project_.empty())
+		common.options.push_back("transifex/project=" + project_);
+
+	if (!url_.empty())
+		common.options.push_back("transifex/url=" + url_);
+
+	if (min_ >= 0)
+		common.options.push_back("transifex/minimum=" + std::to_string(min_));
+
+	if (force_)
+		common.options.push_back("transifex/force=" + std::to_string(*force_));
 }
 
 int tx_command::do_run()
@@ -1414,8 +1445,7 @@ int tx_command::do_run()
 std::string tx_command::do_doc()
 {
 	return
-		"Values for --key, --minimum and --url will be taken from the INI\n"
-		"file if not specified.\n"
+		"Some values will be taken from the INI file if not specified.\n"
 		"\n"
 		"Commands:\n"
 		"get\n"
@@ -1430,39 +1460,19 @@ std::string tx_command::do_doc()
 
 void tx_command::do_get()
 {
-	if (min_ < 0)
-	{
-		const auto s = conf::get_global("transifex", "minimum");
+	const url u =
+		conf::get_global("transifex", "url") + "/" +
+		conf::get_global("transifex", "team") + "/" +
+		conf::get_global("transifex", "project");
 
-		try
-		{
-			min_ = std::stoi(s);
-		}
-		catch(std::exception&)
-		{
-			gcx().bail_out(context::generic,
-				"bad transifex minimum percentage '{}'", s);
-		}
-	}
+	const std::string key = conf::get_global("transifex", "key");
 
-	if (key_.empty())
-		key_ = conf::get_global("transifex", "key");
-
-	if (url_.empty())
-	{
-		url_ =
-			conf::get_global("transifex", "url") + "/" +
-			conf::get_global("transifex", "team") + "/" +
-			conf::get_global("transifex", "project");
-	}
-
-	if (key_.empty() && !this_env::get_opt("TX_TOKEN"))
+	if (key.empty() && !this_env::get_opt("TX_TOKEN"))
 	{
 		u8cout <<
 			"(no key was in the INI, --key wasn't given and TX_TOKEN env\n"
 			"variable doesn't exist, this will probably fail)\n\n";
 	}
-
 
 	context cxcopy = gcx();
 
@@ -1475,17 +1485,17 @@ void tx_command::do_get()
 	transifex(transifex::config)
 		.stdout_level(context::level::info)
 		.root(path_)
-		.api_key(key_)
-		.url(url_)
+		.api_key(key)
+		.url(u)
 		.run(cxcopy);
 
 	u8cout << "pulling\n";
 	transifex(transifex::pull)
 		.stdout_level(context::level::info)
 		.root(path_)
-		.api_key(key_)
-		.minimum(min_)
-		.force(force_)
+		.api_key(key)
+		.minimum(conf::get_global_int("transifex", "minimum"))
+		.force(conf::get_global_bool("transifex", "force"))
 		.run(cxcopy);
 }
 
@@ -1495,97 +1505,28 @@ void tx_command::do_build()
 	if (fs::exists(root / ".tx") && fs::exists(root / "translations"))
 		root = root / "translations";
 
+	translations::projects ps(root);
+
 	fs::path dest = dest_;
 	op::create_directories(gcx(), dest, op::unsafe);
 
-	std::set<fs::path> warned;
+	for (auto&& w : ps.warnings())
+		u8cerr << w << "\n";
 
-	for (auto e : fs::directory_iterator(root))
+	thread_pool tp;
+
+	for (auto& p : ps.get())
 	{
-		if (!e.is_directory())
-			continue;
-
-		const auto dir = path_to_utf8(e.path().filename());
-		const auto dir_cs = split(dir, ".");
-		if (dir_cs.size() != 2)
+		for (auto& lg : p.langs)
 		{
-			u8cerr << "bad directory name '" << dir << "'; skipping\n";
-			continue;
-		}
-
-		const auto project = trim_copy(dir_cs[1]);
-		if (project.empty())
-		{
-			u8cerr << "bad directory name '" << dir << "'; skipping\n";
-			continue;
-		}
-
-		u8cout << project << "\n";
-
-		const bool is_gamebryo_plugin = [&]
-		{
-			auto tasks = find_tasks(project);
-			if (tasks.empty())
+			tp.add([&, cxcopy=gcx()]() mutable
 			{
-				u8cerr
-					<< "directory '" << dir << "' was parsed as project "
-					<< "'" << project << "', but there's no task with this "
-					<< "name\n";
-
-				return false;
-			}
-
-			const task& t = *tasks[0];
-
-			if (!t.is_super())
-				return false;
-
-			const auto& mo_task = static_cast<const modorganizer&>(t);
-			return mo_task.is_gamebryo_plugin();
-		}();
-
-
-		const fs::path gamebryo_dir =
-			conf::get_global("transifex", "project") + "." +
-			"game_gamebryo";
-
-
-		for (auto f : fs::directory_iterator(e.path()))
-		{
-			if (!f.is_regular_file())
-				continue;
-
-			lrelease lr;
-			lr
-				.project(project)
-				.add_source(f.path())
-				.out(dest_);
-
-			if (is_gamebryo_plugin)
-			{
-				const auto gb_f = root / gamebryo_dir / f.path().filename();
-
-				if (fs::exists(gb_f))
-				{
-					lr.add_source(gb_f);
-				}
-				else
-				{
-					if (!warned.contains(gb_f))
-					{
-						u8cerr
-							<< "this is a gamebryo plugin but there is no "
-							<< "'" << path_to_utf8(gb_f) << "'; "
-							<< "the .qm file will be missing some "
-							<< "translations (will only warn once)\n";
-
-						warned.insert(gb_f);
-					}
-				}
-			}
-
-			context cxcopy = gcx();
-			lr.run(cxcopy);
+				lrelease()
+					.project(p.name)
+					.sources(lg.ts_files)
+					.out(dest)
+					.run(cxcopy);
+			});
 		}
 	}
 }

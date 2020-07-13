@@ -287,6 +287,7 @@ public:
 
 protected:
 	clipp::group do_group() override;
+	void convert_cl_to_conf() override;
 	int do_run() override;
 	std::string do_doc() override;
 
@@ -299,10 +300,9 @@ private:
 	};
 
 	modes mode_ = modes::none;
+	std::string key_, team_, project_, url_;
 	int min_ = -1;
-	std::string key_;
-	std::string url_;
-	bool force_ = false;
+	std::optional<bool> force_;
 	std::string path_;
 	std::string dest_;
 

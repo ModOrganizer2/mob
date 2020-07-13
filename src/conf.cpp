@@ -19,6 +19,11 @@ std::string master_ini_filename()
 	return "mob.ini";
 }
 
+bool bool_from_string(const std::string& s)
+{
+	return (s == "true" || s == "yes" || s == "1");
+}
+
 
 std::string conf::get_global(const std::string& section, const std::string& key)
 {
@@ -64,6 +69,26 @@ void conf::set_global(
 	}
 
 	kitor->second = value;
+}
+
+int conf::get_global_int(const std::string& section, const std::string& key)
+{
+	const auto s = conf::get_global(section, key);
+
+	try
+	{
+		return std::stoi(s);
+	}
+	catch(std::exception&)
+	{
+		gcx().bail_out(context::conf, "bad int for {}/{}", section, key);
+	}
+}
+
+bool conf::get_global_bool(const std::string& section, const std::string& key)
+{
+	const auto s = conf::get_global(section, key);
+	return bool_from_string(s);
 }
 
 void conf::add_global(
@@ -141,7 +166,7 @@ void conf::set_for_task(
 bool conf::prebuilt_by_name(const std::string& task)
 {
 	const std::string s = get_global("prebuilt", task);
-	return (s == "true" || s == "yes" || s == "1");
+	return bool_from_string(s);
 }
 
 fs::path conf::path_by_name(const std::string& name)
@@ -167,7 +192,7 @@ std::string conf::global_by_name(const std::string& name)
 bool conf::bool_global_by_name(const std::string& name)
 {
 	const std::string s = global_by_name(name);
-	return (s == "true" || s == "yes" || s == "1");
+	return bool_from_string(s);
 }
 
 std::string conf::task_option_by_name(
@@ -180,7 +205,7 @@ bool conf::bool_task_option_by_name(
 	const std::vector<std::string>& task_names, const std::string& name)
 {
 	const std::string s = task_option_by_name(task_names, name);
-	return (s == "true" || s == "yes" || s == "1");
+	return bool_from_string(s);
 }
 
 void conf::set_output_log_level(const std::string& s)
@@ -224,7 +249,7 @@ void conf::set_file_log_level(const std::string& s)
 
 void conf::set_dry(const std::string& s)
 {
-	dry_ = (s == "true" || s == "yes" || s == "1");
+	dry_ = bool_from_string(s);
 }
 
 
@@ -662,7 +687,7 @@ void ini_error(const fs::path& ini, std::size_t line, const std::string& what)
 {
 	gcx().bail_out(context::conf,
 		"{}:{}: {}",
-		ini.filename(), (line + 1), what);
+		path_to_utf8(ini), (line + 1), what);
 }
 
 std::vector<std::string> read_ini(const fs::path& ini)
@@ -679,9 +704,6 @@ std::vector<std::string> read_ini(const fs::path& ini)
 
 		if (!in)
 			break;
-
-		if (line.empty() || line[0] == '#' || line[0] == ';')
-			continue;
 
 		lines.push_back(std::move(line));
 	}
@@ -705,6 +727,12 @@ void parse_section(
 			break;
 
 		const auto& line = lines[i];
+
+		if (line.empty() || line[0] == '#' || line[0] == ';')
+		{
+			++i;
+			continue;
+		}
 
 		const auto sep = line.find("=");
 		if (sep == std::string::npos)
@@ -758,6 +786,11 @@ void parse_ini(const fs::path& ini, bool add)
 			break;
 
 		const auto& line = lines[i];
+		if (line.empty() || line[0] == '#' || line[0] == ';')
+		{
+			++i;
+			continue;
+		}
 
 		if (line.starts_with("[") && line.ends_with("]"))
 		{
@@ -963,6 +996,41 @@ std::vector<fs::path> find_inis(
 	return map(v, [&](auto&& p){ return p.second; });
 }
 
+fs::path find_iscc()
+{
+	const auto tasks = find_tasks("installer");
+	MOB_ASSERT(tasks.size() == 1);
+
+	if (!tasks[0]->enabled())
+		return {};
+
+	const auto iscc = conf::tool_by_name("iscc");
+	if (iscc.is_absolute())
+	{
+		if (!fs::exists(iscc))
+		{
+			gcx().bail_out(context::conf,
+				"{} doesn't exist (from ini, absolute path)", iscc);
+		}
+
+		return iscc;
+	}
+
+	for (int v : {5, 6, 7, 8})
+	{
+		const fs::path inno = ::fmt::format("inno setup {}", v);
+
+		for (fs::path pf : {paths::pf_x86(), paths::pf_x64()})
+		{
+			fs::path p = pf / inno / iscc;
+			if (fs::exists(p))
+				return fs::canonical(fs::absolute(p));
+		}
+	}
+
+	gcx().bail_out(context::conf, "can't find {} anywhere", iscc);
+}
+
 void init_options(
 	const std::vector<fs::path>& inis, const std::vector<std::string>& opts)
 {
@@ -1037,19 +1105,22 @@ void init_options(
 	find_vcvars();
 	validate_qt();
 
-	if (!paths::prefix().empty())
-		make_canonical_path("prefix",           fs::current_path(), "");
+	this_env::append_to_path(conf::path_by_name("qt_bin"));
 
-	make_canonical_path("cache",            paths::prefix(), "downloads");
-	make_canonical_path("build",            paths::prefix(), "build");
-	make_canonical_path("install",          paths::prefix(), "install");
-	make_canonical_path("install_bin",      paths::install(), "bin");
-	make_canonical_path("install_libs",     paths::install(), "libs");
-	make_canonical_path("install_pdbs",     paths::install(), "pdb");
-	make_canonical_path("install_dlls",     paths::install_bin(), "dlls");
-	make_canonical_path("install_loot",     paths::install_bin(), "loot");
-	make_canonical_path("install_plugins",  paths::install_bin(), "plugins");
-	make_canonical_path("install_licenses", paths::install_bin(), "licenses");
+	if (!paths::prefix().empty())
+		make_canonical_path("prefix", fs::current_path(), "");
+
+	make_canonical_path("cache",             paths::prefix(), "downloads");
+	make_canonical_path("build",             paths::prefix(), "build");
+	make_canonical_path("install",           paths::prefix(), "install");
+	make_canonical_path("install_installer", paths::install(), "installer");
+	make_canonical_path("install_bin",       paths::install(), "bin");
+	make_canonical_path("install_libs",      paths::install(), "libs");
+	make_canonical_path("install_pdbs",      paths::install(), "pdb");
+	make_canonical_path("install_dlls",      paths::install_bin(), "dlls");
+	make_canonical_path("install_loot",      paths::install_bin(), "loot");
+	make_canonical_path("install_plugins",   paths::install_bin(), "plugins");
+	make_canonical_path("install_licenses",  paths::install_bin(), "licenses");
 
 	make_canonical_path(
 		"install_pythoncore",
@@ -1058,6 +1129,12 @@ void init_options(
 	make_canonical_path(
 		"install_stylesheets",
 		paths::install_bin(), "stylesheets");
+
+	make_canonical_path(
+		"install_translations",
+		paths::install_bin(), "translations");
+
+	conf::set_global("tools", "iscc", path_to_utf8(find_iscc()));
 }
 
 bool verify_options()

@@ -72,7 +72,6 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:
@@ -88,7 +87,6 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:
@@ -107,7 +105,6 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:
@@ -126,7 +123,6 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:
@@ -152,7 +148,6 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:
@@ -166,6 +161,22 @@ private:
 };
 
 
+class installer : public basic_task<installer>
+{
+public:
+	installer();
+
+	static bool prebuilt();
+	static std::string version();
+	static fs::path source_path();
+
+protected:
+	void do_clean(clean c) override;
+	void do_fetch() override;
+	void do_build_and_install() override;
+};
+
+
 class licenses : public basic_task<licenses>
 {
 public:
@@ -173,7 +184,6 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:
@@ -188,7 +198,6 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:
@@ -228,7 +237,6 @@ public:
 	static std::string version();
 	static std::string hash();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:
@@ -249,7 +257,6 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:
@@ -323,7 +330,6 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:
@@ -343,7 +349,6 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:
@@ -515,7 +520,6 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:
@@ -539,7 +543,6 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:
@@ -587,6 +590,63 @@ private:
 };
 
 
+class translations : public basic_task<translations>
+{
+public:
+	class projects
+	{
+	public:
+		struct lang
+		{
+			std::string name;
+			std::vector<fs::path> ts_files;
+
+			lang(std::string n);
+		};
+
+		struct project
+		{
+			std::string name;
+			std::vector<lang> langs;
+
+			project(std::string n);
+		};
+
+
+		projects(fs::path root);
+
+		const std::vector<project>& get() const;
+		const std::vector<std::string>& warnings() const;
+
+	private:
+		const fs::path root_;
+		std::vector<project> projects_;
+		std::vector<std::string> warnings_;
+		std::set<fs::path> warned_;
+
+		void create();
+		bool is_gamebryo_plugin(
+			const std::string& dir, const std::string& project);
+		void handle_project_dir(const fs::path& dir);
+
+		lang handle_ts_file(
+			bool gamebryo, const std::string& project_name, const fs::path& f);
+	};
+
+
+	translations();
+
+	static bool prebuilt();
+	static std::string version();
+	static fs::path source_path();
+
+protected:
+	void do_clean(clean c) override;
+	void do_fetch() override;
+	void do_build_and_install() override;
+};
+
+
 class usvfs : public basic_task<usvfs>
 {
 public:
@@ -594,7 +654,6 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:
@@ -627,7 +686,6 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static fs::path source_path();
 
 protected:

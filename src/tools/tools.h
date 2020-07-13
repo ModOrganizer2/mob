@@ -608,6 +608,7 @@ public:
 
 	lrelease& project(const std::string& name);
 	lrelease& add_source(const fs::path& ts_file);
+	lrelease& sources(const std::vector<fs::path>& v);
 	lrelease& out(const fs::path& dir);
 
 	fs::path qm_file() const;
@@ -619,6 +620,23 @@ private:
 	std::string project_;
 	std::vector<fs::path> sources_;
 	fs::path out_;
+};
+
+
+class iscc : public basic_process_runner
+{
+public:
+	static fs::path binary();
+
+	iscc(fs::path iss = {});
+
+	iscc& iss(const fs::path& p);
+
+protected:
+	void do_run() override;
+
+private:
+	fs::path iss_;
 };
 
 }	// namespace

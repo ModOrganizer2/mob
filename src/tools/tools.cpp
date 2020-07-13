@@ -392,7 +392,7 @@ lrelease::lrelease()
 
 fs::path lrelease::binary()
 {
-	return conf::path_by_name("qt_bin") / conf::tool_by_name("lrelease");
+	return conf::tool_by_name("lrelease");
 }
 
 lrelease& lrelease::project(const std::string& name)
@@ -404,6 +404,12 @@ lrelease& lrelease::project(const std::string& name)
 lrelease& lrelease::add_source(const fs::path& ts_file)
 {
 	sources_.push_back(ts_file);
+	return *this;
+}
+
+lrelease& lrelease::sources(const std::vector<fs::path>& v)
+{
+	sources_ = v;
 	return *this;
 }
 
@@ -449,6 +455,35 @@ void lrelease::do_run()
 
 	process_
 		.arg("-qm", (out_ / qm));
+
+	execute_and_join();
+}
+
+
+iscc::iscc(fs::path iss)
+	: basic_process_runner("iscc"), iss_(std::move(iss))
+{
+}
+
+fs::path iscc::binary()
+{
+	return conf::tool_by_name("iscc");
+}
+
+iscc& iscc::iss(const fs::path& p)
+{
+	iss_ = p;
+	return *this;
+}
+
+void iscc::do_run()
+{
+	if (iss_.empty())
+		cx().bail_out(context::generic, "iscc missing iss file");
+
+	process_
+		.binary(binary())
+		.arg(iss_);
 
 	execute_and_join();
 }

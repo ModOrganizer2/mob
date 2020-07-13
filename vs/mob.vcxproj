@@ -76,6 +76,7 @@
     <ClCompile Include="..\src\tasks\explorerpp.cpp" />
     <ClCompile Include="..\src\tasks\fmt.cpp" />
     <ClCompile Include="..\src\tasks\gtest.cpp" />
+    <ClCompile Include="..\src\tasks\installer.cpp" />
     <ClCompile Include="..\src\tasks\libbsarch.cpp" />
     <ClCompile Include="..\src\tasks\libffi.cpp" />
     <ClCompile Include="..\src\tasks\libloot.cpp" />
@@ -92,6 +93,7 @@
     <ClCompile Include="..\src\tasks\spdlog.cpp" />
     <ClCompile Include="..\src\tasks\stylesheets.cpp" />
     <ClCompile Include="..\src\tasks\task.cpp" />
+    <ClCompile Include="..\src\tasks\translations.cpp" />
     <ClCompile Include="..\src\tasks\usvfs.cpp" />
     <ClCompile Include="..\src\tasks\zlib.cpp" />
     <ClCompile Include="..\src\tools\cmake.cpp" />
