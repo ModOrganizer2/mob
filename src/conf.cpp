@@ -382,7 +382,7 @@ fs::path mob_exe_path()
 	gcx().bail_out(context::conf, "can't get module filename");
 }
 
-fs::path find_root()
+fs::path find_root(bool verbose=false)
 {
 	gcx().trace(context::conf, "looking for root directory");
 
@@ -392,6 +392,9 @@ fs::path find_root()
 
 	if (!fs::exists(third_party))
 	{
+		if (verbose)
+			u8cout << "no third-party here\n";
+
 		auto p = mob_exe_dir;
 
 		if (p.filename().u8string() == u8"x64")
@@ -400,7 +403,10 @@ fs::path find_root()
 			if (p.filename().u8string() == u8"Debug" ||
 			    p.filename().u8string() == u8"Release")
 			{
-				// mob_exe_dir is in the build folder
+				if (verbose)
+					u8cout << "this is mob's build directory, looking up\n";
+
+				// mob_exe_dir is in the build directory
 				third_party = mob_exe_dir / ".." / ".." / ".." / "third-party";
 			}
 		}
@@ -906,12 +912,15 @@ std::vector<fs::path> find_inis(
 	if (auto_detect)
 	{
 		if (verbose)
-			u8cout << "root is " << path_to_utf8(find_root()) << "\n";
+		{
+			const auto r = find_root(verbose);
+			u8cout << "root is " << path_to_utf8(r) << "\n";
+		}
 
 		master = find_in_root(master_ini_filename());
 
 		if (verbose)
-			u8cout << "found master " << master_ini_filename() << "\n";
+			u8cout << "found master " << path_to_utf8(master) << "\n";
 
 		v.push_back({"master", master});
 	}
@@ -921,7 +930,7 @@ std::vector<fs::path> find_inis(
 	if (auto e=this_env::get_opt("MOBINI"))
 	{
 		if (verbose)
-			u8cout << "found env MOBINI: " << *e << "\n";
+			u8cout << "found env MOBINI: '" << *e << "'\n";
 
 		for (auto&& i : split(*e, ";"))
 		{
@@ -987,7 +996,7 @@ std::vector<fs::path> find_inis(
 		for (std::size_t i=0; i<v.size(); ++i)
 		{
 			u8cout
-				<< (i + 1) << ") "
+				<< "  " << (i + 1) << ") "
 				<< path_to_utf8(v[i].second) << " (" << v[i].first << ")\n";
 		}
 	}

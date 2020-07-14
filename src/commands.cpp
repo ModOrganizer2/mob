@@ -653,7 +653,7 @@ command::meta_t release_command::meta() const
 	return
 	{
 		"release",
-		"creates a release or a devbuild"
+		"creates a release"
 	};
 }
 
@@ -726,6 +726,17 @@ void release_command::make_src()
 
 	op::archive_from_files(gcx(),
 		files, modorganizer::super_path(), out);
+}
+
+void release_command::make_installer()
+{
+	const auto file = "Mod.Organizer-" + version_ + ".exe";
+	const auto src = paths::install_installer() / file;
+	const auto dest = out_;
+
+	u8cout << "copying installer " << file << "\n";
+
+	op::copy_file_to_dir_if_better(gcx(), src, dest);
 }
 
 void release_command::walk_dir(
@@ -804,6 +815,11 @@ clipp::group release_command::do_group()
 			clipp::option("--no-src").set(src_, false)
 		) % "sets whether the source archive is created [default: yes]",
 
+		(
+			clipp::option("--inst").set(installer_, true) |
+			clipp::option("--no-inst").set(installer_, false)
+		) % "sets whether the installer is copied [default: no]",
+
 		clipp::option("--version-from-exe").set(version_exe_)
 			% "retrieves version information from ModOrganizer.exe "
 			  "[default]",
@@ -828,19 +844,12 @@ clipp::group release_command::do_group()
 			% "optional suffix to add to the archive filenames",
 
 		clipp::option("--force").set(force_)
-			% "ignores file size warnings which could indicate bad paths or "
-			  "unexpected files being pulled into the archives"
+			% "ignores file size warnings and existing release directories"
 	);
 }
 
 int release_command::do_run()
 {
-	out_ = fs::path(utf8_to_utf16(utf8out_));
-	if (out_.empty())
-		out_ = paths::prefix() / "releases";
-	else if (out_.is_relative())
-		out_ = paths::prefix() / out_;
-
 	rc_path_ = fs::path(utf8_to_utf16(utf8_rc_path_));
 	if (rc_path_.empty())
 	{
@@ -856,9 +865,16 @@ int release_command::do_run()
 			version_ = version_from_exe();
 	}
 
-	u8cout <<
-		">> don't forget to update the version number before making a "
-		"release\n";
+	out_ = fs::path(utf8_to_utf16(utf8out_));
+	if (out_.empty())
+		out_ = paths::prefix() / "releases" / version_;
+	else if (out_.is_relative())
+		out_ = paths::prefix() / out_;
+
+	u8cout
+		<< ">> don't forget to update the version number before making a release\n"
+		<< "\n"
+		<< "creating release for " << version_ << "\n";
 
 	if (bin_)
 		make_bin();
@@ -868,6 +884,9 @@ int release_command::do_run()
 
 	if (src_)
 		make_src();
+
+	if (installer_)
+		make_installer();
 
 	return 0;
 }

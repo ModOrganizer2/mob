@@ -173,6 +173,7 @@ public:
 	void make_bin();
 	void make_pdbs();
 	void make_src();
+	void make_installer();
 
 protected:
 	clipp::group do_group() override;
@@ -183,6 +184,7 @@ private:
 	bool bin_ = true;
 	bool src_ = true;
 	bool pdbs_ = true;
+	bool installer_ = false;
 	std::string utf8out_;
 	fs::path out_;
 	std::string version_;
@@ -190,7 +192,7 @@ private:
 	bool version_rc_ = false;
 	std::string utf8_rc_path_;
 	fs::path rc_path_;
-	bool force_;
+	bool force_ = false;
 	std::string suffix_;
 
 	fs::path make_filename(const std::string& what) const;
