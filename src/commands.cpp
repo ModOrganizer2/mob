@@ -9,6 +9,8 @@
 namespace mob
 {
 
+constexpr bool do_timings = false;
+
 // in main.cpp
 void set_sigint_handler();
 
@@ -514,41 +516,10 @@ int build_command::do_run()
 {
 	try
 	{
-		curl_init curl;
-
 		run_all_tasks();
 
-		{
-			using namespace std::chrono;
-
-			std::ofstream out("timings.txt");
-
-			auto write = [&](auto&& inst)
-			{
-				for (auto&& t : inst.instrumented_tasks())
-				{
-					for (auto&& tp : t.tps)
-					{
-						const auto start_ms = static_cast<double>(
-							duration_cast<milliseconds>(tp.start).count());
-
-						const auto end_ms = static_cast<double>(
-							duration_cast<milliseconds>(tp.end).count());
-
-						out
-							<< inst.instrumentable_name() << "\t"
-							<< (start_ms / 1000.0) << "\t"
-							<< (end_ms / 1000.0) << "\t"
-							<< t.name << "\n";
-					}
-				}
-			};
-
-			for (auto&& tk : get_all_tasks())
-				write(*tk);
-
-			write(git_submodule_adder::instance());
-		}
+		if (do_timings)
+			dump_timings();
 
 		if (!keep_msbuild_)
 			terminate_msbuild();
@@ -561,6 +532,39 @@ int build_command::do_run()
 		error("bailing out");
 		return 1;
 	}
+}
+
+void build_command::dump_timings()
+{
+	using namespace std::chrono;
+
+	std::ofstream out("timings.txt");
+
+	auto write = [&](auto&& inst)
+	{
+		for (auto&& t : inst.instrumented_tasks())
+		{
+			for (auto&& tp : t.tps)
+			{
+				const auto start_ms = static_cast<double>(
+					duration_cast<milliseconds>(tp.start).count());
+
+				const auto end_ms = static_cast<double>(
+					duration_cast<milliseconds>(tp.end).count());
+
+				out
+					<< inst.instrumentable_name() << "\t"
+					<< (start_ms / 1000.0) << "\t"
+					<< (end_ms / 1000.0) << "\t"
+					<< t.name << "\n";
+			}
+		}
+	};
+
+	for (auto&& tk : get_all_tasks())
+		write(*tk);
+
+	write(git_submodule_adder::instance());
 }
 
 void build_command::terminate_msbuild()
@@ -800,76 +804,84 @@ clipp::group release_command::do_group()
 		(clipp::option("-h", "--help") >> help_)
 			% ("shows this message"),
 
-		(
-			clipp::option("--bin").set(bin_, true) |
-			clipp::option("--no-bin").set(bin_, false)
-		) % "sets whether the binary archive is created [default: yes]",
+		"devbuild" %
+		(clipp::command("devbuild").set(mode_, modes::devbuild),
+			(
+				clipp::option("--bin").set(bin_, true) |
+				clipp::option("--no-bin").set(bin_, false)
+			) % "sets whether the binary archive is created [default: yes]",
 
-		(
-			clipp::option("--pdbs").set(pdbs_, true) |
-			clipp::option("--no-pdbs").set(pdbs_, false)
-		) % "sets whether the PDBs archive is created [default: yes]",
+			(
+				clipp::option("--pdbs").set(pdbs_, true) |
+				clipp::option("--no-pdbs").set(pdbs_, false)
+			) % "sets whether the PDBs archive is created [default: yes]",
 
-		(
-			clipp::option("--src").set(src_, true) |
-			clipp::option("--no-src").set(src_, false)
-		) % "sets whether the source archive is created [default: yes]",
+			(
+				clipp::option("--src").set(src_, true) |
+				clipp::option("--no-src").set(src_, false)
+			) % "sets whether the source archive is created [default: yes]",
 
-		(
-			clipp::option("--inst").set(installer_, true) |
-			clipp::option("--no-inst").set(installer_, false)
-		) % "sets whether the installer is copied [default: no]",
+			(
+				clipp::option("--inst").set(installer_, true) |
+				clipp::option("--no-inst").set(installer_, false)
+			) % "sets whether the installer is copied [default: no]",
 
-		clipp::option("--version-from-exe").set(version_exe_)
-			% "retrieves version information from ModOrganizer.exe "
-			  "[default]",
+			clipp::option("--version-from-exe").set(version_exe_)
+				% "retrieves version information from ModOrganizer.exe "
+				  "[default]",
 
-		clipp::option("--version-from-rc").set(version_rc_)
-			% "retrieves version information from modorganizer/src/version.rc",
+			clipp::option("--version-from-rc").set(version_rc_)
+				% "retrieves version information from modorganizer/src/version.rc",
 
-		(clipp::option("--rc")
-			& clipp::value("PATH") >> utf8_rc_path_)
-			% "overrides the path to version.rc",
+			(clipp::option("--rc")
+				& clipp::value("PATH") >> utf8_rc_path_)
+				% "overrides the path to version.rc",
 
-		(clipp::option("--version")
-			& clipp::value("VERSION") >> version_)
-			% "overrides the version string",
+			(clipp::option("--version")
+				& clipp::value("VERSION") >> version_)
+				% "overrides the version string",
 
-		(clipp::option("--output-dir")
-			& clipp::value("PATH") >> utf8out_)
-			% "sets the output directory to use instead of `$prefix/releases`",
+			(clipp::option("--output-dir")
+				& clipp::value("PATH") >> utf8out_)
+				% "sets the output directory to use instead of `$prefix/releases`",
 
-		(clipp::option("--suffix")
-			& clipp::value("SUFFIX") >> suffix_)
-			% "optional suffix to add to the archive filenames",
+			(clipp::option("--suffix")
+				& clipp::value("SUFFIX") >> suffix_)
+				% "optional suffix to add to the archive filenames",
 
-		clipp::option("--force").set(force_)
-			% "ignores file size warnings and existing release directories"
+			clipp::option("--force").set(force_)
+				% "ignores file size warnings and existing release directories"
+		)
+
+		|
+
+		"official" %
+		(clipp::command("official").set(mode_, modes::official)
+
+		)
 	);
 }
 
 int release_command::do_run()
 {
-	rc_path_ = fs::path(utf8_to_utf16(utf8_rc_path_));
-	if (rc_path_.empty())
+	switch (mode_)
 	{
-		rc_path_ =
-			modorganizer::super_path() / "modorganizer" / "src" / "version.rc";
-	}
+		case modes::devbuild:
+			return do_devbuild();
 
-	if (version_.empty())
-	{
-		if (version_rc_)
-			version_ = version_from_rc();
-		else
-			version_ = version_from_exe();
-	}
+		case modes::official:
+			return do_official();
 
-	out_ = fs::path(utf8_to_utf16(utf8out_));
-	if (out_.empty())
-		out_ = paths::prefix() / "releases" / version_;
-	else if (out_.is_relative())
-		out_ = paths::prefix() / out_;
+		case modes::none:
+		default:
+			u8cerr << "bad release mode " << static_cast<int>(mode_) << "\n";
+			throw bailed();
+	}
+}
+
+int release_command::do_devbuild()
+{
+	prepare();
 
 	u8cout
 		<< ">> don't forget to update the version number before making a release\n"
@@ -891,19 +903,95 @@ int release_command::do_run()
 	return 0;
 }
 
+int release_command::do_official()
+{
+	set_sigint_handler();
+
+	if (fs::exists(paths::prefix()))
+	{
+		u8cout
+			<< "prefix " << path_to_utf8(paths::prefix()) << " already exists\n"
+			<< "delete? [Y/n] ";
+
+		std::wstring s;
+		std::getline(std::wcin, s);
+
+		if (s == L"" || s == L"y" || s == L"Y")
+		{
+			build_command::terminate_msbuild();
+			op::delete_directory(gcx(), paths::prefix());
+		}
+		else
+		{
+			return 1;
+		}
+	}
+
+	conf::set_for_task("_override", "task", "enabled", "true");
+	conf::set_global("transifex", "force", "true");
+	conf::set_global("transifex", "configure", "true");
+	conf::set_global("transifex", "pull", "true");
+
+	run_all_tasks();
+	build_command::terminate_msbuild();
+
+	prepare();
+	make_bin();
+	make_pdbs();
+	make_src();
+	make_installer();
+
+	return 0;
+}
+
+void release_command::prepare()
+{
+	rc_path_ = fs::path(utf8_to_utf16(utf8_rc_path_));
+	if (rc_path_.empty())
+	{
+		rc_path_ =
+			modorganizer::super_path() / "modorganizer" / "src" / "version.rc";
+	}
+
+	if (version_.empty())
+	{
+		if (version_rc_)
+			version_ = version_from_rc();
+		else
+			version_ = version_from_exe();
+	}
+
+	out_ = fs::path(utf8_to_utf16(utf8out_));
+	if (out_.empty())
+		out_ = paths::prefix() / "releases" / version_;
+	else if (out_.is_relative())
+		out_ = paths::prefix() / out_;
+}
+
 std::string release_command::do_doc()
 {
 	return
-		"Creates three archives in `$prefix/releases`: one from \n"
-		"`install/bin/*`, one from `install/pdbs/*` and another with the \n"
-		"sources of projects from modorganizer_super.\n"
+		"Creates archives for an MO installation, PDBs and sources.\n"
 		"\n"
-		"The archive filename is `Mod.Organizer-version-suffix-what.7z`,\n"
-		"where:\n"
-		"  - `version` is taken from `ModOrganizer.exe`, `version.rc`\n"
-		"    or from --version;\n"
-		"  - `suffix` is the optional `--suffix` argument;\n"
-		"  - `what` is either nothing, `src` or `pdbs`.";
+		"Commands:\n"
+		"devbuild\n"
+		"  Can creates three archives in `$prefix/releases/version`: one from\n"
+		"  `install/bin/*`, one from `install/pdbs/*` and another with the\n"
+		"  sources of projects from modorganizer_super.\n"
+		"  \n"
+		"  The archive filename is `Mod.Organizer-version-suffix-what.7z`,\n"
+		"  where:\n"
+		"    - `version` is taken from `ModOrganizer.exe`, `version.rc`\n"
+		"      or from --version;\n"
+		"    - `suffix` is the optional `--suffix` argument;\n"
+		"    - `what` is either nothing, `src` or `pdbs`.\n"
+		"\n"
+		"official\n"
+		"  Creates a new full build in the prefix. Requires that directory\n"
+		"  to be empty. Puts the binary archive, source, PDBs and installer\n"
+		"  in `$prefix/releases/version`. Forces all tasks to be enabled,\n"
+		"  including translations and installer. Make sure the transifex API\n"
+		"  key is in the INI or TX_TOKEN is set.";
 }
 
 std::string release_command::version_from_exe() const

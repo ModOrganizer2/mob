@@ -235,6 +235,7 @@ void set_sigint_handler()
 int run(const std::vector<std::string>& args)
 {
 	font_restorer fr;
+	curl_init curl;
 
 	add_tasks();
 
