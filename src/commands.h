@@ -120,7 +120,9 @@ class build_command : public command
 {
 public:
 	build_command();
+
 	meta_t meta() const override;
+	static void terminate_msbuild();
 
 protected:
 	void convert_cl_to_conf() override;
@@ -142,7 +144,7 @@ private:
 	bool keep_msbuild_ = false;
 	std::optional<bool> revert_ts_;
 
-	void terminate_msbuild();
+	void dump_timings();
 };
 
 
@@ -173,6 +175,7 @@ public:
 	void make_bin();
 	void make_pdbs();
 	void make_src();
+	void make_installer();
 
 protected:
 	clipp::group do_group() override;
@@ -180,9 +183,19 @@ protected:
 	std::string do_doc() override;
 
 private:
+	enum class modes
+	{
+		none = 0,
+		devbuild,
+		official
+	};
+
+
+	modes mode_= modes::none;
 	bool bin_ = true;
 	bool src_ = true;
 	bool pdbs_ = true;
+	bool installer_ = false;
 	std::string utf8out_;
 	fs::path out_;
 	std::string version_;
@@ -190,8 +203,14 @@ private:
 	bool version_rc_ = false;
 	std::string utf8_rc_path_;
 	fs::path rc_path_;
-	bool force_;
+	bool force_ = false;
 	std::string suffix_;
+
+
+	int do_devbuild();
+	int do_official();
+
+	void prepare();
 
 	fs::path make_filename(const std::string& what) const;
 

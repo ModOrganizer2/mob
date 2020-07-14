@@ -19,6 +19,11 @@ std::string libloot::hash()
 	return conf::version_by_name("libloot_hash");
 }
 
+std::string libloot::branch()
+{
+	return conf::version_by_name("libloot_branch");
+}
+
 bool libloot::prebuilt()
 {
 	return false;
@@ -26,7 +31,7 @@ bool libloot::prebuilt()
 
 fs::path libloot::source_path()
 {
-	return paths::build() / dir_name();
+	return paths::build() / release_name();
 }
 
 void libloot::do_clean(clean c)
@@ -70,12 +75,18 @@ void libloot::do_build_and_install()
 	});
 }
 
-std::string libloot::dir_name()
+std::string libloot::release_name()
 {
-	// libloot-0.15.1-0-gf725dd7_0.15.1-win64.7z, yeah
+	// the naming convention is `libloot-version-commit_branch-win64.7z`,
+	// such as:
+	//
+	//  libloot-0.14.6-0-g8fed4b0_dev-win64.7z
+	//  libloot-0.15.1-0-gf725dd7_0.15.1-win64.7z
+	//  libloot-0.15.2-0-g3baa0e8_master-win64.7z
+
 	return
 		"libloot-" + version() + "-" + "0-" +
-		hash() + "_" + version() + "-" +
+		hash() + "_" + branch() + "-" +
 		"win64";
 }
 
@@ -83,7 +94,7 @@ url libloot::source_url()
 {
 	return
 		"https://github.com/loot/libloot/releases/download/" +
-		version() + "/" + dir_name() + ".7z";
+		version() + "/" + release_name() + ".7z";
 }
 
 }	// namespace

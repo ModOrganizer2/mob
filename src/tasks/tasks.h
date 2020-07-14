@@ -170,6 +170,8 @@ public:
 	static std::string version();
 	static fs::path source_path();
 
+	bool is_super() const;
+
 protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
@@ -236,6 +238,8 @@ public:
 
 	static std::string version();
 	static std::string hash();
+	static std::string branch();
+
 	static bool prebuilt();
 	static fs::path source_path();
 
@@ -245,7 +249,7 @@ protected:
 	void do_build_and_install() override;
 
 private:
-	static std::string dir_name();
+	static std::string release_name();
 	static url source_url();
 };
 
