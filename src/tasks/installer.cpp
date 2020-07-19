@@ -16,7 +16,7 @@ bool installer::prebuilt()
 
 bool installer::is_super() const
 {
-	return true;
+	return false;
 }
 
 std::string installer::version()
