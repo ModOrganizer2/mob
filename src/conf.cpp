@@ -1013,7 +1013,7 @@ fs::path find_iscc()
 	if (!tasks[0]->enabled())
 		return {};
 
-	const auto iscc = conf::tool_by_name("iscc");
+	auto iscc = conf::tool_by_name("iscc");
 	if (iscc.is_absolute())
 	{
 		if (!fs::exists(iscc))
@@ -1025,13 +1025,17 @@ fs::path find_iscc()
 		return iscc;
 	}
 
+	fs::path p = find_in_path(path_to_utf8(iscc));
+	if (fs::exists(p))
+	  return fs::canonical(fs::absolute(p));
+
 	for (int v : {5, 6, 7, 8})
 	{
 		const fs::path inno = ::fmt::format("inno setup {}", v);
 
 		for (fs::path pf : {paths::pf_x86(), paths::pf_x64()})
 		{
-			fs::path p = pf / inno / iscc;
+			p = pf / inno / iscc;
 			if (fs::exists(p))
 				return fs::canonical(fs::absolute(p));
 		}

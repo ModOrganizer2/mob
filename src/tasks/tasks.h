@@ -170,8 +170,6 @@ public:
 	static std::string version();
 	static fs::path source_path();
 
-	bool is_super() const;
-
 protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
