@@ -1,4 +1,9 @@
-$installationPath = & $PSScriptRoot\third-party\bin\vswhere.exe -products * -nologo -prerelease -latest -property installationPath
+$root = $PSScriptRoot
+if (!$root) {
+	$root = "."
+}
+
+$installationPath = & $root\third-party\bin\vswhere.exe -products * -nologo -prerelease -latest -property installationPath
 if (! $?) {
     Write-Error "vswhere returned $LastExitCode"
     exit $LastExitCode
@@ -10,7 +15,7 @@ if (! $installationPath) {
 }
 
 $opts = ""
-$opts += " $PSScriptRoot\vs\mob.sln"
+$opts += " $root\vs\mob.sln"
 $opts += " -m"
 $opts += " -p:Configuration=Release"
 $opts += " -noLogo"
@@ -31,5 +36,5 @@ if (! $?) {
     exit $LastExitCode
 }
 
-Copy-Item "$PSScriptRoot\build\Release\x64\mob.exe" "$PSScriptRoot\mob.exe"
+Copy-Item "$root\build\Release\x64\mob.exe" "$root\mob.exe"
 echo "run ``.\mob -d prefix/path build`` to start building"
