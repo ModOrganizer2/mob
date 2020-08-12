@@ -636,7 +636,24 @@ fs::path find_vs()
 	if (p.exit_code() != 0)
 		gcx().bail_out(context::conf, "vswhere failed");
 
-	fs::path path = trim_copy(p.stdout_string());
+	const fs::path path = trim_copy(p.stdout_string());
+	const auto lines = split(path_to_utf8(path), "\r\n");
+
+	if (lines.empty())
+	{
+	  gcx().bail_out(context::conf, "vswhere didn't output anything");
+	}
+	else if (lines.size() > 1)
+	{
+	  gcx().error(context::conf, "vswhere returned multiple installations:");
+
+	  for (auto&& line : lines)
+		gcx().error(context::conf, " - {}", line);
+
+	  gcx().bail_out(context::conf,
+		"specify the `vs` path in the `[paths]` section of the INI, or pass "
+		"-s paths/vs=PATH` to pick an installation");
+	}
 
 	if (!fs::exists(path))
 	{

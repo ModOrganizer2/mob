@@ -181,6 +181,7 @@ protected:
 	clipp::group do_group() override;
 	int do_run() override;
 	std::string do_doc() override;
+	void convert_cl_to_conf() override;
 
 private:
 	enum class modes

@@ -862,6 +862,21 @@ clipp::group release_command::do_group()
 	);
 }
 
+void release_command::convert_cl_to_conf()
+{
+  command::convert_cl_to_conf();
+
+  if (mode_ == modes::official)
+  {
+	common.options.push_back("translations:task/enabled=true");
+	common.options.push_back("installer:task/enabled=true");
+
+	common.options.push_back("transifex/force=true");
+	common.options.push_back("transifex/configure=true");
+	common.options.push_back("transifex/pull=true");
+  }
+}
+
 int release_command::do_run()
 {
 	switch (mode_)
@@ -926,11 +941,6 @@ int release_command::do_official()
 			return 1;
 		}
 	}
-
-	conf::set_for_task("_override", "task", "enabled", "true");
-	conf::set_global("transifex", "force", "true");
-	conf::set_global("transifex", "configure", "true");
-	conf::set_global("transifex", "pull", "true");
 
 	run_all_tasks();
 	build_command::terminate_msbuild();

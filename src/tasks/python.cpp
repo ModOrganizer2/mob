@@ -243,6 +243,7 @@ void python::install_pip()
 		.binary(python_exe())
 		.arg("-m pip")
 		.arg("install")
+		.arg("--no-warn-script-location")
 		.arg("--upgrade pip")));
 
 	// ssl errors while downloading through python without certifi
@@ -250,6 +251,7 @@ void python::install_pip()
 		.binary(python_exe())
 		.arg("-m pip")
 		.arg("install")
+		.arg("--no-warn-script-location")
 		.arg("certifi")));
 }
 

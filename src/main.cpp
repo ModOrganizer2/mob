@@ -172,6 +172,7 @@ void add_tasks()
 	add_task<parallel_tasks>(true)
 		.add_task<mo>({"modorganizer-tool_configurator", "pycfg"})
 		.add_task<mo>("modorganizer-fnistool")
+		.add_task<mo>("modorganizer-basic_games")
 		.add_task<mo>({
 			"modorganizer-script_extender_plugin_checker",
 			"diagnose-script_extender_plugin_checker",
