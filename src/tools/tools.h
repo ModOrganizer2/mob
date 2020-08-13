@@ -180,6 +180,7 @@ public:
 		bool push_default);
 
 	static bool is_git_repo(const fs::path& p);
+	static bool branch_exists(const mob::url& u, const std::string& name);
 	static void init_repo(const fs::path& p);
 
 
@@ -237,6 +238,7 @@ private:
 	void set_remote_push(const std::string& remote, const std::string& url);
 	void set_assume_unchanged(const fs::path& relative_file, bool on);
 	bool is_repo();
+	bool branch_exists();
 	bool has_uncommitted_changes();
 	bool has_stashed_changes();
 	void init();

@@ -19,7 +19,7 @@ HANDLE get_bit_bucket()
 }
 
 async_pipe::async_pipe(const context& cx)
-	:  cx_(cx), pending_(false), closed_(true)
+	: cx_(cx), pending_(false), closed_(true)
 {
 	buffer_ = std::make_unique<char[]>(buffer_size);
 	std::memset(buffer_.get(), 0, buffer_size);

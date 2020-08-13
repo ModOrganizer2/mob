@@ -641,18 +641,18 @@ fs::path find_vs()
 
 	if (lines.empty())
 	{
-	  gcx().bail_out(context::conf, "vswhere didn't output anything");
+		gcx().bail_out(context::conf, "vswhere didn't output anything");
 	}
 	else if (lines.size() > 1)
 	{
-	  gcx().error(context::conf, "vswhere returned multiple installations:");
+		gcx().error(context::conf, "vswhere returned multiple installations:");
 
-	  for (auto&& line : lines)
-		gcx().error(context::conf, " - {}", line);
+		for (auto&& line : lines)
+			gcx().error(context::conf, " - {}", line);
 
-	  gcx().bail_out(context::conf,
-		"specify the `vs` path in the `[paths]` section of the INI, or pass "
-		"-s paths/vs=PATH` to pick an installation");
+		gcx().bail_out(context::conf,
+			"specify the `vs` path in the `[paths]` section of the INI, or "
+			"pass -s paths/vs=PATH` to pick an installation");
 	}
 
 	if (!fs::exists(path))
@@ -1044,7 +1044,7 @@ fs::path find_iscc()
 
 	fs::path p = find_in_path(path_to_utf8(iscc));
 	if (fs::exists(p))
-	  return fs::canonical(fs::absolute(p));
+		return fs::canonical(fs::absolute(p));
 
 	for (int v : {5, 6, 7, 8})
 	{

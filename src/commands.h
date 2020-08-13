@@ -206,6 +206,7 @@ private:
 	fs::path rc_path_;
 	bool force_ = false;
 	std::string suffix_;
+	std::string branch_;
 
 
 	int do_devbuild();

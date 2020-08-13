@@ -95,6 +95,14 @@ bool git::is_git_repo(const fs::path& p)
 	return g.is_repo();
 }
 
+bool git::branch_exists(const mob::url& u, const std::string& name)
+{
+	git g(no_op);
+	g.url(u);
+	g.branch(name);
+	return g.branch_exists();
+}
+
 void git::init_repo(const fs::path& p)
 {
 	git g(no_op);
@@ -501,6 +509,19 @@ bool git::is_repo()
 		})
 		.flags(process::allow_failure)
 		.cwd(root_);
+
+	return (execute_and_join() == 0);
+}
+
+bool git::branch_exists()
+{
+	process_ = make_process()
+		.flags(process::allow_failure)
+		.arg("ls-remote")
+		.arg("--exit-code")
+		.arg("--heads")
+		.arg(url_)
+		.arg(branch_);
 
 	return (execute_and_join() == 0);
 }
