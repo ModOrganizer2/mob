@@ -66,6 +66,23 @@ std::vector<task*> find_tasks(const std::string& pattern)
 	return tasks;
 }
 
+task* find_task(const std::string& pattern)
+{
+	for (auto&& t : g_all_tasks)
+	{
+		if (pattern == "super" && t->is_super())
+			return t;
+
+		for (auto&& n : t->names())
+		{
+			if (mob::glob_match(pattern, n))
+				return t;
+		}
+	}
+
+	return nullptr;
+}
+
 void run_all_tasks()
 {
 	try

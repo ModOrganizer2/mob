@@ -75,6 +75,11 @@ fs::path modorganizer::super_path()
 	return paths::build() / "modorganizer_super";
 }
 
+url modorganizer::git_url() const
+{
+	return task_conf().make_git_url(task_conf().mo_org(), repo_);
+}
+
 void modorganizer::do_clean(clean c)
 {
 	instrument<times::clean>([&]
@@ -103,7 +108,7 @@ void modorganizer::do_fetch()
 	instrument<times::fetch>([&]
 	{
 		run_tool(task_conf().make_git()
-			.url(task_conf().make_git_url(task_conf().mo_org(), repo_))
+			.url(git_url())
 			.branch(task_conf().mo_branch())
 			.root(this_source_path()));
 	});
@@ -113,7 +118,7 @@ void modorganizer::do_build_and_install()
 {
 	git_submodule_adder::instance().queue(std::move(
 		task_conf().make_git(git::ops::add_submodule)
-			.url(task_conf().make_git_url(task_conf().mo_org(), repo_))
+			.url(git_url())
 			.branch(task_conf().mo_branch())
 			.submodule_name(name())
 			.root(super_path())));

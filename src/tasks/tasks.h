@@ -306,6 +306,7 @@ public:
 
 	bool is_super() const override;
 	bool is_gamebryo_plugin() const;
+	url git_url() const;
 
 protected:
 	void do_clean(clean c) override;
