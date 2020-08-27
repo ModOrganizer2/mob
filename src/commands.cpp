@@ -39,6 +39,8 @@ void help(const clipp::group& g, const std::string& more)
 		<< clipp::documentation(g, options_df)
 		<< "\n";
 
+	u8cout << "\nTo use global options with command options, ensure command options are together, with no global options in the middle.\n";
+
 	if (!more.empty())
 		u8cout << "\n" << more << "\n";
 }
