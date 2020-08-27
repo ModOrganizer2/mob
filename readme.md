@@ -167,11 +167,9 @@ If `mob` is unable to find the Qt installation directory, it can be specified in
 ## Command line
 Do `mob --help` for global options and the list of available commands. Do `mob <command> --help` for more help about a command.
 
+To use global options with command options, ensure command options are together, with no global options in the middle.
+
 ### Global options
-Global options should be specified before the subcommand, e.g.
-```powershell
-mob --ini another.ini build
-```
 
 | Option              | Description |
 | ---                 | --- |
