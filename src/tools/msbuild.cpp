@@ -158,6 +158,7 @@ void msbuild::do_run(const std::vector<std::string>& targets)
 		.arg("-property:PlatformToolset=" + toolset)
 		.arg("-property:WindowsTargetPlatformVersion=" + vs::sdk())
 		.arg("-property:Platform=", plat, process::quote)
+		.arg("-property:RunCodeAnalysis=false")
 		.arg("-verbosity:minimal", process::log_quiet)
 		.arg("-consoleLoggerParameters:ErrorsOnly", process::log_quiet);
 
