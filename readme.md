@@ -142,7 +142,7 @@ When `git` clones, it automatically creates a remote named `origin` for the URL 
 For example, this will create an `origin` remote for all ModOrganizer2 projects and mark all `.ts` files as `--assume-unchanged`.
 
 ```
-[super:options]
+[super:task]
 ignore_ts                  = true
 git_username               = isanae
 git_email                  = isanae@users.noreply.github.com
