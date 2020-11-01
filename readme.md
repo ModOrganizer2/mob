@@ -41,6 +41,7 @@
   - Git for Windows (if you don't have git already installed)
   - .NET Framework 3.5 development tools
   - .NET Framework 4.6 targeting pack
+  - .NET Framework 4.6.1 targeting pack (both are needed)
 - Start a shell
   - If you have git in your path, a regular cmd shell works.
   - If not, start the _x64 Native Tools Command Prompt for VS 2019_, it'll use Git for Windows installed above.
