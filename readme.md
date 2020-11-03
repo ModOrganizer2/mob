@@ -32,15 +32,19 @@
 ```
 
 ## Slow start
-- Install Qt 5.14.2 ([Installer](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe))
-  - MSVC 2017 64-bit
+- Install Qt 5.15.0 ([Installer](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe))
+  - MSVC 2019 64-bit
   - Qt WebEngine
+  - Optional: Sources, Debug Information Files
 - Install Visual Studio 2019 ([Installer](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&rel=16))
   - Desktop development with C++
   - Git for Windows (if you don't have git already installed)
   - .NET Framework 3.5 development tools
   - .NET Framework 4.6 targeting pack
-- Start the _x64 Native Tools Command Prompt for VS 2019_. (Note: If you already have a git install in your `PATH`, you can use a regular command prompt)
+  - .NET Framework 4.6.1 targeting pack and SDK
+- Start a shell
+  - If you have git in your path, a regular cmd shell works.
+  - If not, start the _x64 Native Tools Command Prompt for VS 2019_, it'll use Git for Windows installed above.
 - Do:
 	```
 	mkdir C:\dev
@@ -138,7 +142,7 @@ When `git` clones, it automatically creates a remote named `origin` for the URL 
 For example, this will create an `origin` remote for all ModOrganizer2 projects and mark all `.ts` files as `--assume-unchanged`.
 
 ```
-[super:options]
+[super:task]
 ignore_ts                  = true
 git_username               = isanae
 git_email                  = isanae@users.noreply.github.com
