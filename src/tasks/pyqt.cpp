@@ -285,6 +285,7 @@ std::vector<std::string> pyqt::modules()
 		"QtGui",
 		"QtWidgets",
 		"QtOpenGL",
+		"QtSvg",
 		"_QOpenGLFunctions_2_0",
 		"_QOpenGLFunctions_2_1",
 		"_QOpenGLFunctions_4_1_Core"
