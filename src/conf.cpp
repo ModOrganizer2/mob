@@ -1162,7 +1162,7 @@ void init_options(
 
 	make_canonical_path(
 		"install_translations",
-		paths::install_dlls(), "translations");
+		paths::install_bin(), "resources/translations");
 
 	conf::set_global("tools", "iscc", path_to_utf8(find_iscc()));
 }
