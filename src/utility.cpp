@@ -383,6 +383,55 @@ std::vector<std::string> split(const std::string& s, const std::string& seps)
 	return v;
 }
 
+std::vector<std::string> split_quoted(const std::string& s, const std::string& seps)
+{
+	std::vector<std::string> v;
+	bool q = false;
+	std::string token;
+
+	for (std::size_t i=0; i<s.size(); ++i)
+	{
+		if (seps.find(s[i]) != std::string::npos)
+		{
+			if (q)
+			{
+				token += s[i];
+			}
+			else if (!token.empty())
+			{
+				v.push_back(token);
+				token = "";
+			}
+		}
+		else if (s[i] == '"')
+		{
+			if (q)
+			{
+				q = false;
+
+				if (!token.empty())
+				{
+					v.push_back(token);
+					token = "";
+				}
+			}
+			else
+			{
+				q = true;
+			}
+		}
+		else
+		{
+			token += s[i];
+		}
+	}
+
+	if (!token.empty())
+		v.push_back(token);
+
+	return v;
+}
+
 template <class C>
 void trim_impl(std::basic_string<C>& s, std::basic_string_view<C> what)
 {

@@ -12,6 +12,7 @@ class interrupted {};
 static std::vector<std::unique_ptr<task>> g_tasks;
 static std::vector<task*> g_all_tasks;
 static std::atomic<bool> g_interrupt = false;
+static alias_map g_aliases;
 std::mutex task::interrupt_mutex_;
 
 
@@ -40,7 +41,7 @@ std::vector<task*> get_top_level_tasks()
 	return v;
 }
 
-std::vector<task*> find_tasks(const std::string& pattern)
+std::vector<task*> find_tasks_by_pattern(const std::string& pattern)
 {
 	std::vector<task*> tasks;
 
@@ -66,21 +67,50 @@ std::vector<task*> find_tasks(const std::string& pattern)
 	return tasks;
 }
 
-task* find_task(const std::string& pattern)
+std::vector<task*> find_tasks_by_alias(const std::string& pattern)
 {
+	std::vector<task*> v;
+
+	auto itor = g_aliases.find(pattern);
+	if (itor == g_aliases.end())
+		return v;
+
+	for (auto&& a : itor->second)
+	{
+		const auto temp = find_tasks_by_pattern(a);
+		v.insert(v.end(), temp.begin(), temp.end());
+	}
+
+	return v;
+}
+
+std::vector<task*> find_tasks(const std::string& pattern)
+{
+	std::vector<task*> tasks;
+
 	for (auto&& t : g_all_tasks)
 	{
 		if (pattern == "super" && t->is_super())
-			return t;
-
-		for (auto&& n : t->names())
 		{
-			if (mob::glob_match(pattern, n))
-				return t;
+			tasks.push_back(t);
+		}
+		else
+		{
+			for (auto&& n : t->names())
+			{
+				if (mob::glob_match(pattern, n))
+				{
+					tasks.push_back(t);
+					break;
+				}
+			}
 		}
 	}
 
-	return nullptr;
+	if (tasks.empty())
+		tasks = find_tasks_by_alias(pattern);
+
+	return tasks;
 }
 
 void run_all_tasks()
@@ -131,6 +161,24 @@ bool is_super_task(const std::string& name)
 
 	return false;
 }
+
+void add_alias(std::string name, std::vector<std::string> names)
+{
+	auto itor = g_aliases.find(name);
+	if (itor != g_aliases.end())
+	{
+		gcx().warning(context::generic, "alias {} already exists", name);
+		return;
+	}
+
+	g_aliases.emplace(std::move(name), std::move(names));
+}
+
+const alias_map& get_all_aliases()
+{
+	return g_aliases;
+}
+
 
 
 std::string to_string(task::clean c)

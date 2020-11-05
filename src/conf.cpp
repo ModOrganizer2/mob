@@ -767,7 +767,11 @@ void parse_section(
 		if (k.empty())
 			ini_error(ini, i, "bad line '" + line + "'");
 
-		if (task.empty())
+		if (section == "aliases")
+		{
+			add_alias(k, split_quoted(v, " "));
+		}
+		else if (task.empty())
 		{
 			if (add)
 				conf::add_global(section, k, v);

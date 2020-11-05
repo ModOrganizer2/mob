@@ -336,7 +336,8 @@ T join(const std::vector<T>& v, const Sep& sep)
 	return s;
 }
 
-std::vector<std::string> split(const std::string& s, const std::string& sep);
+std::vector<std::string> split(const std::string& s, const std::string& seps);
+std::vector<std::string> split_quoted(const std::string& s, const std::string& seps);
 
 std::string pad_right(std::string s, std::size_t n, char c=' ');
 std::string pad_left(std::string s, std::size_t n, char c=' ');

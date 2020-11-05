@@ -173,7 +173,7 @@ void boost::build_and_install_from_source()
 	instrument<times::build>([&]
 	{
 		do_b2(
-			{"thread", "date_time", "filesystem", "locale"},
+			{"thread", "date_time", "filesystem", "locale", "program_options"},
 			"static", "static", arch::x64);
 
 		do_b2(
@@ -181,11 +181,11 @@ void boost::build_and_install_from_source()
 			"static", "static", arch::x86);
 
 		do_b2(
-			{"thread", "date_time", "locale"},
+			{"thread", "date_time", "locale", "program_options"},
 			"static", "shared", arch::x64);
 
 		do_b2(
-			{"thread", "python"},
+			{"thread", "date_time", "python", "atomic"},
 			"shared", "shared", arch::x64);
 	});
 
