@@ -596,6 +596,7 @@ int list_command::do_run()
 {
 	if (aliases_)
 	{
+		load_options();
 		dump_aliases();
 	}
 	else
