@@ -24,10 +24,13 @@ Task& add_task(Args&&... args)
 void run_all_tasks();
 bool is_super_task(const std::string& name);
 std::vector<task*> find_tasks(const std::string& pattern);
-task* find_task(const std::string& pattern);
 
 std::vector<task*> get_all_tasks();
 std::vector<task*> get_top_level_tasks();
+
+using alias_map = std::map<std::string, std::vector<std::string>>;
+void add_alias(std::string name, std::vector<std::string> patterns);
+const alias_map& get_all_aliases();
 
 
 class task_conf_holder
