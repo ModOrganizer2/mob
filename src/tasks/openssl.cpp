@@ -186,7 +186,7 @@ void openssl::install_engines()
 
 void openssl::copy_files()
 {
-	copy_dlls_to(paths::install_dlls());
+	copy_dlls_to(paths::install_bin());
 	copy_pdbs_to(paths::install_pdbs());
 }
 
