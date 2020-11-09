@@ -194,6 +194,9 @@ public:
 	build_command();
 
 	meta_t meta() const override;
+
+	// kills any msbuild.exe process, they like to linger and keep file locks
+	//
 	static void terminate_msbuild();
 
 protected:
@@ -216,6 +219,14 @@ private:
 	bool keep_msbuild_ = false;
 	std::optional<bool> revert_ts_;
 
+
+	// creates a bare bones ini file in the prefix so mob can be invoked in any
+	// directory below it
+	//
+	void create_prefix_ini();
+
+	// for instrumentation
+	//
 	void dump_timings();
 };
 

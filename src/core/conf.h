@@ -126,7 +126,7 @@ struct paths
 };
 
 
-std::string master_ini_filename();
+std::string default_ini_filename();
 
 std::vector<fs::path> find_inis(
 	bool auto_detect, const std::vector<std::string>& from_cl,

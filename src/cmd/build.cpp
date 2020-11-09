@@ -153,17 +153,7 @@ int build_command::do_run()
 {
 	try
 	{
-		// Create a mob.ini in the build folder.
-		if (!exists(paths::prefix())) {
-			create_directory(paths::prefix());
-		}
-		auto prefix_ini = paths::prefix() / "mob.ini";
-		if (!exists(prefix_ini))
-		{
-			std::ofstream out(prefix_ini);
-			out << "[paths]\n" << "prefix = .\n";
-		}
-
+		create_prefix_ini();
 		run_all_tasks();
 
 		if (do_timings)
@@ -182,11 +172,35 @@ int build_command::do_run()
 	}
 }
 
+void build_command::create_prefix_ini()
+{
+	// creating prefix
+	if (!exists(paths::prefix()))
+		op::create_directories(gcx(), paths::prefix());
+
+	const auto ini = paths::prefix() / default_ini_filename();
+	if (!exists(ini))
+	{
+		std::ofstream(ini)
+			<< "[paths]\n"
+			<< "prefix = .\n";
+	}
+}
+
 void build_command::dump_timings()
 {
 	using namespace std::chrono;
 
 	std::ofstream out("timings.txt");
+
+	// generates a file with line being "task,start_time,end_time,step"
+	//
+	// uibase,0,1,fetch
+	// uibase,1,2,configure
+	// uibase,2,3,build
+	// modorganizer,4,5,fetch
+	// modorganizer,5,6,configure
+	// modorganizer,6,7,build
 
 	auto write = [&](auto&& inst)
 	{

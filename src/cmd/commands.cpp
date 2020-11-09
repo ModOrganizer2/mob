@@ -67,7 +67,7 @@ command::command(flags f)
 clipp::group command::common_options_group()
 {
 	auto& o = common;
-	const auto master = master_ini_filename();
+	const auto master = default_ini_filename();
 
 	return
 		(clipp::repeatable(clipp::option("-i", "--ini")
@@ -290,7 +290,7 @@ int help_command::do_run()
 #pragma warning(suppress: 4548)
 	auto doc = (command::common_options_group(), (clipp::value("command")));
 
-	const auto master = master_ini_filename();
+	const auto master = default_ini_filename();
 
 	help(doc,
 		"Commands:\n"
