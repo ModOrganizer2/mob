@@ -13,6 +13,9 @@
     <Filter Include="src\core">
       <UniqueIdentifier>{6e4d31d5-100c-4a4d-8e7d-4c48939819bd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\utility">
+      <UniqueIdentifier>{78dd6066-d407-4450-b520-649454c15ee9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -150,6 +153,9 @@
     <ClCompile Include="..\src\core\context.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\utility\threading.cpp">
+      <Filter>src\utility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
@@ -187,6 +193,9 @@
     </ClInclude>
     <ClInclude Include="..\src\core\conf.h">
       <Filter>src\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\threading.h">
+      <Filter>src\utility</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

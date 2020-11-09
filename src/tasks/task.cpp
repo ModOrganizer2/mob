@@ -3,6 +3,7 @@
 #include "../core/conf.h"
 #include "../core/op.h"
 #include "../tools/tools.h"
+#include "../utility/threading.h"
 
 namespace mob
 {

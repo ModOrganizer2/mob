@@ -4,6 +4,7 @@
 #include "core/conf.h"
 #include "core/op.h"
 #include "core/context.h"
+#include "utility/threading.h"
 
 namespace mob
 {
