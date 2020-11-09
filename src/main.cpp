@@ -10,77 +10,6 @@
 namespace mob
 {
 
-std::shared_ptr<command> handle_command_line(const std::vector<std::string>& args)
-{
-	auto help = std::make_shared<help_command>();
-	auto build = std::make_shared<build_command>();
-
-	std::vector<std::shared_ptr<command>> commands =
-	{
-		help,
-		std::make_unique<version_command>(),
-		std::make_unique<options_command>(),
-		build,
-		std::make_unique<list_command>(),
-		std::make_unique<release_command>(),
-		std::make_unique<git_command>(),
-		std::make_unique<cmake_command>(),
-		std::make_unique<inis_command>(),
-		std::make_unique<tx_command>()
-	};
-
-	help->set_commands(commands);
-
-	std::vector<clipp::group> command_groups;
-	for (auto& c : commands)
-		command_groups.push_back(c->group());
-
-	clipp::group all_groups;
-	all_groups.scoped(false);
-	all_groups.exclusive(true);
-	for (auto& c : command_groups)
-		all_groups.push_back(c);
-
-#pragma warning(suppress: 4548)
-	auto cli = (all_groups, command::common_options_group());
-
-	auto pr = clipp::parse(args, cli);
-
-	if (!pr)
-	{
-		// if a command was picked, show its help instead of the main one
-		for (auto&& c : commands)
-		{
-			if (c->picked())
-			{
-				c->force_help();
-				return std::move(c);
-			}
-		}
-
-		// bad command line
-		help->force_exit_code(1);
-		return help;
-	}
-
-
-	for (auto&& c : commands)
-	{
-		if (c->picked())
-			return std::move(c);
-	}
-
-	return {};
-}
-
-
-BOOL WINAPI signal_handler(DWORD) noexcept
-{
-	gcx().debug(context::generic, "caught sigint");
-	task::interrupt_all();
-	return TRUE;
-}
-
 void add_tasks()
 {
 	add_task<parallel_tasks>(false)
@@ -184,48 +113,76 @@ void add_tasks()
 	add_task<installer>();
 }
 
-
-// see https://github.com/isanae/mob/issues/4
-//
-// this restores the original console font if it changed
-//
-class font_restorer
+std::shared_ptr<command> handle_command_line(const std::vector<std::string>& args)
 {
-public:
-	font_restorer()
-		: restore_(false)
-	{
-		std::memset(&old_, 0, sizeof(old_));
-		old_.cbSize = sizeof(old_);
+	auto help = std::make_shared<help_command>();
+	auto build = std::make_shared<build_command>();
 
-		if (GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &old_))
-			restore_ = true;
+	std::vector<std::shared_ptr<command>> commands =
+	{
+		help,
+		std::make_unique<version_command>(),
+		std::make_unique<options_command>(),
+		build,
+		std::make_unique<list_command>(),
+		std::make_unique<release_command>(),
+		std::make_unique<git_command>(),
+		std::make_unique<cmake_command>(),
+		std::make_unique<inis_command>(),
+		std::make_unique<tx_command>()
+	};
+
+	help->set_commands(commands);
+
+	std::vector<clipp::group> command_groups;
+	for (auto& c : commands)
+		command_groups.push_back(c->group());
+
+	clipp::group all_groups;
+	all_groups.scoped(false);
+	all_groups.exclusive(true);
+	for (auto& c : command_groups)
+		all_groups.push_back(c);
+
+#pragma warning(suppress: 4548)
+	auto cli = (all_groups, command::common_options_group());
+
+	auto pr = clipp::parse(args, cli);
+
+	if (!pr)
+	{
+		// if a command was picked, show its help instead of the main one
+		for (auto&& c : commands)
+		{
+			if (c->picked())
+			{
+				c->force_help();
+				return std::move(c);
+			}
+		}
+
+		// bad command line
+		help->force_exit_code(1);
+		return help;
 	}
 
-	~font_restorer()
+
+	for (auto&& c : commands)
 	{
-		if (!restore_)
-			return;
-
-		CONSOLE_FONT_INFOEX now = {};
-		now.cbSize = sizeof(now);
-
-		if (!GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &now))
-			return;
-
-		if (std::wcsncmp(old_.FaceName, now.FaceName, LF_FACESIZE) != 0)
-			restore();
+		if (c->picked())
+			return std::move(c);
 	}
 
-	void restore()
-	{
-		::SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &old_);
-	}
+	return {};
+}
 
-private:
-	CONSOLE_FONT_INFOEX old_;
-	bool restore_;
-};
+
+BOOL WINAPI signal_handler(DWORD) noexcept
+{
+	gcx().debug(context::generic, "caught sigint");
+	task::interrupt_all();
+	return TRUE;
+}
 
 void set_sigint_handler()
 {
