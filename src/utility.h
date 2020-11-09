@@ -28,9 +28,6 @@ bool is_any_set(E e, E v)
 }
 
 
-class context;
-class url;
-
 class bailed
 {
 public:
@@ -145,6 +142,8 @@ enum class arch
 	def = x64
 };
 
+
+class url;
 
 url make_prebuilt_url(const std::string& filename);
 url make_appveyor_artifact_url(

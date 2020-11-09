@@ -215,22 +215,24 @@ bool thread_pool::try_add(fun thread_fun)
 {
 	for (auto& t : threads_)
 	{
-		if (!t->running)
+		if (t->running)
+			continue;
+
+		// found one
+
+		if (t->thread.joinable())
+			t->thread.join();
+
+		t->running = true;
+		t->thread_fun = thread_fun;
+
+		t->thread = std::thread([&]
 		{
-			if (t->thread.joinable())
-				t->thread.join();
+			t->thread_fun();
+			t->running = false;
+		});
 
-			t->running = true;
-			t->thread_fun = thread_fun;
-
-			t->thread = std::thread([&]
-			{
-				t->thread_fun();
-				t->running = false;
-			});
-
-			return true;
-		}
+		return true;
 	}
 
 	return false;

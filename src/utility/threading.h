@@ -3,8 +3,13 @@
 namespace mob
 {
 
+// sets unhandled exception and std::terminate handlers for the current thread
+//
 void set_thread_exception_handlers();
 
+
+// starts a thread with exception handlers set up
+//
 template <class F>
 std::thread start_thread(F&& f)
 {
@@ -16,6 +21,8 @@ std::thread start_thread(F&& f)
 }
 
 
+// executes a function in a thread, blocks if there are too many
+//
 class thread_pool
 {
 public:
@@ -28,7 +35,13 @@ public:
 	thread_pool(const thread_pool&) = delete;
 	thread_pool& operator=(const thread_pool&) = delete;
 
+	// runs the given function in a thread; if there no threads available,
+	// blocks until another thread finishes
+	//
 	void add(fun f);
+
+	// blocks until all threads are finished
+	//
 	void join();
 
 private:
@@ -39,10 +52,11 @@ private:
 		std::thread thread;
 	};
 
-
 	const std::size_t count_;
 	std::vector<std::unique_ptr<thread_info>> threads_;
 
+	// tries to find an available thread, returns false if none are found
+	//
 	bool try_add(fun thread_fun);
 };
 

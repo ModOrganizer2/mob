@@ -5,41 +5,70 @@
 namespace mob
 {
 
-static std::mutex g_output_mutex;
+enum class color_methods
+{
+  none = 0,
+  ansi,
+  console
+};
 
-extern u8stream u8cout(false);
-extern u8stream u8cerr(true);
+// returns whether the given standard handle is for a console or is redirected
+// somewhere else
+//
+bool is_handle_console(int handle)
+{
+  DWORD d = 0;
 
+  if (GetConsoleMode(GetStdHandle(handle), &d))
+  {
+	// this is a console
+	return true;
+  }
 
-static bool stdout_console = []
+  return false;
+}
+
+// figures out if the terminal supports ansi color codes; the old conhost
+// doesn't, but the new terminal does
+//
+// returns color_methods::none if the output is not a console
+//
+color_methods get_color_method()
 {
   DWORD d = 0;
 
   if (GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &d))
   {
-	// this is a console
-	return true;
+	if ((d & ENABLE_VIRTUAL_TERMINAL_PROCESSING) == 0)
+	  return color_methods::console;
+	else
+	  return color_methods::ansi;
   }
 
-  return false;
-}();
+  // not a console
+  return color_methods::none;
+}
 
-static bool stderr_console = []
-{
-  DWORD d = 0;
 
-  if (GetConsoleMode(GetStdHandle(STD_ERROR_HANDLE), &d))
-  {
-	// this is a console
-	return true;
-  }
+// global output mutex, avoids interleaving
+static std::mutex g_output_mutex;
 
-  return false;
-}();
+// streams
+extern u8stream u8cout(false);
+extern u8stream u8cerr(true);
+
+// whether stdout and stderr are for console, only check once
+static bool stdout_console = is_handle_console(STD_OUTPUT_HANDLE);
+static bool stderr_console = is_handle_console(STD_ERROR_HANDLE);
+
+// color method supported by terminal, only check once
+static color_methods g_color_method = get_color_method();
 
 
 void set_std_streams()
 {
+  // only set to utf16 when the output is the console
+
   if (stdout_console)
 	_setmode(_fileno(stdout), _O_U16TEXT);
 
@@ -93,26 +122,6 @@ void u8stream::write_ln(std::string_view utf8)
   }
 }
 
-enum class color_methods
-{
-  none = 0,
-  ansi,
-  console
-};
-
-static color_methods g_color_method = []
-{
-  DWORD d = 0;
-  if (GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &d))
-  {
-	if ((d & ENABLE_VIRTUAL_TERMINAL_PROCESSING) == 0)
-	  return color_methods::console;
-	else
-	  return color_methods::ansi;
-  }
-
-  return color_methods::none;
-}();
 
 console_color::console_color()
   : reset_(false), old_atts_(0)
@@ -192,6 +201,37 @@ console_color::~console_color()
   {
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), old_atts_);
   }
+}
+
+
+font_restorer::font_restorer()
+  : restore_(false)
+{
+  std::memset(&old_, 0, sizeof(old_));
+  old_.cbSize = sizeof(old_);
+
+  if (GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &old_))
+	restore_ = true;
+}
+
+font_restorer::~font_restorer()
+{
+  if (!restore_)
+	return;
+
+  CONSOLE_FONT_INFOEX now = {};
+  now.cbSize = sizeof(now);
+
+  if (!GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &now))
+	return;
+
+  if (std::wcsncmp(old_.FaceName, now.FaceName, LF_FACESIZE) != 0)
+	restore();
+}
+
+void font_restorer::restore()
+{
+  ::SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &old_);
 }
 
 } // namespace

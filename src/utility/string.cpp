@@ -73,46 +73,59 @@ std::vector<std::string> split(const std::string& s, const std::string& seps)
 std::vector<std::string> split_quoted(const std::string& s, const std::string& seps)
 {
 	std::vector<std::string> v;
-	bool q = false;
 	std::string token;
+
+	// currently between double quotes
+	bool q = false;
 
 	for (std::size_t i=0; i<s.size(); ++i)
 	{
 		if (seps.find(s[i]) != std::string::npos)
 		{
+			// this is a separator
+
 			if (q)
 			{
+				// in quotes, add to current token
 				token += s[i];
 			}
 			else if (!token.empty())
 			{
+				// not in quotes, push this token and reset
 				v.push_back(token);
 				token = "";
 			}
 		}
 		else if (s[i] == '"')
 		{
+			// double quote
+
 			if (q)
 			{
+				// end of quoted token
 				q = false;
 
 				if (!token.empty())
 				{
+					// push this token and reset
 					v.push_back(token);
 					token = "";
 				}
 			}
 			else
 			{
+				// start of quoted token
 				q = true;
 			}
 		}
 		else
 		{
+			// not a separator, not a quote
 			token += s[i];
 		}
 	}
 
+	// last token
 	if (!token.empty())
 		v.push_back(token);
 
@@ -401,7 +414,6 @@ std::string utf16_to_bytes(encodings e, std::wstring_view ws)
 			return utf16_to_utf8(ws);
 		}
 	}
-
 }
 
 std::string utf8_to_bytes(encodings e, std::string_view utf8)
@@ -424,7 +436,6 @@ std::string utf8_to_bytes(encodings e, std::string_view utf8)
 		}
 	}
 }
-
 
 std::string path_to_utf8(fs::path p)
 {

@@ -98,6 +98,9 @@ struct repeat_converter<char[N]>
 };
 
 
+// a range that infinitely return `s`, can be used with zip() to create a pair
+// with a repeating value
+//
 template <class T>
 auto repeat(const T& s)
 {
@@ -105,12 +108,15 @@ auto repeat(const T& s)
 }
 
 
+// returns a container of pairs from both ranges; if the ranges are not the
+// same size, truncates to the smallest one
+//
 template <
 	class Range1,
 	class Range2,
 	class Container=std::vector<std::pair<
-	typename Range1::value_type,
-	typename Range2::value_type>>>
+	  typename Range1::value_type,
+	  typename Range2::value_type>>>
 Container zip(const Range1& range1, const Range2& range2)
 {
 	Container out;
@@ -134,7 +140,8 @@ Container zip(const Range1& range1, const Range2& range2)
 	return out;
 }
 
-
+// returns a vector containing the result of `f(e)` for each element `e` of `v`
+//
 template <class F, class T>
 auto map(const std::vector<T>& v, F&& f)
 {

@@ -106,6 +106,7 @@
     <ClCompile Include="..\src\tools\process_runner.cpp" />
     <ClCompile Include="..\src\tools\tools.cpp" />
     <ClCompile Include="..\src\utility.cpp" />
+    <ClCompile Include="..\src\utility\assert.cpp" />
     <ClCompile Include="..\src\utility\fs.cpp" />
     <ClCompile Include="..\src\utility\io.cpp" />
     <ClCompile Include="..\src\utility\string.cpp" />

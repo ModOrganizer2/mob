@@ -165,6 +165,9 @@
     <ClCompile Include="..\src\utility\io.cpp">
       <Filter>src\utility</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\utility\assert.cpp">
+      <Filter>src\utility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
