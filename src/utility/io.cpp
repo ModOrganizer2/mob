@@ -15,7 +15,7 @@ enum class color_methods
 // returns whether the given standard handle is for a console or is redirected
 // somewhere else
 //
-bool is_handle_console(int handle)
+bool is_handle_console(DWORD handle)
 {
   DWORD d = 0;
 
