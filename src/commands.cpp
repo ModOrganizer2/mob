@@ -502,6 +502,17 @@ int build_command::do_run()
 {
 	try
 	{
+		// Create a mob.ini in the build folder.
+		if (!exists(paths::prefix())) {
+			create_directory(paths::prefix());
+		}
+		auto prefix_ini = paths::prefix() / "mob.ini";
+		if (!exists(prefix_ini))
+		{
+			std::ofstream out(prefix_ini);
+			out << "[paths]\n" << "prefix = .\n";
+		}
+
 		run_all_tasks();
 
 		if (do_timings)

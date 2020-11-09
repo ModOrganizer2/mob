@@ -980,13 +980,19 @@ std::vector<fs::path> find_inis(
 	{
 		MOB_ASSERT(!master.empty());
 
-		const auto in_cwd = fs::current_path() / master_ini_filename();
-		if (fs::exists(in_cwd) && !fs::equivalent(in_cwd, master))
-		{
-			if (verbose)
-				u8cout << "also found in cwd " << path_to_utf8(in_cwd) << "\n";
+		auto cwd = fs::current_path();
 
-			v.push_back({"cwd", fs::canonical(in_cwd)});
+		while (!cwd.empty()) {
+			const auto in_cwd = cwd / master_ini_filename();
+			if (fs::exists(in_cwd) && !fs::equivalent(in_cwd, master))
+			{
+				if (verbose)
+					u8cout << "also found in cwd " << path_to_utf8(in_cwd) << "\n";
+
+				v.push_back({ "cwd", fs::canonical(in_cwd) });
+				break;
+			}
+			cwd = cwd.parent_path();
 		}
 	}
 
@@ -1070,10 +1076,18 @@ void init_options(
 {
 	MOB_ASSERT(!inis.empty());
 
+	// Keep track of the INI that contained a prefix:
+	fs::path ini_prefix;
 	bool add = true;
 	for (auto&& ini : inis)
 	{
+		// Check if the prefix is set by this ini file:
+		fs::path cprefix = add ? fs::path{} : paths::prefix();
 		parse_ini(ini, add);
+
+		if (paths::prefix() != cprefix)
+			ini_prefix = ini;
+
 		add = false;
 	}
 
@@ -1084,6 +1098,11 @@ void init_options(
 		for (auto&& o : opts)
 		{
 			const auto po = parse_option(o);
+
+			if (po.section == "paths" && po.key == "prefix") 
+			{
+				ini_prefix = "";
+			}
 
 			if (po.task.empty())
 			{
@@ -1142,7 +1161,7 @@ void init_options(
 	this_env::append_to_path(conf::path_by_name("qt_bin"));
 
 	if (!paths::prefix().empty())
-		make_canonical_path("prefix", fs::current_path(), "");
+		make_canonical_path("prefix", ini_prefix.empty() ? fs::current_path() : ini_prefix.parent_path(), "");
 
 	make_canonical_path("cache",             paths::prefix(), "downloads");
 	make_canonical_path("build",             paths::prefix(), "build");
