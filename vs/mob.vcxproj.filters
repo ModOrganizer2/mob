@@ -245,5 +245,8 @@
     <ClInclude Include="..\src\cmd\commands.h">
       <Filter>src\cmd</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\utility\enum.h">
+      <Filter>src\cmd</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

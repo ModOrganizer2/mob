@@ -8,7 +8,7 @@ namespace mob
 constexpr bool do_timings = false;
 
 build_command::build_command()
-	: command(flags(requires_options | handle_sigint))
+	: command(requires_options | handle_sigint)
 {
 }
 

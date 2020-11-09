@@ -107,11 +107,6 @@ void command::force_exit_code(int code)
 	code_ = code;
 }
 
-void command::force_pick()
-{
-	picked_ = true;
-}
-
 void command::force_help()
 {
 	help_ = true;
@@ -120,11 +115,6 @@ void command::force_help()
 bool command::picked() const
 {
 	return picked_;
-}
-
-bool command::wants_help() const
-{
-	return help_;
 }
 
 clipp::group command::group()
@@ -245,11 +235,6 @@ int command::load_options()
 		return 1;
 
 	return 0;
-}
-
-const std::vector<fs::path>& command::inis() const
-{
-	return inis_;
 }
 
 
