@@ -1099,7 +1099,7 @@ void init_options(
 		{
 			const auto po = parse_option(o);
 
-			if (po.section == "paths" && po.key == "prefix") 
+			if (po.section == "paths" && po.key == "prefix")
 			{
 				ini_prefix = "";
 			}
@@ -1133,7 +1133,12 @@ void init_options(
 	}
 
 	set_special_options();
-	context::set_log_file(conf::log_file());
+
+	auto log_file = conf::log_file();
+	if (log_file.is_relative())
+		log_file = paths::prefix() / log_file;
+
+	context::set_log_file(log_file);
 
 	gcx().debug(context::conf,
 		"command line: {}", std::wstring(GetCommandLineW()));
