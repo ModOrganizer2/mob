@@ -11,8 +11,19 @@ namespace mob
 
 constexpr bool do_timings = false;
 
-// in main.cpp
-void set_sigint_handler();
+
+BOOL WINAPI signal_handler(DWORD) noexcept
+{
+	gcx().debug(context::generic, "caught sigint");
+	task::interrupt_all();
+	return TRUE;
+}
+
+void set_sigint_handler()
+{
+	::SetConsoleCtrlHandler(mob::signal_handler, TRUE);
+}
+
 
 
 std::string version()

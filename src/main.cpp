@@ -12,6 +12,18 @@ namespace mob
 
 void add_tasks()
 {
+	// add new tasks here
+
+	// top level tasks are run sequentially, tasks added to a parallel_tasks will
+	// run in parallel; which tasks are run in parallel is somewhat arbitrary when
+	// there's no dependency, the goal is just to saturate the cpu
+
+	// mob doesn't have a concept of task dependencies, just task ordering, so
+	// if a task depends on another, it has to be earlier in the order
+
+
+	// third-party tasks
+
 	add_task<parallel_tasks>(false)
 		.add_task<sevenz>()
 		.add_task<zlib>()
@@ -42,6 +54,8 @@ void add_tasks()
 		.add_task<licenses>()
 		.add_task<explorerpp>();
 
+
+	// super tasks
 
 	using mo = modorganizer;
 
@@ -113,11 +127,14 @@ void add_tasks()
 	add_task<installer>();
 }
 
+// figures out which command to run and returns it, if any
+//
 std::shared_ptr<command> handle_command_line(const std::vector<std::string>& args)
 {
 	auto help = std::make_shared<help_command>();
 	auto build = std::make_shared<build_command>();
 
+	// available commands
 	std::vector<std::shared_ptr<command>> commands =
 	{
 		help,
@@ -132,21 +149,26 @@ std::shared_ptr<command> handle_command_line(const std::vector<std::string>& arg
 		std::make_unique<tx_command>()
 	};
 
+	// commands are shown in the help
 	help->set_commands(commands);
 
-	std::vector<clipp::group> command_groups;
-	for (auto& c : commands)
-		command_groups.push_back(c->group());
 
+	// root group with all the command groups
 	clipp::group all_groups;
-	all_groups.scoped(false);
-	all_groups.exclusive(true);
-	for (auto& c : command_groups)
-		all_groups.push_back(c);
 
+	// not sure, actually
+	all_groups.scoped(false);
+
+	// child groups are exclusive, that is, only one command can be given
+	all_groups.exclusive(true);
+
+	for (auto& c : commands)
+		all_groups.push_back(c->group());
+
+
+	// vs reports a no-op on the left side of the comman, which is incorrect
 #pragma warning(suppress: 4548)
 	auto cli = (all_groups, command::common_options_group());
-
 	auto pr = clipp::parse(args, cli);
 
 	if (!pr)
@@ -176,20 +198,6 @@ std::shared_ptr<command> handle_command_line(const std::vector<std::string>& arg
 	return {};
 }
 
-
-BOOL WINAPI signal_handler(DWORD) noexcept
-{
-	gcx().debug(context::generic, "caught sigint");
-	task::interrupt_all();
-	return TRUE;
-}
-
-void set_sigint_handler()
-{
-	::SetConsoleCtrlHandler(mob::signal_handler, TRUE);
-}
-
-
 int run(const std::vector<std::string>& args)
 {
 	font_restorer fr;
@@ -217,7 +225,10 @@ int run(const std::vector<std::string>& args)
 
 int wmain(int argc, wchar_t** argv)
 {
+	// makes streams unicode
 	mob::set_std_streams();
+
+	// outputs stacktrace on crash
 	mob::set_thread_exception_handlers();
 
 	std::vector<std::string> args;
