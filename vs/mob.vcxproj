@@ -58,7 +58,7 @@
     <Link />
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\commands.cpp" />
+    <ClCompile Include="..\src\cmd\commands.cpp" />
     <ClCompile Include="..\src\core\conf.cpp" />
     <ClCompile Include="..\src\core\context.cpp" />
     <ClCompile Include="..\src\core\env.cpp" />
@@ -113,7 +113,7 @@
     <ClCompile Include="..\src\utility\threading.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\commands.h" />
+    <ClInclude Include="..\src\cmd\commands.h" />
     <ClInclude Include="..\src\core\conf.h" />
     <ClInclude Include="..\src\core\context.h" />
     <ClInclude Include="..\src\core\env.h" />

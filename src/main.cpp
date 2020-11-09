@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "net.h"
 #include "utility.h"
-#include "commands.h"
+#include "cmd/commands.h"
 #include "core/conf.h"
 #include "core/op.h"
 #include "tasks/tasks.h"

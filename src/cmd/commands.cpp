@@ -1,11 +1,11 @@
 #include "pch.h"
 #include "commands.h"
-#include "utility.h"
-#include "net.h"
-#include "core/conf.h"
-#include "tasks/tasks.h"
-#include "tools/tools.h"
-#include "utility/threading.h"
+#include "../utility.h"
+#include "../net.h"
+#include "../core/conf.h"
+#include "../tasks/tasks.h"
+#include "../tools/tools.h"
+#include "../utility/threading.h"
 
 namespace mob
 {

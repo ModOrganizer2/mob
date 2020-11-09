@@ -16,6 +16,9 @@
     <Filter Include="src\utility">
       <UniqueIdentifier>{78dd6066-d407-4450-b520-649454c15ee9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\cmd">
+      <UniqueIdentifier>{b9307be3-9ccb-4449-8aed-d9b69f0beda9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -129,9 +132,6 @@
     <ClCompile Include="..\src\tasks\explorerpp.cpp">
       <Filter>src\tasks</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\commands.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\tasks\installer.cpp">
       <Filter>src\tasks</Filter>
     </ClCompile>
@@ -168,6 +168,9 @@
     <ClCompile Include="..\src\utility\assert.cpp">
       <Filter>src\utility</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\cmd\commands.cpp">
+      <Filter>src\cmd</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
@@ -187,9 +190,6 @@
     </ClInclude>
     <ClInclude Include="..\src\tools\tools.h">
       <Filter>src\tools</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\commands.h">
-      <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\src\core\context.h">
       <Filter>src\core</Filter>
@@ -223,6 +223,9 @@
     </ClInclude>
     <ClInclude Include="..\src\utility\io.h">
       <Filter>src\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cmd\commands.h">
+      <Filter>src\cmd</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
