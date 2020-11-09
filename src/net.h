@@ -7,6 +7,8 @@ namespace mob
 
 class context;
 
+// curl global init/cleanup
+//
 struct curl_init
 {
 	curl_init();
@@ -17,6 +19,8 @@ struct curl_init
 };
 
 
+// wrapper around curl_url
+//
 class url
 {
 public:
@@ -27,6 +31,8 @@ public:
 	const std::string& string() const;
 	bool empty() const;
 
+	// component of the path after last separator
+	//
 	std::string filename() const;
 
 private:
@@ -34,14 +40,27 @@ private:
 };
 
 
+// threaded downloader
+//
 class curl_downloader
 {
 public:
 	curl_downloader(const context* cx=nullptr);
 
+	// starts a thread, downloads url into given file
+	//
 	void start(const url& u, const fs::path& file);
+
+	// joins download thread
+	//
 	void join();
+
+	// async interrupt
+	//
 	void interrupt();
+
+	// whether the file was downloaded correctly; only valid after join()
+	//
 	bool ok() const;
 
 private:

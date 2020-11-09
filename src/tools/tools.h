@@ -1,10 +1,10 @@
 #pragma once
 
 #include "../net.h"
-#include "../process.h"
-#include "../conf.h"
-#include "../op.h"
-#include "../context.h"
+#include "../core/process.h"
+#include "../core/conf.h"
+#include "../core/op.h"
+#include "../core/context.h"
 
 namespace mob
 {

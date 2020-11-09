@@ -1,88 +1,33 @@
 #include "pch.h"
-#include "conf.h"
 #include "net.h"
-#include "op.h"
 #include "utility.h"
-#include "commands.h"
+#include "cmd/commands.h"
+#include "core/conf.h"
+#include "core/op.h"
 #include "tasks/tasks.h"
 #include "tools/tools.h"
+#include "utility/threading.h"
 
 namespace mob
 {
 
-std::shared_ptr<command> handle_command_line(const std::vector<std::string>& args)
-{
-	auto help = std::make_shared<help_command>();
-	auto build = std::make_shared<build_command>();
-
-	std::vector<std::shared_ptr<command>> commands =
-	{
-		help,
-		std::make_unique<version_command>(),
-		std::make_unique<options_command>(),
-		build,
-		std::make_unique<list_command>(),
-		std::make_unique<release_command>(),
-		std::make_unique<git_command>(),
-		std::make_unique<cmake_command>(),
-		std::make_unique<inis_command>(),
-		std::make_unique<tx_command>()
-	};
-
-	help->set_commands(commands);
-
-	std::vector<clipp::group> command_groups;
-	for (auto& c : commands)
-		command_groups.push_back(c->group());
-
-	clipp::group all_groups;
-	all_groups.scoped(false);
-	all_groups.exclusive(true);
-	for (auto& c : command_groups)
-		all_groups.push_back(c);
-
-#pragma warning(suppress: 4548)
-	auto cli = (all_groups, command::common_options_group());
-
-	auto pr = clipp::parse(args, cli);
-
-	if (!pr)
-	{
-		// if a command was picked, show its help instead of the main one
-		for (auto&& c : commands)
-		{
-			if (c->picked())
-			{
-				c->force_help();
-				return std::move(c);
-			}
-		}
-
-		// bad command line
-		help->force_exit_code(1);
-		return help;
-	}
-
-
-	for (auto&& c : commands)
-	{
-		if (c->picked())
-			return std::move(c);
-	}
-
-	return {};
-}
-
-
-BOOL WINAPI signal_handler(DWORD) noexcept
-{
-	gcx().debug(context::generic, "caught sigint");
-	task::interrupt_all();
-	return TRUE;
-}
-
 void add_tasks()
 {
+	// add new tasks here
+	//
+	// top level tasks are run sequentially, tasks added to a parallel_tasks will
+	// run in parallel; which tasks are run in parallel is somewhat arbitrary when
+	// there's no dependency, the goal is just to saturate the cpu
+	//
+	// mob doesn't have a concept of task dependencies, just task ordering, so
+	// if a task depends on another, it has to be earlier in the order
+	//
+	// true/false arguments to parallel_tasks is whether the sub tasks are super
+	// tasks
+
+
+	// third-party tasks
+
 	add_task<parallel_tasks>(false)
 		.add_task<sevenz>()
 		.add_task<zlib>()
@@ -113,6 +58,8 @@ void add_tasks()
 		.add_task<licenses>()
 		.add_task<explorerpp>();
 
+
+	// super tasks
 
 	using mo = modorganizer;
 
@@ -184,54 +131,76 @@ void add_tasks()
 	add_task<installer>();
 }
 
-
-// see https://github.com/isanae/mob/issues/4
+// figures out which command to run and returns it, if any
 //
-// this restores the original console font if it changed
-//
-class font_restorer
+std::shared_ptr<command> handle_command_line(const std::vector<std::string>& args)
 {
-public:
-	font_restorer()
-		: restore_(false)
-	{
-		std::memset(&old_, 0, sizeof(old_));
-		old_.cbSize = sizeof(old_);
+	auto help = std::make_shared<help_command>();
+	auto build = std::make_shared<build_command>();
 
-		if (GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &old_))
-			restore_ = true;
+	// available commands
+	std::vector<std::shared_ptr<command>> commands =
+	{
+		help,
+		std::make_unique<version_command>(),
+		std::make_unique<options_command>(),
+		build,
+		std::make_unique<list_command>(),
+		std::make_unique<release_command>(),
+		std::make_unique<git_command>(),
+		std::make_unique<cmake_command>(),
+		std::make_unique<inis_command>(),
+		std::make_unique<tx_command>()
+	};
+
+	// commands are shown in the help
+	help->set_commands(commands);
+
+
+	// root group with all the command groups
+	clipp::group all_groups;
+
+	// not sure, actually
+	all_groups.scoped(false);
+
+	// child groups are exclusive, that is, only one command can be given
+	all_groups.exclusive(true);
+
+	for (auto& c : commands)
+		all_groups.push_back(c->group());
+
+
+	// vs reports a no-op on the left side of the comman, which is incorrect
+#pragma warning(suppress: 4548)
+	auto cli = (all_groups, command::common_options_group());
+	auto pr = clipp::parse(args, cli);
+
+	if (!pr)
+	{
+		// if a command was picked, show its help instead of the main one
+		for (auto&& c : commands)
+		{
+			if (c->picked())
+			{
+				c->force_help();
+				return std::move(c);
+			}
+		}
+
+		// bad command line
+		help->force_exit_code(1);
+		return help;
 	}
 
-	~font_restorer()
+
+	for (auto&& c : commands)
 	{
-		if (!restore_)
-			return;
-
-		CONSOLE_FONT_INFOEX now = {};
-		now.cbSize = sizeof(now);
-
-		if (!GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &now))
-			return;
-
-		if (std::wcsncmp(old_.FaceName, now.FaceName, LF_FACESIZE) != 0)
-			restore();
+		if (c->picked())
+			return std::move(c);
 	}
 
-	void restore()
-	{
-		::SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &old_);
-	}
-
-private:
-	CONSOLE_FONT_INFOEX old_;
-	bool restore_;
-};
-
-void set_sigint_handler()
-{
-	::SetConsoleCtrlHandler(mob::signal_handler, TRUE);
+	return {};
 }
-
 
 int run(const std::vector<std::string>& args)
 {
@@ -260,7 +229,10 @@ int run(const std::vector<std::string>& args)
 
 int wmain(int argc, wchar_t** argv)
 {
+	// makes streams unicode
 	mob::set_std_streams();
+
+	// outputs stacktrace on crash
 	mob::set_thread_exception_handlers();
 
 	std::vector<std::string> args;

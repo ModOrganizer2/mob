@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "conf.h"
-#include "utility.h"
 #include "context.h"
 #include "process.h"
-#include "tasks/task.h"
-#include "tools/tools.h"
+#include "../utility.h"
+#include "../tasks/task.h"
+#include "../tools/tools.h"
 
 namespace mob
 {
@@ -14,7 +14,7 @@ int conf::output_log_level_ = 3;
 int conf::file_log_level_ = 5;
 bool conf::dry_ = false;
 
-std::string master_ini_filename()
+std::string default_ini_filename()
 {
 	return "mob.ini";
 }
@@ -938,7 +938,7 @@ std::vector<fs::path> find_inis(
 			u8cout << "root is " << path_to_utf8(r) << "\n";
 		}
 
-		master = find_in_root(master_ini_filename());
+		master = find_in_root(default_ini_filename());
 
 		if (verbose)
 			u8cout << "found master " << path_to_utf8(master) << "\n";
@@ -983,7 +983,7 @@ std::vector<fs::path> find_inis(
 		auto cwd = fs::current_path();
 
 		while (!cwd.empty()) {
-			const auto in_cwd = cwd / master_ini_filename();
+			const auto in_cwd = cwd / default_ini_filename();
 			if (fs::exists(in_cwd) && !fs::equivalent(in_cwd, master))
 			{
 				if (verbose)

@@ -4,8 +4,8 @@
 #include "process.h"
 #include "op.h"
 #include "context.h"
-#include "utility.h"
-#include "tools/tools.h"
+#include "../utility.h"
+#include "../tools/tools.h"
 
 namespace mob
 {

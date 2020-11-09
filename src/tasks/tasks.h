@@ -2,9 +2,9 @@
 
 #include "task.h"
 #include "../net.h"
-#include "../conf.h"
 #include "../utility.h"
-#include "../op.h"
+#include "../core/conf.h"
+#include "../core/op.h"
 
 namespace mob
 {
