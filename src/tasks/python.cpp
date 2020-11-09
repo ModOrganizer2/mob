@@ -261,7 +261,7 @@ msbuild python::create_msbuild_tool(msbuild::ops o)
 		.solution(solution_file())
 		.targets({
 			"python", "pythonw", "python3dll", "select", "pyexpat",
-			"unicodedata", "_queue", "_bz2", "_ssl"})
+			"unicodedata", "_queue", "_bz2", "_ssl", "_overlapped"})
 		.parameters({
 			"bz2Dir=" + path_to_utf8(bzip2::source_path()),
 			"zlibDir=" + path_to_utf8(zlib::source_path()),
