@@ -1,13 +1,19 @@
 #pragma once
 
+#include "../utility/enum.h"
+
 namespace mob
 {
 
 class task;
 
+// base class for all commands
+//
 class command
 {
 public:
+	// values of options available for all commands
+	//
 	struct common_options
 	{
 		bool dry = false;
@@ -21,62 +27,122 @@ public:
 		std::string prefix;
 	};
 
+	// returned by meta() by each command
+	//
 	struct meta_t
 	{
 		std::string name, description;
 	};
+
 
 	static common_options common;
 	static clipp::group common_options_group();
 
 	virtual ~command() = default;
 
+	// overrides the exit code returned by do_run()
+	//
 	void force_exit_code(int code);
-	void force_pick();
+
+	// forces this command to show help in run() as if --help had been given
+	//
 	void force_help();
 
+	// whether this command was entered by the user
+	//
 	bool picked() const;
-	bool wants_help() const;
 
+	// command line options for this command
+	//
 	clipp::group group();
+
+	// executes this command
+	//
 	int run();
 
-	const std::vector<fs::path>& inis() const;
 
+	// returns meta information about this command
+	//
 	virtual meta_t meta() const = 0;
 
 protected:
+	// passed by derived classes in the constructor
+	//
 	enum flags
 	{
 		noflags           = 0x00,
+
+		// this command needs the ini loaded before running
 		requires_options  = 0x01,
+
+		// this command does not handle sigint by itself, run() will hook it
 		handle_sigint     = 0x02
 	};
 
+	MOB_ENUM_FRIEND_OPERATORS(flags);
+
+
+	// set to true when this command is entered by the user
 	bool picked_;
+
+	// set to true with --help or by force_help()
 	bool help_;
+
 
 	command(flags f=noflags);
 
+	// some options have a unique version on the command line because they're
+	// used often, such as --dry or -l; those are converted to their ini
+	// equivalent here (`-l 3` becomes `global/output_log_level=3` in
+	// common.options)
+	//
 	virtual void convert_cl_to_conf();
 
+	// disables all tasks by setting task/enabled=false, but sets
+	// name:task/enabled=true for the given tasks
+	//
 	void set_task_enabled_flags(const std::vector<std::string>& tasks);
+
+	// calls prepare_options() and loads inis
+	//
 	int load_options();
+
+	// calls convert_cl_to_conf() and populates inis_
+	//
 	int prepare_options(bool verbose);
 
+	// called by group(), returns the clipp group for this command
+	//
 	virtual clipp::group do_group() = 0;
+
+	// called by run(), executes this command
+	//
 	virtual int do_run() = 0;
+
+	// called by run() when --help is given; should return additional text that
+	// is output at the end of the usage info
+	//
 	virtual std::string do_doc() { return {}; }
 
 private:
+	// flags requested by this command
 	flags flags_;
+
+	// exit code set by force_exit_code()
 	std::optional<int> code_;
+
+	// list of inis found by gather_inis()
 	std::vector<fs::path> inis_;
 
+
+	// finds all the inis
+	//
 	int gather_inis(bool verbose);
 };
 
 
+// displays mob's version
+//
 class version_command : public command
 {
 public:
@@ -88,6 +154,8 @@ protected:
 };
 
 
+// displays the usage, list of commands and some additional text
+//
 class help_command : public command
 {
 public:
@@ -103,6 +171,8 @@ private:
 };
 
 
+// lists all options and their values
+//
 class options_command : public command
 {
 public:
@@ -116,12 +186,17 @@ protected:
 };
 
 
+// builds stuff
+//
 class build_command : public command
 {
 public:
 	build_command();
 
 	meta_t meta() const override;
+
+	// kills any msbuild.exe process, they like to linger and keep file locks
+	//
 	static void terminate_msbuild();
 
 protected:
@@ -144,10 +219,20 @@ private:
 	bool keep_msbuild_ = false;
 	std::optional<bool> revert_ts_;
 
+
+	// creates a bare bones ini file in the prefix so mob can be invoked in any
+	// directory below it
+	//
+	void create_prefix_ini();
+
+	// for instrumentation
+	//
 	void dump_timings();
 };
 
 
+// lists available tasks
+//
 class list_command : public command
 {
 public:
@@ -172,6 +257,8 @@ private:
 };
 
 
+// creates a devbuild or an official release
+//
 class release_command : public command
 {
 public:
@@ -219,6 +306,8 @@ private:
 	int do_official();
 
 	void prepare();
+	void check_repos_for_branch();
+	bool check_clean_prefix();
 
 	fs::path make_filename(const std::string& what) const;
 
@@ -231,6 +320,8 @@ private:
 };
 
 
+// manages git repos
+//
 class git_command : public command
 {
 public:
@@ -274,6 +365,8 @@ private:
 };
 
 
+// runs cmake in a directory with the same parameters as `build` would
+//
 class cmake_command : public command
 {
 public:
@@ -294,6 +387,8 @@ private:
 };
 
 
+// lists the inis found by mob
+//
 class inis_command : public command
 {
 public:
@@ -306,6 +401,8 @@ protected:
 };
 
 
+// manages transifex
+//
 class tx_command : public command
 {
 public:

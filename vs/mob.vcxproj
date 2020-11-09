@@ -58,18 +58,24 @@
     <Link />
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\commands.cpp" />
-    <ClCompile Include="..\src\conf.cpp" />
-    <ClCompile Include="..\src\context.cpp" />
-    <ClCompile Include="..\src\env.cpp" />
+    <ClCompile Include="..\src\cmd\build.cpp" />
+    <ClCompile Include="..\src\cmd\cmake.cpp" />
+    <ClCompile Include="..\src\cmd\commands.cpp" />
+    <ClCompile Include="..\src\cmd\git.cpp" />
+    <ClCompile Include="..\src\cmd\list.cpp" />
+    <ClCompile Include="..\src\cmd\release.cpp" />
+    <ClCompile Include="..\src\cmd\tx.cpp" />
+    <ClCompile Include="..\src\core\conf.cpp" />
+    <ClCompile Include="..\src\core\context.cpp" />
+    <ClCompile Include="..\src\core\env.cpp" />
+    <ClCompile Include="..\src\core\op.cpp" />
+    <ClCompile Include="..\src\core\process.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\net.cpp" />
-    <ClCompile Include="..\src\op.cpp" />
     <ClCompile Include="..\src\pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\src\process.cpp" />
     <ClCompile Include="..\src\tasks\boost.cpp" />
     <ClCompile Include="..\src\tasks\boost_di.cpp" />
     <ClCompile Include="..\src\tasks\bzip2.cpp" />
@@ -106,20 +112,32 @@
     <ClCompile Include="..\src\tools\process_runner.cpp" />
     <ClCompile Include="..\src\tools\tools.cpp" />
     <ClCompile Include="..\src\utility.cpp" />
+    <ClCompile Include="..\src\utility\assert.cpp" />
+    <ClCompile Include="..\src\utility\fs.cpp" />
+    <ClCompile Include="..\src\utility\io.cpp" />
+    <ClCompile Include="..\src\utility\string.cpp" />
+    <ClCompile Include="..\src\utility\threading.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\commands.h" />
-    <ClInclude Include="..\src\conf.h" />
-    <ClInclude Include="..\src\context.h" />
-    <ClInclude Include="..\src\env.h" />
-    <ClInclude Include="..\src\op.h" />
+    <ClInclude Include="..\src\cmd\commands.h" />
+    <ClInclude Include="..\src\core\conf.h" />
+    <ClInclude Include="..\src\core\context.h" />
+    <ClInclude Include="..\src\core\env.h" />
+    <ClInclude Include="..\src\core\op.h" />
+    <ClInclude Include="..\src\core\process.h" />
     <ClInclude Include="..\src\net.h" />
     <ClInclude Include="..\src\pch.h" />
-    <ClInclude Include="..\src\process.h" />
     <ClInclude Include="..\src\tasks\task.h" />
     <ClInclude Include="..\src\tasks\tasks.h" />
     <ClInclude Include="..\src\tools\tools.h" />
     <ClInclude Include="..\src\utility.h" />
+    <ClInclude Include="..\src\utility\algo.h" />
+    <ClInclude Include="..\src\utility\assert.h" />
+    <ClInclude Include="..\src\utility\enum.h" />
+    <ClInclude Include="..\src\utility\fs.h" />
+    <ClInclude Include="..\src\utility\io.h" />
+    <ClInclude Include="..\src\utility\string.h" />
+    <ClInclude Include="..\src\utility\threading.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

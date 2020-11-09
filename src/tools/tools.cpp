@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "tools.h"
 #include "../utility.h"
-#include "../op.h"
-#include "../conf.h"
+#include "../core/op.h"
+#include "../core/conf.h"
 #include "../tasks/tasks.h"
 
 namespace mob

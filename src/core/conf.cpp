@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "conf.h"
-#include "utility.h"
 #include "context.h"
 #include "process.h"
-#include "tasks/task.h"
-#include "tools/tools.h"
+#include "../utility.h"
+#include "../tasks/task.h"
+#include "../tools/tools.h"
 
 namespace mob
 {
@@ -14,7 +14,7 @@ int conf::output_log_level_ = 3;
 int conf::file_log_level_ = 5;
 bool conf::dry_ = false;
 
-std::string master_ini_filename()
+std::string default_ini_filename()
 {
 	return "mob.ini";
 }
@@ -938,7 +938,7 @@ std::vector<fs::path> find_inis(
 			u8cout << "root is " << path_to_utf8(r) << "\n";
 		}
 
-		master = find_in_root(master_ini_filename());
+		master = find_in_root(default_ini_filename());
 
 		if (verbose)
 			u8cout << "found master " << path_to_utf8(master) << "\n";
@@ -980,13 +980,19 @@ std::vector<fs::path> find_inis(
 	{
 		MOB_ASSERT(!master.empty());
 
-		const auto in_cwd = fs::current_path() / master_ini_filename();
-		if (fs::exists(in_cwd) && !fs::equivalent(in_cwd, master))
-		{
-			if (verbose)
-				u8cout << "also found in cwd " << path_to_utf8(in_cwd) << "\n";
+		auto cwd = fs::current_path();
 
-			v.push_back({"cwd", fs::canonical(in_cwd)});
+		while (!cwd.empty()) {
+			const auto in_cwd = cwd / default_ini_filename();
+			if (fs::exists(in_cwd) && !fs::equivalent(in_cwd, master))
+			{
+				if (verbose)
+					u8cout << "also found in cwd " << path_to_utf8(in_cwd) << "\n";
+
+				v.push_back({ "cwd", fs::canonical(in_cwd) });
+				break;
+			}
+			cwd = cwd.parent_path();
 		}
 	}
 
@@ -1070,10 +1076,18 @@ void init_options(
 {
 	MOB_ASSERT(!inis.empty());
 
+	// Keep track of the INI that contained a prefix:
+	fs::path ini_prefix;
 	bool add = true;
 	for (auto&& ini : inis)
 	{
+		// Check if the prefix is set by this ini file:
+		fs::path cprefix = add ? fs::path{} : paths::prefix();
 		parse_ini(ini, add);
+
+		if (paths::prefix() != cprefix)
+			ini_prefix = ini;
+
 		add = false;
 	}
 
@@ -1084,6 +1098,11 @@ void init_options(
 		for (auto&& o : opts)
 		{
 			const auto po = parse_option(o);
+
+			if (po.section == "paths" && po.key == "prefix")
+			{
+				ini_prefix = "";
+			}
 
 			if (po.task.empty())
 			{
@@ -1114,7 +1133,12 @@ void init_options(
 	}
 
 	set_special_options();
-	context::set_log_file(conf::log_file());
+
+	auto log_file = conf::log_file();
+	if (log_file.is_relative())
+		log_file = paths::prefix() / log_file;
+
+	context::set_log_file(log_file);
 
 	gcx().debug(context::conf,
 		"command line: {}", std::wstring(GetCommandLineW()));
@@ -1142,7 +1166,7 @@ void init_options(
 	this_env::append_to_path(conf::path_by_name("qt_bin"));
 
 	if (!paths::prefix().empty())
-		make_canonical_path("prefix", fs::current_path(), "");
+		make_canonical_path("prefix", ini_prefix.empty() ? fs::current_path() : ini_prefix.parent_path(), "");
 
 	make_canonical_path("cache",             paths::prefix(), "downloads");
 	make_canonical_path("build",             paths::prefix(), "build");

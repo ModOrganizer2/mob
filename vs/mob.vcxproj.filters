@@ -10,6 +10,15 @@
     <Filter Include="src\tools">
       <UniqueIdentifier>{b0afbfc3-9b49-4768-9077-a8284ced4416}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\core">
+      <UniqueIdentifier>{6e4d31d5-100c-4a4d-8e7d-4c48939819bd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\utility">
+      <UniqueIdentifier>{78dd6066-d407-4450-b520-649454c15ee9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\cmd">
+      <UniqueIdentifier>{b9307be3-9ccb-4449-8aed-d9b69f0beda9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\main.cpp">
@@ -18,16 +27,10 @@
     <ClCompile Include="..\src\pch.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\conf.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\net.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\utility.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\op.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="..\src\tasks\fmt.cpp">
@@ -87,15 +90,6 @@
     <ClCompile Include="..\src\tasks\pyqt.cpp">
       <Filter>src\tasks</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\process.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\env.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\context.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\tools\extractor.cpp">
       <Filter>src\tools</Filter>
     </ClCompile>
@@ -138,14 +132,62 @@
     <ClCompile Include="..\src\tasks\explorerpp.cpp">
       <Filter>src\tasks</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\commands.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\tasks\installer.cpp">
       <Filter>src\tasks</Filter>
     </ClCompile>
     <ClCompile Include="..\src\tasks\translations.cpp">
       <Filter>src\tasks</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\core\env.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\core\op.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\core\process.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\core\conf.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\core\context.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\utility\threading.cpp">
+      <Filter>src\utility</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\utility\string.cpp">
+      <Filter>src\utility</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\utility\fs.cpp">
+      <Filter>src\utility</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\utility\io.cpp">
+      <Filter>src\utility</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\utility\assert.cpp">
+      <Filter>src\utility</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cmd\commands.cpp">
+      <Filter>src\cmd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cmd\build.cpp">
+      <Filter>src\cmd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cmd\cmake.cpp">
+      <Filter>src\cmd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cmd\git.cpp">
+      <Filter>src\cmd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cmd\list.cpp">
+      <Filter>src\cmd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cmd\release.cpp">
+      <Filter>src\cmd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cmd\tx.cpp">
+      <Filter>src\cmd</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -155,13 +197,7 @@
     <ClInclude Include="..\src\net.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\conf.h">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\utility.h">
-      <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\op.h">
       <Filter>src</Filter>
     </ClInclude>
     <ClInclude Include="..\src\tasks\task.h">
@@ -170,20 +206,47 @@
     <ClInclude Include="..\src\tasks\tasks.h">
       <Filter>src\tasks</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\process.h">
-      <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\env.h">
-      <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\context.h">
-      <Filter>src</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\tools\tools.h">
       <Filter>src\tools</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\commands.h">
-      <Filter>src</Filter>
+    <ClInclude Include="..\src\core\context.h">
+      <Filter>src\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\core\env.h">
+      <Filter>src\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\core\op.h">
+      <Filter>src\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\core\process.h">
+      <Filter>src\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\core\conf.h">
+      <Filter>src\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\threading.h">
+      <Filter>src\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\string.h">
+      <Filter>src\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\assert.h">
+      <Filter>src\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\fs.h">
+      <Filter>src\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\algo.h">
+      <Filter>src\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\io.h">
+      <Filter>src\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cmd\commands.h">
+      <Filter>src\cmd</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\enum.h">
+      <Filter>src\utility</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
