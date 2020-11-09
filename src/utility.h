@@ -1,5 +1,7 @@
 #pragma once
 
+#include "utility/string.h"
+
 namespace mob
 {
 
@@ -21,45 +23,6 @@ bool is_any_set(E e, E v)
 	static_assert(std::is_enum_v<E>, "this is for enums");
 	return (e & v) != E(0);
 }
-
-
-#define MOB_WIDEN2(x) L ## x
-#define MOB_WIDEN(x) MOB_WIDEN2(x)
-#define MOB_FILE_UTF16 MOB_WIDEN(__FILE__)
-
-#define MOB_ASSERT(x, ...) \
-	mob_assert(x, __VA_ARGS__, #x, MOB_FILE_UTF16, __LINE__, __FUNCSIG__);
-
-void mob_assertion_failed(
-	const char* message,
-	const char* exp, const wchar_t* file, int line, const char* func);
-
-template <class X>
-inline void mob_assert(
-	X&& x, const char* message,
-	const char* exp, const wchar_t* file, int line, const char* func)
-{
-	if (!(x))
-		mob_assertion_failed(message, exp, file, line, func);
-}
-
-template <class X>
-inline void mob_assert(
-	X&& x, const char* exp, const wchar_t* file, int line, const char* func)
-{
-	if (!(x))
-		mob_assertion_failed(nullptr, exp, file, line, func);
-}
-
-
-enum class encodings
-{
-	dont_know = 0,
-	utf8,
-	utf16,
-	acp,
-	oem
-};
 
 
 class context;
@@ -298,58 +261,6 @@ url make_prebuilt_url(const std::string& filename);
 url make_appveyor_artifact_url(
 	arch a, const std::string& project, const std::string& filename);
 
-// case insensitive, underscores and dashes are equivalent; gets converted to
-// a regex where * becomes .*
-//
-bool glob_match(const std::string& pattern, const std::string& s);
-
-std::string replace_all(
-	std::string s, const std::string& from, const std::string& to);
-
-template <class T, class Sep>
-T join(const std::vector<T>& v, const Sep& sep)
-{
-	T s;
-	bool first = true;
-
-	for (auto&& e : v)
-	{
-		if (!first)
-			s += sep;
-
-		s += e;
-		first = false;
-	}
-
-	return s;
-}
-
-std::vector<std::string> split(const std::string& s, const std::string& seps);
-std::vector<std::string> split_quoted(const std::string& s, const std::string& seps);
-
-std::string pad_right(std::string s, std::size_t n, char c=' ');
-std::string pad_left(std::string s, std::size_t n, char c=' ');
-
-void trim(std::string& s, std::string_view what=" \t\r\n");
-void trim(std::wstring& s, std::wstring_view what=L" \t\r\n");
-
-std::string table(
-	const std::vector<std::pair<std::string, std::string>>& v,
-	std::size_t indent, std::size_t spacing);
-
-std::string trim_copy(std::string_view s, std::string_view what=" \t\r\n");
-std::wstring trim_copy(std::wstring_view s, std::wstring_view what=L" \t\r\n");
-
-std::wstring utf8_to_utf16(std::string_view s);
-std::string utf16_to_utf8(std::wstring_view ws);
-std::string bytes_to_utf8(encodings e, std::string_view bytes);
-std::string utf8_to_bytes(encodings e, std::string_view utf8);
-
-template <class T>
-std::string path_to_utf8(T&&) = delete;
-
-std::string path_to_utf8(fs::path p);
-
 
 class u8stream
 {
@@ -384,53 +295,6 @@ extern u8stream u8cerr;
 
 void set_std_streams();
 std::mutex& global_output_mutex();
-
-
-template <class F>
-void for_each_line(std::string_view s, F&& f)
-{
-	if (s.empty())
-		return;
-
-	const char* const begin = s.data();
-	const char* const end = s.data() + s.size();
-
-	const char* start = begin;
-	const char* p = begin;
-
-	for (;;)
-	{
-		MOB_ASSERT(p && p >= begin && p <= end);
-		MOB_ASSERT(start && start >= begin && start <= end);
-
-		if (p == end || *p == '\n' || *p == '\r')
-		{
-			if (p != start)
-			{
-				MOB_ASSERT(p >= start);
-
-				const auto n = static_cast<std::size_t>(p - start);
-				MOB_ASSERT(n <= s.size());
-
-				f(std::string_view(start, n));
-			}
-
-			while (p != end && (*p == '\n' || *p == '\r'))
-				++p;
-
-			MOB_ASSERT(p && p >= begin && p <= end);
-
-			if (p == end)
-				break;
-
-			start = p;
-		}
-		else
-		{
-			++p;
-		}
-	}
-}
 
 
 
