@@ -140,6 +140,8 @@ void curl_downloader::run()
 		curl_easy_setopt(c, CURLOPT_VERBOSE, 1l);
 	}
 
+
+	// deletes the file in dtor unless cancel() is called
 	file_deleter output_deleter(cx_, path_);
 
 	cx_.trace(context::net, "curl: performing {}", url_);
@@ -165,6 +167,8 @@ void curl_downloader::run()
 
 		if (h == 200)
 		{
+			// success
+
 			cx_.trace(context::net,
 				"curl: http 200 {}, transferred {} bytes",
 				url_, bytes_);
@@ -211,6 +215,8 @@ void curl_downloader::on_write(char* ptr, std::size_t n) noexcept
 {
 	if (!file_)
 	{
+		// file is lazily created on first write
+
 		op::create_directories(cx_, path_.parent_path());
 
 		cx_.trace(context::net, "opening {}", path_);
@@ -284,6 +290,8 @@ int curl_downloader::on_debug_static(
 	return 0;
 }
 
+// curl spams this stuff, make sure it's never logged
+//
 bool a_bit_too_much(std::string_view s)
 {
 	static const char* strings[] =

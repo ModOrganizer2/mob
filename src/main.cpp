@@ -13,13 +13,16 @@ namespace mob
 void add_tasks()
 {
 	// add new tasks here
-
+	//
 	// top level tasks are run sequentially, tasks added to a parallel_tasks will
 	// run in parallel; which tasks are run in parallel is somewhat arbitrary when
 	// there's no dependency, the goal is just to saturate the cpu
-
+	//
 	// mob doesn't have a concept of task dependencies, just task ordering, so
 	// if a task depends on another, it has to be earlier in the order
+	//
+	// true/false arguments to parallel_tasks is whether the sub tasks are super
+	// tasks
 
 
 	// third-party tasks
