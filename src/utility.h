@@ -4,6 +4,7 @@
 #include "utility/fs.h"
 #include "utility/io.h"
 #include "utility/string.h"
+#include "utility/threading.h"
 
 namespace mob
 {

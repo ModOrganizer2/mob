@@ -171,6 +171,24 @@
     <ClCompile Include="..\src\cmd\commands.cpp">
       <Filter>src\cmd</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\cmd\build.cpp">
+      <Filter>src\cmd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cmd\cmake.cpp">
+      <Filter>src\cmd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cmd\git.cpp">
+      <Filter>src\cmd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cmd\list.cpp">
+      <Filter>src\cmd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cmd\release.cpp">
+      <Filter>src\cmd</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cmd\tx.cpp">
+      <Filter>src\cmd</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
