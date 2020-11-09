@@ -159,6 +159,9 @@
     <ClCompile Include="..\src\utility\string.cpp">
       <Filter>src\utility</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\utility\fs.cpp">
+      <Filter>src\utility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
@@ -204,6 +207,9 @@
       <Filter>src\utility</Filter>
     </ClInclude>
     <ClInclude Include="..\src\utility\assert.h">
+      <Filter>src\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utility\fs.h">
       <Filter>src\utility</Filter>
     </ClInclude>
   </ItemGroup>
