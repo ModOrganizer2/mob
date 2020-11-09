@@ -246,7 +246,7 @@
       <Filter>src\cmd</Filter>
     </ClInclude>
     <ClInclude Include="..\src\utility\enum.h">
-      <Filter>src\cmd</Filter>
+      <Filter>src\utility</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

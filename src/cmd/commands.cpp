@@ -27,13 +27,12 @@ void set_sigint_handler()
 
 std::string version()
 {
-	return "mob 4.0";
+	return "mob whatever-is-on-master";
 }
 
 
 void help(const clipp::group& g, const std::string& more)
 {
-#pragma warning(suppress: 4548)
 	auto usage_df = clipp::doc_formatting()
 		.first_column(4)
 		.doc_column(30);
@@ -47,14 +46,13 @@ void help(const clipp::group& g, const std::string& more)
 		<< "\n\n"
 		<< "Options:\n"
 		<< clipp::documentation(g, options_df)
-		<< "\n";
-
-	u8cout << "\nTo use global options with command options, ensure command options are together, with no global options in the middle.\n";
+		<< "\n\n"
+		<< "To use global options with command options, make sure command "
+		<< "options are together, with no global options in the middle.\n";
 
 	if (!more.empty())
 		u8cout << "\n" << more << "\n";
 }
-
 
 
 command::common_options command::common;

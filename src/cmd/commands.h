@@ -75,7 +75,7 @@ protected:
 		// this command needs the ini loaded before running
 		requires_options  = 0x01,
 
-		// this command handles sigint by itself
+		// this command does not handle sigint by itself, run() will hook it
 		handle_sigint     = 0x02
 	};
 
@@ -306,6 +306,8 @@ private:
 	int do_official();
 
 	void prepare();
+	void check_repos_for_branch();
+	bool check_clean_prefix();
 
 	fs::path make_filename(const std::string& what) const;
 

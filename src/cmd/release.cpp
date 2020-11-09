@@ -75,6 +75,7 @@ void release_command::make_src()
 			modorganizer::super_path());
 	}
 
+	// build list list
 	walk_dir(modorganizer::super_path(), files, ignore_re, total_size);
 
 	// should be below 20MB
@@ -112,6 +113,8 @@ void release_command::walk_dir(
 	const fs::path& dir, std::vector<fs::path>& files,
 	const std::vector<std::regex>& ignore_re, std::size_t& total_size)
 {
+	// adds all files that are not in the ignore list to `files`, recursive
+
 	for (auto e : fs::directory_iterator(dir))
 	{
 		const auto p = e.path();
@@ -234,6 +237,8 @@ void release_command::convert_cl_to_conf()
 
 	if (mode_ == modes::official)
 	{
+		// force enable translations, installer and tx
+
 		common.options.push_back("task/mo_branch=" + branch_);
 		common.options.push_back("translations:task/enabled=true");
 		common.options.push_back("installer:task/enabled=true");
@@ -289,6 +294,28 @@ int release_command::do_official()
 {
 	set_sigint_handler();
 
+	// make sure the given branch exists in all repos, this avoids failure
+	// much later on in the process; throws on failure
+	check_repos_for_branch();
+
+	// if the prefix exists, asks the user to delete it
+	if (!check_clean_prefix())
+		return 1;
+
+	run_all_tasks();
+	build_command::terminate_msbuild();
+
+	prepare();
+	make_bin();
+	make_pdbs();
+	make_src();
+	make_installer();
+
+	return 0;
+}
+
+void release_command::check_repos_for_branch()
+{
 	u8cout << "checking repos for branch " << branch_ << "...\n";
 
 	thread_pool tp;
@@ -323,42 +350,33 @@ int release_command::do_official()
 			"repos that don't have it, or disable tasks with "
 			"`-s TASKNAME:task/enabled=false`");
 	}
+}
 
+bool release_command::check_clean_prefix()
+{
+	if (!fs::exists(paths::prefix()))
+		return true;
 
-	if (fs::exists(paths::prefix()))
+	u8cout
+		<< "prefix " << path_to_utf8(paths::prefix()) << " already exists\n"
+		<< "delete? [Y/n] ";
+
+	std::wstring s;
+	std::getline(std::wcin, s);
+
+	if (s == L"" || s == L"y" || s == L"Y")
 	{
-		u8cout
-			<< "prefix " << path_to_utf8(paths::prefix()) << " already exists\n"
-			<< "delete? [Y/n] ";
-
-		std::wstring s;
-		std::getline(std::wcin, s);
-
-		if (s == L"" || s == L"y" || s == L"Y")
-		{
-			build_command::terminate_msbuild();
-			op::delete_directory(gcx(), paths::prefix());
-		}
-		else
-		{
-			return 1;
-		}
+		build_command::terminate_msbuild();
+		op::delete_directory(gcx(), paths::prefix());
+		return true;
 	}
 
-	run_all_tasks();
-	build_command::terminate_msbuild();
-
-	prepare();
-	make_bin();
-	make_pdbs();
-	make_src();
-	make_installer();
-
-	return 0;
+	return false;
 }
 
 void release_command::prepare()
 {
+	// finding rc file
 	rc_path_ = fs::path(utf8_to_utf16(utf8_rc_path_));
 	if (rc_path_.empty())
 	{
@@ -366,6 +384,7 @@ void release_command::prepare()
 			modorganizer::super_path() / "modorganizer" / "src" / "version.rc";
 	}
 
+	// getting version from rc or exe
 	if (version_.empty())
 	{
 		if (version_rc_)
@@ -374,6 +393,7 @@ void release_command::prepare()
 			version_ = version_from_exe();
 	}
 
+	// finding output path
 	out_ = fs::path(utf8_to_utf16(utf8out_));
 	if (out_.empty())
 		out_ = paths::prefix() / "releases" / version_;
