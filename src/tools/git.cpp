@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "tools.h"
-#include "../conf.h"
+#include "../core/conf.h"
 
 namespace mob
 {

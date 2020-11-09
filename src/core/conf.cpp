@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "conf.h"
-#include "utility.h"
 #include "context.h"
 #include "process.h"
-#include "tasks/task.h"
-#include "tools/tools.h"
+#include "../utility.h"
+#include "../tasks/task.h"
+#include "../tools/tools.h"
 
 namespace mob
 {

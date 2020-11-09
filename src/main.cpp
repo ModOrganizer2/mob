@@ -1,9 +1,9 @@
 #include "pch.h"
-#include "conf.h"
 #include "net.h"
-#include "op.h"
 #include "utility.h"
 #include "commands.h"
+#include "core/conf.h"
+#include "core/op.h"
 #include "tasks/tasks.h"
 #include "tools/tools.h"
 
