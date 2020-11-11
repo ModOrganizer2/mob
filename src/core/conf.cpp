@@ -992,7 +992,12 @@ std::vector<fs::path> find_inis(
 				v.push_back({ "cwd", fs::canonical(in_cwd) });
 				break;
 			}
-			cwd = cwd.parent_path();
+
+			const auto parent = cwd.parent_path();
+			if (cwd == parent)
+				break;
+
+			cwd = parent;
 		}
 	}
 
