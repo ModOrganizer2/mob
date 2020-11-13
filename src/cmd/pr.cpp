@@ -6,7 +6,7 @@ namespace mob
 {
 
 pr_command::pr_command()
-	: command(requires_options | handle_sigint)
+	: command(requires_options | handle_sigint), method_("apply")
 {
 }
 
@@ -22,27 +22,35 @@ command::meta_t pr_command::meta() const
 clipp::group pr_command::do_group()
 {
 	return
-		(clipp::command("build")).set(picked_),
+		(clipp::command("pr")).set(picked_),
 
 		(clipp::option("-h", "--help") >> help_)
-		% ("shows this message"),
+			% ("shows this message"),
 
-		(clipp::option("--pr")
-			& clipp::value("PR") >> pr_)
-		% "checks out the branch of the given PR, must be `task/pr`, such as "
-		"`modorganizer/123`",
+		(clipp::option("--method")
+			& clipp::value("METHOD") >> method_)
+			% "how to apply the changes, one of `apply` (default), `remote` or "
+			  " `fetch`",
 
 		(clipp::option("--github-token")
 			& clipp::value("TOKEN") >> github_token_)
-		% "github api key for --pr";
+			% "github api key",
+
+		(clipp::value("PR") >> pr_)
+			% "PR to apply, must be `task/pr`, such as `modorganizer/123`";
 }
 
 int pr_command::do_run()
 {
-	//if (auto r=get_pr_branch(); r != 0)
-	//	return r;
+	if (method_ == "apply")
+		return do_apply();
+	else if (method_ == "remote")
+		return do_remote();
+	else if (method_ == "fetch")
+		return do_fetch();
 
-	return apply_pr_diff();
+	u8cerr << "bad method '" << method_ << "'\n";
+	return 1;
 }
 
 std::pair<const modorganizer*, std::string> pr_command::parse_pr(
@@ -133,44 +141,50 @@ int pr_command::get_pr_branch()
 	return 0;
 }
 
-int pr_command::apply_pr_diff()
+url pr_command::get_diff_url(const modorganizer* task, std::string pr)
+{
+	return ::fmt::format(
+		"https://github.com/{}/{}/pull/{}.diff",
+		task->org(), task->repo(), pr);
+}
+
+int pr_command::do_apply()
 {
 	if (pr_.empty())
 		return 0;
 
 	auto&& [task, pr] = parse_pr(pr_);
-
 	if (!task)
 		return 1;
 
-	const url u = ::fmt::format(
-		"https://github.com/{}/{}/pull/{}.diff",
-		task->org(), task->repo(), pr);
+	const auto u = get_diff_url(task, pr);
 
+	curl_downloader dl;
 
-	//curl_downloader dl;
-	//
-	//dl
-	//	.url(u)
-	//	.header("Authorization", "token " + github_token_)
-	//	.start()
-	//	.join();
-	//
-	//if (!dl.ok())
-	//{
-	//	u8cerr << "getting pr diff failed\n";
-	//	return 1;
-	//}
-	//
-	//const auto output = dl.steal_output();
-	//u8cout << output << "\n";
+	dl
+		.url(u)
+		.start()
+		.join();
 
-	std::ifstream t("c:\\tmp\\1277.diff");
-	std::string output((std::istreambuf_iterator<char>(t)),
-		std::istreambuf_iterator<char>());
+	if (!dl.ok())
+	{
+		u8cerr << "getting pr diff failed\n";
+		return 1;
+	}
 
-	git::apply(task->this_source_path(), output);
+	const auto diff = dl.steal_output();
+	git::apply(task->this_source_path(), diff);
 
+	return 0;
+}
+
+int pr_command::do_remote()
+{
+	return 0;
+}
+
+int pr_command::do_fetch()
+{
 	return 0;
 }
 

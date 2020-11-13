@@ -123,6 +123,7 @@ void git::apply(const std::string& diff)
 	process_ = make_process()
 		.stdin_string(diff)
 		.arg("apply")
+		.arg("--whitespace", "nowarn")
 		.arg("-")
 		.cwd(root_);
 

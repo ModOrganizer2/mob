@@ -249,12 +249,18 @@ protected:
 private:
 	std::string pr_;
 	std::string github_token_;
+	std::string method_;
 
 	std::pair<const modorganizer*, std::string> parse_pr(
 		const std::string& pr) const;
 
 	int get_pr_branch();
-	int apply_pr_diff();
+
+	int do_apply();
+	int do_remote();
+	int do_fetch();
+
+	url get_diff_url(const modorganizer* task, std::string pr);
 };
 
 
