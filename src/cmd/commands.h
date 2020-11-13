@@ -244,6 +244,7 @@ public:
 
 protected:
 	clipp::group do_group() override;
+	std::string do_doc() override;
 	int do_run() override;
 
 private:
@@ -254,13 +255,12 @@ private:
 	std::pair<const modorganizer*, std::string> parse_pr(
 		const std::string& pr) const;
 
-	int get_pr_branch();
-
 	int do_apply();
 	int do_remote();
 	int do_fetch();
 
-	url get_diff_url(const modorganizer* task, std::string pr);
+	nlohmann::json get_pr_info(const modorganizer* task, const std::string& pr);
+	url get_diff_url(const modorganizer* task, const std::string& pr);
 };
 
 

@@ -40,7 +40,7 @@ void help(const clipp::group& g, const std::string& more)
 		<< "Options:\n"
 		<< clipp::documentation(g, options_df)
 		<< "\n\n"
-		<< "To use global options with command options, make sure command "
+		<< "To use global options with command options, make sure command \n"
 		<< "options are together, with no global options in the middle.\n";
 
 	if (!more.empty())

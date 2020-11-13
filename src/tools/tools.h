@@ -174,16 +174,22 @@ public:
 
 	static void ignore_ts(const fs::path& repo, bool b);
 
+	static bool has_remote(const fs::path& repo, const std::string& name);
+
 	static void add_remote(
 		const fs::path& repo, const std::string& remote_name,
 		const std::string& org, const std::string& key,
-		bool push_default);
+		bool push_default, const std::string& url_pattern={});
 
 	static bool is_git_repo(const fs::path& p);
 	static bool branch_exists(const mob::url& u, const std::string& name);
 	static void init_repo(const fs::path& p);
 
 	static void apply(const fs::path& p, const std::string& diff);
+	static void fetch(
+		const fs::path& p,
+		const std::string& remote, const std::string& branch);
+	static void checkout(const fs::path& p, const std::string& what);
 
 
 	git& url(const mob::url& u);
@@ -240,6 +246,8 @@ private:
 	void set_remote_push(const std::string& remote, const std::string& url);
 	void set_assume_unchanged(const fs::path& relative_file, bool on);
 	void apply(const std::string& diff);
+	void fetch(const std::string& remote, const std::string& branch);
+	void checkout(const std::string& what);
 	bool is_repo();
 	bool branch_exists();
 	bool has_uncommitted_changes();
@@ -249,7 +257,8 @@ private:
 	std::string git_file();
 
 	static std::string make_url(
-		const std::string& org, const std::string& git_file);
+		const std::string& org, const std::string& git_file,
+		const std::string& url_pattern={});
 };
 
 

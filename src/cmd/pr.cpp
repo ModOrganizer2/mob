@@ -5,6 +5,13 @@
 namespace mob
 {
 
+std::string read_file(const fs::path& p)
+{
+	std::ifstream t(p);
+	return {std::istreambuf_iterator<char>(t), std::istreambuf_iterator<char>()};
+}
+
+
 pr_command::pr_command()
 	: command(requires_options | handle_sigint), method_("apply")
 {
@@ -38,6 +45,20 @@ clipp::group pr_command::do_group()
 
 		(clipp::value("PR") >> pr_)
 			% "PR to apply, must be `task/pr`, such as `modorganizer/123`";
+}
+
+std::string pr_command::do_doc()
+{
+	return
+		"Methods:\n"
+		"  - apply:  retrieves the .diff file for this PR and runs\n"
+		"            `git apply` with it, which patches the local repo and\n"
+		"            leaves the changes uncommitted\n"
+		"\n"
+		"  - remote: adds a new remote to the local repo that matches the \n"
+		"            PR's origin and checks out the PR's branch from it\n"
+		"\n"
+		"  - fetch: ??";
 }
 
 int pr_command::do_run()
@@ -96,63 +117,8 @@ std::pair<const modorganizer*, std::string> pr_command::parse_pr(
 	return {task, pr_number};
 }
 
-int pr_command::get_pr_branch()
-{
-	if (pr_.empty())
-		return 0;
-
-	if (github_token_.empty())
-	{
-		u8cerr << "missing --github-token\n";
-		return 1;
-	}
-
-	auto&& [task, pr] = parse_pr(pr_);
-
-	if (!task)
-		return 1;
-
-	const url u(::fmt::format(
-		"https://api.github.com/repos/{}/{}/pulls/{}",
-		task->org(), task->repo(), pr));
-
-	curl_downloader dl;
-
-	dl
-		.url(u)
-		.header("Authorization", "token " + github_token_)
-		.start()
-		.join();
-
-	if (!dl.ok())
-	{
-		u8cerr << "getting pr failed\n";
-		return 1;
-	}
-
-	const auto output = dl.steal_output();
-	u8cout << output << "\n";
-
-
-	nlohmann::json j(output);
-
-	const std::string diff_url = j["diff_url"];
-
-	return 0;
-}
-
-url pr_command::get_diff_url(const modorganizer* task, std::string pr)
-{
-	return ::fmt::format(
-		"https://github.com/{}/{}/pull/{}.diff",
-		task->org(), task->repo(), pr);
-}
-
 int pr_command::do_apply()
 {
-	if (pr_.empty())
-		return 0;
-
 	auto&& [task, pr] = parse_pr(pr_);
 	if (!task)
 		return 1;
@@ -180,12 +146,102 @@ int pr_command::do_apply()
 
 int pr_command::do_remote()
 {
-	return 0;
+	auto&& [task, pr] = parse_pr(pr_);
+	if (!task)
+		return 1;
+
+	try
+	{
+		u8cout << "looking for pr " << pr << " in " << task->name() << "\n";
+
+		//const auto json = get_pr_info(task, pr);
+		auto json = nlohmann::json::parse(read_file("c:\\tmp\\" + pr + ".json"));
+		if (json.empty())
+			return 1;
+
+		const std::string repo = json["head"]["repo"]["name"];
+		const std::string org = json["head"]["repo"]["owner"]["login"];
+		const std::string remote_name = org;
+		const std::string branch = json["head"]["ref"];
+
+		u8cout
+			<< "found pr: "
+			<< "repo=" << repo << " "
+			<< "org=" << org << " "
+			<< "branch=" << branch << "\n";
+
+		if (git::has_remote(task->this_source_path(), remote_name))
+		{
+			u8cout << "remote already exists\n";
+		}
+		else
+		{
+			u8cout << "adding remote " << remote_name << "\n";
+
+			git::add_remote(
+				task->this_source_path(),
+				remote_name, org, {}, false,
+				"https://github.com/{}/{}");
+		}
+
+		u8cout << "fetching from " << remote_name << "\n";
+		git::fetch(task->this_source_path(), remote_name, branch);
+
+		u8cout << "checking out " << remote_name << "/" << branch << "\n";
+		git::checkout(
+			task->this_source_path(),
+			::fmt::format("{}/{}", remote_name, branch));
+
+		return 0;
+	}
+	catch(std::exception& e)
+	{
+		u8cerr << e.what() << "\n";
+		return 1;
+	}
 }
 
 int pr_command::do_fetch()
 {
 	return 0;
+}
+
+url pr_command::get_diff_url(const modorganizer* task, const std::string& pr)
+{
+	return ::fmt::format(
+		"https://github.com/{}/{}/pull/{}.diff",
+		task->org(), task->repo(), pr);
+}
+
+nlohmann::json pr_command::get_pr_info(
+	const modorganizer* task, const std::string& pr)
+{
+	if (github_token_.empty())
+	{
+		u8cerr << "missing --github-token\n";
+		return {};
+	}
+
+	const url u(::fmt::format(
+		"https://api.github.com/repos/{}/{}/pulls/{}",
+		task->org(), task->repo(), pr));
+
+	curl_downloader dl;
+
+	dl
+		.url(u)
+		.header("Authorization", "token " + github_token_)
+		.start()
+		.join();
+
+	if (!dl.ok())
+	{
+		u8cerr << "failed to get pr info from github\n";
+		return {};
+	}
+
+	const auto output = dl.steal_output();
+	return nlohmann::json::parse(output);
 }
 
 }	// namespace

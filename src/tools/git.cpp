@@ -7,6 +7,8 @@ namespace mob
 {
 
 constexpr git::ops no_op(git::ops(0));
+const std::string default_github_url_pattern = "git@github.com:{}/{}";
+
 
 git::git(ops o)
 	: basic_process_runner("git"), op_(o)
@@ -68,9 +70,17 @@ void git::ignore_ts(const fs::path& repo, bool b)
 		.do_ignore_ts();
 }
 
+bool git::has_remote(const fs::path& repo, const std::string& name)
+{
+	git g(no_op);
+	g.root(repo);
+	return g.has_remote(name);
+}
+
 void git::add_remote(
 	const fs::path& repo, const std::string& remote_name,
-	const std::string& username, const std::string& key, bool push_default)
+	const std::string& username, const std::string& key, bool push_default,
+	const std::string& url_pattern)
 {
 	git g(no_op);
 	g.root(repo);
@@ -79,7 +89,7 @@ void git::add_remote(
 
 	if (!g.has_remote(remote_name))
 	{
-		g.add_remote(remote_name, make_url(username, gf));
+		g.add_remote(remote_name, make_url(username, gf, url_pattern));
 
 		if (push_default)
 			g.set_config("remote.pushdefault", remote_name);
@@ -125,6 +135,45 @@ void git::apply(const std::string& diff)
 		.arg("apply")
 		.arg("--whitespace", "nowarn")
 		.arg("-")
+		.cwd(root_);
+
+	execute_and_join();
+}
+
+void git::fetch(
+	const fs::path& p, const std::string& remote, const std::string& branch)
+{
+	git g(no_op);
+	g.root(p);
+	g.fetch(remote, branch);
+}
+
+void git::fetch(const std::string& remote, const std::string& branch)
+{
+	process_ = make_process()
+		.arg("fetch")
+		.arg("-q")
+		.arg(remote)
+		.arg(branch)
+		.cwd(root_);
+
+	execute_and_join();
+}
+
+void git::checkout(const fs::path& p, const std::string& what)
+{
+	git g(no_op);
+	g.root(p);
+	g.checkout(what);
+}
+
+void git::checkout(const std::string& what)
+{
+	process_ = make_process()
+		.arg("-c", "advice.detachedHead=false")
+		.arg("checkout")
+		.arg("-q")
+		.arg(what)
 		.cwd(root_);
 
 	execute_and_join();
@@ -447,9 +496,8 @@ bool git::has_remote(const std::string& name)
 	process_ = make_process()
 		.flags(process::allow_failure)
 		.stderr_level(context::level::debug)
-		.arg("remote")
-		.arg("show")
-		.arg(name)
+		.arg("config")
+		.arg("remote." + name + ".url")
 		.cwd(root_);
 
 	return (execute_and_join() == 0);
@@ -613,9 +661,13 @@ std::string git::git_file()
 }
 
 std::string git::make_url(
-	const std::string& org, const std::string& git_file)
-{
-	return "git@github.com:" + org + "/" + git_file;
+	const std::string& org, const std::string& git_file,
+	const std::string& url_pattern)
+	{
+	const std::string pattern =
+		url_pattern.empty() ? default_github_url_pattern : url_pattern;
+
+	return fmt::format(pattern, org, git_file);
 }
 
 
