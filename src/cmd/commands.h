@@ -220,8 +220,6 @@ private:
 	bool ignore_uncommitted_ = false;
 	bool keep_msbuild_ = false;
 	std::optional<bool> revert_ts_;
-	std::string pr_;
-	std::string github_token_;
 
 
 	// creates a bare bones ini file in the prefix so mob can be invoked in any
@@ -229,15 +227,34 @@ private:
 	//
 	void create_prefix_ini();
 
+	// for instrumentation
+	//
+	void dump_timings();
+};
+
+
+// applies a pr
+//
+class pr_command : public command
+{
+public:
+	pr_command();
+
+	meta_t meta() const override;
+
+protected:
+	clipp::group do_group() override;
+	int do_run() override;
+
+private:
+	std::string pr_;
+	std::string github_token_;
+
 	std::pair<const modorganizer*, std::string> parse_pr(
 		const std::string& pr) const;
 
 	int get_pr_branch();
 	int apply_pr_diff();
-
-	// for instrumentation
-	//
-	void dump_timings();
 };
 
 
