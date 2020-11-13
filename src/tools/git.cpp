@@ -111,6 +111,24 @@ void git::init_repo(const fs::path& p)
 	g.init();
 }
 
+void git::apply(const fs::path& p, const std::string& diff)
+{
+	git g(no_op);
+	g.root(p);
+	g.apply(diff);
+}
+
+void git::apply(const std::string& diff)
+{
+	process_ = make_process()
+		.stdin_string(diff)
+		.arg("apply")
+		.arg("-")
+		.cwd(root_);
+
+	execute_and_join();
+}
+
 fs::path git::binary()
 {
 	return conf::tool_by_name("git");

@@ -9,6 +9,11 @@
 namespace mob
 {
 
+std::string mob_version()
+{
+	return "mob 5.0";
+}
+
 url make_prebuilt_url(const std::string& filename)
 {
 	return

@@ -183,4 +183,8 @@ url make_prebuilt_url(const std::string& filename);
 url make_appveyor_artifact_url(
 	arch a, const std::string& project, const std::string& filename);
 
+// returns "mob x.y"
+//
+std::string mob_version();
+
 }	// namespace

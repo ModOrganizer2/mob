@@ -83,24 +83,49 @@ curl_downloader::curl_downloader(const context* cx)
 {
 }
 
-void curl_downloader::start(const url& u, const fs::path& path)
+void curl_downloader::start(const mob::url& u, const fs::path& path)
+{
+	url(u);
+	file(path);
+	start();
+}
+
+curl_downloader& curl_downloader::url(const mob::url& u)
 {
 	url_ = u;
-	path_ = path;
-	ok_ = false;
+	return *this;
+}
 
+curl_downloader& curl_downloader::file(const fs::path& file)
+{
+	path_ = file;
+	return *this;
+}
+
+curl_downloader& curl_downloader::header(std::string name, std::string value)
+{
+	headers_.emplace_back(std::move(name), std::move(value));
+	return *this;
+}
+
+curl_downloader& curl_downloader::start()
+{
+	ok_ = false;
 	cx_.debug(context::net, "downloading {} to {}", url_, path_);
 
 	if (conf::dry())
-		return;
+		return *this;
 
 	thread_ = start_thread([&]{ run(); });
+	return *this;
 }
 
-void curl_downloader::join()
+curl_downloader& curl_downloader::join()
 {
 	if (thread_.joinable())
 		thread_.join();
+
+	return *this;
 }
 
 void curl_downloader::interrupt()
@@ -114,6 +139,18 @@ bool curl_downloader::ok() const
 	return ok_;
 }
 
+const std::string& curl_downloader::output()
+{
+	return output_;
+}
+
+std::string curl_downloader::steal_output()
+{
+	std::string s = std::move(output_);
+	output_.clear();
+	return s;
+}
+
 void curl_downloader::run()
 {
 	cx_.trace(context::net, "curl: initializing {}", url_);
@@ -122,6 +159,8 @@ void curl_downloader::run()
 	guard g([&]{ curl_easy_cleanup(c); });
 
 	char error_buffer[CURL_ERROR_SIZE + 1] = {};
+	const std::string ua =
+		"ModOrganizer's " + mob_version() + " " + curl_version();
 
 	curl_easy_setopt(c, CURLOPT_URL, url_.c_str());
 	curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, on_write_static);
@@ -133,6 +172,7 @@ void curl_downloader::run()
 	curl_easy_setopt(c, CURLOPT_NOPROGRESS, 0l);
 	curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1l);
 	curl_easy_setopt(c, CURLOPT_ERRORBUFFER, error_buffer);
+	curl_easy_setopt(c, CURLOPT_USERAGENT, ua.c_str());
 
 	if (context::enabled(context::level::dump))
 	{
@@ -143,7 +183,9 @@ void curl_downloader::run()
 
 
 	// deletes the file in dtor unless cancel() is called
-	file_deleter output_deleter(cx_, path_);
+	std::unique_ptr<file_deleter> output_deleter;
+	if (!path_.empty())
+		output_deleter.reset(new file_deleter(cx_, path_));
 
 	cx_.trace(context::net, "curl: performing {}", url_);
 	const auto r = curl_easy_perform(c);
@@ -175,7 +217,9 @@ void curl_downloader::run()
 				url_, bytes_);
 
 			ok_ = true;
-			output_deleter.cancel();
+
+			if (output_deleter)
+				output_deleter->cancel();
 		}
 		else
 		{
@@ -214,34 +258,55 @@ size_t curl_downloader::on_write_static(
 
 void curl_downloader::on_write(char* ptr, std::size_t n) noexcept
 {
-	if (!file_)
+	if (!create_file())
 	{
-		// file is lazily created on first write
-
-		op::create_directories(cx_, path_.parent_path());
-
-		cx_.trace(context::net, "opening {}", path_);
-
-		HANDLE h = ::CreateFileW(
-			path_.native().c_str(), GENERIC_WRITE, FILE_SHARE_READ,
-			nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
-
-		if (h == INVALID_HANDLE_VALUE)
-		{
-			const auto e = GetLastError();
-
-			cx_.error(context::net,
-				"failed to open {}, {}", path_, error_message(e));
-
-			interrupt_ = true;
-			return;
-		}
-
-		file_.reset(h);
+		interrupt_ = true;
+		return;
 	}
 
-	bytes_ += n;
+	bool b = false;
+	if (file_)
+		b = write_file(ptr, n);
+	else
+		b = write_string(ptr, n);
 
+	if (!b)
+		interrupt_ = true;
+
+	bytes_ += n;
+}
+
+bool curl_downloader::create_file()
+{
+	if (file_ || path_.empty())
+		return true;
+
+	// file is lazily created on first write
+
+	op::create_directories(cx_, path_.parent_path());
+
+	cx_.trace(context::net, "opening {}", path_);
+
+	HANDLE h = ::CreateFileW(
+		path_.native().c_str(), GENERIC_WRITE, FILE_SHARE_READ,
+		nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+
+	if (h == INVALID_HANDLE_VALUE)
+	{
+		const auto e = GetLastError();
+
+		cx_.error(context::net,
+			"failed to open {}, {}", path_, error_message(e));
+
+		return false;
+	}
+
+	file_.reset(h);
+	return true;
+}
+
+bool curl_downloader::write_file(char* ptr, size_t n)
+{
 	DWORD written = 0;
 	if (!::WriteFile(file_.get(), ptr, static_cast<DWORD>(n), &written, nullptr))
 	{
@@ -250,8 +315,16 @@ void curl_downloader::on_write(char* ptr, std::size_t n) noexcept
 		cx_.error(context::net,
 			"failed to write to {}, {}", path_, error_message(e));
 
-		interrupt_ = true;
+		return false;
 	}
+
+	return true;
+}
+
+bool curl_downloader::write_string(char* ptr, size_t n)
+{
+	output_.append(ptr, n);
+	return true;
 }
 
 int curl_downloader::on_progress_static(

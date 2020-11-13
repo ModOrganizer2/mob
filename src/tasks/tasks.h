@@ -306,7 +306,12 @@ public:
 
 	bool is_super() const override;
 	bool is_gamebryo_plugin() const;
+
 	url git_url() const;
+	std::string org() const;
+	std::string repo() const;
+	fs::path this_source_path() const;
+	fs::path this_solution_path() const;
 
 protected:
 	void do_clean(clean c) override;
@@ -321,8 +326,6 @@ private:
 	msbuild create_this_msbuild_tool(msbuild::ops o=msbuild::build);
 	void initialize_super(const fs::path& super_root);
 
-	fs::path this_source_path() const;
-	fs::path this_solution_path() const;
 };
 
 

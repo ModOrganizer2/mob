@@ -6,6 +6,8 @@ namespace mob
 {
 
 class task;
+class modorganizer;
+class url;
 
 // base class for all commands
 //
@@ -218,12 +220,20 @@ private:
 	bool ignore_uncommitted_ = false;
 	bool keep_msbuild_ = false;
 	std::optional<bool> revert_ts_;
+	std::string pr_;
+	std::string github_token_;
 
 
 	// creates a bare bones ini file in the prefix so mob can be invoked in any
 	// directory below it
 	//
 	void create_prefix_ini();
+
+	std::pair<const modorganizer*, std::string> parse_pr(
+		const std::string& pr) const;
+
+	int get_pr_branch();
+	int apply_pr_diff();
 
 	// for instrumentation
 	//

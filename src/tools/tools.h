@@ -183,6 +183,8 @@ public:
 	static bool branch_exists(const mob::url& u, const std::string& name);
 	static void init_repo(const fs::path& p);
 
+	static void apply(const fs::path& p, const std::string& diff);
+
 
 	git& url(const mob::url& u);
 	git& branch(const std::string& name);
@@ -237,6 +239,7 @@ private:
 	void add_remote(const std::string& name, const std::string& url);
 	void set_remote_push(const std::string& remote, const std::string& url);
 	void set_assume_unchanged(const fs::path& relative_file, bool on);
+	void apply(const std::string& diff);
 	bool is_repo();
 	bool branch_exists();
 	bool has_uncommitted_changes();
