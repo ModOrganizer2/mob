@@ -270,6 +270,8 @@ private:
 		const std::string& org,
 		const std::string& author, const std::string& branch);
 
+	std::vector<pr_info> validate_prs(const std::vector<pr_info>& prs);
+
 	int pull();
 	int find();
 };

@@ -98,68 +98,13 @@ int pr_command::pull()
 	if (prs.empty())
 		return 1;
 
-	std::vector<pr_info> checked_prs;
-
-	std::vector<std::string> problems;
-
-	for (auto&& pr : prs)
-	{
-		if (pr.repo == "mob")
-		{
-			problems.push_back("there's a pr for mob itself");
-			continue;
-		}
-		else
-		{
-			const auto tasks = find_tasks(pr.repo);
-
-			if (tasks.empty())
-			{
-				problems.push_back("task " + pr.repo + " does not exist");
-				continue;
-			}
-			else if (tasks.size() > 1)
-			{
-				problems.push_back("found more than one task for repo " + pr.repo);
-				continue;
-			}
-			else
-			{
-				const auto* mo_task = dynamic_cast<const modorganizer*>(tasks[0]);
-
-				if (!mo_task)
-				{
-					problems.push_back(
-						"task " + pr.repo + " is not a modorganizer repo");
-
-					continue;
-				}
-			}
-		}
-
-		checked_prs.push_back(pr);
-	}
-
-	if (!problems.empty())
-	{
-		{
-			console_color cc(console_color::yellow);
-
-			u8cout << "\nproblems:\n";
-			for (auto&& p : problems)
-				u8cout << "  - " << p << "\n";
-		}
-
-		u8cout << "\n";
-		if (!ask_yes_no("these prs will be ignored; proceed anyway?", false))
-			return 1;
-
-		u8cout << "\n";
-	}
+	const auto okay_prs = validate_prs(prs);
+	if (okay_prs.empty())
+		return 1;
 
 	try
 	{
-		for (auto&& pr : checked_prs)
+		for (auto&& pr : okay_prs)
 		{
 			const auto* task = dynamic_cast<const modorganizer*>(
 				find_one_task(pr.repo));
@@ -352,6 +297,77 @@ pr_command::pr_info pr_command::get_pr_info(
 	const std::string branch = json["head"]["ref"];
 
 	return {repo, author, branch};
+}
+
+std::vector<pr_command::pr_info> pr_command::validate_prs(
+	const std::vector<pr_info>& prs)
+{
+	std::vector<std::string> problems;
+	std::vector<pr_info> okay_prs;
+
+	for (auto&& pr : prs)
+	{
+		if (pr.repo == "mob")
+		{
+			problems.push_back("there's a pr for mob itself");
+			continue;
+		}
+		else
+		{
+			const auto tasks = find_tasks(pr.repo);
+
+			if (tasks.empty())
+			{
+				problems.push_back("task " + pr.repo + " does not exist");
+				continue;
+			}
+			else if (tasks.size() > 1)
+			{
+				problems.push_back("found more than one task for repo " + pr.repo);
+				continue;
+			}
+			else
+			{
+				const auto* mo_task = dynamic_cast<const modorganizer*>(tasks[0]);
+
+				if (!mo_task)
+				{
+					problems.push_back(
+						"task " + pr.repo + " is not a modorganizer repo");
+
+					continue;
+				}
+			}
+		}
+
+		okay_prs.push_back(pr);
+	}
+
+	if (!problems.empty())
+	{
+		{
+			console_color cc(console_color::yellow);
+
+			u8cout << "\nproblems:\n";
+			for (auto&& p : problems)
+				u8cout << "  - " << p << "\n";
+		}
+
+		u8cout << "\n";
+
+		if (okay_prs.empty())
+		{
+			u8cout << "all prs would be ignored, bailing out\n";
+			return {};
+		}
+
+		if (!ask_yes_no("these prs will be ignored; proceed anyway?", false))
+			return {};
+
+		u8cout << "\n";
+	}
+
+	return okay_prs;
 }
 
 }	// namespace
