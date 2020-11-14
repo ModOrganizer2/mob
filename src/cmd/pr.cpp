@@ -64,6 +64,9 @@ clipp::group pr_command::do_group()
 
 int pr_command::do_run()
 {
+	if (github_token_.empty())
+		github_token_ = conf::global_by_name("github_key");
+
 	if (op_ == "pull")
 		return pull();
 	else if (op_ == "find")
@@ -197,6 +200,8 @@ std::vector<pr_command::pr_info> pr_command::get_matching_prs(
 
 	u8cout << "getting info for pr " << src_pr << " in " << task->name() << "\n";
 	const auto info = get_pr_info(task, src_pr);
+	if (info.repo.empty())
+		return {};
 
 	u8cout << "found pr from " << info.author << ":" << info.branch << "\n";
 
@@ -218,49 +223,38 @@ std::vector<pr_command::pr_info> pr_command::get_matching_prs(
 std::vector<pr_command::pr_info> pr_command::search_prs(
 	const std::string& org, const std::string& author, const std::string& branch)
 {
-	constexpr bool from_file = true;
-
 	nlohmann::json json;
 
-	if (from_file)
+	constexpr auto* pattern =
+		"https://api.github.com/search/issues?q="
+		"is:pr+org:{org:}+author:{author:}+is:open+head:{branch:}";
+
+	const auto search_url = ::fmt::format(
+		pattern,
+		::fmt::arg("org", org),
+		::fmt::arg("author", author),
+		::fmt::arg("branch", branch));
+
+	u8cout << "search url is " << search_url << "\n";
+
+	u8cout << "searching for matching prs\n";
+
+	curl_downloader dl;
+
+	dl
+		.url(search_url)
+		.header("Authorization", "token " + github_token_)
+		.start()
+		.join();
+
+	if (!dl.ok())
 	{
-		json = nlohmann::json::parse(read_file("c:\\tmp\\1277-search.json"));
-		if (json.empty())
-			return {};
+		u8cerr << "failed to search github\n";
+		return {};
 	}
-	else
-	{
-		constexpr auto* pattern =
-			"https://api.github.com/search/issues?q="
-			"is:pr+org:{org:}+author:{author:}+is:open+head:{branch:}";
 
-		const auto url = ::fmt::format(
-			pattern,
-			::fmt::arg("org", org),
-			::fmt::arg("author", author),
-			::fmt::arg("branch", branch));
-
-		u8cout << "search url is " << url << "\n";
-
-		u8cout << "searching for matching prs\n";
-
-		curl_downloader dl;
-
-		dl
-			.url(url)
-			.header("Authorization", "token " + github_token_)
-			.start()
-			.join();
-
-		if (!dl.ok())
-		{
-			u8cerr << "failed to search github\n";
-			return {};
-		}
-
-		const auto output = dl.steal_output();
-		json = nlohmann::json::parse(output);
-	}
+	const auto output = dl.steal_output();
+	json = nlohmann::json::parse(output);
 
 
 	std::map<std::string, pr_info> repos;
@@ -300,45 +294,34 @@ std::vector<pr_command::pr_info> pr_command::search_prs(
 pr_command::pr_info pr_command::get_pr_info(
 	const modorganizer* task, const std::string& pr)
 {
-	constexpr bool from_file = true;
-
 	nlohmann::json json;
 
-	if constexpr (from_file)
+	if (github_token_.empty())
 	{
-		json = nlohmann::json::parse(read_file("c:\\tmp\\" + pr + ".json"));
-		if (json.empty())
-			return {};
+		u8cerr << "missing --github-token\n";
+		return {};
 	}
-	else
+
+	const url u(::fmt::format(
+		"https://api.github.com/repos/{}/{}/pulls/{}",
+		task->org(), task->repo(), pr));
+
+	curl_downloader dl;
+
+	dl
+		.url(u)
+		.header("Authorization", "token " + github_token_)
+		.start()
+		.join();
+
+	if (!dl.ok())
 	{
-		if (github_token_.empty())
-		{
-			u8cerr << "missing --github-token\n";
-			return {};
-		}
-
-		const url u(::fmt::format(
-			"https://api.github.com/repos/{}/{}/pulls/{}",
-			task->org(), task->repo(), pr));
-
-		curl_downloader dl;
-
-		dl
-			.url(u)
-			.header("Authorization", "token " + github_token_)
-			.start()
-			.join();
-
-		if (!dl.ok())
-		{
-			u8cerr << "failed to get pr info from github\n";
-			return {};
-		}
-
-		const auto output = dl.steal_output();
-		json = nlohmann::json::parse(output);
+		u8cerr << "failed to get pr info from github\n";
+		return {};
 	}
+
+	const auto output = dl.steal_output();
+	json = nlohmann::json::parse(output);
 
 	const std::string repo = json["head"]["repo"]["name"];
 	const std::string author = json["head"]["repo"]["owner"]["login"];
