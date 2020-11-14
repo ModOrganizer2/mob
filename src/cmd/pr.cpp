@@ -13,7 +13,7 @@ std::string read_file(const fs::path& p)
 
 
 pr_command::pr_command()
-	: command(requires_options | handle_sigint), method_("apply")
+	: command(requires_options | handle_sigint)
 {
 }
 
@@ -43,14 +43,21 @@ clipp::group pr_command::do_group()
 			& clipp::value("TOKEN") >> github_token_)
 			% "github api key",
 
+		(clipp::value("OP") >> op_)
+			% "one of `pull`, `find`",
+
 		(clipp::value("PR") >> pr_)
 			% "PR to apply, must be `task/pr`, such as `modorganizer/123`";
 }
 
 int pr_command::do_run()
 {
-	if (const auto r=pull_pr(); r != 0)
-		return r;
+	if (op_ == "pull")
+		return pull();
+	else if (op_ == "find")
+		return find();
+	else
+		u8cerr << "bad operation '" << op_ << "'\n";
 
 	return 1;
 }
@@ -71,50 +78,108 @@ std::pair<const modorganizer*, std::string> pr_command::parse_pr(
 	const std::string pattern = cs[0];
 	const std::string pr_number = cs[1];
 
-	const auto tasks = find_tasks(pattern);
-
-	if (tasks.empty())
-	{
-		u8cerr << "no task matches '" << pattern << "'\n";
-		return {};
-	}
-	else if (tasks.size() > 1)
-	{
-		u8cerr
-			<< "found " << tasks.size() << " matches for pattern "
-			<< "'" << pattern << "'\n"
-			<< "the pattern must only match one task\n";
-
-		return {};
-	}
-
-	const auto* task = dynamic_cast<modorganizer*>(tasks[0]);
+	const auto* task = find_one_task(pattern);
 	if (!task)
+		return {};
+
+	const auto* mo_task = dynamic_cast<const modorganizer*>(task);
+	if (!mo_task)
 	{
 		u8cerr << "only modorganizer tasks are supported\n";
 		return {};
 	}
 
-	return {task, pr_number};
+	return {mo_task, pr_number};
 }
 
-int pr_command::pull_pr()
+int pr_command::pull()
 {
-	auto&& [task, pr] = parse_pr(pr_);
-	if (!task)
+	const auto prs = get_matching_prs(pr_);
+	if (prs.empty())
 		return 1;
+
+	std::vector<pr_info> checked_prs;
+
+	std::vector<std::string> problems;
+
+	for (auto&& pr : prs)
+	{
+		if (pr.repo == "mob")
+		{
+			problems.push_back("there's a pr for mob itself");
+			continue;
+		}
+		else
+		{
+			const auto tasks = find_tasks(pr.repo);
+
+			if (tasks.empty())
+			{
+				problems.push_back("task " + pr.repo + " does not exist");
+				continue;
+			}
+			else if (tasks.size() > 1)
+			{
+				problems.push_back("found more than one task for repo " + pr.repo);
+				continue;
+			}
+			else
+			{
+				const auto* mo_task = dynamic_cast<const modorganizer*>(tasks[0]);
+
+				if (!mo_task)
+				{
+					problems.push_back(
+						"task " + pr.repo + " is not a modorganizer repo");
+
+					continue;
+				}
+			}
+		}
+
+		checked_prs.push_back(pr);
+	}
+
+	if (!problems.empty())
+	{
+		{
+			console_color cc(console_color::yellow);
+
+			u8cout << "\nproblems:\n";
+			for (auto&& p : problems)
+				u8cout << "  - " << p << "\n";
+		}
+
+		u8cout << "\n";
+		if (!ask_yes_no("these prs will be ignored; proceed anyway?", false))
+			return 1;
+
+		u8cout << "\n";
+	}
 
 	try
 	{
-		u8cout << "fetching pr " << pr << " in " << task->name() << "\n";
-		git::fetch(
-			task->this_source_path(),
-			task->git_url().string(), ::fmt::format("pull/{}/head", pr));
+		for (auto&& pr : checked_prs)
+		{
+			const auto* task = dynamic_cast<const modorganizer*>(
+				find_one_task(pr.repo));
 
-		u8cout << "checking out FETCH_HEAD\n";
-		git::checkout(task->this_source_path(), "FETCH_HEAD");
+			if (!task)
+				return 1;
 
-		u8cout << "note: " << task->name() << " is in detached HEAD state\n";
+			u8cout
+				<< "checking out pr " << pr.number << " "
+				<< "in " << task->name() << "\n";
+
+			git::fetch(
+				task->this_source_path(),
+				task->git_url().string(),
+				::fmt::format("pull/{}/head", pr.number));
+
+			git::checkout(task->this_source_path(), "FETCH_HEAD");
+		}
+
+		u8cout << "note: all these repos are now in detached HEAD state\n";
 
 		return 0;
 	}
@@ -123,6 +188,120 @@ int pr_command::pull_pr()
 		u8cerr << e.what() << "\n";
 		return 1;
 	}
+}
+
+int pr_command::find()
+{
+	return !get_matching_prs(pr_).empty();
+}
+
+std::vector<pr_command::pr_info> pr_command::get_matching_prs(
+	const std::string& repo_pr)
+{
+	auto&& [task, src_pr] = parse_pr(repo_pr);
+	if (!task)
+		return {};
+
+	u8cout << "getting info for pr " << src_pr << " in " << task->name() << "\n";
+	const auto info = get_pr_info(task, src_pr);
+
+	u8cout << "found pr from " << info.author << ":" << info.branch << "\n";
+
+	u8cout << "searching\n";
+	const auto prs = search_prs(task->org(), info.author, info.branch);
+
+	u8cout << "found matching prs in " << prs.size() << " repos:\n";
+
+	u8cout
+		<< table(map(prs, [&](auto&& pr)
+			{
+				return std::pair(pr.repo + "/" + pr.number, pr.title);
+			}), 2, 5)
+		<< "\n";
+
+	return prs;
+}
+
+std::vector<pr_command::pr_info> pr_command::search_prs(
+	const std::string& org, const std::string& author, const std::string& branch)
+{
+	constexpr bool from_file = true;
+
+	nlohmann::json json;
+
+	if (from_file)
+	{
+		json = nlohmann::json::parse(read_file("c:\\tmp\\1277-search.json"));
+		if (json.empty())
+			return {};
+	}
+	else
+	{
+		constexpr auto* pattern =
+			"https://api.github.com/search/issues?q="
+			"is:pr+org:{org:}+author:{author:}+is:open+head:{branch:}";
+
+		const auto url = ::fmt::format(
+			pattern,
+			::fmt::arg("org", org),
+			::fmt::arg("author", author),
+			::fmt::arg("branch", branch));
+
+		u8cout << "search url is " << url << "\n";
+
+		u8cout << "searching for matching prs\n";
+
+		curl_downloader dl;
+
+		dl
+			.url(url)
+			.header("Authorization", "token " + github_token_)
+			.start()
+			.join();
+
+		if (!dl.ok())
+		{
+			u8cerr << "failed to search github\n";
+			return {};
+		}
+
+		const auto output = dl.steal_output();
+		json = nlohmann::json::parse(output);
+	}
+
+
+	std::map<std::string, pr_info> repos;
+
+	for (auto&& item : json["items"])
+	{
+		// ex: https://api.github.com/repos/ModOrganizer2/modorganizer-Installer
+		const std::string url = item["repository_url"];
+
+		const auto last_slash = url.find_last_of("/");
+		if (last_slash == std::string::npos)
+		{
+			u8cerr << "bad repo url in search: '" << url << "'\n";
+			return {};
+		}
+
+		const auto repo = url.substr(last_slash + 1);
+
+		pr_info info = {
+			repo, author, branch, item["title"],
+			std::to_string(item["number"].get<int>())
+		};
+
+		if (!repos.emplace(repo, info).second)
+		{
+			u8cerr
+				<< "multiple prs found in repo " << repo << ", "
+				<< "not supported\n";
+
+			return {};
+		}
+	}
+
+	return map(repos, [&](auto&& pair){ return pair.second; });
 }
 
 pr_command::pr_info pr_command::get_pr_info(
@@ -169,10 +348,10 @@ pr_command::pr_info pr_command::get_pr_info(
 	}
 
 	const std::string repo = json["head"]["repo"]["name"];
-	const std::string org = json["head"]["repo"]["owner"]["login"];
+	const std::string author = json["head"]["repo"]["owner"]["login"];
 	const std::string branch = json["head"]["ref"];
 
-	return {repo, org, branch};
+	return {repo, author, branch};
 }
 
 }	// namespace

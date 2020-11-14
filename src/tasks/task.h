@@ -24,6 +24,7 @@ Task& add_task(Args&&... args)
 void run_all_tasks();
 bool is_super_task(const std::string& name);
 std::vector<task*> find_tasks(const std::string& pattern);
+task* find_one_task(const std::string& pattern, bool verbose=true);
 
 std::vector<task*> get_all_tasks();
 std::vector<task*> get_top_level_tasks();

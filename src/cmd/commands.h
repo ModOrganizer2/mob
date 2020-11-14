@@ -250,19 +250,28 @@ protected:
 private:
 	struct pr_info
 	{
-		std::string repo, org, branch;
+		std::string repo, author, branch, title, number;
 	};
 
+
+	std::string op_;
 	std::string pr_;
 	std::string github_token_;
-	std::string method_;
 
 	std::pair<const modorganizer*, std::string> parse_pr(
 		const std::string& pr) const;
 
 	pr_info get_pr_info(const modorganizer* task, const std::string& pr);
 
-	int pull_pr();
+	std::vector<pr_command::pr_info> get_matching_prs(
+		const std::string& repo_pr);
+
+	std::vector<pr_info> search_prs(
+		const std::string& org,
+		const std::string& author, const std::string& branch);
+
+	int pull();
+	int find();
 };
 
 
