@@ -274,6 +274,7 @@ private:
 
 	int pull();
 	int find();
+	int revert();
 };
 
 

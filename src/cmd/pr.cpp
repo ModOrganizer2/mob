@@ -28,7 +28,19 @@ command::meta_t pr_command::meta() const
 
 std::string pr_command::do_doc()
 {
-	return {};
+	return
+		"Operations:\n"
+		"  - find:   lists all the repos that would affected by `pull` or\n"
+		"            `revert`\n"
+		"  - pull:   fetches the pr's branch and checks it out; all repos\n"
+		"            will be in detached HEAD state\n"
+		"  - revert: checks out branch `master` for every affected repo\n"
+		"\n"
+		"Repos that are not handled:\n"
+		"  - mob itself\n"
+		"  - umbrella\n"
+		"  - any repo that's not in modorganizer_super\n"
+		"  - modorganizer_installer";
 }
 
 clipp::group pr_command::do_group()
@@ -44,7 +56,7 @@ clipp::group pr_command::do_group()
 			% "github api key",
 
 		(clipp::value("OP") >> op_)
-			% "one of `pull`, `find`",
+			% "one of `find`, `pull` or `revert`; see below",
 
 		(clipp::value("PR") >> pr_)
 			% "PR to apply, must be `task/pr`, such as `modorganizer/123`";
@@ -56,6 +68,8 @@ int pr_command::do_run()
 		return pull();
 	else if (op_ == "find")
 		return find();
+	else if (op_ == "revert")
+		return revert();
 	else
 		u8cerr << "bad operation '" << op_ << "'\n";
 
@@ -138,6 +152,40 @@ int pr_command::pull()
 int pr_command::find()
 {
 	return !get_matching_prs(pr_).empty();
+}
+
+int pr_command::revert()
+{
+	const auto prs = get_matching_prs(pr_);
+	if (prs.empty())
+		return 1;
+
+	const auto okay_prs = validate_prs(prs);
+	if (okay_prs.empty())
+		return 1;
+
+	try
+	{
+		for (auto&& pr : okay_prs)
+		{
+			const auto* task = dynamic_cast<const modorganizer*>(
+				find_one_task(pr.repo));
+
+			if (!task)
+				return 1;
+
+			u8cout << "reverting " << task->name() << " to master\n";
+
+			git::checkout(task->this_source_path(), "master");
+		}
+
+		return 0;
+	}
+	catch(std::exception& e)
+	{
+		u8cerr << e.what() << "\n";
+		return 1;
+	}
 }
 
 std::vector<pr_command::pr_info> pr_command::get_matching_prs(
