@@ -71,6 +71,7 @@
 #include <curl/curl.h>
 #include <clipp.h>
 #include <fmt/format.h>
+#include <nlohmann/json.hpp>
 
 #pragma warning(pop)
 

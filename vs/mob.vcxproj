@@ -63,6 +63,7 @@
     <ClCompile Include="..\src\cmd\commands.cpp" />
     <ClCompile Include="..\src\cmd\git.cpp" />
     <ClCompile Include="..\src\cmd\list.cpp" />
+    <ClCompile Include="..\src\cmd\pr.cpp" />
     <ClCompile Include="..\src\cmd\release.cpp" />
     <ClCompile Include="..\src\cmd\tx.cpp" />
     <ClCompile Include="..\src\core\conf.cpp" />

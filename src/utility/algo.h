@@ -142,10 +142,10 @@ Container zip(const Range1& range1, const Range2& range2)
 
 // returns a vector containing the result of `f(e)` for each element `e` of `v`
 //
-template <class F, class T>
-auto map(const std::vector<T>& v, F&& f)
+template <class Cont, class F>
+auto map(const Cont& v, F&& f)
 {
-	using mapped_type = decltype(f(std::declval<T>()));
+	using mapped_type = decltype(f(std::declval<Cont::value_type>()));
 	std::vector<mapped_type> out;
 
 	for (auto&& e : v)

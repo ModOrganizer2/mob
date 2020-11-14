@@ -189,6 +189,9 @@
     <ClCompile Include="..\src\cmd\tx.cpp">
       <Filter>src\cmd</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\cmd\pr.cpp">
+      <Filter>src\cmd</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">

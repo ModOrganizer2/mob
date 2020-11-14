@@ -15,8 +15,12 @@ class async_pipe
 public:
 	async_pipe(const context& cx);
 
-	handle_ptr create();
+	handle_ptr create_for_stdout();
 	std::string_view read(bool finish);
+
+	handle_ptr create_for_stdin();
+	std::size_t write(std::string_view s);
+
 	bool closed() const;
 
 private:
@@ -30,7 +34,10 @@ private:
 	bool pending_;
 	bool closed_;
 
-	HANDLE create_pipe();
+	handle_ptr create(bool for_stdout);
+	HANDLE create_named_pipe();
+	HANDLE create_anonymous_pipe();
+
 	std::string_view try_read();
 	std::string_view check_pending();
 };
@@ -257,6 +264,8 @@ public:
 	process& stderr_filter(filter_fun f);
 	process& stderr_encoding(encodings e);
 
+	process& stdin_string(std::string s);
+
 	process& chcp(int cp);
 	process& cmd_unicode(bool b);
 
@@ -317,6 +326,8 @@ private:
 		std::atomic<bool> interrupt{false};
 		std::unique_ptr<async_pipe> stdout_pipe;
 		std::unique_ptr<async_pipe> stderr_pipe;
+		std::unique_ptr<async_pipe> stdin_pipe;
+		handle_ptr stdin_handle;
 
 		impl() = default;
 		impl(const impl&);
@@ -347,6 +358,8 @@ private:
 	std::set<int> success_;
 	stream stdout_;
 	stream stderr_;
+	std::optional<std::string> stdin_;
+	std::size_t stdin_offset_;
 	mob::env env_;
 	std::string raw_;
 	std::string cmd_;

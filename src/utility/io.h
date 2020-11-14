@@ -102,6 +102,10 @@ void set_std_streams();
 //
 std::mutex& global_output_mutex();
 
+// asks the user for y/n
+//
+bool ask_yes_no(const std::string& text, bool def);
+
 
 // see https://github.com/isanae/mob/issues/4
 //

@@ -80,6 +80,16 @@ url modorganizer::git_url() const
 	return task_conf().make_git_url(task_conf().mo_org(), repo_);
 }
 
+std::string modorganizer::org() const
+{
+	return task_conf().mo_org();
+}
+
+std::string modorganizer::repo() const
+{
+	return repo_;
+}
+
 void modorganizer::do_clean(clean c)
 {
 	instrument<times::clean>([&]
