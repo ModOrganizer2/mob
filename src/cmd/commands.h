@@ -248,6 +248,11 @@ protected:
 	int do_run() override;
 
 private:
+	struct pr_info
+	{
+		std::string repo, org, branch;
+	};
+
 	std::string pr_;
 	std::string github_token_;
 	std::string method_;
@@ -255,12 +260,9 @@ private:
 	std::pair<const modorganizer*, std::string> parse_pr(
 		const std::string& pr) const;
 
-	int do_apply();
-	int do_remote();
-	int do_fetch();
+	pr_info get_pr_info(const modorganizer* task, const std::string& pr);
 
-	nlohmann::json get_pr_info(const modorganizer* task, const std::string& pr);
-	url get_diff_url(const modorganizer* task, const std::string& pr);
+	int pull_pr();
 };
 
 
