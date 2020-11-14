@@ -81,6 +81,26 @@ std::mutex& global_output_mutex()
   return g_output_mutex;
 }
 
+bool ask_yes_no(const std::string& text, bool def)
+{
+	u8cout
+		<< text
+		<< (text.empty() ? "" : " ")
+		<< (def ? "[Y/n]" : "[y/N]")
+		<< " ";
+
+	// stdin is not utf8
+	std::string line;
+	std::getline(std::cin, line);
+
+	if (line.empty())
+		return def;
+	else if (line == "y" || line == "Y")
+		return true;
+	else
+		return false;
+}
+
 
 void u8stream::do_output(const std::string& s)
 {

@@ -45,35 +45,66 @@ private:
 class curl_downloader
 {
 public:
+	using headers = std::vector<std::pair<std::string, std::string>>;
+
 	curl_downloader(const context* cx=nullptr);
 
-	// starts a thread, downloads url into given file
+	// convenience: starts a thread, downloads url into given file
 	//
-	void start(const url& u, const fs::path& file);
+	void start(const mob::url& u, const fs::path& file);
+
+
+	// sets the url to download from
+	//
+	curl_downloader& url(const mob::url& u);
+
+	// sets the output file
+	//
+	curl_downloader& file(const fs::path& file);
+
+	// adds a header
+	//
+	curl_downloader& header(std::string name, std::string value);
+
+	// starts the download in a thread
+	//
+	curl_downloader& start();
+
 
 	// joins download thread
 	//
-	void join();
+	curl_downloader& join();
 
 	// async interrupt
 	//
 	void interrupt();
 
+
 	// whether the file was downloaded correctly; only valid after join()
 	//
 	bool ok() const;
 
+	// if file() wasn't called, returns the content that was retrieved
+	//
+	const std::string& output();
+	std::string steal_output();
+
 private:
 	const context& cx_;
-	url url_;
+	mob::url url_;
 	fs::path path_;
 	handle_ptr file_;
 	std::thread thread_;
 	std::size_t bytes_;
 	std::atomic<bool> interrupt_;
 	bool ok_;
+	std::string output_;
+	headers headers_;
 
 	void run();
+	bool create_file();
+	bool write_file(char* ptr, size_t size);
+	bool write_string(char* ptr, size_t size);
 
 	static size_t on_write_static(
 		char* ptr, size_t size, size_t nmemb, void* user) noexcept;

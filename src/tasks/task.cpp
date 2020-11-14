@@ -114,6 +114,33 @@ std::vector<task*> find_tasks(const std::string& pattern)
 	return tasks;
 }
 
+task* find_one_task(const std::string& pattern, bool verbose)
+{
+	const auto tasks = find_tasks(pattern);
+
+	if (tasks.empty())
+	{
+		if (verbose)
+			u8cerr << "no task matches '" << pattern << "'\n";
+
+		return nullptr;
+	}
+	else if (tasks.size() > 1)
+	{
+		if (verbose)
+		{
+			u8cerr
+				<< "found " << tasks.size() << " matches for pattern "
+				<< "'" << pattern << "'\n"
+				<< "the pattern must only match one task\n";
+		}
+
+		return nullptr;
+	}
+
+	return tasks[0];
+}
+
 void run_all_tasks()
 {
 	try

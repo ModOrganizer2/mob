@@ -24,13 +24,6 @@ void set_sigint_handler()
 }
 
 
-
-std::string version()
-{
-	return "mob whatever-is-on-master";
-}
-
-
 void help(const clipp::group& g, const std::string& more)
 {
 	auto usage_df = clipp::doc_formatting()
@@ -47,7 +40,7 @@ void help(const clipp::group& g, const std::string& more)
 		<< "Options:\n"
 		<< clipp::documentation(g, options_df)
 		<< "\n\n"
-		<< "To use global options with command options, make sure command "
+		<< "To use global options with command options, make sure command \n"
 		<< "options are together, with no global options in the middle.\n";
 
 	if (!more.empty())
@@ -253,7 +246,7 @@ clipp::group version_command::do_group()
 
 int version_command::do_run()
 {
-	u8cout << version() << "\n";
+	u8cout << mob_version() << "\n";
 	return 0;
 }
 

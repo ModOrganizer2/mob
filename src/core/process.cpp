@@ -32,10 +32,20 @@ bool async_pipe::closed() const
 	return closed_;
 }
 
-handle_ptr async_pipe::create()
+handle_ptr async_pipe::create_for_stdout()
+{
+	return create(true);
+}
+
+handle_ptr async_pipe::create_for_stdin()
+{
+	return create(false);
+}
+
+handle_ptr async_pipe::create(bool for_stdout)
 {
 	// creating pipe
-	handle_ptr out(create_pipe());
+	handle_ptr out(for_stdout ? create_named_pipe() : create_anonymous_pipe());
 	if (out.get() == INVALID_HANDLE_VALUE)
 		return {};
 
@@ -75,7 +85,19 @@ std::string_view async_pipe::read(bool finish)
 	return s;
 }
 
-HANDLE async_pipe::create_pipe()
+std::size_t async_pipe::write(std::string_view s)
+{
+	const DWORD n = static_cast<DWORD>(s.size());
+	DWORD written = 0;
+	const auto r = ::WriteFile(stdout_.get(), s.data(), n, &written, nullptr);
+
+	if (written >= s.size())
+		stdout_ = {};
+
+	return written;
+}
+
+HANDLE async_pipe::create_named_pipe()
 {
 	const auto pipe_id = g_next_pipe_id.fetch_add(1) + 1;
 
@@ -124,7 +146,6 @@ HANDLE async_pipe::create_pipe()
 		stdout_.reset(output_read);
 	}
 
-
 	// creating handle to pipe which is passed to CreateProcess()
 	HANDLE output_write = ::CreateFileW(
 		pipe_name.c_str(), FILE_WRITE_DATA|SYNCHRONIZE, 0,
@@ -138,6 +159,34 @@ HANDLE async_pipe::create_pipe()
 	}
 
 	return output_write;
+}
+
+HANDLE async_pipe::create_anonymous_pipe()
+{
+	SECURITY_ATTRIBUTES saAttr = {};
+	saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+	saAttr.bInheritHandle = TRUE;
+
+	// Create a pipe for the child process's STDIN.
+	HANDLE read_pipe, write_pipe;
+	if (!CreatePipe(&read_pipe, &write_pipe, &saAttr, 0))
+	{
+		const auto e = GetLastError();
+		cx_.bail_out(context::cmd,
+			"CreatePipe failed, {}", error_message(e));
+	}
+
+	// Ensure the write handle to the pipe for STDIN is not inherited.
+	if (!SetHandleInformation(write_pipe, HANDLE_FLAG_INHERIT, 0))
+	{
+		const auto e = GetLastError();
+		cx_.bail_out(context::cmd,
+			"SetHandleInformation failed, {}", error_message(e));
+	}
+
+	stdout_.reset(write_pipe);
+
+	return read_pipe;
 }
 
 std::string_view async_pipe::try_read()
@@ -248,6 +297,8 @@ process::impl& process::impl::operator=(const impl& i)
 	interrupt = i.interrupt.load();
 	stdout_pipe = {};
 	stderr_pipe = {};
+	stdin_pipe = {};
+	stdin_handle = {};
 
 	return *this;
 }
@@ -255,7 +306,8 @@ process::impl& process::impl::operator=(const impl& i)
 
 process::process() :
 	cx_(&gcx()), unicode_(false), chcp_(-1), flags_(process::noflags),
-	stdout_(context::level::trace), stderr_(context::level::error), code_(0)
+	stdout_(context::level::trace), stderr_(context::level::error),
+	stdin_offset_(0), code_(0)
 {
 	success_.insert(0);
 }
@@ -360,6 +412,12 @@ process& process::stderr_filter(filter_fun f)
 process& process::stderr_encoding(encodings e)
 {
 	stderr_.encoding = e;
+	return *this;
+}
+
+process& process::stdin_string(std::string s)
+{
+	stdin_ = s;
 	return *this;
 }
 
@@ -484,7 +542,7 @@ void process::do_run(const std::string& what)
 	STARTUPINFOW si = { .cb=sizeof(si) };
 	PROCESS_INFORMATION pi = {};
 
-	handle_ptr stdout_pipe, stderr_pipe, stdin_pipe;
+	handle_ptr stdout_pipe, stderr_pipe;
 
 	impl_.stdout_pipe.reset(new async_pipe(*cx_));
 	impl_.stderr_pipe.reset(new async_pipe(*cx_));
@@ -494,7 +552,7 @@ void process::do_run(const std::string& what)
 		case forward_to_log:
 		case keep_in_string:
 		{
-			stdout_pipe = impl_.stdout_pipe->create();
+			stdout_pipe = impl_.stdout_pipe->create_for_stdout();
 			si.hStdOutput = stdout_pipe.get();
 			break;
 		}
@@ -517,7 +575,7 @@ void process::do_run(const std::string& what)
 		case forward_to_log:
 		case keep_in_string:
 		{
-			stderr_pipe = impl_.stderr_pipe->create();
+			stderr_pipe = impl_.stderr_pipe->create_for_stdout();
 			si.hStdError = stderr_pipe.get();
 			break;
 		}
@@ -535,9 +593,17 @@ void process::do_run(const std::string& what)
 		}
 	}
 
-	stdin_pipe.reset(get_bit_bucket());
-	si.hStdInput = stdin_pipe.get();
+	if (stdin_)
+	{
+		impl_.stdin_pipe.reset(new async_pipe(*cx_));
+		impl_.stdin_handle = impl_.stdin_pipe->create_for_stdin();
+	}
+	else
+	{
+		impl_.stdin_handle.reset(get_bit_bucket());
+	}
 
+	si.hStdInput = impl_.stdin_handle.get();
 	si.dwFlags = STARTF_USESTDHANDLES;
 
 	const std::wstring cmd = utf8_to_utf16(this_env::get("COMSPEC"));
@@ -764,6 +830,12 @@ void process::on_completed()
 void process::on_timeout(bool& already_interrupted)
 {
 	read_pipes(false);
+
+	if (stdin_ && stdin_offset_ < stdin_->size())
+	{
+		stdin_offset_ += impl_.stdin_pipe->write({
+			stdin_->data() + stdin_offset_, stdin_->size() - stdin_offset_});
+	}
 
 	if (impl_.interrupt && !already_interrupted)
 	{

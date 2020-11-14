@@ -154,6 +154,7 @@ int build_command::do_run()
 	try
 	{
 		create_prefix_ini();
+
 		run_all_tasks();
 
 		if (do_timings)

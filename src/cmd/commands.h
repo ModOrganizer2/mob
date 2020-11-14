@@ -6,6 +6,8 @@ namespace mob
 {
 
 class task;
+class modorganizer;
+class url;
 
 // base class for all commands
 //
@@ -228,6 +230,51 @@ private:
 	// for instrumentation
 	//
 	void dump_timings();
+};
+
+
+// applies a pr
+//
+class pr_command : public command
+{
+public:
+	pr_command();
+
+	meta_t meta() const override;
+
+protected:
+	clipp::group do_group() override;
+	std::string do_doc() override;
+	int do_run() override;
+
+private:
+	struct pr_info
+	{
+		std::string repo, author, branch, title, number;
+	};
+
+
+	std::string op_;
+	std::string pr_;
+	std::string github_token_;
+
+	std::pair<const modorganizer*, std::string> parse_pr(
+		const std::string& pr) const;
+
+	pr_info get_pr_info(const modorganizer* task, const std::string& pr);
+
+	std::vector<pr_command::pr_info> get_matching_prs(
+		const std::string& repo_pr);
+
+	std::vector<pr_info> search_prs(
+		const std::string& org,
+		const std::string& author, const std::string& branch);
+
+	std::vector<pr_info> validate_prs(const std::vector<pr_info>& prs);
+
+	int pull();
+	int find();
+	int revert();
 };
 
 
