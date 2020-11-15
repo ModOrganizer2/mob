@@ -6,6 +6,8 @@
 namespace mob
 {
 
+// many processes may be started simultaneously, this is incremented each time
+// a pipe is created to make sure pipe names are unique
 static std::atomic<int> g_next_pipe_id(0);
 
 
@@ -13,8 +15,8 @@ async_pipe_stdout::async_pipe_stdout(const context& cx)
 	: cx_(cx), pending_(false), closed_(true)
 {
 	buffer_ = std::make_unique<char[]>(buffer_size);
-	std::memset(buffer_.get(), 0, buffer_size);
 
+	std::memset(buffer_.get(), 0, buffer_size);
 	std::memset(&ov_, 0, sizeof(ov_));
 }
 
@@ -30,6 +32,7 @@ handle_ptr async_pipe_stdout::create()
 	if (out.get() == INVALID_HANDLE_VALUE)
 		return {};
 
+	// creating event
 	ov_.hEvent = ::CreateEvent(nullptr, TRUE, FALSE, nullptr);
 
 	if (ov_.hEvent == NULL)
@@ -50,42 +53,67 @@ std::string_view async_pipe_stdout::read(bool finish)
 	std::string_view s;
 
 	if (closed_)
+	{
+		// no-op
 		return s;
+	}
 
 	if (pending_)
+	{
+		// the last read() call started an async operation, check if it's done
 		s = check_pending();
+	}
 	else
+	{
+		// there's no async operation in progress, try to read
 		s = try_read();
+	}
 
 	if (finish && s.empty())
 	{
+		// nothing was read from the pipe and `finish` is true, so the process
+		// has terminated; in this case, assume the pipe is empty and everything
+		// has been read
+
+		// even if the pipe is empty and nothing more is available, try_read()
+		// may have started an async operation that would return no data in the
+		// future
+		//
+		// make sure that operation is cancelled, because the kernel would try
+		// to use the OVERLAPPED buffer, which will probably have been destroyed
+		// by that time
 		::CancelIo(stdout_.get());
+
+		// a future call to read() will be a no-op and closed() will return true
 		closed_ = true;
 	}
 
+	// the bytes that were read, if any
 	return s;
 }
 
 HANDLE async_pipe_stdout::create_named_pipe()
 {
+	// unique name
 	const auto pipe_id = g_next_pipe_id.fetch_add(1) + 1;
 
 	const std::wstring pipe_name =
 		LR"(\\.\pipe\mob_pipe)" + std::to_wstring(pipe_id);
 
-	SECURITY_ATTRIBUTES sa = {};
-	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-	sa.bInheritHandle = TRUE;
-
-	handle_ptr pipe;
 
 	// creating pipe
 	{
+		const DWORD open_flags =
+			PIPE_ACCESS_INBOUND |          // the pipe will be read from
+			FILE_FLAG_OVERLAPPED |         // non blocking
+			FILE_FLAG_FIRST_PIPE_INSTANCE; // the pipe must not exist
+
+		// pipes support either bytes or messages, use bytes
+		const DWORD mode_flags = PIPE_TYPE_BYTE | PIPE_READMODE_BYTE;
+
 		HANDLE pipe_handle = ::CreateNamedPipeW(
-			pipe_name.c_str(),
-			PIPE_ACCESS_DUPLEX|FILE_FLAG_OVERLAPPED|FILE_FLAG_FIRST_PIPE_INSTANCE,
-			PIPE_TYPE_BYTE|PIPE_READMODE_BYTE|PIPE_WAIT,
-			1, buffer_size, buffer_size, process::wait_timeout, &sa);
+			pipe_name.c_str(), open_flags, mode_flags,
+			1, buffer_size, buffer_size, process::wait_timeout, nullptr);
 
 		if (pipe_handle == INVALID_HANDLE_VALUE)
 		{
@@ -94,28 +122,19 @@ HANDLE async_pipe_stdout::create_named_pipe()
 				"CreateNamedPipeW failed, {}", error_message(e));
 		}
 
-		pipe.reset(pipe_handle);
+		stdout_.reset(pipe_handle);
 	}
 
-	{
-		// duplicating the handle to read from it
-		HANDLE output_read = INVALID_HANDLE_VALUE;
 
-		const auto r = DuplicateHandle(
-			GetCurrentProcess(), pipe.get(), GetCurrentProcess(), &output_read,
-			0, TRUE, DUPLICATE_SAME_ACCESS);
+	// creating the write-only end of the pipe that will be passed to
+	// CreateProcess()
+	SECURITY_ATTRIBUTES sa = {};
+	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
 
-		if (!r)
-		{
-			const auto e = GetLastError();
-			cx_.bail_out(context::cmd,
-				"DuplicateHandle for pipe failed, {}", error_message(e));
-		}
+	// mark this handle as being inherited by the process; if this is not TRUE,
+	// the connection between the two ends of the pipe will be broken
+	sa.bInheritHandle = TRUE;
 
-		stdout_.reset(output_read);
-	}
-
-	// creating handle to pipe which is passed to CreateProcess()
 	HANDLE output_write = ::CreateFileW(
 		pipe_name.c_str(), FILE_WRITE_DATA|SYNCHRONIZE, 0,
 		&sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
@@ -134,95 +153,125 @@ std::string_view async_pipe_stdout::try_read()
 {
 	DWORD bytes_read = 0;
 
-	if (!::ReadFile(stdout_.get(), buffer_.get(), buffer_size, &bytes_read, &ov_))
+	// read bytes from the pipe
+	const auto r = ::ReadFile(
+		stdout_.get(), buffer_.get(), buffer_size, &bytes_read, &ov_);
+
+	if (r)
 	{
-		const auto e = GetLastError();
-
-		switch (e)
-		{
-			case ERROR_IO_PENDING:
-			{
-				pending_ = true;
-				break;
-			}
-
-			case ERROR_BROKEN_PIPE:
-			{
-				// broken pipe means the process is finished
-				closed_ = true;
-				break;
-			}
-
-			default:
-			{
-				cx_.bail_out(context::cmd,
-					"async_pipe read failed, {}", error_message(e));
-				break;
-			}
-		}
-
-		return {};
+		// some bytes were read, so ReadFile() turned out to be a synchronous
+		// operation; this happens when there's already stuff in the pipe
+		MOB_ASSERT(bytes_read <= buffer_size);
+		return {buffer_.get(), bytes_read};
 	}
 
-	MOB_ASSERT(bytes_read <= buffer_size);
 
-	return {buffer_.get(), bytes_read};
+	// ReadFile() failed, but it's not necessarily an error
+
+	const auto e = GetLastError();
+
+	switch (e)
+	{
+		case ERROR_IO_PENDING:
+		{
+			// an async operation was started by the kernel, future calls to
+			// read() will end up in check_pending() to see if it completed
+			pending_ = true;
+			break;
+		}
+
+		case ERROR_BROKEN_PIPE:
+		{
+			// broken pipe means the process is finished
+			closed_ = true;
+			break;
+		}
+
+		default:
+		{
+			// some other error
+			cx_.bail_out(context::cmd,
+				"async_pipe read failed, {}", error_message(e));
+			break;
+		}
+	}
+
+	// nothing available
+	return {};
 }
 
 std::string_view async_pipe_stdout::check_pending()
 {
-	DWORD bytes_read = 0;
-
+	// check if the async operation finished, wait for a short amount of time
 	const auto r = WaitForSingleObject(event_.get(), process::wait_timeout);
 
-	if (r == WAIT_FAILED) {
+	if (r == WAIT_TIMEOUT)
+	{
+		// nothing's available
+		return {};
+	}
+	else if (r == WAIT_FAILED)
+	{
+		// hard error
 		const auto e = GetLastError();
 		cx_.bail_out(context::cmd,
 			"WaitForSingleObject in async_pipe failed, {}", error_message(e));
 	}
 
-	if (!::GetOverlappedResult(stdout_.get(), &ov_, &bytes_read, FALSE))
+
+	// the operation seems to be finished
+
+	DWORD bytes_read = 0;
+
+	// getting status of the async read operation
+	const auto r = ::GetOverlappedResult(
+		stdout_.get(), &ov_, &bytes_read, FALSE);
+
+	if (r)
 	{
-		const auto e = GetLastError();
+		// the operation has completed
 
-		switch (e)
-		{
-			case ERROR_IO_INCOMPLETE:
-			{
-				break;
-			}
+		// reset for the next read()
+		::ResetEvent(event_.get());
+		pending_ = false;
 
-			case WAIT_TIMEOUT:
-			{
-				break;
-			}
-
-			case ERROR_BROKEN_PIPE:
-			{
-				// broken pipe means the process is finished
-				closed_ = true;
-				break;
-			}
-
-			default:
-			{
-				cx_.bail_out(context::cmd,
-					"GetOverlappedResult failed in async_pipe, {}",
-					error_message(e));
-
-				break;
-			}
-		}
-
-		return {};
+		// return the data, if any
+		MOB_ASSERT(bytes_read <= buffer_size);
+		return {buffer_.get(), bytes_read};
 	}
 
-	MOB_ASSERT(bytes_read <= buffer_size);
+	const auto e = GetLastError();
 
-	::ResetEvent(event_.get());
-	pending_ = false;
+	switch (e)
+	{
+		case ERROR_IO_INCOMPLETE:
+		{
+			break;
+		}
 
-	return {buffer_.get(), bytes_read};
+		case WAIT_TIMEOUT:
+		{
+			break;
+		}
+
+		case ERROR_BROKEN_PIPE:
+		{
+			// broken pipe means the process is finished
+			closed_ = true;
+			break;
+		}
+
+		default:
+		{
+			cx_.bail_out(context::cmd,
+				"GetOverlappedResult failed in async_pipe, {}",
+				error_message(e));
+
+			break;
+		}
+	}
+
+	return {};
 }
 
 
