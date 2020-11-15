@@ -192,6 +192,9 @@
     <ClCompile Include="..\src\cmd\pr.cpp">
       <Filter>src\cmd</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\core\pipe.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
@@ -250,6 +253,9 @@
     </ClInclude>
     <ClInclude Include="..\src\utility\enum.h">
       <Filter>src\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\core\pipe.h">
+      <Filter>src\core</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

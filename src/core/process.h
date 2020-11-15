@@ -8,40 +8,7 @@ namespace mob
 {
 
 class url;
-
-
-class async_pipe
-{
-public:
-	async_pipe(const context& cx);
-
-	handle_ptr create_for_stdout();
-	std::string_view read(bool finish);
-
-	handle_ptr create_for_stdin();
-	std::size_t write(std::string_view s);
-
-	bool closed() const;
-
-private:
-	static const std::size_t buffer_size = 50'000;
-
-	const context& cx_;
-	handle_ptr stdout_;
-	handle_ptr event_;
-	std::unique_ptr<char[]> buffer_;
-	OVERLAPPED ov_;
-	bool pending_;
-	bool closed_;
-
-	handle_ptr create(bool for_stdout);
-	HANDLE create_named_pipe();
-	HANDLE create_anonymous_pipe();
-
-	std::string_view try_read();
-	std::string_view check_pending();
-};
-
+class async_pipe;
 
 class encoded_buffer
 {
@@ -172,6 +139,8 @@ private:
 class process
 {
 public:
+	static constexpr DWORD wait_timeout = 50;
+
 	enum flags_t
 	{
 		noflags                  = 0x00,
@@ -226,6 +195,12 @@ public:
 
 	process();
 	~process();
+
+	// anchors
+	process(process&&);
+	process(const process&);
+	process& operator=(const process&);
+	process& operator=(process&&);
 
 	static process raw(const context& cx, const std::string& cmd);
 
