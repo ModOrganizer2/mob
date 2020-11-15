@@ -166,4 +166,130 @@ void for_each_line(std::string_view s, F&& f)
 	}
 }
 
+
+class encoded_buffer
+{
+public:
+	encoded_buffer(encodings e=encodings::dont_know, std::string bytes={});
+
+	void add(std::string_view bytes);
+
+	std::string utf8_string() const;
+
+	template <class F>
+	void next_utf8_lines(bool finished, F&& f)
+	{
+		for (;;)
+		{
+			switch (e_)
+			{
+				case encodings::utf16:
+				{
+					std::wstring_view utf16 =
+						next_line<wchar_t>(finished, bytes_, last_);
+
+					if (utf16.empty())
+						return;
+
+					f(utf16_to_utf8(utf16));
+					break;
+				}
+
+				case encodings::acp:
+				case encodings::oem:
+				{
+					std::string_view cp =
+						next_line<char>(finished, bytes_, last_);
+
+					if (cp.empty())
+						return;
+
+					f(bytes_to_utf8(e_, cp));
+					break;
+				}
+
+				case encodings::utf8:
+				case encodings::dont_know:
+				default:
+				{
+					std::string_view utf8 =
+						next_line<char>(finished, bytes_, last_);
+
+					if (utf8.empty())
+						return;
+
+					f(std::string(utf8));
+					break;
+				}
+			}
+		}
+	}
+
+private:
+	encodings e_;
+	std::string bytes_;
+	std::size_t last_;
+
+	template <class CharT>
+	std::basic_string_view<CharT> next_line(
+		bool finished, std::string_view bytes, std::size_t& byte_offset)
+	{
+		std::size_t size = bytes.size();
+
+		if constexpr (sizeof(CharT) == 2)
+		{
+			if ((size & 1) == 1)
+				--size;
+		}
+
+		const CharT* start = reinterpret_cast<const CharT*>(bytes.data() + byte_offset);
+		const CharT* end = reinterpret_cast<const CharT*>(bytes.data() + size);
+		const CharT* p = start;
+
+		std::basic_string_view<CharT> line;
+
+		while (p != end)
+		{
+			if (*p == CharT('\n') || *p == CharT('\r'))
+			{
+				line = {start, static_cast<std::size_t>(p - start)};
+
+				while (p != end && (*p == CharT('\n') || *p == CharT('\r')))
+					++p;
+
+				if (!line.empty())
+					break;
+
+				start = p;
+			}
+			else
+			{
+				++p;
+			}
+		}
+
+		if (line.empty())
+		{
+			if (finished)
+			{
+				line = {
+					reinterpret_cast<const CharT*>(bytes.data() + byte_offset),
+					size - byte_offset
+				};
+
+				byte_offset = bytes.size();
+			}
+		}
+		else
+		{
+			byte_offset = static_cast<std::size_t>(
+				reinterpret_cast<const char*>(p) - bytes.data());
+
+			MOB_ASSERT(byte_offset <= bytes.size());
+		}
+
+		return line;
+	}
+};
+
 }	// namespace
