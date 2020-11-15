@@ -572,6 +572,12 @@ void process::on_timeout(bool& already_interrupted)
 	{
 		stdin_offset_ += impl_.stdin_pipe->write({
 			stdin_->data() + stdin_offset_, stdin_->size() - stdin_offset_});
+
+		if (stdin_offset_ >= stdin_->size())
+		{
+			impl_.stdin_pipe->close();
+			stdin_ = {};
+		}
 	}
 
 	if (impl_.interrupt && !already_interrupted)

@@ -44,7 +44,7 @@ private:
 	// end of the pipe that is read from
 	handle_ptr stdout_;
 
-	// an event that's given to pipe for overlapped reads, signaled when data
+	// an event that's given to pipe for overlapped reads, signalled when data
 	// is available
 	handle_ptr event_;
 
@@ -84,7 +84,8 @@ private:
 };
 
 
-// a pipe connected to a process's stdin, it is written to
+// a pipe connected to a process's stdin, it is written to; this pipe is
+// synchronous and does not keep a copy of the given buffer, see write()
 //
 class async_pipe_stdin
 {
@@ -92,13 +93,19 @@ public:
 	async_pipe_stdin(const context& cx);
 
 	handle_ptr create();
+
+	// tries to send all of `s` down the pipe, returns the number of bytes
+	// actually written
+	//
 	std::size_t write(std::string_view s);
+
+	// closes the pipe, should be called as soon as everything has been written
+	//
+	void close();
 
 private:
 	const context& cx_;
 	handle_ptr stdin_;
-
-	HANDLE create_anonymous_pipe();
 };
 
 }	// namespace

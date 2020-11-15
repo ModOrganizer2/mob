@@ -189,9 +189,9 @@ std::string_view async_pipe_stdout::try_read()
 
 		default:
 		{
-			// some other error
+			// some other hard error
 			cx_.bail_out(context::cmd,
-				"async_pipe read failed, {}", error_message(e));
+				"async_pipe_stdout read failed, {}", error_message(e));
 			break;
 		}
 	}
@@ -203,19 +203,20 @@ std::string_view async_pipe_stdout::try_read()
 std::string_view async_pipe_stdout::check_pending()
 {
 	// check if the async operation finished, wait for a short amount of time
-	const auto r = WaitForSingleObject(event_.get(), process::wait_timeout);
+	const auto wr = WaitForSingleObject(event_.get(), process::wait_timeout);
 
-	if (r == WAIT_TIMEOUT)
+	if (wr == WAIT_TIMEOUT)
 	{
 		// nothing's available
 		return {};
 	}
-	else if (r == WAIT_FAILED)
+	else if (wr == WAIT_FAILED)
 	{
 		// hard error
 		const auto e = GetLastError();
 		cx_.bail_out(context::cmd,
-			"WaitForSingleObject in async_pipe failed, {}", error_message(e));
+			"WaitForSingleObject in async_pipe_stdout failed, {}",
+			error_message(e));
 	}
 
 
@@ -240,17 +241,16 @@ std::string_view async_pipe_stdout::check_pending()
 		return {buffer_.get(), bytes_read};
 	}
 
+	// GetOverlappedResult() failed, but it's not necessarily an error
+
 	const auto e = GetLastError();
 
 	switch (e)
 	{
 		case ERROR_IO_INCOMPLETE:
-		{
-			break;
-		}
-
 		case WAIT_TIMEOUT:
 		{
+			// still not completed
 			break;
 		}
 
@@ -263,8 +263,9 @@ std::string_view async_pipe_stdout::check_pending()
 
 		default:
 		{
+			// some other hard error
 			cx_.bail_out(context::cmd,
-				"GetOverlappedResult failed in async_pipe, {}",
+				"GetOverlappedResult failed in async_pipe_stdout, {}",
 				error_message(e));
 
 			break;
@@ -282,33 +283,25 @@ async_pipe_stdin::async_pipe_stdin(const context& cx)
 
 handle_ptr async_pipe_stdin::create()
 {
-	// creating pipe
-	handle_ptr out(create_anonymous_pipe());
-	if (out.get() == INVALID_HANDLE_VALUE)
-		return {};
+	// this pipe has two ends:
+	// - write_pipe is this end of the pipe, it will be written to
+	// - read_pipe is the process's end of the pipe, it will be read from
+	//
+	// read_pipe is given to the process in CreateProcess() and it needs to be
+	// inheritable or the connection between both ends of the pipe will be
+	// broken
+	//
+	// write_pipe does not need to be inheritable
 
-	return out;
-}
 
-std::size_t async_pipe_stdin::write(std::string_view s)
-{
-	const DWORD n = static_cast<DWORD>(s.size());
-	DWORD written = 0;
-	const auto r = ::WriteFile(stdin_.get(), s.data(), n, &written, nullptr);
-
-	if (written >= s.size())
-		stdin_ = {};
-
-	return written;
-}
-
-HANDLE async_pipe_stdin::create_anonymous_pipe()
-{
 	SECURITY_ATTRIBUTES saAttr = {};
 	saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+
+	// set both ends of the pipe as inheritable, write_pipe will be changed
+	// after
 	saAttr.bInheritHandle = TRUE;
 
-	// Create a pipe for the child process's STDIN.
+	// creating pipe
 	HANDLE read_pipe, write_pipe;
 	if (!CreatePipe(&read_pipe, &write_pipe, &saAttr, 0))
 	{
@@ -317,7 +310,7 @@ HANDLE async_pipe_stdin::create_anonymous_pipe()
 			"CreatePipe failed, {}", error_message(e));
 	}
 
-	// Ensure the write handle to the pipe for STDIN is not inherited.
+	// write_pipe does not need to be inheritable, it's not given to the process
 	if (!SetHandleInformation(write_pipe, HANDLE_FLAG_INHERIT, 0))
 	{
 		const auto e = GetLastError();
@@ -325,9 +318,41 @@ HANDLE async_pipe_stdin::create_anonymous_pipe()
 			"SetHandleInformation failed, {}", error_message(e));
 	}
 
+	// keep the end that's written to
 	stdin_.reset(write_pipe);
 
-	return read_pipe;
+	// give to other end to the new process
+	return handle_ptr(read_pipe);
+}
+
+std::size_t async_pipe_stdin::write(std::string_view s)
+{
+	// bytes to write
+	const DWORD n = static_cast<DWORD>(s.size());
+
+	// bytes actually written
+	DWORD written = 0;
+
+	// send to bytes down the pipe
+	const auto r = ::WriteFile(stdin_.get(), s.data(), n, &written, nullptr);
+
+	if (!r)
+	{
+		// hard error
+		const auto e = GetLastError();
+
+		cx_.bail_out(context::cmd,
+			"WriteFile failed in async_pipe_stdin, {}",
+			error_message(e));
+	}
+
+	// some bytes were written correctly
+	return written;
+}
+
+void async_pipe_stdin::close()
+{
+	stdin_ = {};
 }
 
 }	// namespace
