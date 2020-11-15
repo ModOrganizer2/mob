@@ -8,7 +8,8 @@ namespace mob
 {
 
 class url;
-class async_pipe;
+class async_pipe_stdout;
+class async_pipe_stdin;
 
 class process
 {
@@ -173,9 +174,9 @@ private:
 		handle_ptr handle;
 		handle_ptr job;
 		std::atomic<bool> interrupt{false};
-		std::unique_ptr<async_pipe> stdout_pipe;
-		std::unique_ptr<async_pipe> stderr_pipe;
-		std::unique_ptr<async_pipe> stdin_pipe;
+		std::unique_ptr<async_pipe_stdout> stdout_pipe;
+		std::unique_ptr<async_pipe_stdout> stderr_pipe;
+		std::unique_ptr<async_pipe_stdin> stdin_pipe;
 		handle_ptr stdin_handle;
 
 		impl() = default;
@@ -225,7 +226,7 @@ private:
 
 	void do_run(const std::string& what);
 	void read_pipes(bool finish);
-	void read_pipe(bool finish, stream& s, async_pipe& pipe, context::reason r);
+	void read_pipe(bool finish, stream& s, async_pipe_stdout& pipe, context::reason r);
 
 	void on_completed();
 	void on_timeout(bool& already_interrupted);

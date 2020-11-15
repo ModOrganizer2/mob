@@ -442,4 +442,20 @@ std::string path_to_utf8(fs::path p)
 	return utf16_to_utf8(p.native());
 }
 
+
+encoded_buffer::encoded_buffer(encodings e, std::string bytes)
+	: e_(e), bytes_(std::move(bytes)), last_(0)
+{
+}
+
+void encoded_buffer::add(std::string_view bytes)
+{
+	bytes_.append(bytes.begin(), bytes.end());
+}
+
+std::string encoded_buffer::utf8_string() const
+{
+	return bytes_to_utf8(e_, bytes_);
+}
+
 } // namespace

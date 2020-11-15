@@ -281,15 +281,15 @@ void process::do_run(const std::string& what)
 
 	handle_ptr stdout_pipe, stderr_pipe;
 
-	impl_.stdout_pipe.reset(new async_pipe(*cx_));
-	impl_.stderr_pipe.reset(new async_pipe(*cx_));
+	impl_.stdout_pipe.reset(new async_pipe_stdout(*cx_));
+	impl_.stderr_pipe.reset(new async_pipe_stdout(*cx_));
 
 	switch (stdout_.flags)
 	{
 		case forward_to_log:
 		case keep_in_string:
 		{
-			stdout_pipe = impl_.stdout_pipe->create_for_stdout();
+			stdout_pipe = impl_.stdout_pipe->create();
 			si.hStdOutput = stdout_pipe.get();
 			break;
 		}
@@ -312,7 +312,7 @@ void process::do_run(const std::string& what)
 		case forward_to_log:
 		case keep_in_string:
 		{
-			stderr_pipe = impl_.stderr_pipe->create_for_stdout();
+			stderr_pipe = impl_.stderr_pipe->create();
 			si.hStdError = stderr_pipe.get();
 			break;
 		}
@@ -332,8 +332,8 @@ void process::do_run(const std::string& what)
 
 	if (stdin_)
 	{
-		impl_.stdin_pipe.reset(new async_pipe(*cx_));
-		impl_.stdin_handle = impl_.stdin_pipe->create_for_stdin();
+		impl_.stdin_pipe.reset(new async_pipe_stdin(*cx_));
+		impl_.stdin_handle = impl_.stdin_pipe->create();
 	}
 	else
 	{
@@ -454,7 +454,7 @@ void process::read_pipes(bool finish)
 }
 
 void process::read_pipe(
-	bool finish, stream& s, async_pipe& pipe, context::reason r)
+	bool finish, stream& s, async_pipe_stdout& pipe, context::reason r)
 {
 	switch (s.flags)
 	{
@@ -766,22 +766,6 @@ std::string process::arg_to_string(const url& u, arg_flags f)
 std::string process::arg_to_string(int i, arg_flags)
 {
 	return std::to_string(i);
-}
-
-
-encoded_buffer::encoded_buffer(encodings e, std::string bytes)
-	: e_(e), bytes_(std::move(bytes)), last_(0)
-{
-}
-
-void encoded_buffer::add(std::string_view bytes)
-{
-	bytes_.append(bytes.begin(), bytes.end());
-}
-
-std::string encoded_buffer::utf8_string() const
-{
-	return bytes_to_utf8(e_, bytes_);
 }
 
 }	// namespace

@@ -5,16 +5,13 @@
 namespace mob
 {
 
-class async_pipe
+class async_pipe_stdout
 {
 public:
-	async_pipe(const context& cx);
+	async_pipe_stdout(const context& cx);
 
-	handle_ptr create_for_stdout();
+	handle_ptr create();
 	std::string_view read(bool finish);
-
-	handle_ptr create_for_stdin();
-	std::size_t write(std::string_view s);
 
 	bool closed() const;
 
@@ -29,12 +26,26 @@ private:
 	bool pending_;
 	bool closed_;
 
-	handle_ptr create(bool for_stdout);
 	HANDLE create_named_pipe();
-	HANDLE create_anonymous_pipe();
 
 	std::string_view try_read();
 	std::string_view check_pending();
+};
+
+
+class async_pipe_stdin
+{
+public:
+	async_pipe_stdin(const context& cx);
+
+	handle_ptr create();
+	std::size_t write(std::string_view s);
+
+private:
+	const context& cx_;
+	handle_ptr stdin_;
+
+	HANDLE create_anonymous_pipe();
 };
 
 }	// namespace

@@ -9,7 +9,7 @@ namespace mob
 static std::atomic<int> g_next_pipe_id(0);
 
 
-async_pipe::async_pipe(const context& cx)
+async_pipe_stdout::async_pipe_stdout(const context& cx)
 	: cx_(cx), pending_(false), closed_(true)
 {
 	buffer_ = std::make_unique<char[]>(buffer_size);
@@ -18,25 +18,15 @@ async_pipe::async_pipe(const context& cx)
 	std::memset(&ov_, 0, sizeof(ov_));
 }
 
-bool async_pipe::closed() const
+bool async_pipe_stdout::closed() const
 {
 	return closed_;
 }
 
-handle_ptr async_pipe::create_for_stdout()
-{
-	return create(true);
-}
-
-handle_ptr async_pipe::create_for_stdin()
-{
-	return create(false);
-}
-
-handle_ptr async_pipe::create(bool for_stdout)
+handle_ptr async_pipe_stdout::create()
 {
 	// creating pipe
-	handle_ptr out(for_stdout ? create_named_pipe() : create_anonymous_pipe());
+	handle_ptr out(create_named_pipe());
 	if (out.get() == INVALID_HANDLE_VALUE)
 		return {};
 
@@ -55,7 +45,7 @@ handle_ptr async_pipe::create(bool for_stdout)
 	return out;
 }
 
-std::string_view async_pipe::read(bool finish)
+std::string_view async_pipe_stdout::read(bool finish)
 {
 	std::string_view s;
 
@@ -76,19 +66,7 @@ std::string_view async_pipe::read(bool finish)
 	return s;
 }
 
-std::size_t async_pipe::write(std::string_view s)
-{
-	const DWORD n = static_cast<DWORD>(s.size());
-	DWORD written = 0;
-	const auto r = ::WriteFile(stdout_.get(), s.data(), n, &written, nullptr);
-
-	if (written >= s.size())
-		stdout_ = {};
-
-	return written;
-}
-
-HANDLE async_pipe::create_named_pipe()
+HANDLE async_pipe_stdout::create_named_pipe()
 {
 	const auto pipe_id = g_next_pipe_id.fetch_add(1) + 1;
 
@@ -152,35 +130,7 @@ HANDLE async_pipe::create_named_pipe()
 	return output_write;
 }
 
-HANDLE async_pipe::create_anonymous_pipe()
-{
-	SECURITY_ATTRIBUTES saAttr = {};
-	saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
-	saAttr.bInheritHandle = TRUE;
-
-	// Create a pipe for the child process's STDIN.
-	HANDLE read_pipe, write_pipe;
-	if (!CreatePipe(&read_pipe, &write_pipe, &saAttr, 0))
-	{
-		const auto e = GetLastError();
-		cx_.bail_out(context::cmd,
-			"CreatePipe failed, {}", error_message(e));
-	}
-
-	// Ensure the write handle to the pipe for STDIN is not inherited.
-	if (!SetHandleInformation(write_pipe, HANDLE_FLAG_INHERIT, 0))
-	{
-		const auto e = GetLastError();
-		cx_.bail_out(context::cmd,
-			"SetHandleInformation failed, {}", error_message(e));
-	}
-
-	stdout_.reset(write_pipe);
-
-	return read_pipe;
-}
-
-std::string_view async_pipe::try_read()
+std::string_view async_pipe_stdout::try_read()
 {
 	DWORD bytes_read = 0;
 
@@ -219,7 +169,7 @@ std::string_view async_pipe::try_read()
 	return {buffer_.get(), bytes_read};
 }
 
-std::string_view async_pipe::check_pending()
+std::string_view async_pipe_stdout::check_pending()
 {
 	DWORD bytes_read = 0;
 
@@ -273,6 +223,62 @@ std::string_view async_pipe::check_pending()
 	pending_ = false;
 
 	return {buffer_.get(), bytes_read};
+}
+
+
+async_pipe_stdin::async_pipe_stdin(const context& cx)
+	: cx_(cx)
+{
+}
+
+handle_ptr async_pipe_stdin::create()
+{
+	// creating pipe
+	handle_ptr out(create_anonymous_pipe());
+	if (out.get() == INVALID_HANDLE_VALUE)
+		return {};
+
+	return out;
+}
+
+std::size_t async_pipe_stdin::write(std::string_view s)
+{
+	const DWORD n = static_cast<DWORD>(s.size());
+	DWORD written = 0;
+	const auto r = ::WriteFile(stdin_.get(), s.data(), n, &written, nullptr);
+
+	if (written >= s.size())
+		stdin_ = {};
+
+	return written;
+}
+
+HANDLE async_pipe_stdin::create_anonymous_pipe()
+{
+	SECURITY_ATTRIBUTES saAttr = {};
+	saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+	saAttr.bInheritHandle = TRUE;
+
+	// Create a pipe for the child process's STDIN.
+	HANDLE read_pipe, write_pipe;
+	if (!CreatePipe(&read_pipe, &write_pipe, &saAttr, 0))
+	{
+		const auto e = GetLastError();
+		cx_.bail_out(context::cmd,
+			"CreatePipe failed, {}", error_message(e));
+	}
+
+	// Ensure the write handle to the pipe for STDIN is not inherited.
+	if (!SetHandleInformation(write_pipe, HANDLE_FLAG_INHERIT, 0))
+	{
+		const auto e = GetLastError();
+		cx_.bail_out(context::cmd,
+			"SetHandleInformation failed, {}", error_message(e));
+	}
+
+	stdin_.reset(write_pipe);
+
+	return read_pipe;
 }
 
 }	// namespace
