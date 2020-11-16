@@ -226,7 +226,7 @@ std::vector<pr_command::pr_info> pr_command::search_prs(
 	nlohmann::json json;
 
 	constexpr auto* pattern =
-		"https://api.github.com/search/issues?q="
+		"https://api.github.com/search/issues?per_page=100&q="
 		"is:pr+org:{org:}+author:{author:}+is:open+head:{branch:}";
 
 	const auto search_url = ::fmt::format(
