@@ -42,7 +42,7 @@ private:
 	const context& cx_;
 
 	// end of the pipe that is read from
-	handle_ptr stdout_;
+	handle_ptr pipe_;
 
 	// an event that's given to pipe for overlapped reads, signalled when data
 	// is available
@@ -104,8 +104,11 @@ public:
 	void close();
 
 private:
+	// calling context, used for logging
 	const context& cx_;
-	handle_ptr stdin_;
+
+	// end of the pipe that is written to
+	handle_ptr pipe_;
 };
 
 }	// namespace

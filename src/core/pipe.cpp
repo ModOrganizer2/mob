@@ -82,7 +82,7 @@ std::string_view async_pipe_stdout::read(bool finish)
 		// make sure that operation is cancelled, because the kernel would try
 		// to use the OVERLAPPED buffer, which will probably have been destroyed
 		// by that time
-		::CancelIo(stdout_.get());
+		::CancelIo(pipe_.get());
 
 		// a future call to read() will be a no-op and closed() will return true
 		closed_ = true;
@@ -122,7 +122,7 @@ HANDLE async_pipe_stdout::create_named_pipe()
 				"CreateNamedPipeW failed, {}", error_message(e));
 		}
 
-		stdout_.reset(pipe_handle);
+		pipe_.reset(pipe_handle);
 	}
 
 
@@ -155,7 +155,7 @@ std::string_view async_pipe_stdout::try_read()
 
 	// read bytes from the pipe
 	const auto r = ::ReadFile(
-		stdout_.get(), buffer_.get(), buffer_size, &bytes_read, &ov_);
+		pipe_.get(), buffer_.get(), buffer_size, &bytes_read, &ov_);
 
 	if (r)
 	{
@@ -225,8 +225,7 @@ std::string_view async_pipe_stdout::check_pending()
 	DWORD bytes_read = 0;
 
 	// getting status of the async read operation
-	const auto r = ::GetOverlappedResult(
-		stdout_.get(), &ov_, &bytes_read, FALSE);
+	const auto r = ::GetOverlappedResult(pipe_.get(), &ov_, &bytes_read, FALSE);
 
 	if (r)
 	{
@@ -319,7 +318,7 @@ handle_ptr async_pipe_stdin::create()
 	}
 
 	// keep the end that's written to
-	stdin_.reset(write_pipe);
+	pipe_.reset(write_pipe);
 
 	// give to other end to the new process
 	return handle_ptr(read_pipe);
@@ -334,7 +333,7 @@ std::size_t async_pipe_stdin::write(std::string_view s)
 	DWORD written = 0;
 
 	// send to bytes down the pipe
-	const auto r = ::WriteFile(stdin_.get(), s.data(), n, &written, nullptr);
+	const auto r = ::WriteFile(pipe_.get(), s.data(), n, &written, nullptr);
 
 	if (!r)
 	{
@@ -352,7 +351,7 @@ std::size_t async_pipe_stdin::write(std::string_view s)
 
 void async_pipe_stdin::close()
 {
-	stdin_ = {};
+	pipe_ = {};
 }
 
 }	// namespace
