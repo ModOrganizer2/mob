@@ -265,6 +265,10 @@ void pip::do_run()
 			do_install();
 			break;
 
+		case download:
+			do_download();
+			break;
+
 		default:
 			cx().bail_out(context::generic, "pip unknown op {}", op_);
 	}
@@ -340,6 +344,26 @@ void pip::do_install()
 			.set("PYTHONUTF8", "1"));
 
 	set_process(p);
+	execute_and_join();
+}
+
+void pip::do_download()
+{
+	set_process(process()
+		.binary(python::python_exe())
+		.chcp(65001)
+		.stdout_encoding(encodings::utf8)
+		.stderr_encoding(encodings::utf8)
+		.arg("-X", "utf8")
+		.arg("-m", "pip")
+		.arg("download")
+		.arg("--no-binary=:all:")
+		.arg("--no-deps")
+		.arg("-d", paths::cache())
+		.arg(package_ + "==" + version_)
+		.env(this_env::get()
+			.set("PYTHONUTF8", "1")));
+
 	execute_and_join();
 }
 

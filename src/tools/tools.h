@@ -596,7 +596,8 @@ public:
 	enum ops
 	{
 		ensure = 1,
-		install
+		install,
+		download
 	};
 
 	pip(ops o);
@@ -616,6 +617,7 @@ private:
 
 	void do_ensure();
 	void do_install();
+	void do_download();
 };
 
 

@@ -121,20 +121,9 @@ void sip::download()
 		}
 	}
 
-	run_tool(process_runner(process()
-		.binary(python::python_exe())
-		.chcp(65001)
-		.stdout_encoding(encodings::utf8)
-		.stderr_encoding(encodings::utf8)
-		.arg("-X", "utf8")
-		.arg("-m", "pip")
-		.arg("download")
-		.arg("--no-binary=:all:")
-		.arg("--no-deps")
-		.arg("-d", paths::cache())
-		.arg("sip==" + version())
-		.env(this_env::get()
-			.set("PYTHONUTF8", "1"))));
+	run_tool(pip(pip::download)
+		.package("sip")
+		.version(version()));
 }
 
 void sip::generate()
