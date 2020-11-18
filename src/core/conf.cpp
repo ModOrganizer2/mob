@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "conf.h"
 #include "context.h"
-#include "process.h"
+#include "env.h"
 #include "../utility.h"
 #include "../tasks/task.h"
 #include "../tools/tools.h"
@@ -621,22 +621,10 @@ fs::path find_vs()
 	if (conf::dry())
 		return vs::vswhere();
 
-	auto p = process()
-		.binary(vs::vswhere())
-		.arg("-products", "*")
-		.arg("-prerelease")
-		.arg("-version", vs::version())
-		.arg("-property", "installationPath")
-		.stdout_flags(process::keep_in_string)
-		.stderr_flags(process::inherit);
-
-	p.run();
-	p.join();
-
-	if (p.exit_code() != 0)
+	const auto path = vswhere::find_vs();
+	if (path.empty())
 		gcx().bail_out(context::conf, "vswhere failed");
 
-	const fs::path path = trim_copy(p.stdout_string());
 	const auto lines = split(path_to_utf8(path), "\r\n");
 
 	if (lines.empty())

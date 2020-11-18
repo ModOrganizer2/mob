@@ -188,6 +188,27 @@ void vs::do_upgrade()
 }
 
 
+fs::path vswhere::find_vs()
+{
+	auto p = process()
+		.binary(vs::vswhere())
+		.arg("-products", "*")
+		.arg("-prerelease")
+		.arg("-version", vs::version())
+		.arg("-property", "installationPath")
+		.stdout_flags(process::keep_in_string)
+		.stderr_flags(process::inherit);
+
+	p.run();
+	p.join();
+
+	if (p.exit_code() != 0)
+		return {};
+
+	return trim_copy(p.stdout_string());
+}
+
+
 nuget::nuget(fs::path sln)
 	: basic_process_runner("nuget"), sln_(std::move(sln))
 {

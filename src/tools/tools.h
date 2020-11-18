@@ -338,6 +338,19 @@ private:
 };
 
 
+class archiver : public basic_process_runner
+{
+public:
+	static void create_from_glob(
+		const context& cx, const fs::path& out,
+		const fs::path& glob, const std::vector<std::string>& ignore);
+
+	static void create_from_files(
+		const context& cx, const fs::path& out,
+		const std::vector<fs::path>& files, const fs::path& files_root);
+};
+
+
 class patcher : public basic_process_runner
 {
 public:
@@ -552,6 +565,13 @@ private:
 	fs::path sln_;
 
 	void do_upgrade();
+};
+
+
+class vswhere : public basic_process_runner
+{
+public:
+	static fs::path find_vs();
 };
 
 
