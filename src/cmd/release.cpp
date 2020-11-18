@@ -68,15 +68,15 @@ void release_command::make_src()
 	std::vector<fs::path> files;
 	std::size_t total_size = 0;
 
-	if (!fs::exists(modorganizer::super_path()))
+	if (!fs::exists(tasks::modorganizer::super_path()))
 	{
 		gcx().bail_out(context::generic,
 			"modorganizer super path not found: {}",
-			modorganizer::super_path());
+			tasks::modorganizer::super_path());
 	}
 
 	// build list list
-	walk_dir(modorganizer::super_path(), files, ignore_re, total_size);
+	walk_dir(tasks::modorganizer::super_path(), files, ignore_re, total_size);
 
 	// should be below 20MB
 	const std::size_t max_expected_size = 20 * 1024 * 1024;
@@ -95,7 +95,7 @@ void release_command::make_src()
 	}
 
 	op::archive_from_files(gcx(),
-		files, modorganizer::super_path(), out);
+		files, tasks::modorganizer::super_path(), out);
 }
 
 void release_command::make_installer()
@@ -328,7 +328,7 @@ void release_command::check_repos_for_branch()
 
 		tp.add([this, t, &failed]
 		{
-			const auto* o = dynamic_cast<const modorganizer*>(t);
+			const auto* o = dynamic_cast<const tasks::modorganizer*>(t);
 
 			if (!git::branch_exists(o->git_url(), branch_))
 			{
@@ -381,7 +381,10 @@ void release_command::prepare()
 	if (rc_path_.empty())
 	{
 		rc_path_ =
-			modorganizer::super_path() / "modorganizer" / "src" / "version.rc";
+			tasks::modorganizer::super_path()
+			/ "modorganizer"
+			/ "src"
+			/ "version.rc";
 	}
 
 	// getting version from rc or exe
@@ -484,7 +487,7 @@ std::string release_command::version_from_exe() const
 	// using the first language in the list to get FileVersion
 	const auto* lcp = static_cast<LANGANDCODEPAGE*>(value_pointer);
 
-	const auto sub_block = ::fmt::format(
+	const auto sub_block = fmt::format(
 		L"\\StringFileInfo\\{:04x}{:04x}\\FileVersion",
 		lcp->wLanguage, lcp->wCodePage);
 

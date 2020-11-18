@@ -54,7 +54,8 @@ clipp::group cmake_command::do_group()
 
 int cmake_command::do_run()
 {
-	auto t = modorganizer::create_cmake_tool(fs::path(utf8_to_utf16(path_)));
+	auto t = tasks::modorganizer::create_cmake_tool(
+		fs::path(utf8_to_utf16(path_)));
 
 	t.generator(gen_);
 	t.cmd(cmd_);

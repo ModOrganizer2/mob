@@ -1051,7 +1051,7 @@ fs::path find_iscc()
 
 	for (int v : {5, 6, 7, 8})
 	{
-		const fs::path inno = ::fmt::format("inno setup {}", v);
+		const fs::path inno = fmt::format("inno setup {}", v);
 
 		for (fs::path pf : {paths::pf_x86(), paths::pf_x64()})
 		{

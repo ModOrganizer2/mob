@@ -3,7 +3,7 @@
 #include "../core/env.h"
 #include "../utility/threading.h"
 
-namespace mob
+namespace mob::tasks
 {
 
 translations::projects::lang::lang(std::string n)

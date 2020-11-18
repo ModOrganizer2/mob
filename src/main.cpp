@@ -13,6 +13,8 @@ namespace mob
 
 void add_tasks()
 {
+	using namespace tasks;
+
 	// add new tasks here
 	//
 	// top level tasks are run sequentially, tasks added to a parallel_tasks will
@@ -41,7 +43,7 @@ void add_tasks()
 		.add_task<nmm>();
 
 	add_task<parallel_tasks>(false)
-		.add_task<python>()
+		.add_task<tasks::python>()
 		.add_task<boost>()
 		.add_task<boost_di>()
 		.add_task<lz4>()

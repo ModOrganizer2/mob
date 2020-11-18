@@ -590,6 +590,23 @@ private:
 };
 
 
+class python : public basic_process_runner
+{
+public:
+	python();
+
+	python& root(const fs::path& p);
+	python& arg(const std::string& s);
+
+protected:
+	void do_run() override;
+
+private:
+	fs::path root_;
+	std::vector<std::string> args_;
+};
+
+
 class pip : public basic_process_runner
 {
 public:

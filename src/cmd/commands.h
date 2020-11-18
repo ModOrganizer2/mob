@@ -2,11 +2,15 @@
 
 #include "../utility/enum.h"
 
+namespace mob::tasks
+{
+	class modorganizer;
+}
+
 namespace mob
 {
 
 class task;
-class modorganizer;
 class url;
 
 // base class for all commands
@@ -258,10 +262,10 @@ private:
 	std::string pr_;
 	std::string github_token_;
 
-	std::pair<const modorganizer*, std::string> parse_pr(
+	std::pair<const tasks::modorganizer*, std::string> parse_pr(
 		const std::string& pr) const;
 
-	pr_info get_pr_info(const modorganizer* task, const std::string& pr);
+	pr_info get_pr_info(const tasks::modorganizer* task, const std::string& pr);
 
 	std::vector<pr_command::pr_info> get_matching_prs(
 		const std::string& repo_pr);

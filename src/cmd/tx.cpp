@@ -182,7 +182,7 @@ void tx_command::do_build()
 	if (fs::exists(root / ".tx") && fs::exists(root / "translations"))
 		root = root / "translations";
 
-	translations::projects ps(root);
+	tasks::translations::projects ps(root);
 
 	fs::path dest = dest_;
 	op::create_directories(gcx(), dest, op::unsafe);

@@ -2,7 +2,7 @@
 #include "tasks.h"
 #include "../core/process.h"
 
-namespace mob
+namespace mob::tasks
 {
 
 sip::sip()
@@ -143,24 +143,10 @@ void sip::generate()
 		}
 	}
 
-	run_tool(process_runner(process()
-		.binary(python::python_exe())
-		.chcp(65001)
-		.stdout_encoding(encodings::utf8)
-		.stderr_encoding(encodings::utf8)
-		.stderr_filter([&](process::filter& f)
-		{
-			if (f.line.find("zip_safe flag not set") != std::string::npos)
-				f.lv = context::level::trace;
-			else if (f.line.find("module references __file__") != std::string::npos)
-				f.lv = context::level::trace;
-		})
-		.arg("-X", "utf8")
+	run_tool(mob::python()
+		.root(source_path())
 		.arg("setup.py")
-		.arg("install")
-		.cwd(source_path())
-		.env(this_env::get()
-			.set("PYTHONUTF8", "1"))));
+		.arg("install"));
 
 
 	const std::string filename = "sip-module-script.py";

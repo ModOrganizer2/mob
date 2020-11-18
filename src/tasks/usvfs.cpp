@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "tasks.h"
 
-namespace mob
+namespace mob::tasks
 {
 
 usvfs::usvfs()

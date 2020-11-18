@@ -229,6 +229,51 @@ void nuget::do_run()
 	execute_and_join();
 }
 
+python::python()
+	: basic_process_runner("python")
+{
+}
+
+python& python::root(const fs::path& p)
+{
+	root_ = p;
+	return *this;
+}
+
+python& python::arg(const std::string& s)
+{
+	args_.push_back(s);
+	return *this;
+}
+
+void python::do_run()
+{
+	auto p = process()
+		.binary(tasks::python::python_exe())
+		.chcp(65001)
+		.stdout_encoding(encodings::utf8)
+		.stderr_encoding(encodings::utf8)
+		.stderr_filter([&](process::filter& f)
+		{
+			if (f.line.find("zip_safe flag not set") != std::string::npos)
+				f.lv = context::level::trace;
+			else if (f.line.find("module references __file__") != std::string::npos)
+				f.lv = context::level::trace;
+		})
+		.arg("-X", "utf8");
+
+	for (auto&& a : args_)
+		p.arg(a);
+
+	p
+		.cwd(root_)
+		.env(this_env::get()
+			.set("PYTHONUTF8", "1"));
+
+	set_process(p);
+	execute_and_join();
+}
+
 
 pip::pip(ops op)
 	: basic_process_runner("pip"), op_(op)
@@ -293,7 +338,7 @@ void pip::do_ensure()
 			else if (f.line.find("Consider adding this directory"))
 				f.lv = context::level::debug;
 		})
-		.binary(python::python_exe())
+		.binary(tasks::python::python_exe())
 		.arg("-m", "ensurepip"));
 
 	execute_and_join();
@@ -301,7 +346,7 @@ void pip::do_ensure()
 
 	// upgrade
 	set_process(process()
-		.binary(python::python_exe())
+		.binary(tasks::python::python_exe())
 		.arg("-m pip")
 		.arg("install")
 		.arg("--no-warn-script-location")
@@ -312,7 +357,7 @@ void pip::do_ensure()
 
 	// ssl errors while downloading through python without certifi
 	set_process(process()
-		.binary(python::python_exe())
+		.binary(tasks::python::python_exe())
 		.arg("-m pip")
 		.arg("install")
 		.arg("--no-warn-script-location")
@@ -324,7 +369,7 @@ void pip::do_ensure()
 void pip::do_install()
 {
 	auto p = process()
-		.binary(python::python_exe())
+		.binary(tasks::python::python_exe())
 		.chcp(65001)
 		.stdout_encoding(encodings::utf8)
 		.stderr_encoding(encodings::utf8)
@@ -350,7 +395,7 @@ void pip::do_install()
 void pip::do_download()
 {
 	set_process(process()
-		.binary(python::python_exe())
+		.binary(tasks::python::python_exe())
 		.chcp(65001)
 		.stdout_encoding(encodings::utf8)
 		.stderr_encoding(encodings::utf8)

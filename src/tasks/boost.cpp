@@ -2,7 +2,7 @@
 #include "tasks.h"
 #include "../core/process.h"
 
-namespace mob
+namespace mob::tasks
 {
 
 boost::boost()

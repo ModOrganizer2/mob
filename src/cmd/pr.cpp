@@ -79,7 +79,7 @@ int pr_command::do_run()
 	return 1;
 }
 
-std::pair<const modorganizer*, std::string> pr_command::parse_pr(
+std::pair<const tasks::modorganizer*, std::string> pr_command::parse_pr(
 	const std::string& pr) const
 {
 	if (pr.empty())
@@ -99,7 +99,7 @@ std::pair<const modorganizer*, std::string> pr_command::parse_pr(
 	if (!task)
 		return {};
 
-	const auto* mo_task = dynamic_cast<const modorganizer*>(task);
+	const auto* mo_task = dynamic_cast<const tasks::modorganizer*>(task);
 	if (!mo_task)
 	{
 		u8cerr << "only modorganizer tasks are supported\n";
@@ -123,7 +123,7 @@ int pr_command::pull()
 	{
 		for (auto&& pr : okay_prs)
 		{
-			const auto* task = dynamic_cast<const modorganizer*>(
+			const auto* task = dynamic_cast<const tasks::modorganizer*>(
 				find_one_task(pr.repo));
 
 			if (!task)
@@ -136,7 +136,7 @@ int pr_command::pull()
 			git::fetch(
 				task->this_source_path(),
 				task->git_url().string(),
-				::fmt::format("pull/{}/head", pr.number));
+				fmt::format("pull/{}/head", pr.number));
 
 			git::checkout(task->this_source_path(), "FETCH_HEAD");
 		}
@@ -171,7 +171,7 @@ int pr_command::revert()
 	{
 		for (auto&& pr : okay_prs)
 		{
-			const auto* task = dynamic_cast<const modorganizer*>(
+			const auto* task = dynamic_cast<const tasks::modorganizer*>(
 				find_one_task(pr.repo));
 
 			if (!task)
@@ -229,11 +229,11 @@ std::vector<pr_command::pr_info> pr_command::search_prs(
 		"https://api.github.com/search/issues?per_page=100&q="
 		"is:pr+org:{org:}+author:{author:}+is:open+head:{branch:}";
 
-	const auto search_url = ::fmt::format(
+	const auto search_url = fmt::format(
 		pattern,
-		::fmt::arg("org", org),
-		::fmt::arg("author", author),
-		::fmt::arg("branch", branch));
+		fmt::arg("org", org),
+		fmt::arg("author", author),
+		fmt::arg("branch", branch));
 
 	u8cout << "search url is " << search_url << "\n";
 
@@ -292,7 +292,7 @@ std::vector<pr_command::pr_info> pr_command::search_prs(
 }
 
 pr_command::pr_info pr_command::get_pr_info(
-	const modorganizer* task, const std::string& pr)
+	const tasks::modorganizer* task, const std::string& pr)
 {
 	nlohmann::json json;
 
@@ -302,7 +302,7 @@ pr_command::pr_info pr_command::get_pr_info(
 		return {};
 	}
 
-	const url u(::fmt::format(
+	const url u(fmt::format(
 		"https://api.github.com/repos/{}/{}/pulls/{}",
 		task->org(), task->repo(), pr));
 
@@ -359,7 +359,8 @@ std::vector<pr_command::pr_info> pr_command::validate_prs(
 			}
 			else
 			{
-				const auto* mo_task = dynamic_cast<const modorganizer*>(tasks[0]);
+				const auto* mo_task =
+					dynamic_cast<const tasks::modorganizer*>(tasks[0]);
 
 				if (!mo_task)
 				{

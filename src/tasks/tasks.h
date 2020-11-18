@@ -6,7 +6,7 @@
 #include "../core/conf.h"
 #include "../core/op.h"
 
-namespace mob
+namespace mob::tasks
 {
 
 class boost : public basic_task<boost>
@@ -327,7 +327,6 @@ private:
 	cmake create_this_cmake_tool(cmake::ops o=cmake::generate);
 	msbuild create_this_msbuild_tool(msbuild::ops o=msbuild::build);
 	void initialize_super(const fs::path& super_root);
-
 };
 
 
