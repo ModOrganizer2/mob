@@ -1,13 +1,14 @@
 #pragma once
 
 #include "../net.h"
-#include "../core/process.h"
 #include "../core/conf.h"
 #include "../core/op.h"
 #include "../core/context.h"
 
 namespace mob
 {
+
+class process;
 
 class tool
 {
@@ -100,16 +101,24 @@ private:
 class basic_process_runner : public tool
 {
 public:
+	// anchors
+	basic_process_runner(basic_process_runner&&);
+	~basic_process_runner();
+
 	void join();
 	int exit_code() const;
 
 protected:
-	process process_;
-
 	basic_process_runner(std::string name);
+
+	void set_process(const process& p);
+	process& get_process();
 
 	void do_interrupt() override;
 	int execute_and_join();
+
+private:
+	std::unique_ptr<process> process_;
 };
 
 
@@ -118,6 +127,9 @@ class process_runner : public tool
 public:
 	process_runner(process&& p);
 	process_runner(process& p);
+
+	// anchor
+	~process_runner();
 
 	void join();
 	int exit_code() const;
@@ -128,7 +140,7 @@ protected:
 	void do_run() override;
 
 private:
-	process own_;
+	std::unique_ptr<process> own_;
 	process* p_;
 
 	void do_interrupt() override;
@@ -411,6 +423,7 @@ private:
 	generators gen_;
 	std::string genstring_;
 	fs::path prefix_;
+	std::vector<std::pair<std::string, std::string>> def_;
 	fs::path output_;
 	arch arch_;
 	std::string cmd_;
@@ -449,6 +462,8 @@ protected:
 	void do_run() override;
 
 private:
+	fs::path cwd_;
+	std::vector<std::string> def_;
 	std::string target_;
 	flags_t flags_;
 	arch arch_;
@@ -503,8 +518,6 @@ private:
 	void do_clean();
 	void do_build();
 	void do_run(const std::vector<std::string>& targets);
-
-	void error_filter(process::filter& f) const;
 };
 
 MOB_ENUM_OPERATORS(msbuild::flags_t);

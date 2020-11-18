@@ -3,6 +3,7 @@
 #include "../utility.h"
 #include "../core/op.h"
 #include "../core/conf.h"
+#include "../core/process.h"
 #include "../tasks/tasks.h"
 
 namespace mob
@@ -177,11 +178,11 @@ void vs::do_upgrade()
 		return;
 	}
 
-	process_
+	set_process(process()
 		.binary(devenv_binary())
 		.env(env::vs(arch::x64))
 		.arg("/upgrade")
-		.arg(sln_);
+		.arg(sln_));
 
 	execute_and_join();
 }
@@ -190,11 +191,11 @@ void vs::do_upgrade()
 nuget::nuget(fs::path sln)
 	: basic_process_runner("nuget"), sln_(std::move(sln))
 {
-	process_
+	set_process(process()
 		.binary(binary())
 		.arg("restore")
 		.arg(sln_)
-		.cwd(sln_.parent_path());
+		.cwd(sln_.parent_path()));
 }
 
 fs::path nuget::binary()
@@ -233,7 +234,7 @@ pip_install& pip_install::file(const fs::path& p)
 
 void pip_install::do_run()
 {
-	process_
+	auto p = process()
 		.binary(python::python_exe())
 		.chcp(65001)
 		.stdout_encoding(encodings::utf8)
@@ -245,14 +246,15 @@ void pip_install::do_run()
 		.arg("--disable-pip-version-check");
 
 	if (!package_.empty())
-		process_.arg(package_ + "==" + version_);
+		p.arg(package_ + "==" + version_);
 	else if (!file_.empty())
-		process_.arg(file_);
+		p.arg(file_);
 
-	process_
+	p
 		.env(this_env::get()
 			.set("PYTHONUTF8", "1"));
 
+	set_process(p);
 	execute_and_join();
 }
 
@@ -331,13 +333,13 @@ void transifex::do_init()
 
 	// exit code is 2 when the directory already contains a .tx
 
-	process_ = process()
+	set_process(process()
 		.binary(binary())
 		.success_exit_codes({0, 2})
 		.flags(process::ignore_output_on_success)
 		.arg("init")
 		.arg("--no-interactive")
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 }
@@ -349,7 +351,7 @@ void transifex::do_config()
 
 	op::create_directories(cx(), root_, op::unsafe);
 
-	process_ = process()
+	set_process(process()
 		.binary(binary())
 		.stdout_level(stdout_)
 		.arg("config")
@@ -357,7 +359,7 @@ void transifex::do_config()
 		.arg(url_)
 		.env(this_env::get()
 			.set("TX_TOKEN", key_))
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 }
@@ -366,7 +368,7 @@ void transifex::do_pull()
 {
 	op::create_directories(cx(), root_, op::unsafe);
 
-	process_ = process()
+	auto p = process()
 		.binary(binary())
 		.stdout_level(stdout_)
 		.arg("pull")
@@ -379,8 +381,9 @@ void transifex::do_pull()
 		.cwd(root_);
 
 	if (force_)
-		process_.arg("--force");
+		p.arg("--force");
 
+	set_process(p);
 	execute_and_join();
 }
 
@@ -438,7 +441,7 @@ void lrelease::do_run()
 {
 	const auto qm = qm_file();
 
-	process_ = process()
+	auto p = process()
 		.binary(binary())
 		.arg("-silent")
 		.stderr_filter([](auto&& f)
@@ -451,11 +454,12 @@ void lrelease::do_run()
 
 
 	for (auto&& s : sources_)
-		process_.arg(s);
+		p.arg(s);
 
-	process_
+	p
 		.arg("-qm", (out_ / qm));
 
+	set_process(p);
 	execute_and_join();
 }
 
@@ -481,9 +485,9 @@ void iscc::do_run()
 	if (iss_.empty())
 		cx().bail_out(context::generic, "iscc missing iss file");
 
-	process_
+	set_process(process()
 		.binary(binary())
-		.arg(iss_);
+		.arg(iss_));
 
 	execute_and_join();
 }

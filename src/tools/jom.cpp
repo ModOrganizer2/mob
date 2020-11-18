@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "tools.h"
 #include "../core/conf.h"
+#include "../core/process.h"
 
 namespace mob
 {
@@ -17,7 +18,7 @@ fs::path jom::binary()
 
 jom& jom::path(const fs::path& p)
 {
-	process_.cwd(p);
+	cwd_ = p;
 	return *this;
 }
 
@@ -29,7 +30,7 @@ jom& jom::target(const std::string& s)
 
 jom& jom::def(const std::string& s)
 {
-	process_.arg(s);
+	def_.push_back(s);
 	return *this;
 }
 
@@ -52,15 +53,18 @@ int jom::result() const
 
 void jom::do_run()
 {
+	process p;
+
 	process::flags_t pflags = process::terminate_on_interrupt;
 	if (flags_ & allow_failure)
 	{
-		process_.stderr_level(context::level::trace);
+		p.stderr_level(context::level::trace);
 		pflags |= process::allow_failure;
 	}
 
-	process_
+	p
 		.binary(binary())
+		.cwd(cwd_)
 		.stderr_filter([](process::filter& f)
 		{
 			if (f.line.find("empower your cores") != std::string::npos)
@@ -75,13 +79,17 @@ void jom::do_run()
 		.arg("/K");
 
 	if (flags_ & single_job)
-		process_.arg("/J", "1");
+		p.arg("/J", "1");
 
-	process_
+	for (auto&& def : def_)
+		p.arg(def);
+
+	p
 		.arg(target_)
 		.flags(pflags)
 		.env(env::vs(arch_));
 
+	set_process(p);
 	execute_and_join();
 }
 

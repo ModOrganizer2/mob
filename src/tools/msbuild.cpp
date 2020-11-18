@@ -1,9 +1,20 @@
 #include "pch.h"
 #include "tools.h"
 #include "../core/conf.h"
+#include "../core/process.h"
 
 namespace mob
 {
+
+void error_filter(process::filter& f)
+{
+	// ": error C2065"
+	// ": error MSB1009"
+	static std::regex re(": error [A-Z]");
+	if (std::regex_search(f.line.begin(), f.line.end(), re))
+		f.lv = context::level::error;
+}
+
 
 msbuild::msbuild(ops o) :
 	basic_process_runner("msbuild"),
@@ -127,18 +138,19 @@ void msbuild::do_run(const std::vector<std::string>& targets)
 	}
 
 	process::flags_t pflags = process::noflags;
+	process p;
 
 	if (is_set(flags_, allow_failure))
 	{
-		process_.stderr_level(context::level::trace);
+		p.stderr_level(context::level::trace);
 		pflags |= process::allow_failure;
 	}
 	else
 	{
-		process_.stdout_filter([&](auto& f){ error_filter(f); });
+		p.stdout_filter([&](auto& f){ error_filter(f); });
 	}
 
-	process_
+	p
 		.binary(binary())
 		.chcp(65001)
 		.stdout_encoding(encodings::utf8)
@@ -147,13 +159,13 @@ void msbuild::do_run(const std::vector<std::string>& targets)
 
 	if (!is_set(flags_, single_job))
 	{
-		process_
+		p
 			.arg("-maxCpuCount")
 			.arg("-property:UseMultiToolTask=true")
 			.arg("-property:EnforceProcessCountAcrossBuilds=true");
 	}
 
-	process_
+	p
 		.arg("-property:Configuration=", config_, process::quote)
 		.arg("-property:PlatformToolset=" + toolset)
 		.arg("-property:WindowsTargetPlatformVersion=" + vs::sdk())
@@ -163,22 +175,23 @@ void msbuild::do_run(const std::vector<std::string>& targets)
 		.arg("-consoleLoggerParameters:ErrorsOnly", process::log_quiet);
 
 	if (!targets.empty())
-		process_.arg("-target:" + mob::join(targets, ";"));
+		p.arg("-target:" + mob::join(targets, ";"));
 
-	for (auto&& p : params_)
-		process_.arg("-property:" + p);
+	for (auto&& param : params_)
+		p.arg("-property:" + param);
 
 	env e = env::vs(arch_);
 
-	for (auto&& p : prepend_path_)
-		e.prepend_path(p);
+	for (auto&& path : prepend_path_)
+		e.prepend_path(path);
 
-	process_
+	p
 		.arg(sln_)
 		.flags(pflags)
 		.cwd(sln_.parent_path())
 		.env(e);
 
+	set_process(p);
 	execute_and_join();
 }
 
@@ -186,15 +199,6 @@ void msbuild::do_clean()
 {
 	flags_ |= allow_failure;
 	do_run(map(targets_, [&](auto&& t){ return t + ":Clean"; }));
-}
-
-void msbuild::error_filter(process::filter& f) const
-{
-	// ": error C2065"
-	// ": error MSB1009"
-	static std::regex re(": error [A-Z]");
-	if (std::regex_search(f.line.begin(), f.line.end(), re))
-		f.lv = context::level::error;
 }
 
 }	// namespace

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "tools.h"
 #include "../core/conf.h"
+#include "../core/process.h"
 #include "../utility/threading.h"
 
 namespace mob
@@ -130,12 +131,12 @@ void git::apply(const fs::path& p, const std::string& diff)
 
 void git::apply(const std::string& diff)
 {
-	process_ = make_process()
+	set_process(make_process()
 		.stdin_string(diff)
 		.arg("apply")
 		.arg("--whitespace", "nowarn")
 		.arg("-")
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 }
@@ -150,12 +151,12 @@ void git::fetch(
 
 void git::fetch(const std::string& remote, const std::string& branch)
 {
-	process_ = make_process()
+	set_process(make_process()
 		.arg("fetch")
 		.arg("-q")
 		.arg(remote)
 		.arg(branch)
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 }
@@ -169,12 +170,12 @@ void git::checkout(const fs::path& p, const std::string& what)
 
 void git::checkout(const std::string& what)
 {
-	process_ = make_process()
+	set_process(make_process()
 		.arg("-c", "advice.detachedHead=false")
 		.arg("checkout")
 		.arg("-q")
 		.arg(what)
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 }
@@ -188,15 +189,15 @@ std::string git::current_branch(const fs::path& p)
 
 std::string git::current_branch()
 {
-	process_ = make_process()
+	set_process(make_process()
 		.stdout_flags(process::keep_in_string)
 		.arg("branch")
 		.arg("--show-current")
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 
-	return trim_copy(process_.stdout_string());
+	return trim_copy(get_process().stdout_string());
 }
 
 fs::path git::binary()
@@ -327,7 +328,7 @@ process git::make_process()
 
 void git::do_add_submodule()
 {
-	process_ = make_process()
+	set_process(make_process()
 		.stderr_level(context::level::trace)
 		.arg("-c", "core.autocrlf=false")
 		.arg("submodule")
@@ -338,7 +339,7 @@ void git::do_add_submodule()
 		.arg("--name", submodule_)
 		.arg(url_)
 		.arg(submodule_)
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 }
@@ -358,21 +359,22 @@ bool git::do_clone()
 		return false;
 	}
 
-	process_ = make_process()
+	auto p = make_process()
 		.stderr_level(context::level::trace)
 		.arg("clone")
 		.arg("--recurse-submodules");
 
 	if (shallow_)
-		process_.arg("--depth", "1");
+		p.arg("--depth", "1");
 
-	process_
+	p
 		.arg("--branch", branch_)
 		.arg("--quiet", process::log_quiet)
 		.arg("-c", "advice.detachedHead=false", process::log_quiet)
 		.arg(url_)
 		.arg(root_);
 
+	set_process(p);
 	execute_and_join();
 
 
@@ -393,14 +395,14 @@ void git::do_pull()
 	if (revert_ts_)
 		do_revert_ts();
 
-	process_ = make_process()
+	set_process(make_process()
 		.stderr_level(context::level::trace)
 		.arg("pull")
 		.arg("--recurse-submodules")
 		.arg("--quiet", process::log_quiet)
 		.arg(url_)
 		.arg(branch_)
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 }
@@ -489,11 +491,11 @@ void git::do_revert_ts()
 			return;
 		}
 
-		process_ = make_process()
+		set_process(make_process()
 			.stderr_level(context::level::trace)
 			.arg("checkout")
 			.arg(p)
-			.cwd(root_);
+			.cwd(root_));
 
 		execute_and_join();
 	});
@@ -501,93 +503,93 @@ void git::do_revert_ts()
 
 void git::set_config(const std::string& key, const std::string& value)
 {
-	process_ = make_process()
+	set_process(make_process()
 		.stderr_level(context::level::trace)
 		.arg("config")
 		.arg(key)
 		.arg(value)
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 }
 
 bool git::has_remote(const std::string& name)
 {
-	process_ = make_process()
+	set_process(make_process()
 		.flags(process::allow_failure)
 		.stderr_level(context::level::debug)
 		.arg("config")
 		.arg("remote." + name + ".url")
-		.cwd(root_);
+		.cwd(root_));
 
 	return (execute_and_join() == 0);
 }
 
 void git::rename_remote(const std::string& from, const std::string& to)
 {
-	process_ = make_process()
+	set_process(make_process()
 		.arg("remote")
 		.arg("rename")
 		.arg(from)
 		.arg(to)
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 }
 
 void git::add_remote(const std::string& name, const std::string& url)
 {
-	process_ = make_process()
+	set_process(make_process()
 		.arg("remote")
 		.arg("add")
 		.arg(name)
 		.arg(url)
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 }
 
 void git::set_remote_push(const std::string& remote, const std::string& url)
 {
-	process_ = make_process()
+	set_process(make_process()
 		.arg("remote")
 		.arg("set-url")
 		.arg("--push")
 		.arg(remote)
 		.arg(url)
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 }
 
 void git::set_assume_unchanged(const fs::path& relative_file, bool on)
 {
-	process_ = make_process()
+	set_process(make_process()
 		.arg("update-index")
 		.arg(on ? "--assume-unchanged" : "--no-assume-unchanged")
 		.arg(relative_file, process::forward_slashes)
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 }
 
 bool git::is_tracked(const fs::path& relative_file)
 {
-	process_ = make_process()
+	set_process(make_process()
 		.stdout_level(context::level::debug)
 		.stderr_level(context::level::debug)
 		.flags(process::allow_failure)
 		.arg("ls-files")
 		.arg("--error-unmatch")
 		.arg(relative_file, process::forward_slashes)
-		.cwd(root_);
+		.cwd(root_));
 
 	return (execute_and_join() == 0);
 }
 
 bool git::is_repo()
 {
-	process_ = make_process()
+	set_process(make_process()
 		.arg("rev-parse")
 		.arg("--is-inside-work-tree")
 		.stderr_filter([](process::filter& f)
@@ -596,71 +598,71 @@ bool git::is_repo()
 				f.lv = context::level::trace;
 		})
 		.flags(process::allow_failure)
-		.cwd(root_);
+		.cwd(root_));
 
 	return (execute_and_join() == 0);
 }
 
 bool git::branch_exists()
 {
-	process_ = make_process()
+	set_process(make_process()
 		.flags(process::allow_failure)
 		.arg("ls-remote")
 		.arg("--exit-code")
 		.arg("--heads")
 		.arg(url_)
-		.arg(branch_);
+		.arg(branch_));
 
 	return (execute_and_join() == 0);
 }
 
 bool git::has_uncommitted_changes()
 {
-	process_ = make_process()
+	set_process(make_process()
 		.flags(process::allow_failure)
 		.stdout_flags(process::keep_in_string)
 		.arg("status")
 		.arg("-s")
 		.arg("--porcelain")
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 
-	return (process_.stdout_string() != "");
+	return (get_process().stdout_string() != "");
 }
 
 bool git::has_stashed_changes()
 {
-	process_ = make_process()
+	set_process(make_process()
 		.flags(process::allow_failure)
 		.stderr_level(context::level::trace)
 		.arg("stash show")
-		.cwd(root_);
+		.cwd(root_));
 
 	return (execute_and_join() == 0);
 }
 
 void git::init()
 {
-	process_ = make_process()
+	set_process(make_process()
 		.arg("init")
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 }
 
 std::string git::git_file()
 {
-	process_ = make_process()
+	set_process(make_process()
 		.stdout_flags(process::keep_in_string)
 		.arg("remote")
 		.arg("get-url")
 		.arg("origin")
-		.cwd(root_);
+		.cwd(root_));
 
 	execute_and_join();
 
-	const std::string out = process_.stdout_string();
+	const std::string out = get_process().stdout_string();
 
 	const auto last_slash = out.find_last_of("/");
 	if (last_slash == std::string::npos)

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "tools.h"
+#include "../core/process.h"
 
 namespace mob
 {
@@ -89,18 +90,18 @@ void extractor::do_run()
 			.arg("-ttar")
 			.arg("-o", where_, process::nospace);
 
-		process_ = process::pipe(extract_tar, extract_gz);
+		set_process(process::pipe(extract_tar, extract_gz));
 	}
 	else
 	{
-		process_ = process()
+		set_process(process()
 			.binary(binary())
 			.arg("x")
 			.arg("-aoa")
 			.arg("-bd")
 			.arg("-bb0")
 			.arg("-o", where_, process::nospace)
-			.arg(file_);
+			.arg(file_));
 	}
 
 	execute_and_join();

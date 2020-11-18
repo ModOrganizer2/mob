@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "tools.h"
+#include "../core/process.h"
 
 namespace mob
 {
@@ -46,7 +47,7 @@ cmake& cmake::prefix(const fs::path& s)
 
 cmake& cmake::def(const std::string& name, const std::string& value)
 {
-	process_.arg("-D" + name + "=" + value + "");
+	def_.emplace_back(name, value);
 	return *this;
 }
 
@@ -119,7 +120,7 @@ void cmake::do_generate()
 
 	const auto& g = get_generator(gen_);
 
-	process_
+	auto p = process()
 		.stdout_encoding(encodings::utf8)
 		.stderr_encoding(encodings::utf8)
 		.binary(binary())
@@ -130,29 +131,33 @@ void cmake::do_generate()
 
 	if (genstring_.empty())
 	{
-		process_
+		p
 			.arg("-G", "\"" + g.name + "\"")
 			.arg(g.get_arch(arch_));
 	}
 	else
 	{
-		process_
+		p
 			.arg("-G", "\"" + genstring_ + "\"");
 	}
 
 	if (!prefix_.empty())
-		process_.arg("-DCMAKE_INSTALL_PREFIX=", prefix_, process::nospace);
+		p.arg("-DCMAKE_INSTALL_PREFIX=", prefix_, process::nospace);
+
+	for (auto&& [name, value] : def_)
+		p.arg("-D" + name + "=" + value + "");
 
 	if (cmd_.empty())
-		process_.arg("..");
+		p.arg("..");
 	else
-		process_.arg(cmd_);
+		p.arg(cmd_);
 
-	process_
+	p
 		.env(env::vs(arch_)
 			.set("CXXFLAGS", "/wd4566"))
 		.cwd(build_path());
 
+	set_process(p);
 	execute_and_join();
 }
 

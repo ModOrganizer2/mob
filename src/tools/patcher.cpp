@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "tools.h"
 #include "../core/conf.h"
+#include "../core/process.h"
 
 namespace mob
 {
@@ -129,7 +130,7 @@ void patcher::do_patch(const fs::path& patch_file)
 		cx().trace(context::generic,
 			"checking if already patched");
 
-		process_ = check;
+		set_process(check);
 		const auto ret = execute_and_join();
 
 		if (ret == 0)
@@ -154,7 +155,7 @@ void patcher::do_patch(const fs::path& patch_file)
 		// apply
 
 		cx().trace(context::generic, "applying patch {}", patch_file);
-		process_ = apply;
+		set_process(apply);
 		execute_and_join();
 	}
 }
