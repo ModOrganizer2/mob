@@ -85,6 +85,14 @@ clipp::group git_command::do_group()
 				clipp::command("off").set(tson_, false)
 			)
 		)
+
+		|
+
+		"branches" %
+		(clipp::command("branches").set(mode_, modes::branches),
+			clipp::option("-a", "--all").set(all_branches_)
+				% "shows all branches, including those on master"
+		)
 	);
 }
 
@@ -107,6 +115,12 @@ int git_command::do_run()
 		case modes::ignore_ts:
 		{
 			do_ignore_ts();
+			break;
+		}
+
+		case modes::branches:
+		{
+			do_branches();
 			break;
 		}
 
@@ -137,7 +151,11 @@ std::string git_command::do_doc()
 		"  remote with the same name already exists, nothing happens.\n"
 		"\n"
 		"ignore-ts\n"
-		"  Toggles the --assume-changed status of all .ts files in all repos.";
+		"  Toggles the --assume-changed status of all .ts files in all repos.\n"
+		"\n"
+		"branches\n"
+		"  Lists all git repos that are not on master. With -a, show all \n"
+		"  repos and their current branch.";
 }
 
 void git_command::do_set_remotes()
@@ -211,6 +229,25 @@ void git_command::do_ignore_ts(const fs::path& r)
 {
 	u8cout << path_to_utf8(r.filename()) << "\n";
 	git::ignore_ts(r, tson_);
+}
+
+void git_command::do_branches()
+{
+	std::vector<std::pair<std::string, std::string>> v;
+
+	for (auto&& r : get_repos())
+	{
+		const auto b = git::current_branch(r);
+		if (b == "master" && !all_branches_)
+			continue;
+
+		if (b.empty())
+			v.push_back({r.filename().string(), "detached head"});
+		else
+			v.push_back({r.filename().string(), b});
+	}
+
+	u8cout << table(v, 0, 3) << "\n";
 }
 
 std::vector<fs::path> git_command::get_repos() const

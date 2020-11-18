@@ -386,7 +386,8 @@ private:
 		none = 0,
 		set_remotes,
 		add_remote,
-		ignore_ts
+		ignore_ts,
+		branches
 	};
 
 	modes mode_ = modes::none;
@@ -398,6 +399,7 @@ private:
 	bool tson_ = false;
 	bool nopush_ = false;
 	bool push_default_ = false;
+	bool all_branches_ = false;
 
 	void do_set_remotes();
 	void do_set_remotes(const fs::path& r);
@@ -407,6 +409,8 @@ private:
 
 	void do_ignore_ts();
 	void do_ignore_ts(const fs::path& r);
+
+	void do_branches();
 
 	std::vector<fs::path> get_repos() const;
 };

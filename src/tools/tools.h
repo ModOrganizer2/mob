@@ -191,6 +191,8 @@ public:
 		const std::string& remote, const std::string& branch);
 	static void checkout(const fs::path& p, const std::string& what);
 
+	static std::string current_branch(const fs::path& p);
+
 
 	git& url(const mob::url& u);
 	git& branch(const std::string& name);
@@ -248,6 +250,7 @@ private:
 	void apply(const std::string& diff);
 	void fetch(const std::string& remote, const std::string& branch);
 	void checkout(const std::string& what);
+	std::string current_branch();
 	bool is_repo();
 	bool branch_exists();
 	bool has_uncommitted_changes();

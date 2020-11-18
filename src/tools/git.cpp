@@ -179,6 +179,26 @@ void git::checkout(const std::string& what)
 	execute_and_join();
 }
 
+std::string git::current_branch(const fs::path& p)
+{
+	git g(no_op);
+	g.root(p);
+	return g.current_branch();
+}
+
+std::string git::current_branch()
+{
+	process_ = make_process()
+		.stdout_flags(process::keep_in_string)
+		.arg("branch")
+		.arg("--show-current")
+		.cwd(root_);
+
+	execute_and_join();
+
+	return trim_copy(process_.stdout_string());
+}
+
 fs::path git::binary()
 {
 	return conf::tool_by_name("git");
