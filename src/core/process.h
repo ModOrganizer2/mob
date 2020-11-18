@@ -198,26 +198,39 @@ private:
 		}
 	};
 
+	struct io
+	{
+		bool unicode;
+		int chcp;
+		stream out;
+		stream err;
+		std::optional<std::string> in;
+		std::size_t in_offset;
+		fs::path error_log_file;
+		std::map<context::level, std::vector<std::string>> logs;
+
+		io();
+	};
+
+	struct exec
+	{
+		fs::path bin;
+		fs::path cwd;
+		mob::env env;
+		std::set<int> success;
+		std::string raw;
+		std::string cmd;
+		DWORD code;
+
+		exec();
+	};
+
 	const context* cx_;
 	std::string name_;
-	fs::path bin_;
-	fs::path cwd_;
-	bool unicode_;
-	int chcp_;
 	flags_t flags_;
-	std::set<int> success_;
-	stream stdout_;
-	stream stderr_;
-	std::optional<std::string> stdin_;
-	std::size_t stdin_offset_;
-	mob::env env_;
-	std::string raw_;
-	std::string cmd_;
-	fs::path error_log_file_;
-	std::map<context::level, std::vector<std::string>> logs_;
-
 	impl impl_;
-	DWORD code_;
+	io io_;
+	exec exec_;
 
 	std::string make_name() const;
 	std::string make_cmd() const;
