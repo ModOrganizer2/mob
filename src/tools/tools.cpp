@@ -230,30 +230,94 @@ void nuget::do_run()
 }
 
 
-pip_install::pip_install()
-	: basic_process_runner("pip install")
+pip::pip(ops op)
+	: basic_process_runner("pip"), op_(op)
 {
 }
 
-pip_install& pip_install::package(const std::string& s)
+pip& pip::package(const std::string& s)
 {
 	package_ = s;
 	return *this;
 }
 
-pip_install& pip_install::version(const std::string& s)
+pip& pip::version(const std::string& s)
 {
 	version_ = s;
 	return *this;
 }
 
-pip_install& pip_install::file(const fs::path& p)
+pip& pip::file(const fs::path& p)
 {
 	file_ = p;
 	return *this;
 }
 
-void pip_install::do_run()
+void pip::do_run()
+{
+	switch (op_)
+	{
+		case ensure:
+			do_ensure();
+			break;
+
+		case install:
+			do_install();
+			break;
+
+		default:
+			cx().bail_out(context::generic, "pip unknown op {}", op_);
+	}
+}
+
+void pip::do_ensure()
+{
+	// ensure
+	//
+	// this spits out two warnings about not being on PATH and suggests to add
+	// --no-warn-script-location, but that's not actually a valid command
+	// line parameter for `ensurepip` and it fails, unlike the `install`
+	// commands below
+	//
+	// so just filter it out
+
+	set_process(process()
+		.stderr_filter([](auto&& f)
+		{
+			if (f.line.find("which is not on PATH") != -1)
+				f.lv = context::level::debug;
+			else if (f.line.find("Consider adding this directory"))
+				f.lv = context::level::debug;
+		})
+		.binary(python::python_exe())
+		.arg("-m", "ensurepip"));
+
+	execute_and_join();
+
+
+	// upgrade
+	set_process(process()
+		.binary(python::python_exe())
+		.arg("-m pip")
+		.arg("install")
+		.arg("--no-warn-script-location")
+		.arg("--upgrade pip"));
+
+	execute_and_join();
+
+
+	// ssl errors while downloading through python without certifi
+	set_process(process()
+		.binary(python::python_exe())
+		.arg("-m pip")
+		.arg("install")
+		.arg("--no-warn-script-location")
+		.arg("certifi"));
+
+	execute_and_join();
+}
+
+void pip::do_install()
 {
 	auto p = process()
 		.binary(python::python_exe())

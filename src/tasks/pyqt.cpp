@@ -132,7 +132,7 @@ void pyqt::build_and_install_from_source()
 {
 	instrument<times::build>([&]
 	{
-		run_tool(pip_install()
+		run_tool(pip(pip::install)
 			.package("PyQt-builder")
 			.version(builder_version()));
 
@@ -211,7 +211,7 @@ void pyqt::install_sip_file()
 	}
 	else
 	{
-		run_tool(pip_install()
+		run_tool(pip(pip::install)
 			.file(paths::cache() / sip_install_file()));
 
 		installed_bypass.create();

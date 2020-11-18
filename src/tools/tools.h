@@ -590,22 +590,32 @@ private:
 };
 
 
-class pip_install : public basic_process_runner
+class pip : public basic_process_runner
 {
 public:
-	pip_install();
+	enum ops
+	{
+		ensure = 1,
+		install
+	};
 
-	pip_install& package(const std::string& s);
-	pip_install& version(const std::string& s);
-	pip_install& file(const fs::path& p);
+	pip(ops o);
+
+	pip& package(const std::string& s);
+	pip& version(const std::string& s);
+	pip& file(const fs::path& p);
 
 protected:
 	void do_run() override;
 
 private:
+	ops op_;
 	std::string package_;
 	std::string version_;
 	fs::path file_;
+
+	void do_ensure();
+	void do_install();
 };
 
 

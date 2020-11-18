@@ -235,25 +235,7 @@ void python::copy_files()
 void python::install_pip()
 {
 	cx().trace(context::generic, "installing pip");
-
-	run_tool(process_runner(process()
-		.binary(python_exe())
-		.arg("-m", "ensurepip")));
-
-	run_tool(process_runner(process()
-		.binary(python_exe())
-		.arg("-m pip")
-		.arg("install")
-		.arg("--no-warn-script-location")
-		.arg("--upgrade pip")));
-
-	// ssl errors while downloading through python without certifi
-	run_tool(process_runner(process()
-		.binary(python_exe())
-		.arg("-m pip")
-		.arg("install")
-		.arg("--no-warn-script-location")
-		.arg("certifi")));
+	run_tool(pip(pip::ensure));
 }
 
 msbuild python::create_msbuild_tool(msbuild::ops o)
