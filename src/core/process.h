@@ -490,6 +490,12 @@ private:
 	void create(
 		std::wstring cmd, std::wstring args, std::wstring cwd, STARTUPINFOW si);
 
+
+	// called regularly in join(), checks for termination or interruption,
+	// handles pipes
+	//
+	void on_timeout(bool& already_interrupted);
+
 	// reads from stdin and stderr, `finish` must be true when the process has
 	// terminated
 	//
@@ -501,6 +507,11 @@ private:
 	void read_pipe(
 		bool finish, stream& s,
 		async_pipe_stdout& pipe, context::reason r);
+
+	// sends stuff to stdin, if any
+	//
+	void feed_stdin();
+
 
 	// called when the process has terminated; checks exit code, logs stuff and
 	// bails out on errors
@@ -515,15 +526,6 @@ private:
 	//
 	void on_process_failed();
 
-	// called regularly in join(), checks for termination or interruption,
-	// handles pipes
-	//
-	void on_timeout(bool& already_interrupted);
-
-	// sends stuff to stdin, if any
-	//
-	void feed_stdin();
-
 	// interrupts the process if needed, returns true if interrupted
 	//
 	bool check_interrupted();
@@ -531,6 +533,7 @@ private:
 	// forcefully kills the process and its children
 	//
 	void terminate();
+
 
 	// if external_error_log() was called, dumps the contenf of the log file as
 	// errors
@@ -541,6 +544,7 @@ private:
 	// out
 	//
 	void dump_stderr() noexcept;
+
 
 	// adds the given argument to the command line
 	//

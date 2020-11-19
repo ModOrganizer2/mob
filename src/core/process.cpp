@@ -267,6 +267,31 @@ void process::run()
 	do_run(what);
 }
 
+void process::do_run(const std::string& what)
+{
+	delete_external_log_file();
+	create_job();
+
+	io_.out.buffer = encoded_buffer(io_.out.encoding);
+	io_.err.buffer = encoded_buffer(io_.err.encoding);
+
+	STARTUPINFOW si = {};
+	si.cb = sizeof(si);
+	si.dwFlags = STARTF_USESTDHANDLES;
+
+	// these handles are given to STARTUPINFOW and must stay alive until the
+	// process is created in create(), they can be closed after that
+	handle_ptr stdout_handle = redirect_stdout(si);
+	handle_ptr stderr_handle = redirect_stderr(si);
+	handle_ptr stdin_handle = redirect_stdin(si);
+
+	const std::wstring cmd = utf8_to_utf16(this_env::get("COMSPEC"));
+	const std::wstring args = make_cmd_args(what);
+	const std::wstring cwd = exec_.cwd.native();
+
+	create(cmd, args, cwd, si);
+}
+
 void process::delete_external_log_file()
 {
 	if (fs::exists(io_.error_log_file))
@@ -375,31 +400,6 @@ handle_ptr process::redirect_stdin(STARTUPINFOW& si)
 	si.hStdInput = h.get();
 
 	return h;
-}
-
-void process::do_run(const std::string& what)
-{
-	delete_external_log_file();
-	create_job();
-
-	io_.out.buffer = encoded_buffer(io_.out.encoding);
-	io_.err.buffer = encoded_buffer(io_.err.encoding);
-
-	STARTUPINFOW si = {};
-	si.cb = sizeof(si);
-	si.dwFlags = STARTF_USESTDHANDLES;
-
-	// these handles are given to STARTUPINFOW and must stay alive until the
-	// process is created in create(), they can be closed after that
-	handle_ptr stdout_handle = redirect_stdout(si);
-	handle_ptr stderr_handle = redirect_stderr(si);
-	handle_ptr stdin_handle = redirect_stdin(si);
-
-	const std::wstring cmd = utf8_to_utf16(this_env::get("COMSPEC"));
-	const std::wstring args = make_cmd_args(what);
-	const std::wstring cwd = exec_.cwd.native();
-
-	create(cmd, args, cwd, si);
 }
 
 void process::create(
@@ -531,6 +531,15 @@ void process::join()
 		cx_->trace(context::cmd, "process interrupted and finished");
 }
 
+void process::on_timeout(bool& already_interrupted)
+{
+	read_pipes(false);
+	feed_stdin();
+
+	if (!already_interrupted)
+		already_interrupted = check_interrupted();
+}
+
 void process::read_pipes(bool finish)
 {
 	read_pipe(finish, io_.out, *impl_.stdout_pipe, context::std_out);
@@ -586,6 +595,21 @@ void process::read_pipe(
 		{
 			// no-op
 			break;
+		}
+	}
+}
+
+void process::feed_stdin()
+{
+	if (io_.in && io_.in_offset < io_.in->size())
+	{
+		io_.in_offset += impl_.stdin_pipe->write({
+			io_.in->data() + io_.in_offset, io_.in->size() - io_.in_offset});
+
+		if (io_.in_offset >= io_.in->size())
+		{
+			impl_.stdin_pipe->close();
+			io_.in = {};
 		}
 	}
 }
@@ -686,30 +710,6 @@ void process::on_process_failed()
 		dump_error_log_file();
 		dump_stderr();
 		cx_->bail_out(context::cmd, "{} returned {}", make_name(), exec_.code);
-	}
-}
-
-void process::on_timeout(bool& already_interrupted)
-{
-	read_pipes(false);
-	feed_stdin();
-
-	if (!already_interrupted)
-		already_interrupted = check_interrupted();
-}
-
-void process::feed_stdin()
-{
-	if (io_.in && io_.in_offset < io_.in->size())
-	{
-		io_.in_offset += impl_.stdin_pipe->write({
-			io_.in->data() + io_.in_offset, io_.in->size() - io_.in_offset});
-
-		if (io_.in_offset >= io_.in->size())
-		{
-			impl_.stdin_pipe->close();
-			io_.in = {};
-		}
 	}
 }
 
