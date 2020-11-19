@@ -9,6 +9,8 @@
 namespace mob
 {
 
+// handle to dev/null
+//
 HANDLE get_bit_bucket()
 {
 	SECURITY_ATTRIBUTES sa { .nLength = sizeof(sa), .bInheritHandle = TRUE };
@@ -16,10 +18,8 @@ HANDLE get_bit_bucket()
 }
 
 
-process::filter::filter(
-	std::string_view line, context::reason r, context::level lv,
-	bool discard)
-	: line(line), r(r), lv(lv), discard(discard)
+process::filter::filter(std::string_view line, context::reason r, context::level lv)
+	: line(line), r(r), lv(lv), discard(false)
 {
 }
 
@@ -28,11 +28,14 @@ process::impl::impl(const impl& i)
 {
 }
 
-process::impl& process::impl::operator=(const impl& i)
+process::impl& process::impl::operator=(const impl&)
 {
+	// none of these things should be copied when copying a process object,
+	// process should not normally be copied after they've started
+
 	handle = {};
 	job = {};
-	interrupt = i.interrupt.load();
+	interrupt = false;
 	stdout_pipe = {};
 	stderr_pipe = {};
 	stdin_pipe = {};
@@ -50,6 +53,7 @@ process::io::io() :
 process::exec::exec()
 	: code(0)
 {
+	// default success exit code is just 0
 	success.insert(0);
 }
 
@@ -210,7 +214,7 @@ process::process_flags process::flags() const
 	return flags_;
 }
 
-process& process::success_exit_codes(std::set<int> v)
+process& process::success_exit_codes(const std::set<int>& v)
 {
 	exec_.success = v;
 	return *this;
@@ -224,8 +228,8 @@ process& process::env(const mob::env& e)
 
 std::string process::make_name() const
 {
-	if (!name_.empty())
-		return name_;
+	if (!name().empty())
+		return name();
 
 	return make_cmd();
 }
@@ -235,6 +239,7 @@ std::string process::make_cmd() const
 	if (!exec_.raw.empty())
 		return exec_.raw;
 
+	// "bin" args...
 	return "\"" + path_to_utf8(exec_.bin) + "\"" + exec_.cmd;
 }
 
@@ -245,6 +250,7 @@ void process::pipe_into(const process& p)
 
 void process::run()
 {
+	// log cwd
 	if (!exec_.cwd.empty())
 		cx_->debug(context::cmd, "> cd {}", exec_.cwd);
 
@@ -254,14 +260,15 @@ void process::run()
 	if (conf::dry())
 		return;
 
-	do_run(what);
-}
-
-void process::do_run(const std::string& what)
-{
+	// shouldn't happen
 	if (exec_.raw.empty() && exec_.bin.empty())
 		cx_->bail_out(context::cmd, "process: nothing to run");
 
+	do_run(what);
+}
+
+void process::delete_external_log_file()
+{
 	if (fs::exists(io_.error_log_file))
 	{
 		cx_->trace(context::cmd,
@@ -269,44 +276,38 @@ void process::do_run(const std::string& what)
 
 		op::delete_file(*cx_, io_.error_log_file, op::optional);
 	}
+}
 
+void process::create_job()
+{
+	SetLastError(0);
+	HANDLE job = CreateJobObjectW(nullptr, nullptr);
+	const auto e = GetLastError();
 
+	if (job == 0)
 	{
-		SetLastError(0);
-		HANDLE job = CreateJobObjectW(nullptr, nullptr);
-		const auto e = GetLastError();
-
-		if (job == 0)
-		{
-			cx_->warning(context::cmd,
-				"failed to create job, {}", error_message(e));
-		}
-		else
-		{
-			MOB_ASSERT(e != ERROR_ALREADY_EXISTS);
-			impl_.job.reset(job);
-		}
+		cx_->warning(context::cmd,
+			"failed to create job, {}", error_message(e));
 	}
+	else
+	{
+		MOB_ASSERT(e != ERROR_ALREADY_EXISTS);
+		impl_.job.reset(job);
+	}
+}
 
-
-	io_.out.buffer = encoded_buffer(io_.out.encoding);
-	io_.err.buffer = encoded_buffer(io_.err.encoding);
-
-	STARTUPINFOW si = { .cb=sizeof(si) };
-	PROCESS_INFORMATION pi = {};
-
-	handle_ptr stdout_pipe, stderr_pipe;
-
-	impl_.stdout_pipe.reset(new async_pipe_stdout(*cx_));
-	impl_.stderr_pipe.reset(new async_pipe_stdout(*cx_));
+handle_ptr process::redirect_stdout(STARTUPINFOW& si)
+{
+	handle_ptr h;
 
 	switch (io_.out.flags)
 	{
 		case forward_to_log:
 		case keep_in_string:
 		{
-			stdout_pipe = impl_.stdout_pipe->create();
-			si.hStdOutput = stdout_pipe.get();
+			impl_.stdout_pipe.reset(new async_pipe_stdout(*cx_));
+			h = impl_.stdout_pipe->create();
+			si.hStdOutput = h.get();
 			break;
 		}
 
@@ -323,13 +324,21 @@ void process::do_run(const std::string& what)
 		}
 	}
 
+	return h;
+}
+
+handle_ptr process::redirect_stderr(STARTUPINFOW& si)
+{
+	handle_ptr h;
+
 	switch (io_.err.flags)
 	{
 		case forward_to_log:
 		case keep_in_string:
 		{
-			stderr_pipe = impl_.stderr_pipe->create();
-			si.hStdError = stderr_pipe.get();
+			impl_.stderr_pipe.reset(new async_pipe_stdout(*cx_));
+			h = impl_.stderr_pipe->create();
+			si.hStdError = h.get();
 			break;
 		}
 
@@ -346,43 +355,81 @@ void process::do_run(const std::string& what)
 		}
 	}
 
-	handle_ptr std_in;
+	return h;
+}
+
+handle_ptr process::redirect_stdin(STARTUPINFOW& si)
+{
+	handle_ptr h;
 
 	if (io_.in)
 	{
 		impl_.stdin_pipe.reset(new async_pipe_stdin(*cx_));
-		std_in = impl_.stdin_pipe->create();
+		h = impl_.stdin_pipe->create();
 	}
 	else
 	{
-		std_in.reset(get_bit_bucket());
+		h.reset(get_bit_bucket());
 	}
 
-	si.hStdInput = std_in.get();
+	si.hStdInput = h.get();
+
+	return h;
+}
+
+void process::do_run(const std::string& what)
+{
+	delete_external_log_file();
+	create_job();
+
+	io_.out.buffer = encoded_buffer(io_.out.encoding);
+	io_.err.buffer = encoded_buffer(io_.err.encoding);
+
+	STARTUPINFOW si = {};
+	si.cb = sizeof(si);
 	si.dwFlags = STARTF_USESTDHANDLES;
 
+	// these handles are given to STARTUPINFOW and must stay alive until the
+	// process is created in create(), they can be closed after that
+	handle_ptr stdout_handle = redirect_stdout(si);
+	handle_ptr stderr_handle = redirect_stderr(si);
+	handle_ptr stdin_handle = redirect_stdin(si);
+
 	const std::wstring cmd = utf8_to_utf16(this_env::get("COMSPEC"));
-	std::wstring args = make_cmd_args(what);
+	const std::wstring args = make_cmd_args(what);
+	const std::wstring cwd = exec_.cwd.native();
 
-	const wchar_t* cwd_p = nullptr;
-	std::wstring cwd_s;
+	create(cmd, args, cwd, si);
+}
 
-	if (!exec_.cwd.empty())
-	{
-		if (!fs::exists(exec_.cwd))
-			op::create_directories(*cx_, exec_.cwd);
-
-		cwd_s = exec_.cwd.native();
-		cwd_p = (cwd_s.empty() ? nullptr : cwd_s.c_str());
-	}
-
+void process::create(
+	std::wstring cmd, std::wstring args, std::wstring cwd, STARTUPINFOW si)
+{
 	cx_->trace(context::cmd, "creating process");
 
+	if (!cwd.empty())
+		op::create_directories(*cx_, cwd);
+
+	// cwd
+	const wchar_t* cwd_p = (cwd.empty() ? nullptr : cwd.c_str());
+
+	// flags
+	const DWORD flags =
+		// will forward sigint to child processes
+		CREATE_NEW_PROCESS_GROUP |
+
+		// the pointer given for environment variables is a utf16 string, not
+		// codepage
+		CREATE_UNICODE_ENVIRONMENT;
+
+
+	// creating process
+	PROCESS_INFORMATION pi = {};
 	const auto r = ::CreateProcessW(
-		cmd.c_str(), args.data(),
-		nullptr, nullptr, TRUE,
-		CREATE_NEW_PROCESS_GROUP|CREATE_UNICODE_ENVIRONMENT,
-		exec_.env.get_unicode_pointers(), cwd_p, &si, &pi);
+		cmd.c_str(), args.data(), nullptr, nullptr,
+		TRUE, // inherit handles
+		flags, exec_.env.get_unicode_pointers(), cwd_p, &si, &pi);
+
 
 	if (!r)
 	{
@@ -395,6 +442,8 @@ void process::do_run(const std::string& what)
 	{
 		if (!::AssignProcessToJobObject(impl_.job.get(), pi.hProcess))
 		{
+			// this shouldn't fail, but the only consequence is that ctrl-c
+			// won't be able to kill everything, so make it a warning
 			const auto e = GetLastError();
 			cx_->warning(context::cmd,
 				"can't assign process to job, {}", error_message(e));
@@ -403,7 +452,10 @@ void process::do_run(const std::string& what)
 
 	cx_->trace(context::cmd, "pid {}", pi.dwProcessId);
 
+	// not needed
 	::CloseHandle(pi.hThread);
+
+	// process handle
 	impl_.handle.reset(pi.hProcess);
 }
 
@@ -411,15 +463,25 @@ std::wstring process::make_cmd_args(const std::string& what) const
 {
 	std::wstring s;
 
+	// /U forces cmd builtins to output utf16, such as `set` or `env`, used by
+	// vcvars to get the environment variables
 	if (io_.unicode)
 		s += L"/U ";
 
-	s += L"/C \"";
+	// /C runs the command and exits
+	s += L"/C ";
 
-	if (io_.chcp != -1)
-		s += L"chcp " + std::to_wstring(io_.chcp) + L" && ";
 
-	s += utf8_to_utf16(what) + L"\"";
+	s += L"\"";
+
+		// run chcp first if necessary
+		if (io_.chcp != -1)
+			s += L"chcp " + std::to_wstring(io_.chcp) + L" && ";
+
+		// process command line
+		s += utf8_to_utf16(what);
+
+	s += L"\"";
 
 	return s;
 }
@@ -435,13 +497,17 @@ void process::join()
 	if (!impl_.handle)
 		return;
 
+	// remembers if the process was already interrupted
 	bool interrupted = false;
+
+	// close the handle quickly after termination
 	guard g([&] { impl_.handle = {}; });
 
 	cx_->trace(context::cmd, "joining");
 
 	for (;;)
 	{
+		// returns if the process is done or after the timeout
 		const auto r = WaitForSingleObject(impl_.handle.get(), wait_timeout);
 
 		if (r == WAIT_OBJECT_0)
@@ -478,11 +544,14 @@ void process::read_pipe(
 	{
 		case forward_to_log:
 		{
+			// read from the pipe, add the bytes to the buffer
 			s.buffer.add(pipe.read(finish));
 
+			// for each line in the buffer
 			s.buffer.next_utf8_lines(finish, [&](std::string&& line)
 			{
-				filter f(line, r, s.level, false);
+				// filter it, if there's a callback
+				filter f(line, r, s.level);
 
 				if (s.filter)
 				{
@@ -491,10 +560,15 @@ void process::read_pipe(
 						return;
 				}
 
+				// remember this log line, can be dumped after the process
+				// terminates
+				io_.logs[f.lv].emplace_back(std::move(line));
+
+				// don't log when ignore_output_on_success was specified, the
+				// process must finish before knowing whether to log or not
 				if (!is_set(flags_, ignore_output_on_success))
 					cx_->log_string(f.r, f.lv, f.line);
 
-				io_.logs[f.lv].emplace_back(std::move(line));
 			});
 
 			break;
@@ -502,18 +576,24 @@ void process::read_pipe(
 
 		case keep_in_string:
 		{
+			// read from the pipe, add the bytes to the buffer
 			s.buffer.add(pipe.read(finish));
 			break;
 		}
 
 		case bit_bucket:
 		case inherit:
+		{
+			// no-op
 			break;
+		}
 	}
 }
 
 void process::on_completed()
 {
+	// none of this stuff is needed if the process was interrupted, mob will
+	// exit shortly
 	if (impl_.interrupt)
 		return;
 
@@ -527,50 +607,77 @@ void process::on_completed()
 		exec_.code = 0xffff;
 	}
 
+	// pipes are finicky, or I just don't understand how they work
+	//
+	// I've seen empty pipes after processes finish even though there was still
+	// data left somewhere in between that hadn't reached this end of the pipe
+	// yet
+	//
+	// so pipes are read one last time with `finish` false, meaning that an
+	// empty pipe won't be closed and the last line of the buffer won't be
+	// processed yet
+	//
+	// then pipes are read again in a loop with `finish` true, and hopefully
+	// all the content will have been read by that time
+
 	read_pipes(false);
 
 	for (;;)
 	{
 		read_pipes(true);
 
+		// loop until both pipes are closed
 		if (impl_.stdout_pipe->closed() && impl_.stderr_pipe->closed())
 			break;
 	}
 
-	// success
+
+	// check if the exit code is considered success
 	if (exec_.success.contains(static_cast<int>(exec_.code)))
+		on_process_successful();
+	else
+		on_process_failed();
+}
+
+void process::on_process_successful()
+{
+	const bool ignore_output = is_set(flags_, ignore_output_on_success);
+	const auto& warnings = io_.logs[context::level::warning];
+	const auto& errors = io_.logs[context::level::error];
+
+	if (ignore_output || (warnings.empty() && errors.empty()))
 	{
-		const bool ignore_output = is_set(flags_, ignore_output_on_success);
-		const auto& warnings = io_.logs[context::level::warning];
-		const auto& errors = io_.logs[context::level::error];
-
-		if (ignore_output || (warnings.empty() && errors.empty()))
-		{
-			cx_->trace(context::cmd,
-				"process exit code is {} (considered success)", exec_.code);
-		}
-		else
-		{
-			cx_->warning(
-				context::cmd,
-				"process exit code is {} (considered success), "
-				"but stderr had something", exec_.code);
-
-			cx_->warning(context::cmd, "process was: {}", make_cmd());
-			cx_->warning(context::cmd, "stderr:");
-
-			for (auto&& line : warnings)
-				cx_->warning(context::std_err, "        {}", line);
-
-			for (auto&& line : errors)
-				cx_->warning(context::std_err, "        {}", line);
-		}
-
-		return;
+		// the process was successful and there were no warnings or errors,
+		// or they should be ignored
+		cx_->trace(context::cmd,
+			"process exit code is {} (considered success)", exec_.code);
 	}
+	else
+	{
+		// the process was successful, but there were warnings or errors, log
+		// them
 
+		cx_->warning(
+			context::cmd,
+			"process exit code is {} (considered success), "
+			"but stderr had something", exec_.code);
+
+		cx_->warning(context::cmd, "process was: {}", make_cmd());
+		cx_->warning(context::cmd, "stderr:");
+
+		for (auto&& line : warnings)
+			cx_->warning(context::std_err, "        {}", line);
+
+		for (auto&& line : errors)
+			cx_->warning(context::std_err, "        {}", line);
+	}
+}
+
+void process::on_process_failed()
+{
 	if (flags_ & allow_failure)
 	{
+		// ignore failure if the flag is set, it's used for optional things
 		cx_->trace(context::cmd,
 			"process failed but failure was allowed");
 	}
@@ -585,7 +692,14 @@ void process::on_completed()
 void process::on_timeout(bool& already_interrupted)
 {
 	read_pipes(false);
+	feed_stdin();
 
+	if (!already_interrupted)
+		already_interrupted = check_interrupted();
+}
+
+void process::feed_stdin()
+{
 	if (io_.in && io_.in_offset < io_.in->size())
 	{
 		io_.in_offset += impl_.stdin_pipe->write({
@@ -597,34 +711,43 @@ void process::on_timeout(bool& already_interrupted)
 			io_.in = {};
 		}
 	}
+}
 
-	if (impl_.interrupt && !already_interrupted)
+bool process::check_interrupted()
+{
+	if (!impl_.interrupt)
+		return false;
+
+	const auto pid = GetProcessId(impl_.handle.get());
+
+	// interruption is normally done by sending sigint, which requires a pid;
+	// without a pid, the process can be killed from the handle
+
+	if (pid == 0)
 	{
-		const auto pid = GetProcessId(impl_.handle.get());
+		cx_->trace(context::cmd,
+			"process id is 0, terminating instead");
 
-		if (pid == 0)
+		terminate();
+	}
+	else
+	{
+		cx_->trace(context::cmd, "sending sigint to {}", pid);
+		GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
+
+		if (flags_ & terminate_on_interrupt)
 		{
+			// this process doesn't support sigint or doesn't handle it very
+			// well; sigint is also sent for good measure
+
 			cx_->trace(context::cmd,
-				"process id is 0, terminating instead");
+				"terminating process (flag is set)");
 
 			terminate();
 		}
-		else
-		{
-			cx_->trace(context::cmd, "sending sigint to {}", pid);
-			GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, pid);
-
-			if (flags_ & terminate_on_interrupt)
-			{
-				cx_->trace(context::cmd,
-					"terminating process (flag is set)");
-
-				terminate();
-			}
-		}
-
-		already_interrupted = true;
 	}
+
+	return true;
 }
 
 void process::terminate()
@@ -633,6 +756,8 @@ void process::terminate()
 
 	if (impl_.job)
 	{
+		// kill all the child processes in the job
+
 		JOBOBJECT_BASIC_ACCOUNTING_INFORMATION info = {};
 
 		const auto r = ::QueryInformationJobObject(
@@ -661,6 +786,7 @@ void process::terminate()
 			"failed to terminate job, {}", error_message(e));
 	}
 
+	// either job creation failed or job termination failed, last ditch attempt
 	::TerminateProcess(impl_.handle.get(), exit_code);
 }
 
@@ -669,34 +795,40 @@ void process::dump_error_log_file() noexcept
 	if (io_.error_log_file.empty())
 		return;
 
-	if (fs::exists(io_.error_log_file))
-	{
-		std::string log = op::read_text_file(
-			*cx_, encodings::dont_know, io_.error_log_file, op::optional);
-
-		if (log.empty())
-			return;
-
-		cx_->error(context::cmd,
-			"{} failed, content of {}:", make_name(), io_.error_log_file);
-
-		for_each_line(log, [&](auto&& line)
-		{
-			cx_->error(context::cmd, "        {}", line);
-		});
-	}
-	else
+	if (!fs::exists(io_.error_log_file))
 	{
 		cx_->debug(context::cmd,
 			"external error log file {} doesn't exist", io_.error_log_file);
+
+		return;
 	}
+
+
+	const std::string log = op::read_text_file(
+		*cx_, encodings::dont_know, io_.error_log_file, op::optional);
+
+	if (log.empty())
+		return;
+
+	cx_->error(context::cmd,
+		"{} failed, content of {}:", make_name(), io_.error_log_file);
+
+	for_each_line(log, [&](auto&& line)
+	{
+		cx_->error(context::cmd, "        {}", line);
+	});
 }
 
 void process::dump_stderr() noexcept
 {
 	const std::string s = io_.err.buffer.utf8_string();
 
-	if (!s.empty())
+	if (s.empty())
+	{
+		cx_->error(context::cmd,
+			"{} failed, stderr was empty", make_name());
+	}
+	else
 	{
 		cx_->error(context::cmd,
 			"{} failed, {}, content of stderr:", make_name(), make_cmd());
@@ -705,11 +837,6 @@ void process::dump_stderr() noexcept
 		{
 			cx_->error(context::cmd, "        {}", line);
 		});
-	}
-	else
-	{
-		cx_->error(context::cmd,
-			"{} failed, stderr was empty", make_name());
 	}
 }
 
@@ -730,6 +857,7 @@ std::string process::stderr_string()
 
 void process::add_arg(const std::string& k, const std::string& v, arg_flags f)
 {
+	// don't add the argument if it's for a log level that's not active
 	if ((f & log_debug) && !context::enabled(context::level::debug))
 		return;
 
@@ -742,15 +870,23 @@ void process::add_arg(const std::string& k, const std::string& v, arg_flags f)
 	if ((f & log_quiet) && context::enabled(context::level::trace))
 		return;
 
+	// empty?
 	if (k.empty() && v.empty())
 		return;
 
 	if (k.empty())
+	{
 		exec_.cmd += " " + v;
-	else if ((f & nospace) || k.back() == '=')
-		exec_.cmd += " " + k + v;
+	}
 	else
-		exec_.cmd += " " + k + " " + v;
+	{
+		// key and value, don't put space if the key ends with = or the flag is
+		// set
+		if ((f & nospace) || k.back() == '=')
+			exec_.cmd += " " + k + v;
+		else
+			exec_.cmd += " " + k + " " + v;
+	}
 }
 
 std::string process::arg_to_string(const char* s, arg_flags f)

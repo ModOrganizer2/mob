@@ -58,7 +58,7 @@ public:
 		nospace         = 0x10,
 
 		// for arg(k, v) or arg(v), forces the value to be double-quoted (but
-		// not the key); note that fs::path objects are always quoted
+		// not the key); note that fs::path and url objects are always quoted
 		// automatically
 		quote           = 0x20,
 
@@ -116,9 +116,7 @@ public:
 		// whether to discard this log line; can be set to true by the filter
 		bool discard;
 
-		filter(
-			std::string_view line, context::reason r,
-			context::level lv, bool discard);
+		filter(std::string_view line, context::reason r, context::level lv);
 
 		// this struct is only used by filter_fun callback, where copying a
 		// filter wouldn't make any sense
@@ -178,7 +176,8 @@ public:
 	//
 	process& set_context(const context* cx);
 
-	// display name for the process, used in logging
+	// display name for the process, used in logging; if not set, returns the
+	// filename without extension of the binary, which may be an empty string
 	//
 	process& name(const std::string& name);
 	std::string name() const;
@@ -257,7 +256,7 @@ public:
 	// basically only used by transifex `init`, which exits with 2 when the
 	// directory already has a .tx folder
 	//
-	process& success_exit_codes(std::set<int> v);
+	process& success_exit_codes(const std::set<int>& v);
 
 
 	// adds an argument to the command line, see comment on top for conversions
@@ -448,7 +447,7 @@ private:
 	exec exec_;
 
 
-	// returns name_ or the command line
+	// returns name() or the command line
 	//
 	std::string make_name() const;
 
@@ -466,10 +465,30 @@ private:
 	//
 	void pipe_into(const process& p);
 
+
 	// builds the command line, sets up redirections and and calls
 	// CreateProcess()
 	//
 	void do_run(const std::string& what);
+
+	// deletes the external log file, if any
+	//
+	void delete_external_log_file();
+
+	// creates the job object
+	//
+	void create_job();
+
+	// sets up stdout/stderr/stdin redirection
+	//
+	handle_ptr redirect_stdout(STARTUPINFOW& si);
+	handle_ptr redirect_stderr(STARTUPINFOW& si);
+	handle_ptr redirect_stdin(STARTUPINFOW& si);
+
+	// calls CreateProcess() with the given stuff
+	//
+	void create(
+		std::wstring cmd, std::wstring args, std::wstring cwd, STARTUPINFOW si);
 
 	// reads from stdin and stderr, `finish` must be true when the process has
 	// terminated
@@ -488,10 +507,26 @@ private:
 	//
 	void on_completed();
 
+	// called from on_completed() when the process' exit code was successful
+	//
+	void on_process_successful();
+
+	// called from on_completed() when the process' exit code was a failure
+	//
+	void on_process_failed();
+
 	// called regularly in join(), checks for termination or interruption,
 	// handles pipes
 	//
 	void on_timeout(bool& already_interrupted);
+
+	// sends stuff to stdin, if any
+	//
+	void feed_stdin();
+
+	// interrupts the process if needed, returns true if interrupted
+	//
+	bool check_interrupted();
 
 	// forcefully kills the process and its children
 	//
