@@ -542,8 +542,11 @@ void process::on_timeout(bool& already_interrupted)
 
 void process::read_pipes(bool finish)
 {
-	read_pipe(finish, io_.out, *impl_.stdout_pipe, context::std_out);
-	read_pipe(finish, io_.err, *impl_.stderr_pipe, context::std_err);
+	if (impl_.stdout_pipe)
+		read_pipe(finish, io_.out, *impl_.stdout_pipe, context::std_out);
+
+	if (impl_.stderr_pipe)
+		read_pipe(finish, io_.err, *impl_.stderr_pipe, context::std_err);
 }
 
 void process::read_pipe(
@@ -651,8 +654,13 @@ void process::on_completed()
 		read_pipes(true);
 
 		// loop until both pipes are closed
-		if (impl_.stdout_pipe->closed() && impl_.stderr_pipe->closed())
-			break;
+		if (impl_.stdout_pipe && !impl_.stdout_pipe->closed())
+			continue;
+
+		if (impl_.stderr_pipe && !impl_.stderr_pipe->closed())
+			continue;
+
+		break;
 	}
 
 
