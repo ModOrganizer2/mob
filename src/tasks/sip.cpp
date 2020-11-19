@@ -158,7 +158,7 @@ void sip::generate()
 	{
 		const std::string utf8 = op::read_text_file(cx(), encodings::utf8, src);
 		op::write_text_file(cx(), encodings::acp, dest, utf8);
-		op::swap_files(cx(), src, dest, backup);
+		op::replace_file(cx(), src, dest, backup);
 	}
 
 	run_tool(process_runner(process()
