@@ -137,7 +137,7 @@ void msbuild::do_run(const std::vector<std::string>& targets)
 		plat = platform_;
 	}
 
-	process::flags_t pflags = process::noflags;
+	auto pflags = process::noflags;
 	process p;
 
 	if (is_set(flags_, allow_failure))

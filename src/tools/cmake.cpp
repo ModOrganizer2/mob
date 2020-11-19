@@ -142,7 +142,7 @@ void cmake::do_generate()
 	}
 
 	if (!prefix_.empty())
-		p.arg("-DCMAKE_INSTALL_PREFIX=", prefix_, process::nospace);
+		p.arg("-DCMAKE_INSTALL_PREFIX=", prefix_);
 
 	for (auto&& [name, value] : def_)
 		p.arg("-D" + name + "=" + value + "");

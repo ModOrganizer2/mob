@@ -55,7 +55,7 @@ void jom::do_run()
 {
 	process p;
 
-	process::flags_t pflags = process::terminate_on_interrupt;
+	auto pflags = process::terminate_on_interrupt;
 	if (flags_ & allow_failure)
 	{
 		p.stderr_level(context::level::trace);

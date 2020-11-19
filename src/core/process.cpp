@@ -16,6 +16,13 @@ HANDLE get_bit_bucket()
 }
 
 
+process::filter::filter(
+	std::string_view line, context::reason r, context::level lv,
+	bool discard)
+	: line(line), r(r), lv(lv), discard(discard)
+{
+}
+
 process::impl::impl(const impl& i)
 	: interrupt(i.interrupt.load())
 {
@@ -29,7 +36,6 @@ process::impl& process::impl::operator=(const impl& i)
 	stdout_pipe = {};
 	stderr_pipe = {};
 	stdin_pipe = {};
-	stdin_handle = {};
 
 	return *this;
 }
@@ -193,13 +199,13 @@ process& process::external_error_log(const fs::path& p)
 	return *this;
 }
 
-process& process::flags(flags_t f)
+process& process::flags(process_flags f)
 {
 	flags_ = f;
 	return *this;
 }
 
-process::flags_t process::flags() const
+process::process_flags process::flags() const
 {
 	return flags_;
 }
@@ -340,17 +346,19 @@ void process::do_run(const std::string& what)
 		}
 	}
 
+	handle_ptr std_in;
+
 	if (io_.in)
 	{
 		impl_.stdin_pipe.reset(new async_pipe_stdin(*cx_));
-		impl_.stdin_handle = impl_.stdin_pipe->create();
+		std_in = impl_.stdin_pipe->create();
 	}
 	else
 	{
-		impl_.stdin_handle.reset(get_bit_bucket());
+		std_in.reset(get_bit_bucket());
 	}
 
-	si.hStdInput = impl_.stdin_handle.get();
+	si.hStdInput = std_in.get();
 	si.dwFlags = STARTF_USESTDHANDLES;
 
 	const std::wstring cmd = utf8_to_utf16(this_env::get("COMSPEC"));
@@ -479,7 +487,7 @@ void process::read_pipe(
 				if (s.filter)
 				{
 					s.filter(f);
-					if (f.ignore)
+					if (f.discard)
 						return;
 				}
 
