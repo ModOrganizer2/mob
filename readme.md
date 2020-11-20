@@ -26,7 +26,7 @@
 
 ## Quick start
 ```
-> git clone https://github.com/isanae/mob
+> git clone https://github.com/ModOrganizer2/mob
 > bootstrap
 > mob -d prefix/path build
 ```
@@ -49,7 +49,7 @@
 	```
 	mkdir C:\dev
 	cd C:\dev
-	git clone https://github.com/isanae/mob
+	git clone https://github.com/ModOrganizer2/mob
 	cd mob
 	bootstrap
 	mob -d C:\dev\modorganizer build
