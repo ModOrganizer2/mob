@@ -28,7 +28,7 @@
 ```
 > git clone https://github.com/ModOrganizer2/mob
 > bootstrap
-> mob -d prefix/path build
+> mob -d c:\somewhere build
 ```
 
 ## Slow start
