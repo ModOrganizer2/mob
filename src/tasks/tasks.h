@@ -288,7 +288,8 @@ public:
 	enum flags
 	{
 		noflags  = 0x00,
-		gamebryo = 0x01
+		gamebryo = 0x01,
+		nuget   = 0x02,
 	};
 
 	modorganizer(std::string name, flags f=noflags);
@@ -306,6 +307,7 @@ public:
 
 	bool is_super() const override;
 	bool is_gamebryo_plugin() const;
+	bool is_nuget_plugin() const;
 
 	url git_url() const;
 	std::string org() const;
