@@ -527,7 +527,7 @@ bool try_qt_location(fs::path& check)
 
 fs::path find_qt()
 {
-	fs::path p = conf::path_by_name("qt_install");
+	fs::path p = conf().paths().qt_install();
 
 	if (!p.empty())
 	{
@@ -904,7 +904,7 @@ void make_canonical_path(
 	std::string_view key,
 	const fs::path& default_parent, std::string_view default_dir)
 {
-	fs::path p = conf::path_by_name(key);
+	fs::path p = conf().paths().get(key);
 
 	if (p.empty())
 	{
@@ -1195,7 +1195,7 @@ void init_options(
 	find_vcvars();
 	validate_qt();
 
-	this_env::append_to_path(conf::path_by_name("qt_bin"));
+	this_env::append_to_path(conf().paths().get("qt_bin"));
 
 	if (!conf().paths().prefix().empty())
 		make_canonical_path("prefix", ini_prefix.empty() ? fs::current_path() : ini_prefix.parent_path(), "");

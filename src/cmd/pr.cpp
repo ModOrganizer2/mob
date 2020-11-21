@@ -65,7 +65,7 @@ clipp::group pr_command::do_group()
 int pr_command::do_run()
 {
 	if (github_token_.empty())
-		github_token_ = conf::global_by_name("github_key");
+		github_token_ = conf().global().get("github_key");
 
 	if (op_ == "pull")
 		return pull();
