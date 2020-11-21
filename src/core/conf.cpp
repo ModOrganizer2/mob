@@ -452,8 +452,7 @@ void init_options(
 	set_path_if_empty("licenses",   find_in_root("licenses"));
 	set_path_if_empty("qt_bin",     qt::installation_path() / "bin");
 
-	find_vcvars();
-	validate_qt();
+	details::set_string("tools", "vcvars", path_to_utf8(find_vcvars()));
 
 	this_env::append_to_path(conf().path().get("qt_bin"));
 

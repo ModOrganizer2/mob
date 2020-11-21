@@ -6,6 +6,24 @@
 namespace mob
 {
 
+// returns a path to the given known folder, empty on error
+//
+fs::path get_known_folder(const GUID& id)
+{
+	wchar_t* buffer = nullptr;
+	const auto r = ::SHGetKnownFolderPath(id, 0, 0, &buffer);
+
+	if (r != S_OK)
+		return {};
+
+	fs::path p = buffer;
+	::CoTaskMemFree(buffer);
+
+	return p;
+}
+
+// searches PATH for the given executable, returns empty if not found
+//
 fs::path find_in_path(std::string_view exe)
 {
 	const std::wstring wexe = utf8_to_utf16(exe);
@@ -13,51 +31,28 @@ fs::path find_in_path(std::string_view exe)
 	const std::size_t size = MAX_PATH;
 	wchar_t buffer[size + 1] = {};
 
-	if (SearchPathW(nullptr, wexe.c_str(), nullptr, size, buffer, nullptr))
-		return buffer;
-	else
-		return {};
-}
-
-fs::path find_iscc()
-{
-	const auto tasks = find_tasks("installer");
-	MOB_ASSERT(tasks.size() == 1);
-
-	if (!tasks[0]->enabled())
+	if (SearchPathW(nullptr, wexe.c_str(), nullptr, size, buffer, nullptr) == 0)
 		return {};
 
-	auto iscc = conf().tool().get("iscc");
-	if (iscc.is_absolute())
-	{
-		if (!fs::exists(iscc))
-		{
-			gcx().bail_out(context::conf,
-				"{} doesn't exist (from ini, absolute path)", iscc);
-		}
-
-		return iscc;
-	}
-
-	fs::path p = find_in_path(path_to_utf8(iscc));
-	if (fs::exists(p))
-		return fs::canonical(fs::absolute(p));
-
-	for (int v : {5, 6, 7, 8})
-	{
-		const fs::path inno = fmt::format("inno setup {}", v);
-
-		for (fs::path pf : {conf().path().pf_x86(), conf().path().pf_x64()})
-		{
-			p = pf / inno / iscc;
-			if (fs::exists(p))
-				return fs::canonical(fs::absolute(p));
-		}
-	}
-
-	gcx().bail_out(context::conf, "can't find {} anywhere", iscc);
+	return buffer;
 }
 
+// checks if a path exists that starts with `check` and ends with as many parts
+// as possible
+//
+// for example:
+//
+//   try_parts("c:/", {"1", "2", "3"})
+//
+// will try in order:
+//
+//   c:/1/2/3
+//   c:/2/3
+//   c:/3
+//
+// if none of the paths exist, returns false; if one of the paths exists,
+// `check` is set to it and returns true
+//
 bool try_parts(fs::path& check, const std::vector<std::string>& parts)
 {
 	for (std::size_t i=0; i<parts.size(); ++i)
@@ -79,94 +74,8 @@ bool try_parts(fs::path& check, const std::vector<std::string>& parts)
 	return false;
 }
 
-fs::path mob_exe_path()
-{
-	// double the buffer size 10 times
-	const int max_tries = 10;
-
-	DWORD buffer_size = MAX_PATH;
-
-	for (int tries=0; tries<max_tries; ++tries)
-	{
-		auto buffer = std::make_unique<wchar_t[]>(buffer_size + 1);
-		DWORD n = GetModuleFileNameW(0, buffer.get(), buffer_size);
-
-		if (n == 0) {
-			const auto e = GetLastError();
-			gcx().bail_out(context::conf,
-				"can't get module filename, {}", error_message(e));
-		}
-		else if (n >= buffer_size) {
-			// buffer is too small, try again
-			buffer_size *= 2;
-		} else {
-			// if GetModuleFileName() works, `n` does not include the null
-			// terminator
-			const std::wstring s(buffer.get(), n);
-			return fs::canonical(s);
-		}
-	}
-
-	gcx().bail_out(context::conf, "can't get module filename");
-}
-
-fs::path find_root(bool verbose)
-{
-	gcx().trace(context::conf, "looking for root directory");
-
-	fs::path mob_exe_dir = mob_exe_path().parent_path();
-
-	auto third_party = mob_exe_dir / "third-party";
-
-	if (!fs::exists(third_party))
-	{
-		if (verbose)
-			u8cout << "no third-party here\n";
-
-		auto p = mob_exe_dir;
-
-		if (p.filename().u8string() == u8"x64")
-		{
-			p = p.parent_path();
-			if (p.filename().u8string() == u8"Debug" ||
-				p.filename().u8string() == u8"Release")
-			{
-				if (verbose)
-					u8cout << "this is mob's build directory, looking up\n";
-
-				// mob_exe_dir is in the build directory
-				third_party = mob_exe_dir / ".." / ".." / ".." / "third-party";
-			}
-		}
-	}
-
-	if (!fs::exists(third_party))
-		gcx().bail_out(context::conf, "root directory not found");
-
-	const auto p = fs::canonical(third_party.parent_path());
-	gcx().trace(context::conf, "found root directory at {}", p);
-	return p;
-}
-
-fs::path find_in_root(const fs::path& file)
-{
-	static fs::path root = find_root();
-
-	fs::path p = root / file;
-	if (!fs::exists(p))
-		gcx().bail_out(context::conf, "{} not found", p);
-
-	gcx().trace(context::conf, "found {}", p);
-	return p;
-}
-
-
-fs::path find_third_party_directory()
-{
-	static fs::path path = find_in_root("third-party");
-	return path;
-}
-
+// looks for `qmake.exe` in the given path, tries a variety of subdirectories
+//
 bool find_qmake(fs::path& check)
 {
 	// try Qt/Qt5.14.2/msvc*/bin/qmake.exe
@@ -194,79 +103,100 @@ bool find_qmake(fs::path& check)
 	return false;
 }
 
-bool try_qt_location(fs::path& check)
+
+fs::path mob_exe_path()
 {
-	if (!find_qmake(check))
-		return false;
+	const int max_tries = 3;
 
-	check = fs::absolute(check.parent_path() / "..");
-	return true;
-}
+	DWORD buffer_size = MAX_PATH;
 
-fs::path find_qt()
-{
-	fs::path p = conf().path().qt_install();
-
-	if (!p.empty())
+	for (int tries=0; tries<max_tries; ++tries)
 	{
-		p = fs::absolute(p);
+		auto buffer = std::make_unique<wchar_t[]>(buffer_size + 1);
+		DWORD n = GetModuleFileNameW(0, buffer.get(), buffer_size);
 
-		if (!try_qt_location(p))
-			gcx().bail_out(context::conf, "no qt install in {}", p);
+		if (n == 0)
+		{
+			const auto e = GetLastError();
 
-		return p;
+			gcx().bail_out(context::conf,
+				"can't get module filename, {}", error_message(e));
+		}
+		else if (n >= buffer_size)
+		{
+			// buffer is too small, try again
+			buffer_size *= 2;
+		}
+		else
+		{
+			// if GetModuleFileName() works, `n` does not include the null
+			// terminator
+			const std::wstring s(buffer.get(), n);
+			return fs::canonical(s);
+		}
 	}
 
+	gcx().bail_out(context::conf, "can't get module filename");
+}
 
-	std::vector<fs::path> locations =
+fs::path find_root(bool verbose)
+{
+	gcx().trace(context::conf, "looking for root directory");
+
+	fs::path mob_exe_dir = mob_exe_path().parent_path();
+
+	auto third_party = mob_exe_dir / "third-party";
+
+	if (!fs::exists(third_party))
 	{
-		conf().path().pf_x64(),
-		"C:\\",
-		"D:\\"
-	};
+		// doesn't exist, maybe this is the build directory
 
-	// look for qmake, which is in %qt%/version/msvc.../bin
-	fs::path qmake = find_in_path("qmake.exe");
-	if (!qmake.empty())
-		locations.insert(locations.begin(), qmake.parent_path() / "../../");
+		if (verbose)
+			u8cout << path_to_utf8(third_party) << " doesn't exist\n";
 
-	// look for qtcreator.exe, which is in %qt%/Tools/QtCreator/bin
-	fs::path qtcreator = find_in_path("qtcreator.exe");
-	if (!qtcreator.empty())
-		locations.insert(locations.begin(), qtcreator.parent_path() / "../../../");
+		auto p = mob_exe_dir;
 
-	for (fs::path loc : locations)
-	{
-		loc = fs::absolute(loc);
-		if (try_qt_location(loc))
-			return loc;
+		if (p.filename().u8string() == u8"x64")
+		{
+			p = p.parent_path();
+
+			if (p.filename().u8string() == u8"Debug" ||
+				p.filename().u8string() == u8"Release")
+			{
+				if (verbose)
+					u8cout << "this is mob's build directory, looking up\n";
+
+				// mob_exe_dir is in the build directory
+				third_party = mob_exe_dir / ".." / ".." / ".." / "third-party";
+			}
+		}
 	}
 
-	gcx().bail_out(context::conf, "can't find qt install");
-}
+	if (!fs::exists(third_party))
+		gcx().bail_out(context::conf, "root directory not found");
 
-void validate_qt()
-{
-	fs::path p = qt::installation_path();
-
-	if (!try_qt_location(p))
-		gcx().bail_out(context::conf, "qt path {} doesn't exist", p);
-
-	details::set_string("paths", "qt_install", path_to_utf8(p));
-}
-
-fs::path get_known_folder(const GUID& id)
-{
-	wchar_t* buffer = nullptr;
-	const auto r = ::SHGetKnownFolderPath(id, 0, 0, &buffer);
-
-	if (r != S_OK)
-		return {};
-
-	fs::path p = buffer;
-	::CoTaskMemFree(buffer);
+	const auto p = fs::canonical(third_party.parent_path());
+	gcx().trace(context::conf, "found root directory at {}", p);
 
 	return p;
+}
+
+fs::path find_in_root(const fs::path& file)
+{
+	static fs::path root = find_root();
+
+	fs::path p = root / file;
+	if (!fs::exists(p))
+		gcx().bail_out(context::conf, "{} not found", p);
+
+	gcx().trace(context::conf, "found {}", p);
+	return p;
+}
+
+fs::path find_third_party_directory()
+{
+	static fs::path path = find_in_root("third-party");
+	return path;
 }
 
 fs::path find_program_files_x86()
@@ -313,6 +243,144 @@ fs::path find_program_files_x64()
 	return p;
 }
 
+fs::path find_vs()
+{
+	// asking vswhere
+	const auto output = vswhere::find_vs();
+	if (output.empty())
+		gcx().bail_out(context::conf, "vswhere failed");
+
+	const auto lines = split(path_to_utf8(output), "\r\n");
+
+	if (lines.empty())
+	{
+		gcx().bail_out(context::conf, "vswhere didn't output anything");
+	}
+	else if (lines.size() > 1)
+	{
+		gcx().error(context::conf, "vswhere returned multiple installations:");
+
+		for (auto&& line : lines)
+			gcx().error(context::conf, " - {}", line);
+
+		gcx().bail_out(context::conf,
+			"specify the `vs` path in the `[paths]` section of the INI, or "
+			"pass -s paths/vs=PATH` to pick an installation");
+	}
+	else
+	{
+		// only one line
+		const fs::path path(output);
+
+		if (!fs::exists(path))
+		{
+			gcx().bail_out(context::conf,
+				"the path given by vswhere doesn't exist: {}", path);
+		}
+
+		return path;
+	}
+}
+
+fs::path find_qt()
+{
+	// check from the ini first
+	fs::path p = conf().path().qt_install();
+
+	if (!p.empty())
+	{
+		p = fs::absolute(p);
+
+		// check if qmake exists in there
+		if (find_qmake(p))
+		{
+			p = fs::absolute(p.parent_path() / "..");
+			return p;
+		}
+
+		// fail early, don't try to guess if the user had something in the ini
+		gcx().bail_out(context::conf, "no qt install in {}", p);
+	}
+
+
+	// a list of possible location
+	std::deque<fs::path> locations =
+	{
+		conf().path().pf_x64(),
+		"C:\\",
+		"D:\\"
+	};
+
+	// look for qmake in PATH, which is in %qt%/version/msvc.../bin
+	fs::path qmake = find_in_path("qmake.exe");
+	if (!qmake.empty())
+		locations.push_front(qmake.parent_path() / "../../");
+
+	// look for qtcreator.exe in PATH, which is in %qt%/Tools/QtCreator/bin
+	fs::path qtcreator = find_in_path("qtcreator.exe");
+	if (!qtcreator.empty())
+		locations.push_front(qtcreator.parent_path() / "../../../");
+
+	// check each location
+	for (fs::path loc : locations)
+	{
+		loc = fs::absolute(loc);
+
+		// check for qmake in there
+		if (find_qmake(loc))
+		{
+			loc = fs::absolute(loc.parent_path() / "..");
+			return loc;
+		}
+	}
+
+	gcx().bail_out(context::conf, "can't find qt install");
+}
+
+fs::path find_iscc()
+{
+	// don't bother if the installer isn't enabled, it might fail anyway
+	if (!find_one_task("installer")->enabled())
+		return {};
+
+	// check from the ini first, supports both relative and absolute
+	const auto iscc = conf().tool().get("iscc");
+
+	if (iscc.is_absolute())
+	{
+		if (!fs::exists(iscc))
+		{
+			gcx().bail_out(context::conf,
+				"{} doesn't exist (from ini, absolute path)", iscc);
+		}
+
+		return iscc;
+	}
+
+	// path is relative
+
+	// check in PATH
+	fs::path p = find_in_path(path_to_utf8(iscc));
+	if (fs::exists(p))
+		return fs::canonical(fs::absolute(p));
+
+	// check known installation paths for a bunch of versions
+	for (int v : {5, 6, 7, 8})
+	{
+		const fs::path inno_dir = fmt::format("Inno Setup {}", v);
+
+		// check for both architectures
+		for (fs::path pf : {conf().path().pf_x86(), conf().path().pf_x64()})
+		{
+			p = pf / inno_dir / iscc;
+			if (fs::exists(p))
+				return fs::canonical(fs::absolute(p));
+		}
+	}
+
+	gcx().bail_out(context::conf, "can't find {} anywhere", iscc);
+}
+
 fs::path find_temp_dir()
 {
 	const std::size_t buffer_size = MAX_PATH + 2;
@@ -330,53 +398,9 @@ fs::path find_temp_dir()
 	return p;
 }
 
-fs::path find_vs()
+fs::path find_vcvars()
 {
-	if (conf::dry())
-		return vs::vswhere();
-
-	const auto path = vswhere::find_vs();
-	if (path.empty())
-		gcx().bail_out(context::conf, "vswhere failed");
-
-	const auto lines = split(path_to_utf8(path), "\r\n");
-
-	if (lines.empty())
-	{
-		gcx().bail_out(context::conf, "vswhere didn't output anything");
-	}
-	else if (lines.size() > 1)
-	{
-		gcx().error(context::conf, "vswhere returned multiple installations:");
-
-		for (auto&& line : lines)
-			gcx().error(context::conf, " - {}", line);
-
-		gcx().bail_out(context::conf,
-			"specify the `vs` path in the `[paths]` section of the INI, or "
-			"pass -s paths/vs=PATH` to pick an installation");
-	}
-
-	if (!fs::exists(path))
-	{
-		gcx().bail_out(context::conf,
-			"the path given by vswhere doesn't exist: {}", path);
-	}
-
-	return path;
-}
-
-bool try_vcvars(fs::path& bat)
-{
-	if (!fs::exists(bat))
-		return false;
-
-	bat = fs::canonical(fs::absolute(bat));
-	return true;
-}
-
-void find_vcvars()
-{
+	// check from the ini first
 	fs::path bat = conf().tool().get("vcvars");
 
 	if (conf::dry())
@@ -384,27 +408,26 @@ void find_vcvars()
 		if (bat.empty())
 			bat = "vcvars.bat";
 
-		return;
+		return bat;
 	}
-	else
+
+	if (bat.empty())
 	{
-		if (bat.empty())
-		{
-			bat = vs::installation_path()
-				/ "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
-
-			if (!try_vcvars(bat))
-				gcx().bail_out(context::conf, "vcvars not found at {}", bat);
-		}
-		else
-		{
-			if (!try_vcvars(bat))
-				gcx().bail_out(context::conf, "vcvars not found at {}", bat);
-		}
+		// derive from vs installation
+		bat = vs::installation_path()
+			/ "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
 	}
 
-	details::set_string("tools", "vcvars", path_to_utf8(bat));
+	if (!fs::exists(bat))
+		gcx().bail_out(context::conf, "vcvars not found at {}", bat);
+
+	if (bat.is_relative())
+		bat = fs::absolute(bat);
+
+	bat = fs::canonical(bat);
 	gcx().trace(context::conf, "using vcvars at {}", bat);
+
+	return bat;
 }
 
 }	// namespace
