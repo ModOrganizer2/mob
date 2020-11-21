@@ -13,7 +13,7 @@ patcher::patcher()
 
 fs::path patcher::binary()
 {
-	return conf::tool_by_name("patch");
+	return conf().tool().get("patch");
 }
 
 patcher& patcher::task(const std::string& name, bool prebuilt)

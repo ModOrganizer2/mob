@@ -33,6 +33,16 @@ conf_global conf::global()
 	return {};
 }
 
+conf_task conf::task(const std::vector<std::string>& names)
+{
+	return {names};
+}
+
+conf_tools conf::tool()
+{
+	return {};
+}
+
 conf_transifex conf::transifex()
 {
 	return {};
@@ -190,11 +200,6 @@ void conf::set_for_task(
 	get_global(section, key);
 
 	map_[std::string(task_name)][std::string(section)][std::string(key)] = value;
-}
-
-fs::path conf::tool_by_name(std::string_view name)
-{
-	return get_global("tools", name);
 }
 
 std::string conf::global_by_name(std::string_view name)
@@ -641,7 +646,7 @@ bool try_vcvars(fs::path& bat)
 
 void find_vcvars()
 {
-	fs::path bat = conf::tool_by_name("vcvars");
+	fs::path bat = conf().tool().get("vcvars");
 
 	if (conf::dry())
 	{
@@ -1019,7 +1024,7 @@ fs::path find_iscc()
 	if (!tasks[0]->enabled())
 		return {};
 
-	auto iscc = conf::tool_by_name("iscc");
+	auto iscc = conf().tool().get("iscc");
 	if (iscc.is_absolute())
 	{
 		if (!fs::exists(iscc))
@@ -1288,6 +1293,11 @@ bool conf_global::dry() const
 void conf_global::set_dry(std::string_view s)
 {
 	g_dry = bool_from_string(s);
+}
+
+conf_tools::conf_tools()
+	: conf_section("tools")
+{
 }
 
 conf_transifex::conf_transifex()

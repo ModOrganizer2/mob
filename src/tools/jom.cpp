@@ -13,7 +13,7 @@ jom::jom()
 
 fs::path jom::binary()
 {
-	return conf::tool_by_name("jom");
+	return conf().tool().get("jom");
 }
 
 jom& jom::path(const fs::path& p)

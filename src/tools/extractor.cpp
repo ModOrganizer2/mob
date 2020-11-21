@@ -12,7 +12,7 @@ extractor::extractor()
 
 fs::path extractor::binary()
 {
-	return conf::tool_by_name("sevenz");
+	return conf().tool().get("sevenz");
 }
 
 extractor& extractor::file(const fs::path& file)

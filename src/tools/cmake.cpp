@@ -12,7 +12,7 @@ cmake::cmake(ops o)
 
 fs::path cmake::binary()
 {
-	return conf::tool_by_name("cmake");
+	return conf().tool().get("cmake");
 }
 
 cmake& cmake::generator(generators g)

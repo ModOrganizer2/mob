@@ -202,7 +202,7 @@ std::string git::current_branch()
 
 fs::path git::binary()
 {
-	return conf::tool_by_name("git");
+	return conf().tool().get("git");
 }
 
 git& git::url(const mob::url& u)

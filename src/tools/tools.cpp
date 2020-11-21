@@ -73,12 +73,12 @@ const context& tool::cx() const
 
 fs::path perl::binary()
 {
-	return conf::tool_by_name("perl");
+	return conf().tool().get("perl");
 }
 
 fs::path nasm::binary()
 {
-	return conf::tool_by_name("nasm");
+	return conf().tool().get("nasm");
 }
 
 fs::path qt::installation_path()
@@ -109,7 +109,7 @@ vs::vs(ops o)
 
 fs::path vs::devenv_binary()
 {
-	return conf::tool_by_name("devenv");
+	return conf().tool().get("devenv");
 }
 
 fs::path vs::installation_path()
@@ -119,12 +119,12 @@ fs::path vs::installation_path()
 
 fs::path vs::vswhere()
 {
-	return conf::tool_by_name("vswhere");
+	return conf().tool().get("vswhere");
 }
 
 fs::path vs::vcvars()
 {
-	return conf::tool_by_name("vcvars");
+	return conf().tool().get("vcvars");
 }
 
 std::string vs::version()
@@ -221,7 +221,7 @@ nuget::nuget(fs::path sln)
 
 fs::path nuget::binary()
 {
-	return conf::tool_by_name("nuget");
+	return conf().tool().get("nuget");
 }
 
 void nuget::do_run()
@@ -421,7 +421,7 @@ transifex::transifex(ops o) :
 
 fs::path transifex::binary()
 {
-	return conf::tool_by_name("tx");
+	return conf().tool().get("tx");
 }
 
 transifex& transifex::root(const fs::path& p)
@@ -549,7 +549,7 @@ lrelease::lrelease()
 
 fs::path lrelease::binary()
 {
-	return conf::tool_by_name("lrelease");
+	return conf().tool().get("lrelease");
 }
 
 lrelease& lrelease::project(const std::string& name)
@@ -625,7 +625,7 @@ iscc::iscc(fs::path iss)
 
 fs::path iscc::binary()
 {
-	return conf::tool_by_name("iscc");
+	return conf().tool().get("iscc");
 }
 
 iscc& iscc::iss(const fs::path& p)

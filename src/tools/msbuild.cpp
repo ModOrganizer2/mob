@@ -24,7 +24,7 @@ msbuild::msbuild(ops o) :
 
 fs::path msbuild::binary()
 {
-	return conf::tool_by_name("msbuild");
+	return conf().tool().get("msbuild");
 }
 
 msbuild& msbuild::solution(const fs::path& sln)
