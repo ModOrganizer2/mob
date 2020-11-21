@@ -554,7 +554,7 @@ void task::join()
 
 void task::clean_task()
 {
-	if (!conf::clean())
+	if (!conf().global().clean())
 		return;
 
 	if (!enabled())
@@ -588,7 +588,7 @@ void task::fetch()
 			clean_task();
 			check_interrupted();
 
-			if (conf::fetch())
+			if (conf().global().fetch())
 			{
 				cx().info(context::generic, "fetching");
 				do_fetch();
@@ -612,7 +612,7 @@ void task::fetch()
 
 void task::build_and_install()
 {
-	if (!conf::build())
+	if (!conf().global().build())
 		return;
 
 	if (!enabled())
@@ -639,17 +639,18 @@ void task::build_and_install()
 task::clean task::make_clean_flags() const
 {
 	clean c = clean::nothing;
+	const auto g = conf().global();
 
-	if (conf::redownload())
+	if (g.redownload())
 		c |= clean::redownload;
 
-	if (conf::reextract())
+	if (g.reextract())
 		c |= clean::reextract;
 
-	if (conf::reconfigure())
+	if (g.reconfigure())
 		c |= clean::reconfigure;
 
-	if (conf::rebuild())
+	if (g.rebuild())
 		c |= clean::rebuild;
 
 	return c;

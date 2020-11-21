@@ -1139,7 +1139,7 @@ void init_options(
 
 	set_special_options();
 
-	auto log_file = conf::log_file();
+	auto log_file = conf().global().log_file();
 	if (log_file.is_relative())
 		log_file = conf().paths().prefix() / log_file;
 

@@ -38,7 +38,7 @@ void extractor::do_run()
 	}
 	else if (fs::exists(where_))
 	{
-		if (conf::reextract())
+		if (conf().global().reextract())
 		{
 			cx().debug(context::reextract, "deleting {}", where_);
 			op::delete_directory(cx(), where_, op::optional);

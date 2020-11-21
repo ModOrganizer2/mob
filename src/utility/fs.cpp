@@ -99,7 +99,7 @@ bool bypass_file::exists() const
 {
 	if (fs::exists(file_))
 	{
-		if (conf::rebuild())
+		if (conf().global().rebuild())
 		{
 			cx_.trace(context::rebuild,
 				"bypass file {} exists, deleting", file_);

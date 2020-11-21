@@ -107,7 +107,7 @@ void sip::download()
 {
 	if (fs::exists(download_file()))
 	{
-		if (conf::redownload())
+		if (conf().global().redownload())
 		{
 			cx().trace(context::redownload, "deleting {}", download_file());
 			op::delete_file(cx(), download_file(), op::optional);
@@ -132,7 +132,7 @@ void sip::generate()
 
 	if (fs::exists(header))
 	{
-		if (conf::rebuild())
+		if (conf().global().rebuild())
 		{
 			cx().trace(context::rebuild, "ignoring {}", header);
 		}

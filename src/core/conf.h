@@ -37,15 +37,6 @@ public:
 	static std::string version_by_name(std::string_view name);
 	static fs::path tool_by_name(std::string_view name);
 
-	static fs::path log_file() { return global_by_name("log_file"); }
-	static bool redownload()   { return bool_global_by_name("redownload"); }
-	static bool reextract()    { return bool_global_by_name("reextract"); }
-	static bool reconfigure()  { return bool_global_by_name("reconfigure"); }
-	static bool rebuild()      { return bool_global_by_name("rebuild"); }
-	static bool clean()        { return bool_global_by_name("clean_task"); }
-	static bool fetch()        { return bool_global_by_name("fetch_task"); }
-	static bool build()        { return bool_global_by_name("build_task"); }
-
 	static bool ignore_uncommitted()
 	{
 		return bool_global_by_name("ignore_uncommitted");
@@ -170,6 +161,16 @@ public:
 
 	bool dry() const;
 	void set_dry(std::string_view s);
+
+	fs::path log_file() const { return get("log_file"); }
+
+	bool redownload()   const { return get<bool>("redownload"); }
+	bool reextract()    const { return get<bool>("reextract"); }
+	bool reconfigure()  const { return get<bool>("reconfigure"); }
+	bool rebuild()      const { return get<bool>("rebuild"); }
+	bool clean()        const { return get<bool>("clean_task"); }
+	bool fetch()        const { return get<bool>("fetch_task"); }
+	bool build()        const { return get<bool>("build_task"); }
 };
 
 class conf_transifex : public conf_section
