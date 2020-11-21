@@ -3,92 +3,6 @@
 namespace mob
 {
 
-class conf_global;
-class conf_task;
-class conf_tools;
-class conf_transifex;
-class conf_prebuilt;
-class conf_versions;
-class conf_paths;
-
-class conf
-{
-	// temp
-	friend class conf_global;
-	friend class conf_task;
-	friend class conf_tools;
-	friend class conf_transifex;
-	friend class conf_prebuilt;
-	friend class conf_versions;
-	friend class conf_paths;
-
-public:
-	conf_global global();
-	conf_task task(const std::vector<std::string>& names);
-	conf_tools tool();
-	conf_transifex transifex();
-	conf_prebuilt prebuilt();
-	conf_versions version();
-	conf_paths path();
-
-	// this just forwards to conf_global, but it's used everywhere
-	//
-	static bool dry();
-
-
-	// only in conf.cpp
-	static std::string get_global(
-		std::string_view section, std::string_view key);
-
-	static bool get_global_bool(
-		std::string_view section, std::string_view key);
-
-	static int get_global_int(
-		std::string_view section, std::string_view key);
-
-	static void set_global(
-		std::string_view section,
-		std::string_view key, std::string_view value);
-
-	static void add_global(
-		std::string_view section,
-		std::string_view key, std::string_view value);
-
-	static void set_for_task(
-		std::string_view task_name, std::string_view section,
-		std::string_view key, std::string_view value);
-
-	static std::vector<std::string> format_options();
-
-
-private:
-	using key_value_map = std::map<std::string, std::string, std::less<>>;
-	using section_map = std::map<std::string, key_value_map, std::less<>>;
-	using task_map = std::map<std::string, section_map, std::less<>>;
-
-	static task_map map_;
-
-	static std::optional<std::string> find_for_task(
-		std::string_view task_name,
-		std::string_view section, std::string_view key);
-
-
-	// temp
-	static std::string get_for_task(
-		const std::vector<std::string>& task_names,
-		std::string_view section, std::string_view key);
-
-	static std::string global_by_name(std::string_view name);
-	static bool bool_global_by_name(std::string_view name);
-
-	static std::string task_option_by_name(
-		const std::vector<std::string>& task_names, std::string_view name);
-
-	static bool bool_task_option_by_name(
-		const std::vector<std::string>& task_names, std::string_view name);
-};
-
-
 std::string default_ini_filename();
 
 std::vector<fs::path> find_inis(
@@ -106,6 +20,17 @@ fs::path find_in_path(std::string_view exe);
 fs::path make_temp_file();
 
 
+namespace details
+{
+	std::string get_string(std::string_view section, std::string_view key);
+	bool get_bool(std::string_view section, std::string_view key);
+	int get_int(std::string_view section, std::string_view key);
+
+	void set_string(
+		std::string_view section, std::string_view key,
+		std::string_view value);
+}
+
 
 template <class DefaultType>
 class conf_section
@@ -113,7 +38,7 @@ class conf_section
 public:
 	DefaultType get(std::string_view key) const
 	{
-		return conf::get_global(name_, key);
+		return details::get_string(name_, key);
 	}
 
 	template <class T>
@@ -122,18 +47,18 @@ public:
 	template <>
 	bool get<bool>(std::string_view key) const
 	{
-		return conf::get_global_bool(name_, key);
+		return details::get_bool(name_, key);
 	}
 
 	template <>
 	int get<int>(std::string_view key) const
 	{
-		return conf::get_global_int(name_, key);
+		return details::get_int(name_, key);
 	}
 
 	void set(std::string_view key, std::string_view value)
 	{
-		conf::set_global(name_, key, value);
+		details::set_string(name_, key, value);
 	}
 
 protected:
@@ -180,15 +105,9 @@ public:
 class conf_task
 {
 public:
-	conf_task(std::vector<std::string> names)
-		: names_(std::move(names))
-	{
-	}
+	conf_task(std::vector<std::string> names);
 
-	std::string get(std::string_view key) const
-	{
-		return conf::task_option_by_name(names_, key);
-	}
+	std::string get(std::string_view key) const;
 
 	template <class T>
 	T get(std::string_view key) const;
@@ -196,11 +115,13 @@ public:
 	template <>
 	bool get<bool>(std::string_view key) const
 	{
-		return conf::bool_task_option_by_name(names_, key);
+		return get_bool(key);
 	}
 
 private:
 	std::vector<std::string> names_;
+
+	bool get_bool(std::string_view name) const;
 };
 
 class conf_tools : public conf_section<fs::path>
@@ -271,6 +192,22 @@ public:
 	VALUE(temp_dir);
 
 #undef VALUE
+};
+
+
+class conf
+{
+public:
+	conf_global global();
+	conf_task task(const std::vector<std::string>& names);
+	conf_tools tool();
+	conf_transifex transifex();
+	conf_prebuilt prebuilt();
+	conf_versions version();
+	conf_paths path();
+
+	// this just forwards to conf_global, but it's used everywhere
+	static bool dry();
 };
 
 }	// namespace

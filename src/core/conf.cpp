@@ -6,25 +6,180 @@
 #include "../tasks/task.h"
 #include "../tools/tools.h"
 
-namespace mob
+namespace mob::details
 {
 
+using key_value_map = std::map<std::string, std::string, std::less<>>;
+using section_map = std::map<std::string, key_value_map, std::less<>>;
+using task_map = std::map<std::string, section_map, std::less<>>;
+static task_map g_map;
 
-conf::task_map conf::map_;
 
 // special cases to avoid string manipulations
 static int g_output_log_level = 3;
 static int g_file_log_level = 5;
 static bool g_dry = false;
 
-std::string default_ini_filename()
-{
-	return "mob.ini";
-}
-
 bool bool_from_string(std::string_view s)
 {
 	return (s == "true" || s == "yes" || s == "1");
+}
+
+
+std::string get_string(std::string_view section, std::string_view key)
+{
+	auto global = g_map.find("");
+	MOB_ASSERT(global != g_map.end());
+
+	auto sitor = global->second.find(section);
+	if (sitor == global->second.end())
+	{
+		gcx().bail_out(context::conf,
+			"conf section '{}' doesn't exist", section);
+	}
+
+	auto kitor = sitor->second.find(key);
+	if (kitor == sitor->second.end())
+	{
+		gcx().bail_out(context::conf,
+			"key '{}' not found in section '{}'", key, section);
+	}
+
+	return kitor->second;
+}
+
+int get_int(std::string_view section, std::string_view key)
+{
+	const auto s = get_string(section, key);
+
+	try
+	{
+		return std::stoi(s);
+	}
+	catch(std::exception&)
+	{
+		gcx().bail_out(context::conf, "bad int for {}/{}", section, key);
+	}
+}
+
+bool get_bool(std::string_view section, std::string_view key)
+{
+	const auto s = get_string(section, key);
+	return bool_from_string(s);
+}
+
+void set_string(
+	std::string_view section, std::string_view key,
+	std::string_view value)
+{
+	auto global = g_map.find("");
+	MOB_ASSERT(global != g_map.end());
+
+	auto sitor = global->second.find(section);
+	if (sitor == global->second.end())
+	{
+		gcx().bail_out(context::conf,
+			"conf section '{}' doesn't exist", section);
+	}
+
+	auto kitor = sitor->second.find(key);
+	if (kitor == sitor->second.end())
+	{
+		gcx().bail_out(context::conf,
+			"key '{}' not found in section '{}'", key, section);
+	}
+
+	kitor->second = value;
+}
+
+void add_string(
+	std::string_view section, std::string_view key, std::string_view value)
+{
+	g_map[""][std::string(section)][std::string(key)] = value;
+}
+
+std::optional<std::string> find_string_for_task(
+	std::string_view task_name,
+	std::string_view section_name, std::string_view key)
+{
+	auto titor = g_map.find(task_name);
+	if (titor == g_map.end())
+		return {};
+
+	const auto& task = titor->second;
+
+	auto sitor = task.find(section_name);
+	if (sitor == task.end())
+		return {};
+
+	const auto& section = sitor->second;
+
+	auto itor = section.find(key);
+	if (itor == section.end())
+		return {};
+
+	return itor->second;
+}
+
+std::string get_string_for_task(
+	const std::vector<std::string>& task_names,
+	std::string_view section, std::string_view key)
+{
+	task_map::iterator task = g_map.end();
+
+	auto v = find_string_for_task("_override", section, key);
+	if (v)
+		return *v;
+
+	for (auto&& tn : task_names)
+	{
+		v = find_string_for_task(tn, section, key);
+		if (v)
+			return *v;
+	}
+
+	for (auto&& tn : task_names)
+	{
+		if (is_super_task(tn))
+		{
+			v = find_string_for_task("super", section, key);
+			if (v)
+				return *v;
+
+			break;
+		}
+	}
+
+	return get_string(section, key);
+}
+
+bool get_bool_for_task(
+	const std::vector<std::string>& task_names,
+	std::string_view section, std::string_view key)
+{
+	const std::string s = get_string_for_task(task_names, section, key);
+	return bool_from_string(s);
+}
+
+void set_string_for_task(
+	std::string_view task_name, std::string_view section,
+	std::string_view key, std::string_view value)
+{
+	// make sure the key exists, will throw if it doesn't
+	get_string(section, key);
+
+	g_map[std::string(task_name)][std::string(section)][std::string(key)] = value;
+}
+
+}	// namespace
+
+
+namespace mob
+{
+
+std::string default_ini_filename()
+{
+	return "mob.ini";
 }
 
 
@@ -63,186 +218,18 @@ conf_paths conf::path()
 	return {};
 }
 
-
-std::string conf::get_global(std::string_view section, std::string_view key)
-{
-	auto global = map_.find("");
-	MOB_ASSERT(global != map_.end());
-
-	auto sitor = global->second.find(section);
-	if (sitor == global->second.end())
-	{
-		gcx().bail_out(context::conf,
-			"conf section '{}' doesn't exist", section);
-	}
-
-	auto kitor = sitor->second.find(key);
-	if (kitor == sitor->second.end())
-	{
-		gcx().bail_out(context::conf,
-			"key '{}' not found in section '{}'", key, section);
-	}
-
-	return kitor->second;
-}
-
-void conf::set_global(
-	std::string_view section,
-	std::string_view key, std::string_view value)
-{
-	auto global = map_.find("");
-	MOB_ASSERT(global != map_.end());
-
-	auto sitor = global->second.find(section);
-	if (sitor == global->second.end())
-	{
-		gcx().bail_out(context::conf,
-			"conf section '{}' doesn't exist", section);
-	}
-
-	auto kitor = sitor->second.find(key);
-	if (kitor == sitor->second.end())
-	{
-		gcx().bail_out(context::conf,
-			"key '{}' not found in section '{}'", key, section);
-	}
-
-	kitor->second = value;
-}
-
-int conf::get_global_int(std::string_view section, std::string_view key)
-{
-	const auto s = conf::get_global(section, key);
-
-	try
-	{
-		return std::stoi(s);
-	}
-	catch(std::exception&)
-	{
-		gcx().bail_out(context::conf, "bad int for {}/{}", section, key);
-	}
-}
-
-bool conf::get_global_bool(std::string_view section, std::string_view key)
-{
-	const auto s = conf::get_global(section, key);
-	return bool_from_string(s);
-}
-
-void conf::add_global(
-	std::string_view section,
-	std::string_view key, std::string_view value)
-{
-	map_[""][std::string(section)][std::string(key)] = value;
-}
-
-std::optional<std::string> conf::find_for_task(
-	std::string_view task_name,
-	std::string_view section_name, std::string_view key)
-{
-	auto titor = map_.find(task_name);
-	if (titor == map_.end())
-		return {};
-
-	const auto& task = titor->second;
-
-	auto sitor = task.find(section_name);
-	if (sitor == task.end())
-		return {};
-
-	const auto& section = sitor->second;
-
-	auto itor = section.find(key);
-	if (itor == section.end())
-		return {};
-
-	return itor->second;
-}
-
-std::string conf::get_for_task(
-	const std::vector<std::string>& task_names,
-	std::string_view section, std::string_view key)
-{
-	task_map::iterator task = map_.end();
-
-	auto v = find_for_task("_override", section, key);
-	if (v)
-		return *v;
-
-	for (auto&& tn : task_names)
-	{
-		v = find_for_task(tn, section, key);
-		if (v)
-			return *v;
-	}
-
-	for (auto&& tn : task_names)
-	{
-		if (is_super_task(tn))
-		{
-			v = find_for_task("super", section, key);
-			if (v)
-				return *v;
-
-			break;
-		}
-	}
-
-	return get_global(section, key);
-}
-
-void conf::set_for_task(
-	std::string_view task_name, std::string_view section,
-	std::string_view key, std::string_view value)
-{
-	// make sure the key exists, will throw if it doesn't
-	get_global(section, key);
-
-	map_[std::string(task_name)][std::string(section)][std::string(key)] = value;
-}
-
-std::string conf::global_by_name(std::string_view name)
-{
-	return get_global("global", name);
-}
-
-bool conf::bool_global_by_name(std::string_view name)
-{
-	const std::string s = global_by_name(name);
-	return bool_from_string(s);
-}
-
-std::string conf::task_option_by_name(
-	const std::vector<std::string>& task_names, std::string_view name)
-{
-	return get_for_task(task_names, "task", name);
-}
-
-bool conf::bool_task_option_by_name(
-	const std::vector<std::string>& task_names, std::string_view name)
-{
-	const std::string s = task_option_by_name(task_names, name);
-	return bool_from_string(s);
-}
-
 bool conf::dry()
 {
 	return conf().global().dry();
 }
 
-int conf_global::output_log_level() const
-{
-	return g_output_log_level;
-}
-
-std::vector<std::string> conf::format_options()
+std::vector<std::string> format_options()
 {
 	std::size_t longest_task = 0;
 	std::size_t longest_section = 0;
 	std::size_t longest_key = 0;
 
-	for (auto&& [t, ss] : map_)
+	for (auto&& [t, ss] : details::g_map)
 	{
 		longest_task = std::max(longest_task, t.size());
 
@@ -269,7 +256,7 @@ std::vector<std::string> conf::format_options()
 		pad_right("-",longest_key, '-') + "   " +
 		"-----");
 
-	for (auto&& [t, ss] : map_)
+	for (auto&& [t, ss] : details::g_map)
 	{
 		for (auto&& [s, kv] : ss)
 		{
@@ -521,7 +508,7 @@ void validate_qt()
 	if (!try_qt_location(p))
 		gcx().bail_out(context::conf, "qt path {} doesn't exist", p);
 
-	conf::set_global("paths", "qt_install", path_to_utf8(p));
+	details::set_string("paths", "qt_install", path_to_utf8(p));
 }
 
 fs::path get_known_folder(const GUID& id)
@@ -672,7 +659,7 @@ void find_vcvars()
 		}
 	}
 
-	conf::set_global("tools", "vcvars", path_to_utf8(bat));
+	details::set_string("tools", "vcvars", path_to_utf8(bat));
 	gcx().trace(context::conf, "using vcvars at {}", bat);
 }
 
@@ -748,15 +735,15 @@ void parse_section(
 		else if (task.empty())
 		{
 			if (add)
-				conf::add_global(section, k, v);
+				details::add_string(section, k, v);
 			else
-				conf::set_global(section, k, v);
+				details::set_string(section, k, v);
 		}
 		else
 		{
 			if (task == "_override")
 			{
-				conf::set_for_task("_override", section, k, v);
+				details::set_string_for_task("_override", section, k, v);
 			}
 			else
 			{
@@ -766,7 +753,7 @@ void parse_section(
 					ini_error(ini, i, "no task matching '{}' found", task);
 
 				for (auto& t : tasks)
-					conf::set_for_task(t->name(), section, k, v);
+					details::set_string_for_task(t->name(), section, k, v);
 			}
 		}
 
@@ -824,7 +811,7 @@ void parse_ini(const fs::path& ini, bool add)
 template <class F>
 void set_path_if_empty(std::string_view k, F&& f)
 {
-	fs::path p = conf::get_global("paths", k);
+	fs::path p = details::get_string("paths", k);
 
 	if (p.empty())
 	{
@@ -844,7 +831,7 @@ void set_path_if_empty(std::string_view k, F&& f)
 		p = fs::canonical(p);
 	}
 
-	conf::set_global("paths", k, path_to_utf8(p));
+	details::set_string("paths", k, path_to_utf8(p));
 }
 
 void make_canonical_path(
@@ -866,19 +853,19 @@ void make_canonical_path(
 	if (!conf::dry())
 		p = fs::weakly_canonical(fs::absolute(p));
 
-	conf::set_global("paths", key, path_to_utf8(p));
+	details::set_string("paths", key, path_to_utf8(p));
 }
 
 void set_special_options()
 {
 	conf().global().set_output_log_level(
-		conf::get_global("global", "output_log_level"));
+		details::get_string("global", "output_log_level"));
 
 	conf().global().set_file_log_level(
-		conf::get_global("global", "file_log_level"));
+		details::get_string("global", "file_log_level"));
 
 	conf().global().set_dry(
-		conf::get_global("global", "dry"));
+		details::get_string("global", "dry"));
 }
 
 std::vector<fs::path> find_inis(
@@ -1090,13 +1077,14 @@ void init_options(
 
 			if (po.task.empty())
 			{
-				conf::set_global(po.section, po.key, po.value);
+				details::set_string(po.section, po.key, po.value);
 			}
 			else
 			{
 				if (po.task == "_override")
 				{
-					conf::set_for_task("_override", po.section, po.key, po.value);
+					details::set_string_for_task(
+						"_override", po.section, po.key, po.value);
 				}
 				else
 				{
@@ -1110,7 +1098,10 @@ void init_options(
 					}
 
 					for (auto& t : tasks)
-						conf::set_for_task(t->name(), po.section, po.key, po.value);
+					{
+						details::set_string_for_task(
+							t->name(), po.section, po.key, po.value);
+					}
 				}
 			}
 		}
@@ -1176,7 +1167,7 @@ void init_options(
 		"install_translations",
 		conf().path().install_bin(), "resources/translations");
 
-	conf::set_global("tools", "iscc", path_to_utf8(find_iscc()));
+	details::set_string("tools", "iscc", path_to_utf8(find_iscc()));
 }
 
 bool verify_options()
@@ -1208,13 +1199,13 @@ bool verify_options()
 
 void log_options()
 {
-	for (auto&& line : conf::format_options())
+	for (auto&& line : format_options())
 		gcx().trace(context::conf, "{}", line);
 }
 
 void dump_available_options()
 {
-	for (auto&& line : conf::format_options())
+	for (auto&& line : format_options())
 		u8cout << line << "\n";
 }
 
@@ -1241,6 +1232,11 @@ conf_global::conf_global()
 {
 }
 
+int conf_global::output_log_level() const
+{
+	return details::g_output_log_level;
+}
+
 void conf_global::set_output_log_level(const std::string& s)
 {
 	if (s.empty())
@@ -1253,7 +1249,7 @@ void conf_global::set_output_log_level(const std::string& s)
 		if (i < 0 || i > 6)
 			gcx().bail_out(context::generic, "bad output log level {}", i);
 
-		g_output_log_level = i;
+		details::g_output_log_level = i;
 	}
 	catch(std::exception&)
 	{
@@ -1263,7 +1259,7 @@ void conf_global::set_output_log_level(const std::string& s)
 
 int conf_global::file_log_level() const
 {
-	return g_file_log_level;
+	return details::g_file_log_level;
 }
 
 void conf_global::set_file_log_level(const std::string& s)
@@ -1277,7 +1273,7 @@ void conf_global::set_file_log_level(const std::string& s)
 		if (i < 0 || i > 6)
 			gcx().bail_out(context::generic, "bad file log level {}", i);
 
-		g_file_log_level = i;
+		details::g_file_log_level = i;
 	}
 	catch(std::exception&)
 	{
@@ -1287,13 +1283,30 @@ void conf_global::set_file_log_level(const std::string& s)
 
 bool conf_global::dry() const
 {
-	return g_dry;
+	return details::g_dry;
 }
 
 void conf_global::set_dry(std::string_view s)
 {
-	g_dry = bool_from_string(s);
+	details::g_dry = details::bool_from_string(s);
 }
+
+
+conf_task::conf_task(std::vector<std::string> names)
+	: names_(std::move(names))
+{
+}
+
+std::string conf_task::get(std::string_view key) const
+{
+	return details::get_string_for_task(names_, "task", key);
+}
+
+bool conf_task::get_bool(std::string_view key) const
+{
+	return details::get_bool_for_task(names_, "task", key);
+}
+
 
 conf_tools::conf_tools()
 	: conf_section("tools")
