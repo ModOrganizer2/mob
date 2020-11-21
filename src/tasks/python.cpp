@@ -12,7 +12,7 @@ python::python()
 
 std::string python::version()
 {
-	return conf::version_by_name("python");
+	return conf().version().get("python");
 }
 
 bool python::prebuilt()
@@ -55,7 +55,7 @@ std::string python::version_without_v()
 
 fs::path python::source_path()
 {
-	return conf().paths().build() / ("python-" + version_without_v());
+	return conf().path().build() / ("python-" + version_without_v());
 }
 
 fs::path python::build_path()
@@ -205,30 +205,30 @@ void python::copy_files()
 {
 	op::copy_glob_to_dir_if_better(cx(),
 		build_path() / "*.lib",
-		conf().paths().install_libs(),
+		conf().path().install_libs(),
 		op::copy_files);
 
 	op::copy_glob_to_dir_if_better(cx(),
 		build_path() / "libffi*.dll",
-		conf().paths().install_dlls(),
+		conf().path().install_dlls(),
 		op::copy_files);
 
 	op::copy_file_to_dir_if_better(cx(),
 		build_path() / ("python" + version_for_dll() + ".dll"),
-		conf().paths().install_dlls());
+		conf().path().install_dlls());
 
 	op::copy_file_to_dir_if_better(cx(),
 		build_path() / ("python" + version_for_dll() + ".pdb"),
-		conf().paths().install_pdbs());
+		conf().path().install_pdbs());
 
 	op::copy_glob_to_dir_if_better(cx(),
 		build_path() / "pythoncore/*.pyd",
-		conf().paths().install_pythoncore(),
+		conf().path().install_pythoncore(),
 		op::copy_files);
 
 	op::copy_file_to_file_if_better(cx(),
 		build_path() / "pythoncore" / ("python" + version_for_dll() + ".zip"),
-		conf().paths().install_dlls() / "pythoncore.zip",
+		conf().path().install_dlls() / "pythoncore.zip",
 		op::copy_files);
 }
 

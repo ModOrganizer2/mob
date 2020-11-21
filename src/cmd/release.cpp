@@ -32,7 +32,7 @@ void release_command::make_bin()
 	u8cout << "making binary archive " << path_to_utf8(out) << "\n";
 
 	op::archive_from_glob(gcx(),
-		conf().paths().install_bin() / "*", out, {"__pycache__"});
+		conf().path().install_bin() / "*", out, {"__pycache__"});
 }
 
 void release_command::make_pdbs()
@@ -41,7 +41,7 @@ void release_command::make_pdbs()
 	u8cout << "making pdbs archive " << path_to_utf8(out) << "\n";
 
 	op::archive_from_glob(gcx(),
-		conf().paths().install_pdbs() / "*", out, {"__pycache__"});
+		conf().path().install_pdbs() / "*", out, {"__pycache__"});
 }
 
 void release_command::make_src()
@@ -101,7 +101,7 @@ void release_command::make_src()
 void release_command::make_installer()
 {
 	const auto file = "Mod.Organizer-" + version_ + ".exe";
-	const auto src = conf().paths().install_installer() / file;
+	const auto src = conf().path().install_installer() / file;
 	const auto dest = out_;
 
 	u8cout << "copying installer " << file << "\n";
@@ -354,7 +354,7 @@ void release_command::check_repos_for_branch()
 
 bool release_command::check_clean_prefix()
 {
-	const auto prefix = conf().paths().prefix();
+	const auto prefix = conf().path().prefix();
 
 	if (!fs::exists(prefix))
 		return true;
@@ -399,7 +399,7 @@ void release_command::prepare()
 	}
 
 	// finding output path
-	const auto prefix = conf().paths().prefix();
+	const auto prefix = conf().path().prefix();
 	out_ = fs::path(utf8_to_utf16(utf8out_));
 
 	if (out_.empty())
@@ -436,7 +436,7 @@ std::string release_command::do_doc()
 
 std::string release_command::version_from_exe() const
 {
-	const auto exe = conf().paths().install_bin() / "ModOrganizer.exe";
+	const auto exe = conf().path().install_bin() / "ModOrganizer.exe";
 
 	// getting version info size
 	DWORD dummy = 0;

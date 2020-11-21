@@ -77,7 +77,7 @@ fs::path modorganizer::this_solution_path() const
 
 fs::path modorganizer::super_path()
 {
-	return conf().paths().build() / "modorganizer_super";
+	return conf().path().build() / "modorganizer_super";
 }
 
 url modorganizer::git_url() const
@@ -175,8 +175,8 @@ cmake modorganizer::create_cmake_tool(const fs::path& root, cmake::ops o)
 {
 	return std::move(cmake(o)
 		.generator(cmake::vs)
-		.def("CMAKE_INSTALL_PREFIX:PATH", conf().paths().install())
-		.def("DEPENDENCIES_DIR",          conf().paths().build())
+		.def("CMAKE_INSTALL_PREFIX:PATH", conf().path().install())
+		.def("DEPENDENCIES_DIR",          conf().path().build())
 		.def("BOOST_ROOT",                boost::source_path())
 		.def("BOOST_LIBRARYDIR",          boost::lib_path(arch::x64))
 		.def("FMT_ROOT",                  fmt::source_path())

@@ -12,12 +12,12 @@ pyqt::pyqt()
 
 std::string pyqt::version()
 {
-	return conf::version_by_name("pyqt");
+	return conf().version().get("pyqt");
 }
 
 std::string pyqt::builder_version()
 {
-	return conf::version_by_name("pyqt_builder");
+	return conf().version().get("pyqt_builder");
 }
 
 bool pyqt::prebuilt()
@@ -27,7 +27,7 @@ bool pyqt::prebuilt()
 
 fs::path pyqt::source_path()
 {
-	return conf().paths().build() / ("PyQt5-" + version());
+	return conf().path().build() / ("PyQt5-" + version());
 }
 
 fs::path pyqt::build_path()
@@ -62,7 +62,7 @@ void pyqt::do_clean(clean c)
 			if (is_set(c, clean::rebuild))
 			{
 				op::delete_file(cx(),
-					conf().paths().cache() / sip_install_file(),
+					conf().path().cache() / sip_install_file(),
 					op::optional);
 			}
 		}
@@ -160,7 +160,7 @@ void pyqt::sip_build()
 			python::source_path(),
 			python::scripts_path()})
 		.set("CL", " /MP")
-		.set("LIB", ";" + path_to_utf8(conf().paths().install_libs()), env::append)
+		.set("LIB", ";" + path_to_utf8(conf().path().install_libs()), env::append)
 		.set("PYTHONHOME", path_to_utf8(python::source_path()));
 
 
@@ -197,7 +197,7 @@ void pyqt::sip_build()
 		.binary(sip::sip_module_exe())
 		.arg("--sdist")
 		.arg("PyQt5.sip")
-		.cwd(conf().paths().cache())
+		.cwd(conf().path().cache())
 		.env(pyqt_env)));
 }
 
@@ -212,7 +212,7 @@ void pyqt::install_sip_file()
 	else
 	{
 		run_tool(pip(pip::install)
-			.file(conf().paths().cache() / sip_install_file()));
+			.file(conf().path().cache() / sip_install_file()));
 
 		installed_bypass.create();
 	}
@@ -221,7 +221,7 @@ void pyqt::install_sip_file()
 void pyqt::copy_files()
 {
 	const fs::path site_packages_pyqt = python::site_packages_path() / "PyQt5";
-	const fs::path pyqt_plugin = conf().paths().install_plugins() / "data" / "PyQt5";
+	const fs::path pyqt_plugin = conf().path().install_plugins() / "data" / "PyQt5";
 
 	op::copy_file_to_dir_if_better(cx(),
 		site_packages_pyqt / "__init__.py",

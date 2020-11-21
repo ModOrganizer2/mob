@@ -12,12 +12,12 @@ sip::sip()
 
 std::string sip::version()
 {
-	return conf::version_by_name("sip");
+	return conf().version().get("sip");
 }
 
 std::string sip::version_for_pyqt()
 {
-	return conf::version_by_name("pyqt_sip");
+	return conf().version().get("pyqt_sip");
 }
 
 bool sip::prebuilt()
@@ -27,7 +27,7 @@ bool sip::prebuilt()
 
 fs::path sip::source_path()
 {
-	return conf().paths().build() / ("sip-" + version());
+	return conf().path().build() / ("sip-" + version());
 }
 
 fs::path sip::sip_module_exe()
@@ -173,7 +173,7 @@ void sip::generate()
 
 fs::path sip::download_file()
 {
-	return conf().paths().cache() / ("sip-" + version() + ".tar.gz");
+	return conf().path().cache() / ("sip-" + version() + ".tar.gz");
 }
 
 }	// namespace

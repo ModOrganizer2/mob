@@ -7,6 +7,7 @@ class conf_section;
 class conf_global;
 class conf_prebuilt;
 class conf_transifex;
+class conf_versions;
 class conf_paths;
 
 class conf
@@ -16,13 +17,15 @@ class conf
 	friend class conf_global;
 	friend class conf_prebuilt;
 	friend class conf_transifex;
+	friend class conf_versions;
 	friend class conf_paths;
 
 public:
 	conf_global global();
 	conf_transifex transifex();
 	conf_prebuilt prebuilt();
-	conf_paths paths();
+	conf_versions version();
+	conf_paths path();
 
 	// this just forwards to conf_global, but it's used everywhere
 	//
@@ -34,15 +37,8 @@ public:
 	static bool bool_task_option_by_name(
 		const std::vector<std::string>& task_names, std::string_view name);
 
-	static std::string version_by_name(std::string_view name);
 	static fs::path tool_by_name(std::string_view name);
 
-	static bool ignore_uncommitted()
-	{
-		return bool_global_by_name("ignore_uncommitted");
-	}
-
-	static std::vector<std::string> format_options();
 
 	// only in conf.cpp
 	static std::string get_global(
@@ -66,6 +62,8 @@ public:
 		std::string_view task_name, std::string_view section,
 		std::string_view key, std::string_view value);
 
+	static std::vector<std::string> format_options();
+
 
 private:
 	using key_value_map = std::map<std::string, std::string, std::less<>>;
@@ -80,8 +78,6 @@ private:
 
 
 	// temp
-	static fs::path path_by_name(std::string_view name);
-
 	static std::string get_for_task(
 		const std::vector<std::string>& task_names,
 		std::string_view section, std::string_view key);
@@ -171,12 +167,23 @@ public:
 	bool clean()        const { return get<bool>("clean_task"); }
 	bool fetch()        const { return get<bool>("fetch_task"); }
 	bool build()        const { return get<bool>("build_task"); }
+
+	bool ignore_uncommitted() const
+	{
+		return get<bool>("ignore_uncommitted");
+	}
 };
 
 class conf_transifex : public conf_section
 {
 public:
 	conf_transifex();
+};
+
+class conf_versions : public conf_section
+{
+public:
+	conf_versions();
 };
 
 class conf_prebuilt : public conf_section

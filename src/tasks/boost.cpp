@@ -12,12 +12,12 @@ boost::boost()
 
 std::string boost::version()
 {
-	return conf::version_by_name("boost");
+	return conf().version().get("boost");
 }
 
 std::string boost::version_vs()
 {
-	return conf::version_by_name("boost_vs");
+	return conf().version().get("boost_vs");
 }
 
 bool boost::prebuilt()
@@ -28,7 +28,7 @@ bool boost::prebuilt()
 fs::path boost::source_path()
 {
 	return
-		conf().paths().build() /
+		conf().path().build() /
 		("boost_" + boost_version_no_tags_underscores());
 }
 
@@ -127,7 +127,7 @@ void boost::build_and_install_prebuilt()
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			lib_path(arch::x64) / python_dll(),
-			conf().paths().install_dlls());
+			conf().path().install_dlls());
 	});
 }
 
@@ -196,7 +196,7 @@ void boost::build_and_install_from_source()
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			lib_path(arch::x64) / python_dll(),
-			conf().paths().install_dlls());
+			conf().path().install_dlls());
 	});
 }
 

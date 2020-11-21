@@ -11,7 +11,7 @@ spdlog::spdlog()
 
 std::string spdlog::version()
 {
-	return conf::version_by_name("spdlog");
+	return conf().version().get("spdlog");
 }
 
 bool spdlog::prebuilt()
@@ -21,7 +21,7 @@ bool spdlog::prebuilt()
 
 fs::path spdlog::source_path()
 {
-	return conf().paths().build() / ("spdlog-" + version());
+	return conf().path().build() / ("spdlog-" + version());
 }
 
 void spdlog::do_clean(clean c)

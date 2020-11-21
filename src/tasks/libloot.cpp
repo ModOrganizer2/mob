@@ -11,17 +11,17 @@ libloot::libloot()
 
 std::string libloot::version()
 {
-	return conf::version_by_name("libloot");
+	return conf().version().get("libloot");
 }
 
 std::string libloot::hash()
 {
-	return conf::version_by_name("libloot_hash");
+	return conf().version().get("libloot_hash");
 }
 
 std::string libloot::branch()
 {
-	return conf::version_by_name("libloot_branch");
+	return conf().version().get("libloot_branch");
 }
 
 bool libloot::prebuilt()
@@ -31,7 +31,7 @@ bool libloot::prebuilt()
 
 fs::path libloot::source_path()
 {
-	return conf().paths().build() / release_name();
+	return conf().path().build() / release_name();
 }
 
 void libloot::do_clean(clean c)
@@ -71,7 +71,7 @@ void libloot::do_build_and_install()
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			source_path() / "loot.dll",
-			conf().paths().install_loot());
+			conf().path().install_loot());
 	});
 }
 

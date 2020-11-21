@@ -159,7 +159,7 @@ std::string translations::version()
 
 fs::path translations::source_path()
 {
-	return conf().paths().build() / "transifex-translations";
+	return conf().path().build() / "transifex-translations";
 }
 
 void translations::do_clean(clean c)
@@ -173,7 +173,7 @@ void translations::do_clean(clean c)
 		{
 			op::delete_file_glob(
 				cx(),
-				conf().paths().install_translations() / "*.qm",
+				conf().path().install_translations() / "*.qm",
 				op::optional);
 		}
 	});
@@ -235,7 +235,7 @@ void translations::do_build_and_install()
 	instrument<times::build>([&]
 	{
 		const auto root = source_path() / "translations";
-		const auto dest = conf().paths().install_translations();
+		const auto dest = conf().path().install_translations();
 		const projects ps(root);
 
 		op::create_directories(cx(), dest);

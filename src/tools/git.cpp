@@ -21,7 +21,7 @@ void git::delete_directory(const context& cx, const fs::path& p)
 	git g(no_op);
 	g.root(p);
 
-	if (!conf::ignore_uncommitted())
+	if (!conf().global().ignore_uncommitted())
 	{
 		if (g.has_uncommitted_changes())
 		{

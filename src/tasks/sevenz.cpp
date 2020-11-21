@@ -11,7 +11,7 @@ sevenz::sevenz()
 
 std::string sevenz::version()
 {
-	return conf::version_by_name("sevenz");
+	return conf().version().get("sevenz");
 }
 
 bool sevenz::prebuilt()
@@ -21,7 +21,7 @@ bool sevenz::prebuilt()
 
 fs::path sevenz::source_path()
 {
-	return conf().paths().build() / ("7zip-" + version());
+	return conf().path().build() / ("7zip-" + version());
 }
 
 void sevenz::do_clean(clean c)
@@ -72,7 +72,7 @@ void sevenz::do_build_and_install()
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			module_to_build() / "x64/7z.dll",
-			conf().paths().install_dlls());
+			conf().path().install_dlls());
 	});
 }
 

@@ -11,7 +11,7 @@ fmt::fmt()
 
 std::string fmt::version()
 {
-	return conf::version_by_name("fmt");
+	return conf().version().get("fmt");
 }
 
 bool fmt::prebuilt()
@@ -21,7 +21,7 @@ bool fmt::prebuilt()
 
 fs::path fmt::source_path()
 {
-	return conf().paths().build() / ("fmt-" + version());
+	return conf().path().build() / ("fmt-" + version());
 }
 
 fs::path fmt::solution_path()

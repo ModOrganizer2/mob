@@ -21,7 +21,7 @@ bool libffi::prebuilt()
 
 fs::path libffi::source_path()
 {
-	return conf().paths().build() / "libffi";
+	return conf().path().build() / "libffi";
 }
 
 void libffi::do_clean(clean c)

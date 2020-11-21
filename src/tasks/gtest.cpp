@@ -11,7 +11,7 @@ gtest::gtest()
 
 std::string gtest::version()
 {
-	return conf::version_by_name("gtest");
+	return conf().version().get("gtest");
 }
 
 bool gtest::prebuilt()
@@ -21,7 +21,7 @@ bool gtest::prebuilt()
 
 fs::path gtest::source_path()
 {
-	return conf().paths().build() / "googletest";
+	return conf().path().build() / "googletest";
 }
 
 void gtest::do_clean(clean c)

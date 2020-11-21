@@ -11,7 +11,7 @@ nmm::nmm()
 
 std::string nmm::version()
 {
-	return conf::version_by_name("nmm");
+	return conf().version().get("nmm");
 }
 
 bool nmm::prebuilt()
@@ -21,7 +21,7 @@ bool nmm::prebuilt()
 
 fs::path nmm::source_path()
 {
-	return conf().paths().build() / "Nexus-Mod-Manager";
+	return conf().path().build() / "Nexus-Mod-Manager";
 }
 
 void nmm::do_clean(clean c)

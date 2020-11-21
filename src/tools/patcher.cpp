@@ -37,7 +37,7 @@ patcher& patcher::root(const fs::path& dir)
 
 void patcher::do_run()
 {
-	const fs::path patches_root = conf().paths().patches() / task_;
+	const fs::path patches_root = conf().path().patches() / task_;
 
 	if (!fs::exists(patches_root))
 	{

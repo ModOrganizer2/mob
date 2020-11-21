@@ -29,8 +29,8 @@ void licenses::do_build_and_install()
 	instrument<times::install>([&]
 	{
 		op::copy_glob_to_dir_if_better(cx(),
-			conf().paths().licenses() / "*",
-			conf().paths().install_licenses(),
+			conf().path().licenses() / "*",
+			conf().path().install_licenses(),
 			op::copy_files|op::copy_dirs);
 	});
 }

@@ -175,7 +175,7 @@ int build_command::do_run()
 
 void build_command::create_prefix_ini()
 {
-	const auto prefix = conf().paths().prefix();
+	const auto prefix = conf().path().prefix();
 
 	// creating prefix
 	if (!exists(prefix))

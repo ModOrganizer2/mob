@@ -11,7 +11,7 @@ explorerpp::explorerpp()
 
 std::string explorerpp::version()
 {
-	return conf::version_by_name("explorerpp");
+	return conf().version().get("explorerpp");
 }
 
 bool explorerpp::prebuilt()
@@ -21,7 +21,7 @@ bool explorerpp::prebuilt()
 
 fs::path explorerpp::source_path()
 {
-	return conf().paths().build() / "explorer++";
+	return conf().path().build() / "explorer++";
 }
 
 void explorerpp::do_clean(clean c)
@@ -58,7 +58,7 @@ void explorerpp::do_fetch()
 	{
 		op::copy_glob_to_dir_if_better(cx(),
 			source_path() / "*",
-			conf().paths().install_bin() / "explorer++",
+			conf().path().install_bin() / "explorer++",
 			op::copy_files);
 	});
 }

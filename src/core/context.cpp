@@ -231,7 +231,7 @@ void context::set_log_file(const fs::path& p)
 	{
 		// creating directory
 		if (!exists(p.parent_path()))
-			op::create_directories(gcx(), mob::conf().paths().prefix());
+			op::create_directories(gcx(), mob::conf().path().prefix());
 
 		HANDLE h = CreateFileW(
 			p.native().c_str(), GENERIC_WRITE, FILE_SHARE_READ,

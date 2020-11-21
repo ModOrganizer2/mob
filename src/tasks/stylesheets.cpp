@@ -16,22 +16,22 @@ std::string stylesheets::version()
 
 std::string stylesheets::paper_lad_6788_version()
 {
-	return conf::version_by_name("ss_paper_lad_6788");
+	return conf().version().get("ss_paper_lad_6788");
 }
 
 std::string stylesheets::paper_automata_6788_version()
 {
-	return conf::version_by_name("ss_paper_automata_6788");
+	return conf().version().get("ss_paper_automata_6788");
 }
 
 std::string stylesheets::paper_mono_6788_version()
 {
-	return conf::version_by_name("ss_paper_mono_6788");
+	return conf().version().get("ss_paper_mono_6788");
 }
 
 std::string stylesheets::dark_mode_1809_6788_version()
 {
-	return conf::version_by_name("ss_dark_mode_1809_6788");
+	return conf().version().get("ss_dark_mode_1809_6788");
 }
 
 
@@ -87,7 +87,7 @@ void stylesheets::do_fetch()
 
 fs::path stylesheets::release_build_path(const release& r) const
 {
-	return conf().paths().build() / (r.name + "-v" + r.version);
+	return conf().path().build() / (r.name + "-v" + r.version);
 }
 
 downloader stylesheets::make_downloader_tool(
@@ -101,7 +101,7 @@ downloader stylesheets::make_downloader_tool(
 
 	return std::move(downloader(o)
 		.url(u)
-		.file(conf().paths().cache() / (r.name + ".7z")));
+		.file(conf().path().cache() / (r.name + ".7z")));
 }
 
 void stylesheets::do_build_and_install()
@@ -111,11 +111,11 @@ void stylesheets::do_build_and_install()
 		for (auto&& r : releases())
 		{
 			const fs::path src =
-				conf().paths().build() / (r.name + "-v" + r.version);
+				conf().path().build() / (r.name + "-v" + r.version);
 
 			op::copy_glob_to_dir_if_better(cx(),
 				src / "*",
-				conf().paths().install_stylesheets(),
+				conf().path().install_stylesheets(),
 				op::copy_files|op::copy_dirs);
 		}
 	});

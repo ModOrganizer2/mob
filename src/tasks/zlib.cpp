@@ -11,7 +11,7 @@ zlib::zlib()
 
 std::string zlib::version()
 {
-	return conf::version_by_name("zlib");
+	return conf().version().get("zlib");
 }
 
 bool zlib::prebuilt()
@@ -21,7 +21,7 @@ bool zlib::prebuilt()
 
 fs::path zlib::source_path()
 {
-	return conf().paths().build() / ("zlib-" + version());
+	return conf().path().build() / ("zlib-" + version());
 }
 
 void zlib::do_clean(clean c)

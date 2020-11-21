@@ -183,7 +183,7 @@ fs::path downloader::path_for_url(const mob::url& u) const
 		filename = u.filename();
 	}
 
-	return conf().paths().cache() / filename;
+	return conf().path().cache() / filename;
 }
 
 }	// namespace

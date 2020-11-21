@@ -28,27 +28,6 @@ bool bool_from_string(std::string_view s)
 }
 
 
-conf_global::conf_global()
-	: conf_section("global")
-{
-}
-
-conf_transifex::conf_transifex()
-	: conf_section("transifex")
-{
-}
-
-conf_prebuilt::conf_prebuilt()
-	: conf_section("prebuilt")
-{
-}
-
-conf_paths::conf_paths()
-	: conf_section("paths")
-{
-}
-
-
 conf_global conf::global()
 {
 	return {};
@@ -64,7 +43,12 @@ conf_prebuilt conf::prebuilt()
 	return {};
 }
 
-conf_paths conf::paths()
+conf_versions conf::version()
+{
+	return {};
+}
+
+conf_paths conf::path()
 {
 	return {};
 }
@@ -206,16 +190,6 @@ void conf::set_for_task(
 	get_global(section, key);
 
 	map_[std::string(task_name)][std::string(section)][std::string(key)] = value;
-}
-
-fs::path conf::path_by_name(std::string_view name)
-{
-	return get_global("paths", name);
-}
-
-std::string conf::version_by_name(std::string_view name)
-{
-	return get_global("versions", name);
 }
 
 fs::path conf::tool_by_name(std::string_view name)
@@ -495,7 +469,7 @@ bool try_qt_location(fs::path& check)
 
 fs::path find_qt()
 {
-	fs::path p = conf().paths().qt_install();
+	fs::path p = conf().path().qt_install();
 
 	if (!p.empty())
 	{
@@ -510,7 +484,7 @@ fs::path find_qt()
 
 	std::vector<fs::path> locations =
 	{
-		conf().paths().pf_x64(),
+		conf().path().pf_x64(),
 		"C:\\",
 		"D:\\"
 	};
@@ -872,7 +846,7 @@ void make_canonical_path(
 	std::string_view key,
 	const fs::path& default_parent, std::string_view default_dir)
 {
-	fs::path p = conf().paths().get(key);
+	fs::path p = conf().path().get(key);
 
 	if (p.empty())
 	{
@@ -1065,7 +1039,7 @@ fs::path find_iscc()
 	{
 		const fs::path inno = fmt::format("inno setup {}", v);
 
-		for (fs::path pf : {conf().paths().pf_x86(), conf().paths().pf_x64()})
+		for (fs::path pf : {conf().path().pf_x86(), conf().path().pf_x64()})
 		{
 			p = pf / inno / iscc;
 			if (fs::exists(p))
@@ -1087,10 +1061,10 @@ void init_options(
 	for (auto&& ini : inis)
 	{
 		// Check if the prefix is set by this ini file:
-		fs::path cprefix = add ? fs::path{} : conf().paths().prefix();
+		fs::path cprefix = add ? fs::path{} : conf().path().prefix();
 		parse_ini(ini, add);
 
-		if (conf().paths().prefix() != cprefix)
+		if (conf().path().prefix() != cprefix)
 			ini_prefix = ini;
 
 		add = false;
@@ -1141,7 +1115,7 @@ void init_options(
 
 	auto log_file = conf().global().log_file();
 	if (log_file.is_relative())
-		log_file = conf().paths().prefix() / log_file;
+		log_file = conf().path().prefix() / log_file;
 
 	context::set_log_file(log_file);
 
@@ -1154,7 +1128,7 @@ void init_options(
 		gcx().debug(context::conf, "  . {}", ini);
 
 	set_path_if_empty("third_party", find_third_party_directory);
-	this_env::prepend_to_path(conf().paths().third_party() / "bin");
+	this_env::prepend_to_path(conf().path().third_party() / "bin");
 
 	set_path_if_empty("pf_x86",     find_program_files_x86);
 	set_path_if_empty("pf_x64",     find_program_files_x64);
@@ -1168,41 +1142,41 @@ void init_options(
 	find_vcvars();
 	validate_qt();
 
-	this_env::append_to_path(conf().paths().get("qt_bin"));
+	this_env::append_to_path(conf().path().get("qt_bin"));
 
-	if (!conf().paths().prefix().empty())
+	if (!conf().path().prefix().empty())
 		make_canonical_path("prefix", ini_prefix.empty() ? fs::current_path() : ini_prefix.parent_path(), "");
 
-	make_canonical_path("cache",             conf().paths().prefix(), "downloads");
-	make_canonical_path("build",             conf().paths().prefix(), "build");
-	make_canonical_path("install",           conf().paths().prefix(), "install");
-	make_canonical_path("install_installer", conf().paths().install(), "installer");
-	make_canonical_path("install_bin",       conf().paths().install(), "bin");
-	make_canonical_path("install_libs",      conf().paths().install(), "libs");
-	make_canonical_path("install_pdbs",      conf().paths().install(), "pdb");
-	make_canonical_path("install_dlls",      conf().paths().install_bin(), "dlls");
-	make_canonical_path("install_loot",      conf().paths().install_bin(), "loot");
-	make_canonical_path("install_plugins",   conf().paths().install_bin(), "plugins");
-	make_canonical_path("install_licenses",  conf().paths().install_bin(), "licenses");
+	make_canonical_path("cache",             conf().path().prefix(), "downloads");
+	make_canonical_path("build",             conf().path().prefix(), "build");
+	make_canonical_path("install",           conf().path().prefix(), "install");
+	make_canonical_path("install_installer", conf().path().install(), "installer");
+	make_canonical_path("install_bin",       conf().path().install(), "bin");
+	make_canonical_path("install_libs",      conf().path().install(), "libs");
+	make_canonical_path("install_pdbs",      conf().path().install(), "pdb");
+	make_canonical_path("install_dlls",      conf().path().install_bin(), "dlls");
+	make_canonical_path("install_loot",      conf().path().install_bin(), "loot");
+	make_canonical_path("install_plugins",   conf().path().install_bin(), "plugins");
+	make_canonical_path("install_licenses",  conf().path().install_bin(), "licenses");
 
 	make_canonical_path(
 		"install_pythoncore",
-		conf().paths().install_dlls(), "pythoncore");
+		conf().path().install_dlls(), "pythoncore");
 
 	make_canonical_path(
 		"install_stylesheets",
-		conf().paths().install_bin(), "stylesheets");
+		conf().path().install_bin(), "stylesheets");
 
 	make_canonical_path(
 		"install_translations",
-		conf().paths().install_bin(), "resources/translations");
+		conf().path().install_bin(), "resources/translations");
 
 	conf::set_global("tools", "iscc", path_to_utf8(find_iscc()));
 }
 
 bool verify_options()
 {
-	if (conf().paths().prefix().empty())
+	if (conf().path().prefix().empty())
 	{
 		u8cerr
 			<< "missing prefix; either specify it the [paths] section of "
@@ -1212,9 +1186,9 @@ bool verify_options()
 	}
 
 	// will be created later if it doesn't exist
-	if (fs::exists(conf().paths().prefix()))
+	if (fs::exists(conf().path().prefix()))
 	{
-		if (fs::equivalent(conf().paths().prefix(), mob_exe_path().parent_path()))
+		if (fs::equivalent(conf().path().prefix(), mob_exe_path().parent_path()))
 		{
 			u8cerr
 				<< "the prefix cannot be where mob.exe is, there's already a "
@@ -1242,7 +1216,7 @@ void dump_available_options()
 
 fs::path make_temp_file()
 {
-	static fs::path dir = conf().paths().temp_dir();
+	static fs::path dir = conf().path().temp_dir();
 
 	wchar_t name[MAX_PATH + 1] = {};
 	if (GetTempFileNameW(dir.native().c_str(), L"mob", 0, name) == 0)
@@ -1257,6 +1231,10 @@ fs::path make_temp_file()
 }
 
 
+conf_global::conf_global()
+	: conf_section("global")
+{
+}
 
 void conf_global::set_output_log_level(const std::string& s)
 {
@@ -1310,6 +1288,26 @@ bool conf_global::dry() const
 void conf_global::set_dry(std::string_view s)
 {
 	g_dry = bool_from_string(s);
+}
+
+conf_transifex::conf_transifex()
+	: conf_section("transifex")
+{
+}
+
+conf_versions::conf_versions()
+	: conf_section("versions")
+{
+}
+
+conf_prebuilt::conf_prebuilt()
+	: conf_section("prebuilt")
+{
+}
+
+conf_paths::conf_paths()
+	: conf_section("paths")
+{
 }
 
 }	// namespace

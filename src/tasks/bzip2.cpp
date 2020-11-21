@@ -11,7 +11,7 @@ bzip2::bzip2()
 
 std::string bzip2::version()
 {
-	return conf::version_by_name("bzip2");
+	return conf().version().get("bzip2");
 }
 
 bool bzip2::prebuilt()
@@ -21,7 +21,7 @@ bool bzip2::prebuilt()
 
 fs::path bzip2::source_path()
 {
-	return conf().paths().build() / ("bzip2-" + version());
+	return conf().path().build() / ("bzip2-" + version());
 }
 
 void bzip2::do_clean(clean c)

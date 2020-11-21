@@ -83,22 +83,22 @@ fs::path nasm::binary()
 
 fs::path qt::installation_path()
 {
-	return conf().paths().qt_install();
+	return conf().path().qt_install();
 }
 
 fs::path qt::bin_path()
 {
-	return conf().paths().get("qt_bin");
+	return conf().path().get("qt_bin");
 }
 
 std::string qt::version()
 {
-	return conf::version_by_name("qt");
+	return conf().version().get("qt");
 }
 
 std::string qt::vs_version()
 {
-	return conf::version_by_name("qt_vs");
+	return conf().version().get("qt_vs");
 }
 
 
@@ -114,7 +114,7 @@ fs::path vs::devenv_binary()
 
 fs::path vs::installation_path()
 {
-	return conf().paths().get("vs");
+	return conf().path().get("vs");
 }
 
 fs::path vs::vswhere()
@@ -129,22 +129,22 @@ fs::path vs::vcvars()
 
 std::string vs::version()
 {
-	return conf::version_by_name("vs");
+	return conf().version().get("vs");
 }
 
 std::string vs::year()
 {
-	return conf::version_by_name("vs_year");
+	return conf().version().get("vs_year");
 }
 
 std::string vs::toolset()
 {
-	return conf::version_by_name("vs_toolset");
+	return conf().version().get("vs_toolset");
 }
 
 std::string vs::sdk()
 {
-	return conf::version_by_name("sdk");
+	return conf().version().get("sdk");
 }
 
 vs& vs::solution(const fs::path& sln)
@@ -404,7 +404,7 @@ void pip::do_download()
 		.arg("download")
 		.arg("--no-binary=:all:")
 		.arg("--no-deps")
-		.arg("-d", conf().paths().cache())
+		.arg("-d", conf().path().cache())
 		.arg(package_ + "==" + version_)
 		.env(this_env::get()
 			.set("PYTHONUTF8", "1")));
