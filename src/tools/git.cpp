@@ -742,19 +742,27 @@ void git_submodule_adder::stop()
 
 void git_submodule_adder::thread_fun()
 {
-	while (!quit_)
+	try
 	{
-		instrument<times::add_submodule_wait>([&]
+		while (!quit_)
 		{
-			std::unique_lock lk(sleeper_.m);
-			sleeper_.cv.wait(lk, [&]{ return sleeper_.ready; });
-			sleeper_.ready = false;
-		});
+			instrument<times::add_submodule_wait>([&]
+			{
+				std::unique_lock lk(sleeper_.m);
+				sleeper_.cv.wait(lk, [&]{ return sleeper_.ready; });
+				sleeper_.ready = false;
+			});
 
-		if (quit_)
-			break;
+			if (quit_)
+				break;
 
-		process();
+			process();
+		}
+	}
+	catch(bailed&)
+	{
+		// silent
+		return;
 	}
 }
 
