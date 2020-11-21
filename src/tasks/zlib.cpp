@@ -21,7 +21,7 @@ bool zlib::prebuilt()
 
 fs::path zlib::source_path()
 {
-	return paths::build() / ("zlib-" + version());
+	return conf().paths().build() / ("zlib-" + version());
 }
 
 void zlib::do_clean(clean c)

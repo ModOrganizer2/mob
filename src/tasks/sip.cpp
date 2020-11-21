@@ -27,7 +27,7 @@ bool sip::prebuilt()
 
 fs::path sip::source_path()
 {
-	return paths::build() / ("sip-" + version());
+	return conf().paths().build() / ("sip-" + version());
 }
 
 fs::path sip::sip_module_exe()
@@ -173,7 +173,7 @@ void sip::generate()
 
 fs::path sip::download_file()
 {
-	return paths::cache() / ("sip-" + version() + ".tar.gz");
+	return conf().paths().cache() / ("sip-" + version() + ".tar.gz");
 }
 
 }	// namespace

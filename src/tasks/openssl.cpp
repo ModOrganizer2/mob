@@ -22,7 +22,7 @@ bool openssl::prebuilt()
 
 fs::path openssl::source_path()
 {
-	return paths::build() / ("openssl-" + version());
+	return conf().paths().build() / ("openssl-" + version());
 }
 
 fs::path openssl::build_path()
@@ -187,9 +187,8 @@ void openssl::install_engines()
 
 void openssl::copy_files()
 {
-	copy_dlls_to(paths::install_bin());
-	copy_dlls_to(paths::install_dlls());
-	copy_pdbs_to(paths::install_pdbs());
+	copy_dlls_to(conf().paths().install_bin());
+	copy_pdbs_to(conf().paths().install_pdbs());
 }
 
 void openssl::copy_dlls_to(const fs::path& dir)

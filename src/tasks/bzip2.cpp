@@ -21,7 +21,7 @@ bool bzip2::prebuilt()
 
 fs::path bzip2::source_path()
 {
-	return paths::build() / ("bzip2-" + version());
+	return conf().paths().build() / ("bzip2-" + version());
 }
 
 void bzip2::do_clean(clean c)

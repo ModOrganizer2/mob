@@ -21,7 +21,7 @@ bool gtest::prebuilt()
 
 fs::path gtest::source_path()
 {
-	return paths::build() / "googletest";
+	return conf().paths().build() / "googletest";
 }
 
 void gtest::do_clean(clean c)

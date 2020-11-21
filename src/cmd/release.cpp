@@ -32,7 +32,7 @@ void release_command::make_bin()
 	u8cout << "making binary archive " << path_to_utf8(out) << "\n";
 
 	op::archive_from_glob(gcx(),
-		paths::install_bin() / "*", out, {"__pycache__"});
+		conf().paths().install_bin() / "*", out, {"__pycache__"});
 }
 
 void release_command::make_pdbs()
@@ -41,7 +41,7 @@ void release_command::make_pdbs()
 	u8cout << "making pdbs archive " << path_to_utf8(out) << "\n";
 
 	op::archive_from_glob(gcx(),
-		paths::install_pdbs() / "*", out, {"__pycache__"});
+		conf().paths().install_pdbs() / "*", out, {"__pycache__"});
 }
 
 void release_command::make_src()
@@ -101,7 +101,7 @@ void release_command::make_src()
 void release_command::make_installer()
 {
 	const auto file = "Mod.Organizer-" + version_ + ".exe";
-	const auto src = paths::install_installer() / file;
+	const auto src = conf().paths().install_installer() / file;
 	const auto dest = out_;
 
 	u8cout << "copying installer " << file << "\n";
@@ -354,11 +354,13 @@ void release_command::check_repos_for_branch()
 
 bool release_command::check_clean_prefix()
 {
-	if (!fs::exists(paths::prefix()))
+	const auto prefix = conf().paths().prefix();
+
+	if (!fs::exists(prefix))
 		return true;
 
 	u8cout
-		<< "prefix " << path_to_utf8(paths::prefix()) << " already exists\n"
+		<< "prefix " << path_to_utf8(prefix) << " already exists\n"
 		<< "delete? [Y/n] ";
 
 	std::wstring s;
@@ -367,7 +369,7 @@ bool release_command::check_clean_prefix()
 	if (s == L"" || s == L"y" || s == L"Y")
 	{
 		build_command::terminate_msbuild();
-		op::delete_directory(gcx(), paths::prefix());
+		op::delete_directory(gcx(), prefix);
 		return true;
 	}
 
@@ -397,11 +399,13 @@ void release_command::prepare()
 	}
 
 	// finding output path
+	const auto prefix = conf().paths().prefix();
 	out_ = fs::path(utf8_to_utf16(utf8out_));
+
 	if (out_.empty())
-		out_ = paths::prefix() / "releases" / version_;
+		out_ = prefix / "releases" / version_;
 	else if (out_.is_relative())
-		out_ = paths::prefix() / out_;
+		out_ = prefix / out_;
 }
 
 std::string release_command::do_doc()
@@ -432,7 +436,7 @@ std::string release_command::do_doc()
 
 std::string release_command::version_from_exe() const
 {
-	const auto exe = paths::install_bin() / "ModOrganizer.exe";
+	const auto exe = conf().paths().install_bin() / "ModOrganizer.exe";
 
 	// getting version info size
 	DWORD dummy = 0;

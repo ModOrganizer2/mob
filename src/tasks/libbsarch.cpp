@@ -21,7 +21,7 @@ bool libbsarch::prebuilt()
 
 fs::path libbsarch::source_path()
 {
-	return paths::build() / dir_name();
+	return conf().paths().build() / dir_name();
 }
 
 void libbsarch::do_clean(clean c)
@@ -61,7 +61,7 @@ void libbsarch::do_build_and_install()
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			source_path() / "libbsarch.dll",
-			paths::install_dlls());
+			conf().paths().install_dlls());
 	});
 }
 

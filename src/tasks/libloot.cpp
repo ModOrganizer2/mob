@@ -31,7 +31,7 @@ bool libloot::prebuilt()
 
 fs::path libloot::source_path()
 {
-	return paths::build() / release_name();
+	return conf().paths().build() / release_name();
 }
 
 void libloot::do_clean(clean c)
@@ -71,7 +71,7 @@ void libloot::do_build_and_install()
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			source_path() / "loot.dll",
-			paths::install_loot());
+			conf().paths().install_loot());
 	});
 }
 

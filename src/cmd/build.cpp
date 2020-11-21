@@ -175,11 +175,13 @@ int build_command::do_run()
 
 void build_command::create_prefix_ini()
 {
-	// creating prefix
-	if (!exists(paths::prefix()))
-		op::create_directories(gcx(), paths::prefix());
+	const auto prefix = conf().paths().prefix();
 
-	const auto ini = paths::prefix() / default_ini_filename();
+	// creating prefix
+	if (!exists(prefix))
+		op::create_directories(gcx(), prefix);
+
+	const auto ini = prefix / default_ini_filename();
 	if (!exists(ini))
 	{
 		std::ofstream(ini)

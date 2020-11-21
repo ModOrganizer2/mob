@@ -32,7 +32,7 @@ void installer::do_clean(clean c)
 			git::delete_directory(cx(), source_path());
 
 		if (is_set(c, clean::rebuild))
-			op::delete_directory(cx(), paths::install_installer());
+			op::delete_directory(cx(), conf().paths().install_installer());
 	});
 }
 

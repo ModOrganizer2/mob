@@ -685,13 +685,13 @@ void check(const context& cx, const fs::path& p, flags f)
 		return true;
 	};
 
-	if (is_inside(p, paths::prefix()))
+	if (is_inside(p, conf().paths().prefix()))
 		return;
 
-	if (is_inside(p, paths::temp_dir()))
+	if (is_inside(p, conf().paths().temp_dir()))
 		return;
 
-	if (is_inside(p, paths::licenses()))
+	if (is_inside(p, conf().paths().licenses()))
 		return;
 
 	cx.bail_out(context::fs, "path {} is outside prefix", p);

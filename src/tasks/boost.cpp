@@ -27,7 +27,9 @@ bool boost::prebuilt()
 
 fs::path boost::source_path()
 {
-	return paths::build() / ("boost_" + boost_version_no_tags_underscores());
+	return
+		conf().paths().build() /
+		("boost_" + boost_version_no_tags_underscores());
 }
 
 fs::path boost::lib_path(arch a)
@@ -125,7 +127,7 @@ void boost::build_and_install_prebuilt()
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			lib_path(arch::x64) / python_dll(),
-			paths::install_bin());
+			conf().paths().install_dlls());
 	});
 }
 
@@ -194,7 +196,7 @@ void boost::build_and_install_from_source()
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			lib_path(arch::x64) / python_dll(),
-			paths::install_bin());
+			conf().paths().install_dlls());
 	});
 }
 

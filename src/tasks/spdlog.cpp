@@ -21,7 +21,7 @@ bool spdlog::prebuilt()
 
 fs::path spdlog::source_path()
 {
-	return paths::build() / ("spdlog-" + version());
+	return conf().paths().build() / ("spdlog-" + version());
 }
 
 void spdlog::do_clean(clean c)

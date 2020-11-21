@@ -21,7 +21,7 @@ bool lz4::prebuilt()
 
 fs::path lz4::source_path()
 {
-	return paths::build() / ("lz4-" + version());
+	return conf().paths().build() / ("lz4-" + version());
 }
 
 void lz4::do_clean(clean c)
@@ -93,11 +93,11 @@ void lz4::build_and_install_prebuilt()
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			source_path() / "bin" / "liblz4.pdb",
-			paths::install_pdbs());
+			conf().paths().install_pdbs());
 
 		op::copy_file_to_dir_if_better(cx(),
 			source_path() / "bin" / "liblz4.dll",
-			paths::install_dlls());
+			conf().paths().install_dlls());
 	});
 }
 
@@ -131,11 +131,11 @@ void lz4::build_and_install_from_source()
 
 		op::copy_file_to_dir_if_better(cx(),
 			out_dir() / "liblz4.dll",
-			paths::install_dlls());
+			conf().paths().install_dlls());
 
 		op::copy_file_to_dir_if_better(cx(),
 			out_dir() / "liblz4.pdb",
-			paths::install_pdbs());
+			conf().paths().install_pdbs());
 	});
 }
 

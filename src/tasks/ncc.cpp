@@ -22,7 +22,7 @@ bool ncc::prebuilt()
 
 fs::path ncc::source_path()
 {
-	return paths::build() / "NexusClientCli";
+	return conf().paths().build() / "NexusClientCli";
 }
 
 void ncc::do_clean(clean c)
@@ -68,7 +68,7 @@ void ncc::do_build_and_install()
 		run_tool(process_runner(process()
 			.binary(publish)
 			.stderr_level(context::level::trace)
-			.arg(paths::install_bin())));
+			.arg(conf().paths().install_bin())));
 	});
 }
 

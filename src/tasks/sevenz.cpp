@@ -21,7 +21,7 @@ bool sevenz::prebuilt()
 
 fs::path sevenz::source_path()
 {
-	return paths::build() / ("7zip-" + version());
+	return conf().paths().build() / ("7zip-" + version());
 }
 
 void sevenz::do_clean(clean c)
@@ -72,7 +72,7 @@ void sevenz::do_build_and_install()
 	{
 		op::copy_file_to_dir_if_better(cx(),
 			module_to_build() / "x64/7z.dll",
-			paths::install_dlls());
+			conf().paths().install_dlls());
 	});
 }
 

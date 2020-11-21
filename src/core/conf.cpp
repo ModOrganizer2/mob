@@ -40,6 +40,11 @@ conf_prebuilt::conf_prebuilt()
 {
 }
 
+conf_paths::conf_paths()
+	: conf_section("paths")
+{
+}
+
 
 conf_global conf::global()
 {
@@ -52,6 +57,11 @@ conf_transifex conf::transifex()
 }
 
 conf_prebuilt conf::prebuilt()
+{
+	return {};
+}
+
+conf_paths conf::paths()
 {
 	return {};
 }
@@ -532,7 +542,7 @@ fs::path find_qt()
 
 	std::vector<fs::path> locations =
 	{
-		paths::pf_x64(),
+		conf().paths().pf_x64(),
 		"C:\\",
 		"D:\\"
 	};
@@ -1082,7 +1092,7 @@ fs::path find_iscc()
 	{
 		const fs::path inno = fmt::format("inno setup {}", v);
 
-		for (fs::path pf : {paths::pf_x86(), paths::pf_x64()})
+		for (fs::path pf : {conf().paths().pf_x86(), conf().paths().pf_x64()})
 		{
 			p = pf / inno / iscc;
 			if (fs::exists(p))
@@ -1104,10 +1114,10 @@ void init_options(
 	for (auto&& ini : inis)
 	{
 		// Check if the prefix is set by this ini file:
-		fs::path cprefix = add ? fs::path{} : paths::prefix();
+		fs::path cprefix = add ? fs::path{} : conf().paths().prefix();
 		parse_ini(ini, add);
 
-		if (paths::prefix() != cprefix)
+		if (conf().paths().prefix() != cprefix)
 			ini_prefix = ini;
 
 		add = false;
@@ -1158,7 +1168,7 @@ void init_options(
 
 	auto log_file = conf::log_file();
 	if (log_file.is_relative())
-		log_file = paths::prefix() / log_file;
+		log_file = conf().paths().prefix() / log_file;
 
 	context::set_log_file(log_file);
 
@@ -1171,7 +1181,7 @@ void init_options(
 		gcx().debug(context::conf, "  . {}", ini);
 
 	set_path_if_empty("third_party", find_third_party_directory);
-	this_env::prepend_to_path(paths::third_party() / "bin");
+	this_env::prepend_to_path(conf().paths().third_party() / "bin");
 
 	set_path_if_empty("pf_x86",     find_program_files_x86);
 	set_path_if_empty("pf_x64",     find_program_files_x64);
@@ -1187,39 +1197,39 @@ void init_options(
 
 	this_env::append_to_path(conf::path_by_name("qt_bin"));
 
-	if (!paths::prefix().empty())
+	if (!conf().paths().prefix().empty())
 		make_canonical_path("prefix", ini_prefix.empty() ? fs::current_path() : ini_prefix.parent_path(), "");
 
-	make_canonical_path("cache",             paths::prefix(), "downloads");
-	make_canonical_path("build",             paths::prefix(), "build");
-	make_canonical_path("install",           paths::prefix(), "install");
-	make_canonical_path("install_installer", paths::install(), "installer");
-	make_canonical_path("install_bin",       paths::install(), "bin");
-	make_canonical_path("install_libs",      paths::install(), "libs");
-	make_canonical_path("install_pdbs",      paths::install(), "pdb");
-	make_canonical_path("install_dlls",      paths::install_bin(), "dlls");
-	make_canonical_path("install_loot",      paths::install_bin(), "loot");
-	make_canonical_path("install_plugins",   paths::install_bin(), "plugins");
-	make_canonical_path("install_licenses",  paths::install_bin(), "licenses");
+	make_canonical_path("cache",             conf().paths().prefix(), "downloads");
+	make_canonical_path("build",             conf().paths().prefix(), "build");
+	make_canonical_path("install",           conf().paths().prefix(), "install");
+	make_canonical_path("install_installer", conf().paths().install(), "installer");
+	make_canonical_path("install_bin",       conf().paths().install(), "bin");
+	make_canonical_path("install_libs",      conf().paths().install(), "libs");
+	make_canonical_path("install_pdbs",      conf().paths().install(), "pdb");
+	make_canonical_path("install_dlls",      conf().paths().install_bin(), "dlls");
+	make_canonical_path("install_loot",      conf().paths().install_bin(), "loot");
+	make_canonical_path("install_plugins",   conf().paths().install_bin(), "plugins");
+	make_canonical_path("install_licenses",  conf().paths().install_bin(), "licenses");
 
 	make_canonical_path(
 		"install_pythoncore",
-		paths::install_bin(), "pythoncore");
+		conf().paths().install_dlls(), "pythoncore");
 
 	make_canonical_path(
 		"install_stylesheets",
-		paths::install_bin(), "stylesheets");
+		conf().paths().install_bin(), "stylesheets");
 
 	make_canonical_path(
 		"install_translations",
-		paths::install_bin(), "translations");
+		conf().paths().install_bin(), "resources/translations");
 
 	conf::set_global("tools", "iscc", path_to_utf8(find_iscc()));
 }
 
 bool verify_options()
 {
-	if (paths::prefix().empty())
+	if (conf().paths().prefix().empty())
 	{
 		u8cerr
 			<< "missing prefix; either specify it the [paths] section of "
@@ -1229,9 +1239,9 @@ bool verify_options()
 	}
 
 	// will be created later if it doesn't exist
-	if (fs::exists(paths::prefix()))
+	if (fs::exists(conf().paths().prefix()))
 	{
-		if (fs::equivalent(paths::prefix(), mob_exe_path().parent_path()))
+		if (fs::equivalent(conf().paths().prefix(), mob_exe_path().parent_path()))
 		{
 			u8cerr
 				<< "the prefix cannot be where mob.exe is, there's already a "
@@ -1259,7 +1269,7 @@ void dump_available_options()
 
 fs::path make_temp_file()
 {
-	static fs::path dir = paths::temp_dir();
+	static fs::path dir = conf().paths().temp_dir();
 
 	wchar_t name[MAX_PATH + 1] = {};
 	if (GetTempFileNameW(dir.native().c_str(), L"mob", 0, name) == 0)

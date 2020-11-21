@@ -21,7 +21,7 @@ bool boost_di::prebuilt()
 
 fs::path boost_di::source_path()
 {
-	return paths::build() / "di";
+	return conf().paths().build() / "di";
 }
 
 void boost_di::do_clean(clean c)

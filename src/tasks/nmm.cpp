@@ -21,7 +21,7 @@ bool nmm::prebuilt()
 
 fs::path nmm::source_path()
 {
-	return paths::build() / "Nexus-Mod-Manager";
+	return conf().paths().build() / "Nexus-Mod-Manager";
 }
 
 void nmm::do_clean(clean c)

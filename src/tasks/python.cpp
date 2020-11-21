@@ -55,7 +55,7 @@ std::string python::version_without_v()
 
 fs::path python::source_path()
 {
-	return paths::build() / ("python-" + version_without_v());
+	return conf().paths().build() / ("python-" + version_without_v());
 }
 
 fs::path python::build_path()
@@ -205,30 +205,30 @@ void python::copy_files()
 {
 	op::copy_glob_to_dir_if_better(cx(),
 		build_path() / "*.lib",
-		paths::install_libs(),
+		conf().paths().install_libs(),
 		op::copy_files);
 
 	op::copy_glob_to_dir_if_better(cx(),
 		build_path() / "libffi*.dll",
-		paths::install_bin(),
+		conf().paths().install_dlls(),
 		op::copy_files);
 
 	op::copy_file_to_dir_if_better(cx(),
 		build_path() / ("python" + version_for_dll() + ".dll"),
-		paths::install_bin());
+		conf().paths().install_dlls());
 
 	op::copy_file_to_dir_if_better(cx(),
 		build_path() / ("python" + version_for_dll() + ".pdb"),
-		paths::install_pdbs());
+		conf().paths().install_pdbs());
 
 	op::copy_glob_to_dir_if_better(cx(),
 		build_path() / "pythoncore/*.pyd",
-		paths::install_pythoncore(),
+		conf().paths().install_pythoncore(),
 		op::copy_files);
 
 	op::copy_file_to_file_if_better(cx(),
 		build_path() / "pythoncore" / ("python" + version_for_dll() + ".zip"),
-		paths::install_bin() / "pythoncore.zip",
+		conf().paths().install_dlls() / "pythoncore.zip",
 		op::copy_files);
 }
 

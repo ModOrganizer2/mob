@@ -87,7 +87,7 @@ void stylesheets::do_fetch()
 
 fs::path stylesheets::release_build_path(const release& r) const
 {
-	return paths::build() / (r.name + "-v" + r.version);
+	return conf().paths().build() / (r.name + "-v" + r.version);
 }
 
 downloader stylesheets::make_downloader_tool(
@@ -101,7 +101,7 @@ downloader stylesheets::make_downloader_tool(
 
 	return std::move(downloader(o)
 		.url(u)
-		.file(paths::cache() / (r.name + ".7z")));
+		.file(conf().paths().cache() / (r.name + ".7z")));
 }
 
 void stylesheets::do_build_and_install()
@@ -110,11 +110,12 @@ void stylesheets::do_build_and_install()
 	{
 		for (auto&& r : releases())
 		{
-			const fs::path src = paths::build() / (r.name + "-v" + r.version);
+			const fs::path src =
+				conf().paths().build() / (r.name + "-v" + r.version);
 
 			op::copy_glob_to_dir_if_better(cx(),
 				src / "*",
-				paths::install_stylesheets(),
+				conf().paths().install_stylesheets(),
 				op::copy_files|op::copy_dirs);
 		}
 	});

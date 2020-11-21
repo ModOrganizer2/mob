@@ -404,7 +404,7 @@ void pip::do_download()
 		.arg("download")
 		.arg("--no-binary=:all:")
 		.arg("--no-deps")
-		.arg("-d", paths::cache())
+		.arg("-d", conf().paths().cache())
 		.arg(package_ + "==" + version_)
 		.env(this_env::get()
 			.set("PYTHONUTF8", "1")));

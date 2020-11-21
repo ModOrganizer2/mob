@@ -21,7 +21,7 @@ bool fmt::prebuilt()
 
 fs::path fmt::source_path()
 {
-	return paths::build() / ("fmt-" + version());
+	return conf().paths().build() / ("fmt-" + version());
 }
 
 fs::path fmt::solution_path()

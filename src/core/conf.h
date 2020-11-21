@@ -6,6 +6,7 @@ namespace mob
 class conf_global;
 class conf_prebuilt;
 class conf_transifex;
+class conf_paths;
 
 class conf
 {
@@ -13,6 +14,7 @@ public:
 	conf_global global();
 	conf_transifex transifex();
 	conf_prebuilt prebuilt();
+	conf_paths paths();
 
 
 	static std::string task_option_by_name(
@@ -98,40 +100,6 @@ private:
 };
 
 
-struct paths
-{
-#define VALUE(NAME) \
-	static fs::path NAME() { return conf::path_by_name(#NAME); }
-
-	VALUE(third_party);
-	VALUE(prefix);
-	VALUE(cache);
-	VALUE(patches);
-	VALUE(licenses);
-	VALUE(build);
-
-	VALUE(install);
-	VALUE(install_installer);
-	VALUE(install_bin);
-	VALUE(install_libs);
-	VALUE(install_pdbs);
-
-	VALUE(install_dlls);
-	VALUE(install_loot);
-	VALUE(install_plugins);
-	VALUE(install_stylesheets);
-	VALUE(install_licenses);
-	VALUE(install_pythoncore);
-	VALUE(install_translations);
-
-	VALUE(pf_x86);
-	VALUE(pf_x64);
-	VALUE(temp_dir);
-
-#undef VALUE
-};
-
-
 std::string default_ini_filename();
 
 std::vector<fs::path> find_inis(
@@ -210,6 +178,43 @@ public:
 	{
 		return get<bool>(task_name);
 	}
+};
+
+
+class conf_paths : public conf_section
+{
+public:
+	conf_paths();
+
+#define VALUE(NAME) \
+	static fs::path NAME() { return conf::path_by_name(#NAME); }
+
+	VALUE(third_party);
+	VALUE(prefix);
+	VALUE(cache);
+	VALUE(patches);
+	VALUE(licenses);
+	VALUE(build);
+
+	VALUE(install);
+	VALUE(install_installer);
+	VALUE(install_bin);
+	VALUE(install_libs);
+	VALUE(install_pdbs);
+
+	VALUE(install_dlls);
+	VALUE(install_loot);
+	VALUE(install_plugins);
+	VALUE(install_stylesheets);
+	VALUE(install_licenses);
+	VALUE(install_pythoncore);
+	VALUE(install_translations);
+
+	VALUE(pf_x86);
+	VALUE(pf_x64);
+	VALUE(temp_dir);
+
+#undef VALUE
 };
 
 }	// namespace

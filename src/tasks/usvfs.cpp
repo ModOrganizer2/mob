@@ -21,7 +21,7 @@ bool usvfs::prebuilt()
 
 fs::path usvfs::source_path()
 {
-	return paths::build() / "usvfs";
+	return conf().paths().build() / "usvfs";
 }
 
 void usvfs::do_clean(clean c)
@@ -140,25 +140,26 @@ void usvfs::download_from_appveyor(arch a)
 void usvfs::copy_prebuilt(arch a)
 {
 	const std::string dir = prebuilt_directory_name(a);
+	const auto paths = conf().paths();
 
 	op::copy_glob_to_dir_if_better(cx(),
-		paths::build() / dir / "*.pdb",
-		paths::install_pdbs(),
+		paths.build() / dir / "*.pdb",
+		paths.install_pdbs(),
 		op::copy_files);
 
 	op::copy_glob_to_dir_if_better(cx(),
-		paths::build() / dir / "*.lib",
-		paths::install_libs(),
+		paths.build() / dir / "*.lib",
+		paths.install_libs(),
 		op::copy_files);
 
 	op::copy_glob_to_dir_if_better(cx(),
-		paths::build() / dir / "*.dll",
-		paths::install_bin(),
+		paths.build() / dir / "*.dll",
+		paths.install_bin(),
 		op::copy_files);
 
 	op::copy_glob_to_dir_if_better(cx(),
-		paths::build() / dir / "*.exe",
-		paths::install_bin(),
+		paths.build() / dir / "*.exe",
+		paths.install_bin(),
 		op::copy_files);
 }
 
@@ -208,7 +209,7 @@ usvfs::create_appveyor_downloaders(arch a, downloader::ops o) const
 		auto dl = std::make_shared<downloader>(o);
 
 		dl->url(u);
-		dl->file(paths::build() / dir / u.filename());
+		dl->file(conf().paths().build() / dir / u.filename());
 
 		return dl;
 	};
