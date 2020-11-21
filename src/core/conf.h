@@ -24,6 +24,9 @@ public:
 	conf_prebuilt prebuilt();
 	conf_paths paths();
 
+	// this just forwards to conf_global, but it's used everywhere
+	//
+	static bool dry();
 
 	static std::string task_option_by_name(
 		const std::vector<std::string>& task_names, std::string_view name);
@@ -33,15 +36,6 @@ public:
 
 	static std::string version_by_name(std::string_view name);
 	static fs::path tool_by_name(std::string_view name);
-
-	static int output_log_level() { return output_log_level_; }
-	static void set_output_log_level(const std::string& s);
-
-	static int file_log_level()   { return file_log_level_; }
-	static void set_file_log_level(const std::string& s);
-
-	static bool dry() { return dry_; }
-	static void set_dry(std::string_view s);
 
 	static fs::path log_file() { return global_by_name("log_file"); }
 	static bool redownload()   { return bool_global_by_name("redownload"); }
@@ -88,11 +82,6 @@ private:
 	using task_map = std::map<std::string, section_map, std::less<>>;
 
 	static task_map map_;
-
-	// special cases to avoid string manipulations
-	static int output_log_level_;
-	static int file_log_level_;
-	static bool dry_;
 
 	static std::optional<std::string> find_for_task(
 		std::string_view task_name,
@@ -172,6 +161,15 @@ class conf_global : public conf_section
 {
 public:
 	conf_global();
+
+	int output_log_level() const;
+	void set_output_log_level(const std::string& s);
+
+	int file_log_level() const;
+	void set_file_log_level(const std::string& s);
+
+	bool dry() const;
+	void set_dry(std::string_view s);
 };
 
 class conf_transifex : public conf_section

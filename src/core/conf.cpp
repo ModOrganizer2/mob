@@ -9,10 +9,13 @@
 namespace mob
 {
 
+
 conf::task_map conf::map_;
-int conf::output_log_level_ = 3;
-int conf::file_log_level_ = 5;
-bool conf::dry_ = false;
+
+// special cases to avoid string manipulations
+static int g_output_log_level = 3;
+static int g_file_log_level = 5;
+static bool g_dry = false;
 
 std::string default_ini_filename()
 {
@@ -244,50 +247,15 @@ bool conf::bool_task_option_by_name(
 	return bool_from_string(s);
 }
 
-void conf::set_output_log_level(const std::string& s)
+bool conf::dry()
 {
-	if (s.empty())
-		return;
-
-	try
-	{
-		const auto i = std::stoi(s);
-
-		if (i < 0 || i > 6)
-			gcx().bail_out(context::generic, "bad output log level {}", i);
-
-		output_log_level_ = i;
-	}
-	catch(std::exception&)
-	{
-		gcx().bail_out(context::generic, "bad output log level {}", s);
-	}
+	return conf().global().dry();
 }
 
-void conf::set_file_log_level(const std::string& s)
+int conf_global::output_log_level() const
 {
-	if (s.empty())
-		return;
-
-	try
-	{
-		const auto i = std::stoi(s);
-		if (i < 0 || i > 6)
-			gcx().bail_out(context::generic, "bad file log level {}", i);
-
-		file_log_level_ = i;
-	}
-	catch(std::exception&)
-	{
-		gcx().bail_out(context::generic, "bad file log level {}", s);
-	}
+	return g_output_log_level;
 }
-
-void conf::set_dry(std::string_view s)
-{
-	dry_ = bool_from_string(s);
-}
-
 
 std::vector<std::string> conf::format_options()
 {
@@ -924,9 +892,14 @@ void make_canonical_path(
 
 void set_special_options()
 {
-	conf::set_output_log_level(conf::get_global("global", "output_log_level"));
-	conf::set_file_log_level(conf::get_global("global", "file_log_level"));
-	conf::set_dry(conf::get_global("global", "dry"));
+	conf().global().set_output_log_level(
+		conf::get_global("global", "output_log_level"));
+
+	conf().global().set_file_log_level(
+		conf::get_global("global", "file_log_level"));
+
+	conf().global().set_dry(
+		conf::get_global("global", "dry"));
 }
 
 std::vector<fs::path> find_inis(
@@ -1281,6 +1254,62 @@ fs::path make_temp_file()
 	}
 
 	return dir / name;
+}
+
+
+
+void conf_global::set_output_log_level(const std::string& s)
+{
+	if (s.empty())
+		return;
+
+	try
+	{
+		const auto i = std::stoi(s);
+
+		if (i < 0 || i > 6)
+			gcx().bail_out(context::generic, "bad output log level {}", i);
+
+		g_output_log_level = i;
+	}
+	catch(std::exception&)
+	{
+		gcx().bail_out(context::generic, "bad output log level {}", s);
+	}
+}
+
+int conf_global::file_log_level() const
+{
+	return g_file_log_level;
+}
+
+void conf_global::set_file_log_level(const std::string& s)
+{
+	if (s.empty())
+		return;
+
+	try
+	{
+		const auto i = std::stoi(s);
+		if (i < 0 || i > 6)
+			gcx().bail_out(context::generic, "bad file log level {}", i);
+
+		g_file_log_level = i;
+	}
+	catch(std::exception&)
+	{
+		gcx().bail_out(context::generic, "bad file log level {}", s);
+	}
+}
+
+bool conf_global::dry() const
+{
+	return g_dry;
+}
+
+void conf_global::set_dry(std::string_view s)
+{
+	g_dry = bool_from_string(s);
 }
 
 }	// namespace

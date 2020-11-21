@@ -192,7 +192,9 @@ bool log_enabled(context::level lv, int conf_lv)
 //
 bool should_dump_logs()
 {
-	return log_enabled(context::level::debug, conf::output_log_level());
+	return log_enabled(
+		context::level::debug,
+		conf().global().output_log_level());
 }
 
 
@@ -216,8 +218,9 @@ bool context::enabled(level lv)
 {
 	// a log level is enabled if it's included in either the console or the log
 	// file, which have independent levels
-	const int minimum_log_level =
-		std::max(conf::output_log_level(), conf::file_log_level());
+	const int minimum_log_level = std::max(
+		mob::conf().global().output_log_level(),
+		mob::conf().global().file_log_level());
 
 	return log_enabled(lv, minimum_log_level);
 }
@@ -277,7 +280,7 @@ void context::emit_log(level lv, std::string_view utf8) const
 	std::scoped_lock lock(g_mutex);
 
 	// console
-	if (log_enabled(lv, conf::output_log_level()))
+	if (log_enabled(lv, mob::conf().global().output_log_level()))
 	{
 		// will revert color in dtor
 		console_color c = level_color(lv);
@@ -285,7 +288,7 @@ void context::emit_log(level lv, std::string_view utf8) const
 	}
 
 	// log file
-	if (g_log_file && log_enabled(lv, conf::file_log_level()))
+	if (g_log_file && log_enabled(lv, mob::conf().global().file_log_level()))
 	{
 		DWORD written = 0;
 
