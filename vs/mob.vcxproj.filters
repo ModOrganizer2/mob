@@ -195,6 +195,9 @@
     <ClCompile Include="..\src\core\pipe.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\core\ini.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
@@ -255,6 +258,9 @@
       <Filter>src\utility</Filter>
     </ClInclude>
     <ClInclude Include="..\src\core\pipe.h">
+      <Filter>src\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\core\ini.h">
       <Filter>src\core</Filter>
     </ClInclude>
   </ItemGroup>

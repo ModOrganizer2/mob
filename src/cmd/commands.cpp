@@ -3,6 +3,7 @@
 #include "../utility.h"
 #include "../net.h"
 #include "../core/conf.h"
+#include "../core/ini.h"
 #include "../tasks/tasks.h"
 #include "../tools/tools.h"
 #include "../utility/threading.h"

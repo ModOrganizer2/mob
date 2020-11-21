@@ -69,6 +69,7 @@
     <ClCompile Include="..\src\core\conf.cpp" />
     <ClCompile Include="..\src\core\context.cpp" />
     <ClCompile Include="..\src\core\env.cpp" />
+    <ClCompile Include="..\src\core\ini.cpp" />
     <ClCompile Include="..\src\core\op.cpp" />
     <ClCompile Include="..\src\core\pipe.cpp" />
     <ClCompile Include="..\src\core\process.cpp" />
@@ -125,6 +126,7 @@
     <ClInclude Include="..\src\core\conf.h" />
     <ClInclude Include="..\src\core\context.h" />
     <ClInclude Include="..\src\core\env.h" />
+    <ClInclude Include="..\src\core\ini.h" />
     <ClInclude Include="..\src\core\op.h" />
     <ClInclude Include="..\src\core\pipe.h" />
     <ClInclude Include="..\src\core\process.h" />
