@@ -22,7 +22,7 @@ std::string boost::version_vs()
 
 bool boost::prebuilt()
 {
-	return conf::prebuilt_by_name("boost");
+	return conf().prebuilt().get<bool>("boost");
 }
 
 fs::path boost::source_path()

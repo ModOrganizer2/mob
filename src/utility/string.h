@@ -18,7 +18,7 @@ enum class encodings
 // case insensitive, underscores and dashes are equivalent; gets converted to
 // a regex where * becomes .*
 //
-bool glob_match(const std::string& pattern, const std::string& s);
+bool glob_match(std::string_view pattern, std::string_view s);
 
 // replaces all instances of `from` by `to`, returns a copy
 //

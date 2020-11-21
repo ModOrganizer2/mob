@@ -22,7 +22,7 @@ std::string pyqt::builder_version()
 
 bool pyqt::prebuilt()
 {
-	return conf::prebuilt_by_name("pyqt");
+	return conf().prebuilt().use_prebuilt("pyqt");
 }
 
 fs::path pyqt::source_path()

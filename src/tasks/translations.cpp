@@ -114,7 +114,7 @@ translations::projects::lang translations::projects::handle_ts_file(
 	if (gamebryo)
 	{
 		const fs::path gamebryo_dir =
-			conf::get_global("transifex", "project") + "." +
+			conf().transifex().get("project") + "." +
 			"game_gamebryo";
 
 		const auto gb_f = root_ / gamebryo_dir / f.filename();
@@ -182,11 +182,11 @@ void translations::do_fetch()
 	instrument<times::fetch>([&]
 	{
 		const url u =
-			conf::get_global("transifex", "url") + "/" +
-			conf::get_global("transifex", "team") + "/" +
-			conf::get_global("transifex", "project");
+			conf().transifex().get("url") + "/" +
+			conf().transifex().get("team") + "/" +
+			conf().transifex().get("project");
 
-		const std::string key = conf::get_global("transifex", "key");
+		const std::string key = conf().transifex().get("key");
 
 		if (key.empty() && !this_env::get_opt("TX_TOKEN"))
 		{
@@ -199,7 +199,7 @@ void translations::do_fetch()
 		run_tool(transifex(transifex::init)
 			.root(source_path()));
 
-		if (conf::get_global_bool("transifex", "configure"))
+		if (conf().transifex().get<bool>("configure"))
 		{
 			cx().debug(context::generic, "configuring");
 			run_tool(transifex(transifex::config)
@@ -212,14 +212,14 @@ void translations::do_fetch()
 			cx().trace(context::generic, "skipping configuring");
 		}
 
-		if (conf::get_global_bool("transifex", "pull"))
+		if (conf().transifex().get<bool>("pull"))
 		{
 			cx().debug(context::generic, "pulling");
 			run_tool(transifex(transifex::pull)
 				.root(source_path())
 				.api_key(key)
-				.minimum(conf::get_global_int("transifex", "minimum"))
-				.force(conf::get_global_bool("transifex", "force")));
+				.minimum(conf().transifex().get<int>("minimum"))
+				.force(conf().transifex().get<bool>("force")));
 		}
 		else
 		{

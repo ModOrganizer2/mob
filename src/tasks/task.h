@@ -23,13 +23,13 @@ Task& add_task(Args&&... args)
 
 void run_all_tasks();
 bool is_super_task(const std::string& name);
-std::vector<task*> find_tasks(const std::string& pattern);
-task* find_one_task(const std::string& pattern, bool verbose=true);
+std::vector<task*> find_tasks(std::string_view pattern);
+task* find_one_task(std::string_view pattern, bool verbose=true);
 
 std::vector<task*> get_all_tasks();
 std::vector<task*> get_top_level_tasks();
 
-using alias_map = std::map<std::string, std::vector<std::string>>;
+using alias_map = std::map<std::string, std::vector<std::string>, std::less<>>;
 void add_alias(std::string name, std::vector<std::string> patterns);
 const alias_map& get_all_aliases();
 

@@ -16,7 +16,7 @@ std::string lz4::version()
 
 bool lz4::prebuilt()
 {
-	return conf::prebuilt_by_name("lz4");
+	return conf().prebuilt().use_prebuilt("lz4");
 }
 
 fs::path lz4::source_path()

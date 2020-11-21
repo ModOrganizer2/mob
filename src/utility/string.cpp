@@ -5,15 +5,15 @@
 namespace mob
 {
 
-bool glob_match(const std::string& pattern, const std::string& s)
+bool glob_match(std::string_view pattern, std::string_view s)
 {
 	try
 	{
-		std::string fixed_pattern = pattern;
+		std::string fixed_pattern(pattern);
 		fixed_pattern = replace_all(fixed_pattern, "*", ".*");
 		fixed_pattern = replace_all(fixed_pattern, "_", "-");
 
-		std::string fixed_string = s;
+		std::string fixed_string(s);
 		fixed_string = replace_all(fixed_string, "_", "-");
 
 		std::regex re(fixed_pattern, std::regex::icase);

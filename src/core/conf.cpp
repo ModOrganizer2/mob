@@ -19,13 +19,45 @@ std::string default_ini_filename()
 	return "mob.ini";
 }
 
-bool bool_from_string(const std::string& s)
+bool bool_from_string(std::string_view s)
 {
 	return (s == "true" || s == "yes" || s == "1");
 }
 
 
-std::string conf::get_global(const std::string& section, const std::string& key)
+conf_global::conf_global()
+	: conf_section("global")
+{
+}
+
+conf_transifex::conf_transifex()
+	: conf_section("transifex")
+{
+}
+
+conf_prebuilt::conf_prebuilt()
+	: conf_section("prebuilt")
+{
+}
+
+
+conf_global conf::global()
+{
+	return {};
+}
+
+conf_transifex conf::transifex()
+{
+	return {};
+}
+
+conf_prebuilt conf::prebuilt()
+{
+	return {};
+}
+
+
+std::string conf::get_global(std::string_view section, std::string_view key)
 {
 	auto global = map_.find("");
 	MOB_ASSERT(global != map_.end());
@@ -48,8 +80,8 @@ std::string conf::get_global(const std::string& section, const std::string& key)
 }
 
 void conf::set_global(
-	const std::string& section,
-	const std::string& key, const std::string& value)
+	std::string_view section,
+	std::string_view key, std::string_view value)
 {
 	auto global = map_.find("");
 	MOB_ASSERT(global != map_.end());
@@ -71,7 +103,7 @@ void conf::set_global(
 	kitor->second = value;
 }
 
-int conf::get_global_int(const std::string& section, const std::string& key)
+int conf::get_global_int(std::string_view section, std::string_view key)
 {
 	const auto s = conf::get_global(section, key);
 
@@ -85,22 +117,22 @@ int conf::get_global_int(const std::string& section, const std::string& key)
 	}
 }
 
-bool conf::get_global_bool(const std::string& section, const std::string& key)
+bool conf::get_global_bool(std::string_view section, std::string_view key)
 {
 	const auto s = conf::get_global(section, key);
 	return bool_from_string(s);
 }
 
 void conf::add_global(
-	const std::string& section,
-	const std::string& key, const std::string& value)
+	std::string_view section,
+	std::string_view key, std::string_view value)
 {
-	map_[""][section][key] = value;
+	map_[""][std::string(section)][std::string(key)] = value;
 }
 
 std::optional<std::string> conf::find_for_task(
-	const std::string& task_name,
-	const std::string& section_name, const std::string& key)
+	std::string_view task_name,
+	std::string_view section_name, std::string_view key)
 {
 	auto titor = map_.find(task_name);
 	if (titor == map_.end())
@@ -123,7 +155,7 @@ std::optional<std::string> conf::find_for_task(
 
 std::string conf::get_for_task(
 	const std::vector<std::string>& task_names,
-	const std::string& section, const std::string& key)
+	std::string_view section, std::string_view key)
 {
 	task_map::iterator task = map_.end();
 
@@ -154,55 +186,49 @@ std::string conf::get_for_task(
 }
 
 void conf::set_for_task(
-	const std::string& task_name, const std::string& section,
-	const std::string& key, const std::string& value)
+	std::string_view task_name, std::string_view section,
+	std::string_view key, std::string_view value)
 {
 	// make sure the key exists, will throw if it doesn't
 	get_global(section, key);
 
-	map_[task_name][section][key] = value;
+	map_[std::string(task_name)][std::string(section)][std::string(key)] = value;
 }
 
-bool conf::prebuilt_by_name(const std::string& task)
-{
-	const std::string s = get_global("prebuilt", task);
-	return bool_from_string(s);
-}
-
-fs::path conf::path_by_name(const std::string& name)
+fs::path conf::path_by_name(std::string_view name)
 {
 	return get_global("paths", name);
 }
 
-std::string conf::version_by_name(const std::string& name)
+std::string conf::version_by_name(std::string_view name)
 {
 	return get_global("versions", name);
 }
 
-fs::path conf::tool_by_name(const std::string& name)
+fs::path conf::tool_by_name(std::string_view name)
 {
 	return get_global("tools", name);
 }
 
-std::string conf::global_by_name(const std::string& name)
+std::string conf::global_by_name(std::string_view name)
 {
 	return get_global("global", name);
 }
 
-bool conf::bool_global_by_name(const std::string& name)
+bool conf::bool_global_by_name(std::string_view name)
 {
 	const std::string s = global_by_name(name);
 	return bool_from_string(s);
 }
 
 std::string conf::task_option_by_name(
-	const std::vector<std::string>& task_names, const std::string& name)
+	const std::vector<std::string>& task_names, std::string_view name)
 {
 	return get_for_task(task_names, "task", name);
 }
 
 bool conf::bool_task_option_by_name(
-	const std::vector<std::string>& task_names, const std::string& name)
+	const std::vector<std::string>& task_names, std::string_view name)
 {
 	const std::string s = task_option_by_name(task_names, name);
 	return bool_from_string(s);
@@ -247,7 +273,7 @@ void conf::set_file_log_level(const std::string& s)
 	}
 }
 
-void conf::set_dry(const std::string& s)
+void conf::set_dry(std::string_view s)
 {
 	dry_ = bool_from_string(s);
 }
@@ -440,7 +466,7 @@ fs::path find_third_party_directory()
 }
 
 
-fs::path find_in_path(const std::string& exe)
+fs::path find_in_path(std::string_view exe)
 {
 	const std::wstring wexe = utf8_to_utf16(exe);
 
@@ -694,11 +720,14 @@ void find_vcvars()
 }
 
 
-void ini_error(const fs::path& ini, std::size_t line, const std::string& what)
+template <class... Args>
+void ini_error(
+	const fs::path& ini, std::size_t line, std::string_view f, Args&&... args)
 {
 	gcx().bail_out(context::conf,
 		"{}:{}: {}",
-		path_to_utf8(ini), (line + 1), what);
+		path_to_utf8(ini), (line + 1),
+		fmt::format(f, std::forward<Args>(args)...));
 }
 
 std::vector<std::string> read_ini(const fs::path& ini)
@@ -728,7 +757,7 @@ std::vector<std::string> read_ini(const fs::path& ini)
 void parse_section(
 	const fs::path& ini, std::size_t& i,
 	const std::vector<std::string>& lines,
-	const std::string& task, const std::string& section, bool add)
+	std::string_view task, std::string_view section, bool add)
 {
 	++i;
 
@@ -747,13 +776,13 @@ void parse_section(
 
 		const auto sep = line.find("=");
 		if (sep == std::string::npos)
-			ini_error(ini, i, "bad line '" + line + "'");
+			ini_error(ini, i, "bad line '{}'", line);
 
 		const std::string k = trim_copy(line.substr(0, sep));
 		const std::string v = trim_copy(line.substr(sep + 1));
 
 		if (k.empty())
-			ini_error(ini, i, "bad line '" + line + "'");
+			ini_error(ini, i, "bad line '{}'", line);
 
 		if (section == "aliases")
 		{
@@ -777,7 +806,7 @@ void parse_section(
 				const auto& tasks = find_tasks(task);
 
 				if (tasks.empty())
-					ini_error(ini, i, "no task matching '" + task + "' found");
+					ini_error(ini, i, "no task matching '{}' found", task);
 
 				for (auto& t : tasks)
 					conf::set_for_task(t->name(), section, k, v);
@@ -829,14 +858,14 @@ void parse_ini(const fs::path& ini, bool add)
 		}
 		else
 		{
-			ini_error(ini, i, "bad line '" + line + "'");
+			ini_error(ini, i, "bad line '{}'", line);
 		}
 	}
 }
 
 
 template <class F>
-void set_path_if_empty(const std::string& k, F&& f)
+void set_path_if_empty(std::string_view k, F&& f)
 {
 	fs::path p = conf::get_global("paths", k);
 
@@ -862,8 +891,8 @@ void set_path_if_empty(const std::string& k, F&& f)
 }
 
 void make_canonical_path(
-	const std::string& key,
-	const fs::path& default_parent, const std::string& default_dir)
+	std::string_view key,
+	const fs::path& default_parent, std::string_view default_dir)
 {
 	fs::path p = conf::path_by_name(key);
 

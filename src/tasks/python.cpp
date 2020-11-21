@@ -17,7 +17,7 @@ std::string python::version()
 
 bool python::prebuilt()
 {
-	return conf::prebuilt_by_name("python");
+	return conf().prebuilt().use_prebuilt("python");
 }
 
 python::version_info python::parsed_version()

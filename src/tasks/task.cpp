@@ -42,7 +42,7 @@ std::vector<task*> get_top_level_tasks()
 	return v;
 }
 
-std::vector<task*> find_tasks_by_pattern(const std::string& pattern)
+std::vector<task*> find_tasks_by_pattern(std::string_view pattern)
 {
 	std::vector<task*> tasks;
 
@@ -68,7 +68,7 @@ std::vector<task*> find_tasks_by_pattern(const std::string& pattern)
 	return tasks;
 }
 
-std::vector<task*> find_tasks_by_alias(const std::string& pattern)
+std::vector<task*> find_tasks_by_alias(std::string_view pattern)
 {
 	std::vector<task*> v;
 
@@ -85,7 +85,7 @@ std::vector<task*> find_tasks_by_alias(const std::string& pattern)
 	return v;
 }
 
-std::vector<task*> find_tasks(const std::string& pattern)
+std::vector<task*> find_tasks(std::string_view pattern)
 {
 	std::vector<task*> tasks;
 
@@ -114,7 +114,7 @@ std::vector<task*> find_tasks(const std::string& pattern)
 	return tasks;
 }
 
-task* find_one_task(const std::string& pattern, bool verbose)
+task* find_one_task(std::string_view pattern, bool verbose)
 {
 	const auto tasks = find_tasks(pattern);
 
