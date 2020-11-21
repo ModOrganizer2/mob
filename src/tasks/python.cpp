@@ -30,7 +30,7 @@ python::version_info python::parsed_version()
 	const auto s = version();
 
 	if (!std::regex_match(s, m, re))
-		bail_out("bad python version '{}'", s);
+		gcx().bail_out(context::generic, "bad python version '{}'", s);
 
 	version_info v;
 

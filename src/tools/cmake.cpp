@@ -190,7 +190,7 @@ const cmake::gen_info& cmake::get_generator(generators g)
 
 	auto itor = map.find(g);
 	if (itor == map.end())
-		bail_out("unknown generator");
+		gcx().bail_out(context::generic, "unknown generator");
 
 	return itor->second;
 }
@@ -219,7 +219,7 @@ std::string cmake::gen_info::get_arch(arch a) const
 			return {};
 
 		default:
-			bail_out("gen_info::get_arch(): bad arch");
+			gcx().bail_out(context::generic, "gen_info::get_arch(): bad arch");
 	}
 }
 
@@ -235,7 +235,7 @@ std::string cmake::gen_info::output_dir(arch a) const
 			return dir;
 
 		default:
-			bail_out("gen_info::get_arch(): bad arch");
+			gcx().bail_out(context::generic, "gen_info::get_arch(): bad arch");
 	}
 }
 

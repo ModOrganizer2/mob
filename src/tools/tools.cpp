@@ -174,7 +174,7 @@ void vs::do_upgrade()
 {
 	if (fs::exists(sln_.parent_path() / "UpgradeLog.htm"))
 	{
-		debug("project already upgraded");
+		cx().debug(context::generic, "project already upgraded");
 		return;
 	}
 

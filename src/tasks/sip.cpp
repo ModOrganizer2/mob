@@ -50,7 +50,7 @@ fs::path sip::module_source_path()
 	const auto s = version_for_pyqt();
 
 	if (!std::regex_match(s, m, re))
-		bail_out("bad pyqt sip version {}", s);
+		gcx().bail_out(context::generic, "bad pyqt sip version {}", s);
 
 	// 12.7
 	const auto dir = m[1].str() + "." + m[2].str();

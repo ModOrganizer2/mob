@@ -120,7 +120,7 @@ env env::vs(arch a)
 			return {};
 
 		default:
-			bail_out("bad arch for env");
+			gcx().bail_out(context::generic, "bad arch for env");
 	}
 }
 
@@ -501,7 +501,10 @@ std::string this_env::get(const std::string& name)
 {
 	auto v = get_impl(name);
 	if (!v)
-		bail_out("environment variable {} doesn't exist", name);
+	{
+		gcx().bail_out(context::generic,
+			"environment variable {} doesn't exist", name);
+	}
 
 	return utf16_to_utf8(*v);
 }

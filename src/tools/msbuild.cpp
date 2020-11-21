@@ -129,7 +129,7 @@ void msbuild::do_run(const std::vector<std::string>& targets)
 
 			case arch::dont_care:
 			default:
-				bail_out("msbuild::do_run(): bad arch");
+				cx().bail_out(context::generic, "msbuild::do_run(): bad arch");
 		}
 	}
 	else

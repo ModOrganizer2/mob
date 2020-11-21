@@ -254,7 +254,7 @@ openssl::version_info openssl::parsed_version()
 	const auto s = version();
 
 	if (!std::regex_match(s, m, re))
-		bail_out("bad openssl version '{}'", s);
+		gcx().bail_out(context::generic, "bad openssl version '{}'", s);
 
 	return {m[1], m[2], m[3]};
 }

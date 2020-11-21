@@ -168,7 +168,7 @@ int build_command::do_run()
 	}
 	catch(bailed&)
 	{
-		error("bailing out");
+		gcx().error(context::generic, "bailing out");
 		return 1;
 	}
 }

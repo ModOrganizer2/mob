@@ -279,7 +279,7 @@ git& git::shallow(bool b)
 void git::do_run()
 {
 	if (url_.empty() || root_.empty())
-		bail_out("git missing parameters");
+		cx().bail_out(context::generic, "git missing parameters");
 
 
 	switch (op_)

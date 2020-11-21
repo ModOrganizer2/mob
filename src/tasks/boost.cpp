@@ -268,7 +268,7 @@ boost::version_info boost::parsed_version()
 	const auto s = version();
 
 	if (!std::regex_match(s, m, re))
-		bail_out("bad boost version '{}'", s);
+		gcx().bail_out(context::generic, "bad boost version '{}'", s);
 
 	return {m[1], m[2], m[3], m[4]};
 }
@@ -392,7 +392,7 @@ std::string boost::address_model_for_arch(arch a)
 			return "64";
 
 		default:
-			bail_out("boost: bad arch");
+			gcx().bail_out(context::generic, "boost: bad arch");
 	}
 }
 

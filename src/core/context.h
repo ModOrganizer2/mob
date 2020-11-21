@@ -2,14 +2,10 @@
 
 #include "../utility.h"
 
-namespace mob
-{
-	class url;
-}
-
-
 namespace mob::details
 {
+
+class mob::url;
 
 // T to std::string converters
 //
@@ -235,54 +231,5 @@ inline const context& gcx()
 }
 
 void dump_logs();
-
-
-// temp
-
-inline void out(context::level lv, const std::string& s)
-{
-	gcx().log(context::generic, lv, "{}", s);
-}
-
-inline void out(context::level lv, const std::string& s, DWORD e)
-{
-	gcx().log(context::generic, lv, "{}, {}", s, error_message(e));
-}
-
-inline void out(context::level lv, const std::string& s, const std::error_code& ec)
-{
-	gcx().log(context::generic, lv, "{}, {}", s, ec.message());
-}
-
-template <class... Args>
-[[noreturn]] void bail_out(Args&&... args)
-{
-	gcx().bail_out(context::generic, std::forward<Args>(args)...);
-}
-
-
-template <class... Args>
-void error(Args&&... args)
-{
-	gcx().error(context::generic, std::forward<Args>(args)...);
-}
-
-template <class... Args>
-void warn(Args&&... args)
-{
-	gcx().warn(context::generic, std::forward<Args>(args)...);
-}
-
-template <class... Args>
-void info(Args&&... args)
-{
-	gcx().info(context::generic, std::forward<Args>(args)...);
-}
-
-template <class... Args>
-void debug(Args&&... args)
-{
-	gcx().debug(context::generic, std::forward<Args>(args)...);
-}
 
 }	// namespace

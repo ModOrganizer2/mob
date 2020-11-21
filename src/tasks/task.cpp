@@ -478,7 +478,9 @@ void task::threaded_run(std::string thread_name, std::function<void ()> f)
 	}
 	catch(bailed e)
 	{
-		error("{} bailed out, interrupting all tasks", name());
+		gcx().error(context::generic,
+			"{} bailed out, interrupting all tasks", name());
+
 		interrupt_all();
 	}
 	catch(interrupted)
