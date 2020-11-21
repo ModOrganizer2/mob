@@ -198,6 +198,9 @@
     <ClCompile Include="..\src\core\ini.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\core\paths.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
@@ -261,6 +264,9 @@
       <Filter>src\core</Filter>
     </ClInclude>
     <ClInclude Include="..\src\core\ini.h">
+      <Filter>src\core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\core\paths.h">
       <Filter>src\core</Filter>
     </ClInclude>
   </ItemGroup>

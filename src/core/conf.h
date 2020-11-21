@@ -22,10 +22,6 @@ bool verify_options();
 void log_options();
 void dump_available_options();
 
-fs::path find_root(bool verbose=false);
-fs::path find_in_root(const fs::path& file);
-fs::path make_temp_file();
-
 
 template <class DefaultType>
 class conf_section

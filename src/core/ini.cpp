@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ini.h"
+#include "paths.h"
 #include "context.h"
 #include "env.h"
 #include "conf.h"
