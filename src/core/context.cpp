@@ -29,11 +29,22 @@ std::string converter<url>::convert(const url& u)
 namespace mob
 {
 
+// timestamps are relative to this
 static hr_clock::time_point g_start_time = hr_clock::now();
+
+// accumulated errors and warnings; only used if should_dump_logs() is true,
+// dumped on the console just before mob exits
 static std::vector<std::string> g_errors, g_warnings;
+
+// handle to log file
 static handle_ptr g_log_file;
+
+// global output mutex to avoid interleaving, but also mixing colors
 static std::mutex g_mutex;
 
+
+// returns the color associated with the given level
+//
 console_color level_color(context::level lv)
 {
 	switch (lv)
@@ -55,6 +66,8 @@ console_color level_color(context::level lv)
 	}
 }
 
+// converts a reason to string
+//
 const char* reason_string(context::reason r)
 {
 	switch (r)
@@ -75,6 +88,8 @@ const char* reason_string(context::reason r)
 	}
 }
 
+// retrieves the error message from the system for the given id
+//
 std::string error_message(DWORD id)
 {
 	wchar_t* message = nullptr;
@@ -92,11 +107,15 @@ std::string error_message(DWORD id)
 	std::wstring s;
 
 	std::wostringstream oss;
+
+	// hex error code
 	oss << L"0x" << std::hex << id;
 
 	if (ret == 0 || !message) {
+		// error message not found, just use the hex error code
 		s = oss.str();
 	} else {
+		// FormatMessage() includes a newline, trim it and put the hex code too
 		s = trim_copy(message) + L" (" + oss.str() + L")";
 	}
 
@@ -112,43 +131,33 @@ std::chrono::nanoseconds timestamp()
 
 std::string_view timestamp_string()
 {
+	// thread local buffer to avoid allocation
 	static thread_local char buffer[50];
 
 	using namespace std::chrono;
 
+	// getting time in seconds as a float
 	const auto ms = duration_cast<milliseconds>(timestamp());
 	const auto frac = static_cast<float>(ms.count()) / 1000.0;
 
+	// to string with 2 digits precision
 	const auto r = std::to_chars(
 		std::begin(buffer), std::end(buffer), frac,
 		std::chars_format::fixed, 2);
 
-	const auto n = static_cast<std::size_t>(r.ptr - buffer);
-
-	if (r.ec == std::errc())
-		return {buffer, n};
-	else
+	if (r.ec != std::errc())
 		return "?";
+
+	return {buffer, r.ptr};
 }
 
-
-context::context(std::string task_name)
-	: task_(std::move(task_name)), tool_(nullptr)
-{
-}
-
-void context::set_tool(tool* t)
-{
-	tool_ = t;
-}
-
-const context* context::global()
-{
-	static thread_local context c("");
-	return &c;
-}
-
-static bool log_enabled(context::level lv, int conf_lv)
+// returns if the given level should be enabled based on the given level from
+// the ini
+//
+// unfortunately, log levels in the ini have dump as the highest number, but
+// the level enum is the reverse
+//
+bool log_enabled(context::level lv, int conf_lv)
 {
 	switch (lv)
 	{
@@ -175,8 +184,38 @@ static bool log_enabled(context::level lv, int conf_lv)
 	}
 }
 
+// whether errors and warnings should be dumped at the end, only returns true
+// for debug level and higher, lower levels don't have enough stuff on the
+// console to make it worth, it's just annoying to have duplicate logs
+//
+// in fact, this feature might not be very useful at all
+//
+bool should_dump_logs()
+{
+	return log_enabled(context::level::debug, conf::output_log_level());
+}
+
+
+context::context(std::string task_name)
+	: task_(std::move(task_name)), tool_(nullptr)
+{
+}
+
+void context::set_tool(tool* t)
+{
+	tool_ = t;
+}
+
+const context* context::global()
+{
+	static thread_local context c("");
+	return &c;
+}
+
 bool context::enabled(level lv)
 {
+	// a log level is enabled if it's included in either the console or the log
+	// file, which have independent levels
 	const int minimum_log_level =
 		std::max(conf::output_log_level(), conf::file_log_level());
 
@@ -185,12 +224,12 @@ bool context::enabled(level lv)
 
 void context::set_log_file(const fs::path& p)
 {
-	// creating directory
-	if (!exists(p.parent_path()))
-		op::create_directories(gcx(), paths::prefix());
-
 	if (!conf::dry() && !p.empty())
 	{
+		// creating directory
+		if (!exists(p.parent_path()))
+			op::create_directories(gcx(), paths::prefix());
+
 		HANDLE h = CreateFileW(
 			p.native().c_str(), GENERIC_WRITE, FILE_SHARE_READ,
 			nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
@@ -206,19 +245,30 @@ void context::set_log_file(const fs::path& p)
 	}
 }
 
+void context::log_string(reason r, level lv, std::string_view s) const
+{
+	if (!enabled(lv))
+		return;
+
+	do_log_impl(false, r, lv, s);
+}
+
 void context::do_log_impl(
 	bool bail, reason r, level lv, std::string_view utf8) const
 {
-	std::string_view ls = make_log_string(r, lv, utf8);
+	std::string_view sv = make_log_string(r, lv, utf8);
 
 	if (bail)
 	{
-		emit_log(lv, std::string(ls) + " (bailing out)");
-		throw bailed(std::string(ls));
+		// log the string with "(bailing out)" at the end, but throw the
+		// original, it's prettier that way
+		const std::string s(sv);
+		emit_log(lv, s + " (bailing out)");
+		throw bailed(s);
 	}
 	else
 	{
-		emit_log(lv, ls);
+		emit_log(lv, sv);
 	}
 }
 
@@ -226,12 +276,15 @@ void context::emit_log(level lv, std::string_view utf8) const
 {
 	std::scoped_lock lock(g_mutex);
 
+	// console
 	if (log_enabled(lv, conf::output_log_level()))
 	{
-		auto c = level_color(lv);
+		// will revert color in dtor
+		console_color c = level_color(lv);
 		u8cout.write_ln(utf8);
 	}
 
+	// log file
 	if (g_log_file && log_enabled(lv, conf::file_log_level()))
 	{
 		DWORD written = 0;
@@ -243,17 +296,47 @@ void context::emit_log(level lv, std::string_view utf8) const
 		::WriteFile(g_log_file.get(), "\r\n", 2, &written, nullptr);
 	}
 
-	if (lv == level::error)
-		g_errors.emplace_back(utf8);
-	else if (lv == level::warning)
-		g_warnings.emplace_back(utf8);
+	// remember warnings and errors
+	if (should_dump_logs())
+	{
+		if (lv == level::error)
+			g_errors.emplace_back(utf8);
+		else if (lv == level::warning)
+			g_warnings.emplace_back(utf8);
+	}
 }
 
-void append_brackets(std::string& s, std::string_view what, std::size_t total)
+// used by make_log_string(), appends `what` to `s`, with padding on the right
+// up to `max_length` characters, including the length of `what`
+//
+void append(std::string& s, std::string_view what, std::size_t max_length)
 {
 	if (what.empty())
 	{
-		s.append(total, ' ');
+		s.append(max_length, ' ');
+	}
+	else
+	{
+		s.append(what);
+
+		// padding
+		const std::size_t written = what.size();
+		if (written < max_length)
+			s.append(max_length - written, ' ');
+	}
+}
+
+// used by make_log_string(), same as append() above but puts `what` between
+// [brackets]
+//
+// avoids unnecessary memory allocations by appending the brackets directly
+//
+void append_with_brackets(
+	std::string& s, std::string_view what, std::size_t max_length)
+{
+	if (what.empty())
+	{
+		s.append(max_length, ' ');
 	}
 	else
 	{
@@ -261,87 +344,36 @@ void append_brackets(std::string& s, std::string_view what, std::size_t total)
 		s.append(what);
 		s.append(1, ']');
 
-		const std::size_t written = 1 + what.size() + 1;  // "[x]"
-
-		if (written < total)
-			s.append(total - written, ' ');
+		// padding
+		const std::size_t written = what.size() + 2;  // "[what]"
+		if (written < max_length)
+			s.append(max_length - written, ' ');
 	}
 }
 
-void append(std::string& s, std::string_view what, std::size_t total)
+// used by make_log_string(), can append some stuff depending on the reason
+//
+void append_context(std::string& ls, context::reason r)
 {
-	if (what.empty())
-	{
-		s.append(total, ' ');
-	}
-	else
-	{
-		s.append(what);
-
-		const std::size_t written = what.size();  // "x"
-
-		if (written < total)
-			s.append(total - written, ' ');
-	}
-}
-
-std::string_view context::make_log_string(reason r, level, std::string_view s) const
-{
-	const std::size_t total_timestamp = 8; // '0000.00 '
-
-	const std::size_t longest_task_name = 15;
-	const std::size_t total_task_name = 1 + longest_task_name + 2; // '[x] '
-
-	const std::size_t longest_tool_name = 7;
-	const std::size_t total_tool_name = 1 + longest_tool_name + 2; // '[x] '
-
-	const std::size_t longest_prefix = 7;
-	const std::size_t total_prefix = 1 + longest_prefix + 2; // '[x] '
-
-	static thread_local std::string ls;
-
-	ls.reserve(
-		total_timestamp +                // timestamp
-		total_task_name +
-		total_tool_name +
-		total_prefix +
-		s.size() +
-		50);               // possible additional stuff
-
-	ls.clear();
-
-	append(ls, timestamp_string(), total_timestamp);
-	ls.append(1, ' ');
-	append_brackets(ls, task_.substr(0, longest_task_name), total_task_name);
-
-	if (tool_)
-		append_brackets(ls, tool_->name().substr(0, longest_tool_name), total_tool_name);
-	else
-		ls.append(total_tool_name, ' ');
-
-	append_brackets(ls, reason_string(r), total_prefix);
-
-	ls.append(s);
-
 	switch (r)
 	{
 		case context::redownload:
+		{
 			ls.append(" (happened because of --redownload)");
 			break;
+		}
 
 		case context::rebuild:
+		{
 			ls.append(" (happened because of --rebuild)");
 			break;
+		}
 
 		case context::reextract:
+		{
 			ls.append(" (happened because of --reextract)");
 			break;
-
-		case context::interruption:
-			if (s.empty())
-				ls.append("interrupted");
-
-			break;
+		}
 
 		case context::cmd:
 		case context::bypass:
@@ -351,15 +383,80 @@ std::string_view context::make_log_string(reason r, level, std::string_view s) c
 		case context::net:
 		case context::generic:
 		case context::conf:
+		case context::interruption:
 		default:
 			break;
 	}
+}
+
+std::string_view context::make_log_string(reason r, level, std::string_view s) const
+{
+	// maximum lengths of the various components below, used for padding
+
+	// mob shouldn't run for more than three hours, includes space
+	const std::size_t timestamp_max_length = 8; // '0000.00 '
+
+	// cut task name at 15, +3 because brackets + space at the end
+	const std::size_t longest_task_name = 15;
+	const std::size_t task_name_max_length = longest_task_name + 3;
+
+	// cut tool name at 7, +3 because brackets + space at the end
+	const std::size_t longest_tool_name = 7;
+	const std::size_t tool_name_max_length = longest_tool_name + 3;
+
+	// cut reason name at 7, +3 because brackets + space at the end
+	const std::size_t longest_reason = 7;
+	const std::size_t reason_max_length = longest_reason + 3;
+
+
+	// keep a thread local string to avoid memory allocations
+	static thread_local std::string ls;
+
+	// clear previous log
+	ls.clear();
+
+
+	// a full log line might look like:
+	//   "2.77     [cmake_common]    [git]     [cmd]     creating process"
+
+
+	// timestamp
+	append(ls, timestamp_string(), timestamp_max_length);
+
+	// task name
+	append_with_brackets(
+		ls, task_.substr(0, longest_task_name), task_name_max_length);
+
+	// tool
+	if (tool_)
+	{
+		append_with_brackets(
+			ls, tool_->name().substr(0, longest_tool_name),
+			tool_name_max_length);
+	}
+	else
+	{
+		ls.append(tool_name_max_length, ' ');
+	}
+
+	// reason
+	append_with_brackets(ls, reason_string(r), reason_max_length);
+
+	// log message
+	ls.append(s);
+
+	// context
+	append_context(ls, r);
+
 
 	return ls;
 }
 
 void dump_logs()
 {
+	if (!should_dump_logs())
+		return;
+
 	if (!g_warnings.empty() || !g_errors.empty())
 	{
 		u8cout << "\n\nthere were problems:\n";
