@@ -9,175 +9,40 @@
 namespace mob
 {
 
-std::string default_ini_filename()
-{
-	return "mob.ini";
-}
-
-parsed_option parse_option(const std::string& s)
-{
-	// task:section/key=value
-	// task: is optional
-	std::regex re(R"((?:(.+)\:)?(.+)/(.*)=(.*))");
-	std::smatch m;
-
-	if (!std::regex_match(s, m, re))
-	{
-		gcx().bail_out(context::conf,
-			"bad option {}, must be [task:]section/key=value", s);
-	}
-
-	std::string task = trim_copy(m[1].str());
-	std::string section = trim_copy(m[2].str());
-	std::string key = trim_copy(m[3].str());
-	std::string value = trim_copy(m[4].str());
-
-	return {task, section, key, value};
-}
-
-
-
 template <class... Args>
 void ini_error(
-	const fs::path& ini, std::size_t line, std::string_view f, Args&&... args)
+	const ini_data& ini, std::size_t line, std::string_view f, Args&&... args)
 {
 	gcx().bail_out(context::conf,
 		"{}:{}: {}",
-		path_to_utf8(ini), (line + 1),
+		path_to_utf8(ini.path), (line + 1),
 		fmt::format(f, std::forward<Args>(args)...));
 }
 
-std::vector<std::string> read_ini(const fs::path& ini)
+
+ini_data::kv_map& ini_data::get_section(std::string_view name)
 {
-	std::ifstream in(ini);
-
-	std::vector<std::string> lines;
-
-	for (;;)
+	for (auto itor=sections.begin(); itor!=sections.end(); ++itor)
 	{
-		std::string line;
-		std::getline(in, line);
-		trim(line);
-
-		if (!in)
-			break;
-
-		lines.push_back(std::move(line));
+		if (itor->first == name)
+			return itor->second;
 	}
 
-	if (in.bad())
-		gcx().bail_out(context::conf, "failed to read ini {}", ini);
-
-	return lines;
+	sections.push_back({std::string(name), kv_map()});
+	return sections.back().second;
 }
 
-void parse_section(
-	const fs::path& ini, std::size_t& i,
-	const std::vector<std::string>& lines,
-	std::string_view task, std::string_view section, bool add)
+void ini_data::set(std::string_view section, std::string key, std::string value)
 {
-	++i;
-
-	for (;;)
-	{
-		if (i >= lines.size() || lines[i][0] == '[')
-			break;
-
-		const auto& line = lines[i];
-
-		if (line.empty() || line[0] == '#' || line[0] == ';')
-		{
-			++i;
-			continue;
-		}
-
-		const auto sep = line.find("=");
-		if (sep == std::string::npos)
-			ini_error(ini, i, "bad line '{}'", line);
-
-		const std::string k = trim_copy(line.substr(0, sep));
-		const std::string v = trim_copy(line.substr(sep + 1));
-
-		if (k.empty())
-			ini_error(ini, i, "bad line '{}'", line);
-
-		if (section == "aliases")
-		{
-			add_alias(k, split_quoted(v, " "));
-		}
-		else if (task.empty())
-		{
-			if (add)
-				details::add_string(section, k, v);
-			else
-				details::set_string(section, k, v);
-		}
-		else
-		{
-			if (task == "_override")
-			{
-				details::set_string_for_task("_override", section, k, v);
-			}
-			else
-			{
-				const auto& tasks = find_tasks(task);
-
-				if (tasks.empty())
-					ini_error(ini, i, "no task matching '{}' found", task);
-
-				for (auto& t : tasks)
-					details::set_string_for_task(t->name(), section, k, v);
-			}
-		}
-
-		++i;
-	}
+	auto& s = get_section(section);
+	s.emplace(std::move(key), std::move(value));
 }
 
-void parse_ini(const fs::path& ini, bool add)
+
+
+std::string default_ini_filename()
 {
-	gcx().debug(context::conf, "using ini at {}", ini);
-
-	const auto lines = read_ini(ini);
-	std::size_t i = 0;
-
-	for (;;)
-	{
-		if (i >= lines.size())
-			break;
-
-		const auto& line = lines[i];
-		if (line.empty() || line[0] == '#' || line[0] == ';')
-		{
-			++i;
-			continue;
-		}
-
-		if (line.starts_with("[") && line.ends_with("]"))
-		{
-			const std::string s = line.substr(1, line.size() - 2);
-
-			std::string task, section;
-
-			const auto col = s.find(":");
-
-			if (col == std::string::npos)
-			{
-				section = s;
-			}
-			else
-			{
-				task = s.substr(0, col);
-				section = s.substr(col + 1);
-			}
-
-			parse_section(ini, i, lines, task, section, add);
-		}
-		else
-		{
-			ini_error(ini, i, "bad line '{}'", line);
-		}
-	}
+	return "mob.ini";
 }
 
 std::vector<fs::path> find_inis(
@@ -260,7 +125,8 @@ std::vector<fs::path> find_inis(
 
 		auto cwd = fs::current_path();
 
-		while (!cwd.empty()) {
+		while (!cwd.empty())
+		{
 			const auto in_cwd = cwd / default_ini_filename();
 			if (fs::exists(in_cwd) && !fs::equivalent(in_cwd, master))
 			{
@@ -313,6 +179,139 @@ std::vector<fs::path> find_inis(
 
 
 	return map(v, [&](auto&& p){ return p.second; });
+}
+
+std::vector<std::string> read_ini(const fs::path& ini)
+{
+	std::ifstream in(ini);
+
+	std::vector<std::string> lines;
+
+	for (;;)
+	{
+		std::string line;
+		std::getline(in, line);
+		trim(line);
+
+		if (!in)
+			break;
+
+		lines.push_back(std::move(line));
+	}
+
+	if (in.bad())
+		gcx().bail_out(context::conf, "failed to read ini {}", ini);
+
+	return lines;
+}
+
+void parse_line(
+	ini_data& ini, std::size_t i, const std::string& line,
+	const std::string& task, const std::string& section)
+{
+	const auto sep = line.find("=");
+	if (sep == std::string::npos)
+		ini_error(ini, i, "bad line '{}'", line);
+
+	const std::string k = trim_copy(line.substr(0, sep));
+	const std::string v = trim_copy(line.substr(sep + 1));
+
+	if (k.empty())
+		ini_error(ini, i, "bad line '{}'", line);
+
+	if (section == "aliases")
+	{
+		add_alias(k, split_quoted(v, " "));
+	}
+	else if (task.empty())
+	{
+		ini.set(section, k, v);
+	}
+	else
+	{
+		if (!valid_task_name(task))
+			ini_error(ini, i, "no task matching '{}' found", task);
+
+		ini.set(task + ":" + section, k, v);
+	}
+}
+
+void parse_section(
+	ini_data& ini, std::size_t& i, const std::vector<std::string>& lines,
+	const std::string& section_string)
+{
+	std::string task, section;
+
+	const auto col = section_string.find(":");
+
+	if (col == std::string::npos)
+	{
+		section = section_string;
+	}
+	else
+	{
+		task = section_string.substr(0, col);
+		section = section_string.substr(col + 1);
+	}
+
+
+	++i;
+
+	for (;;)
+	{
+		if (i >= lines.size() || lines[i][0] == '[')
+			break;
+
+		const auto& line = lines[i];
+
+		// empty or comment
+		if (line.empty() || line[0] == '#' || line[0] == ';')
+		{
+			++i;
+			continue;
+		}
+
+		parse_line(ini, i, line, task, section);
+		++i;
+	}
+}
+
+ini_data parse_ini(const fs::path& path)
+{
+	gcx().debug(context::conf, "using ini at {}", path);
+
+	ini_data ini;
+	ini.path = path;
+
+	const auto lines = read_ini(path);
+	std::size_t i = 0;
+
+	for (;;)
+	{
+		if (i >= lines.size())
+			break;
+
+		const auto& line = lines[i];
+
+		// empty or comment
+		if (line.empty() || line[0] == '#' || line[0] == ';')
+		{
+			++i;
+			continue;
+		}
+
+		if (line.starts_with("[") && line.ends_with("]"))
+		{
+			const std::string name = line.substr(1, line.size() - 2);
+			parse_section(ini, i, lines, name);
+		}
+		else
+		{
+			ini_error(ini, i, "bad line '{}'", line);
+		}
+	}
+
+	return ini;
 }
 
 }	// namespace

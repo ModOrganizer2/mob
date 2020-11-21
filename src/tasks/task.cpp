@@ -141,6 +141,17 @@ task* find_one_task(std::string_view pattern, bool verbose)
 	return tasks[0];
 }
 
+bool valid_task_name(std::string_view pattern)
+{
+	if (!find_tasks(pattern).empty())
+		return true;
+
+	if (pattern == "_override")
+		return true;
+
+	return false;
+}
+
 void run_all_tasks()
 {
 	try

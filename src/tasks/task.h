@@ -25,6 +25,7 @@ void run_all_tasks();
 bool is_super_task(const std::string& name);
 std::vector<task*> find_tasks(std::string_view pattern);
 task* find_one_task(std::string_view pattern, bool verbose=true);
+bool valid_task_name(std::string_view pattern);
 
 std::vector<task*> get_all_tasks();
 std::vector<task*> get_top_level_tasks();

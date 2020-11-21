@@ -11,7 +11,6 @@
 namespace mob
 {
 
-
 BOOL WINAPI signal_handler(DWORD) noexcept
 {
 	gcx().debug(context::generic, "caught sigint");

@@ -228,6 +228,20 @@ std::vector<std::string> format_options()
 	return lines;
 }
 
+
+fs::path find_in_path(std::string_view exe)
+{
+	const std::wstring wexe = utf8_to_utf16(exe);
+
+	const std::size_t size = MAX_PATH;
+	wchar_t buffer[size + 1] = {};
+
+	if (SearchPathW(nullptr, wexe.c_str(), nullptr, size, buffer, nullptr))
+		return buffer;
+	else
+		return {};
+}
+
 fs::path find_iscc()
 {
 	const auto tasks = find_tasks("installer");
@@ -434,20 +448,6 @@ fs::path find_third_party_directory()
 {
 	static fs::path path = find_in_root("third-party");
 	return path;
-}
-
-
-fs::path find_in_path(std::string_view exe)
-{
-	const std::wstring wexe = utf8_to_utf16(exe);
-
-	const std::size_t size = MAX_PATH;
-	wchar_t buffer[size + 1] = {};
-
-	if (SearchPathW(nullptr, wexe.c_str(), nullptr, size, buffer, nullptr))
-		return buffer;
-	else
-		return {};
 }
 
 bool find_qmake(fs::path& check)
@@ -691,6 +691,31 @@ void find_vcvars()
 }
 
 
+struct parsed_option
+{
+	std::string task, section, key, value;
+};
+
+parsed_option parse_option(const std::string& s)
+{
+	// parses "task:section/key=value" where "task:" is optional
+	static std::regex re(R"((?:(.+)\:)?(.+)/(.*)=(.*))");
+	std::smatch m;
+
+	if (!std::regex_match(s, m, re))
+	{
+		gcx().bail_out(context::conf,
+			"bad option {}, must be [task:]section/key=value", s);
+	}
+
+	return {
+		trim_copy(m[1].str()),
+		trim_copy(m[2].str()),
+		trim_copy(m[3].str()),
+		trim_copy(m[4].str())
+	};
+}
+
 void init_options(
 	const std::vector<fs::path>& inis, const std::vector<std::string>& opts)
 {
@@ -703,7 +728,52 @@ void init_options(
 	{
 		// Check if the prefix is set by this ini file:
 		fs::path cprefix = add ? fs::path{} : conf().path().prefix();
-		parse_ini(ini, add);
+		const auto data = parse_ini(ini);
+
+		for (auto&& a : data.aliases)
+			add_alias(a.first, a.second);
+
+		for (auto&& [section_string, kvs] : data.sections)
+		{
+			const auto col = section_string.find(":");
+			std::string task, section;
+
+			if (col == std::string::npos)
+			{
+				section = section_string;
+			}
+			else
+			{
+				task = section_string.substr(0, col);
+				section = section_string.substr(col + 1);
+			}
+
+			for (auto&& [k, v] : kvs)
+			{
+				if (task.empty())
+				{
+					if (add)
+						details::add_string(section, k, v);
+					else
+						details::set_string(section, k, v);
+				}
+				else
+				{
+					if (task == "_override")
+					{
+						details::set_string_for_task("_override", section, k, v);
+					}
+					else
+					{
+						const auto& tasks = find_tasks(task);
+						MOB_ASSERT(!tasks.empty());
+
+						for (auto& t : tasks)
+							details::set_string_for_task(t->name(), section, k, v);
+					}
+				}
+			}
+		}
 
 		if (conf().path().prefix() != cprefix)
 			ini_prefix = ini;

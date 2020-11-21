@@ -3,23 +3,6 @@
 namespace mob
 {
 
-std::vector<fs::path> find_inis(
-	bool auto_detect, const std::vector<std::string>& from_cl,
-	bool verbose);
-
-void init_options(
-	const std::vector<fs::path>& inis, const std::vector<std::string>& opts);
-
-bool verify_options();
-void log_options();
-void dump_available_options();
-
-fs::path find_in_path(std::string_view exe);
-fs::path find_root(bool verbose=false);
-fs::path find_in_root(const fs::path& file);
-fs::path make_temp_file();
-
-
 namespace details
 {
 	std::string get_string(std::string_view section, std::string_view key);
@@ -29,14 +12,19 @@ namespace details
 	void set_string(
 		std::string_view section, std::string_view key,
 		std::string_view value);
-
-	void add_string(
-		std::string_view section, std::string_view key, std::string_view value);
-
-	void set_string_for_task(
-		std::string_view task_name, std::string_view section,
-		std::string_view key, std::string_view value);
 }
+
+
+void init_options(
+	const std::vector<fs::path>& inis, const std::vector<std::string>& opts);
+
+bool verify_options();
+void log_options();
+void dump_available_options();
+
+fs::path find_root(bool verbose=false);
+fs::path find_in_root(const fs::path& file);
+fs::path make_temp_file();
 
 
 template <class DefaultType>
