@@ -220,7 +220,9 @@ int command::load_options()
 		return r;
 
 	init_options(inis_, common.options);
-	log_options();
+
+	for (auto&& line : format_options())
+		gcx().trace(context::conf, "{}", line);
 
 	if (!verify_options())
 		return 1;
@@ -332,7 +334,9 @@ clipp::group options_command::do_group()
 
 int options_command::do_run()
 {
-	dump_available_options();
+	for (auto&& line : format_options())
+		u8cout << line << "\n";
+
 	return 0;
 }
 

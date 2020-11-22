@@ -235,7 +235,7 @@ void build_command::dump_timings()
 
 void build_command::terminate_msbuild()
 {
-	if (conf::dry())
+	if (conf().global().dry())
 		return;
 
 	system("taskkill /im msbuild.exe /f > NUL 2>&1");

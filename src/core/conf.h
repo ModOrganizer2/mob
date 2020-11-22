@@ -1,28 +1,52 @@
 #pragma once
 
+// these shouldn't be called directly, they're used by some of the template
+// below
+//
+namespace mob::details
+{
+
+// returns an option named `key` from the given `section`
+//
+std::string get_string(std::string_view section, std::string_view key);
+
+// calls get_string(), converts to bool
+//
+bool get_bool(std::string_view section, std::string_view key);
+
+// calls get_string(), converts to in
+//
+int get_int(std::string_view section, std::string_view key);
+
+// sets the given option, bails out if the option doesn't exist
+//
+void set_string(
+	std::string_view section, std::string_view key, std::string_view value);
+
+}	// namespace
+
+
 namespace mob
 {
 
-namespace details
-{
-	std::string get_string(std::string_view section, std::string_view key);
-	bool get_bool(std::string_view section, std::string_view key);
-	int get_int(std::string_view section, std::string_view key);
-
-	void set_string(
-		std::string_view section, std::string_view key,
-		std::string_view value);
-}
-
-
+// reads options from the given inis and option strings, resolves all the paths
+// and necessary tools, also adds a couple of things to PATH
+//
 void init_options(
 	const std::vector<fs::path>& inis, const std::vector<std::string>& opts);
 
+// checks some of the options once everything is loaded, returns false if
+// something's wrong
+//
 bool verify_options();
-void log_options();
-void dump_available_options();
+
+// returns all options formatted as three columns
+//
+std::vector<std::string> format_options();
 
 
+// base class for all conf structs
+//
 template <class DefaultType>
 class conf_section
 {
@@ -32,6 +56,7 @@ public:
 		return details::get_string(name_, key);
 	}
 
+	// undefined
 	template <class T>
 	T get(std::string_view key) const;
 
@@ -63,22 +88,19 @@ private:
 };
 
 
+// options in [global]
+//
 class conf_global : public conf_section<std::string>
 {
 public:
 	conf_global();
 
+	// convenience, doesn't need string manipulation
 	int output_log_level() const;
-	void set_output_log_level(const std::string& s);
-
 	int file_log_level() const;
-	void set_file_log_level(const std::string& s);
-
 	bool dry() const;
-	void set_dry(std::string_view s);
 
-	fs::path log_file() const { return get("log_file"); }
-
+	// convenience
 	bool redownload()   const { return get<bool>("redownload"); }
 	bool reextract()    const { return get<bool>("reextract"); }
 	bool reconfigure()  const { return get<bool>("reconfigure"); }
@@ -86,13 +108,11 @@ public:
 	bool clean()        const { return get<bool>("clean_task"); }
 	bool fetch()        const { return get<bool>("fetch_task"); }
 	bool build()        const { return get<bool>("build_task"); }
-
-	bool ignore_uncommitted() const
-	{
-		return get<bool>("ignore_uncommitted");
-	}
 };
 
+
+// options in [task] or [task_name:task]
+//
 class conf_task
 {
 public:
@@ -115,24 +135,36 @@ private:
 	bool get_bool(std::string_view name) const;
 };
 
+
+// options in [tools]
+//
 class conf_tools : public conf_section<fs::path>
 {
 public:
 	conf_tools();
 };
 
+
+// options in [transifex]
+//
 class conf_transifex : public conf_section<std::string>
 {
 public:
 	conf_transifex();
 };
 
+
+// options in [versions]
+//
 class conf_versions : public conf_section<std::string>
 {
 public:
 	conf_versions();
 };
 
+
+// options in [prebuilt]
+//
 class conf_prebuilt : public conf_section<std::string>
 {
 public:
@@ -140,13 +172,14 @@ public:
 };
 
 
+// options in [paths]
+//
 class conf_paths : public conf_section<fs::path>
 {
 public:
 	conf_paths();
 
-#define VALUE(NAME) \
-	fs::path NAME() const { return get(#NAME); }
+#define VALUE(NAME) fs::path NAME() const { return get(#NAME); }
 
 	VALUE(third_party);
 	VALUE(prefix);
@@ -181,6 +214,9 @@ public:
 };
 
 
+// should be used as conf().global().whatever(), doesn't actually hold anything,
+// but it's better than a bunch of static functions
+//
 class conf
 {
 public:
@@ -191,9 +227,6 @@ public:
 	conf_prebuilt prebuilt();
 	conf_versions version();
 	conf_paths path();
-
-	// this just forwards to conf_global, but it's used everywhere
-	static bool dry();
 };
 
 }	// namespace

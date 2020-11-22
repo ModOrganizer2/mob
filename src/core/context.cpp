@@ -80,7 +80,7 @@ const char* reason_string(context::reason r)
 		case context::cmd:			 return "cmd";
 		case context::std_out:		 return "stdout";
 		case context::std_err:		 return "stderr";
-		case context::fs:            return (conf::dry() ? "fs-dry" : "fs");
+		case context::fs:            return (conf().global().dry() ? "fs-dry" : "fs");
 		case context::net:           return "net";
 		case context::generic:       return "";
 		case context::conf:          return "conf";
@@ -227,7 +227,7 @@ bool context::enabled(level lv)
 
 void context::set_log_file(const fs::path& p)
 {
-	if (!conf::dry() && !p.empty())
+	if (!mob::conf().global().dry() && !p.empty())
 	{
 		// creating directory
 		if (!exists(p.parent_path()))

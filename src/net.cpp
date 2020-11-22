@@ -113,7 +113,7 @@ curl_downloader& curl_downloader::start()
 	ok_ = false;
 	cx_.debug(context::net, "downloading {} to {}", url_, path_);
 
-	if (conf::dry())
+	if (conf().global().dry())
 		return *this;
 
 	thread_ = start_thread([&]{ run(); });

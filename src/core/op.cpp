@@ -29,7 +29,7 @@ void touch(const context& cx, const fs::path& p, flags f)
 	cx.trace(context::fs, "touching {}", p);
 	check(cx, p, f);
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 		do_touch(cx, p);
 }
 
@@ -38,7 +38,7 @@ void create_directories(const context& cx, const fs::path& p, flags f)
 	cx.trace(context::fs, "creating dir {}", p);
 	check(cx, p, f);
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 		do_create_directories(cx, p);
 }
 
@@ -63,7 +63,7 @@ void delete_directory(const context& cx, const fs::path& p, flags f)
 	if (fs::exists(p) && !fs::is_directory(p))
 		cx.bail_out(context::fs, "{} is not a dir", p);
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 		do_delete_directory(cx, p);
 }
 
@@ -95,7 +95,7 @@ void delete_file(const context& cx, const fs::path& p, flags f)
 		return;
 	}
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 		do_delete_file(cx, p);
 }
 
@@ -131,7 +131,7 @@ void remove_readonly(const context& cx, const fs::path& dir, flags f)
 	cx.trace(context::fs, "removing read-only from {}", dir);
 	check(cx, dir, f);
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 	{
 		for (auto&& p : fs::recursive_directory_iterator(dir))
 		{
@@ -228,7 +228,7 @@ void rename(const context& cx, const fs::path& src, const fs::path& dest, flags 
 
 	cx.trace(context::fs, "renaming {} to {}", src, dest);
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 		do_rename(cx, src, dest);
 }
 
@@ -249,7 +249,7 @@ void move_to_directory(
 
 	cx.trace(context::fs, "moving {} to {}", src, target);
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 		do_rename(cx, src, target);
 }
 
@@ -262,7 +262,7 @@ void copy_file_to_dir_if_better(
 	if (file.u8string().find(u8"*") != std::string::npos)
 		cx.bail_out(context::fs, "{} contains a glob", file);
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 	{
 		if (!fs::exists(file) || !fs::is_regular_file(file))
 		{
@@ -286,7 +286,7 @@ void copy_file_to_dir_if_better(
 	{
 		cx.trace(context::fs, "{} -> {}", file, dir);
 
-		if (!conf::dry())
+		if (!conf().global().dry())
 			do_copy_file_to_dir(cx, file, dir);
 	}
 	else
@@ -304,7 +304,7 @@ void copy_file_to_file_if_better(
 	if (src.u8string().find(u8"*") != std::string::npos)
 		cx.bail_out(context::fs, "{} contains a glob", src);
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 	{
 		if (!fs::exists(src))
 		{
@@ -330,7 +330,7 @@ void copy_file_to_file_if_better(
 	{
 		cx.trace(context::fs, "{} -> {}", src, dest);
 
-		if (!conf::dry())
+		if (!conf().global().dry())
 			do_copy_file_to_file(cx, src, dest);
 	}
 	else
@@ -409,7 +409,7 @@ void replace_file(
 	check(cx, src, f);
 	check(cx, dest, f);
 
-	if (conf::dry())
+	if (conf().global().dry())
 		return;
 
 	const wchar_t* backup_p = nullptr;
@@ -491,7 +491,7 @@ void write_text_file(
 
 	check(cx, p, f);
 
-	if (conf::dry())
+	if (conf().global().dry())
 		return;
 
 	{
@@ -524,7 +524,7 @@ void archive_from_glob(
 	cx.trace(context::fs, "archiving {} into {}", src_glob, dest_file);
 	check(cx, dest_file, f);
 
-	if (conf::dry())
+	if (conf().global().dry())
 		return;
 
 	archiver::create_from_glob(cx, dest_file, src_glob, ignore);
@@ -541,7 +541,7 @@ void archive_from_files(
 		"archiving {} files rooted in {} into {}",
 		files.size(), files_root, dest_file);
 
-	if (conf::dry())
+	if (conf().global().dry())
 		return;
 
 	archiver::create_from_files(cx, dest_file, files, files_root);

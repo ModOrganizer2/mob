@@ -400,7 +400,7 @@ fs::path find_vcvars()
 	// check from the ini first
 	fs::path bat = conf().tool().get("vcvars");
 
-	if (conf::dry())
+	if (conf().global().dry())
 	{
 		if (bat.empty())
 			bat = "vcvars.bat";

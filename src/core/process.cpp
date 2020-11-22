@@ -257,7 +257,7 @@ void process::run()
 	const auto what = make_cmd();
 	cx_->debug(context::cmd, "> {}", what);
 
-	if (conf::dry())
+	if (conf().global().dry())
 		return;
 
 	// shouldn't happen
