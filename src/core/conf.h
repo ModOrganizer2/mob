@@ -137,11 +137,6 @@ class conf_prebuilt : public conf_section<std::string>
 {
 public:
 	conf_prebuilt();
-
-	bool use_prebuilt(std::string_view task_name)
-	{
-		return get<bool>(task_name);
-	}
 };
 
 

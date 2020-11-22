@@ -16,7 +16,7 @@ std::string usvfs::version()
 
 bool usvfs::prebuilt()
 {
-	return conf().prebuilt().use_prebuilt("usvfs");
+	return conf().prebuilt().get<bool>("usvfs");
 }
 
 fs::path usvfs::source_path()

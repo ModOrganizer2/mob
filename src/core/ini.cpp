@@ -70,6 +70,18 @@ std::vector<fs::path> find_inis(
 		v.push_back({where, p});
 	};
 
+	// whether the ini is already in the list
+	auto ini_already_found = [&](auto&& p)
+	{
+		for (auto itor=v.begin(); itor!=v.end(); ++itor)
+		{
+			if (fs::equivalent(p, itor->second))
+				return true;
+		}
+
+		return false;
+	};
+
 
 	fs::path master;
 
@@ -99,9 +111,6 @@ std::vector<fs::path> find_inis(
 
 		for (auto&& i : split(*e, ";"))
 		{
-			if (verbose)
-				u8cout << "checking '" << i << "'\n";
-
 			auto p = fs::path(i);
 			if (!fs::exists(p))
 			{
@@ -129,7 +138,8 @@ std::vector<fs::path> find_inis(
 		while (!cwd.empty())
 		{
 			const auto in_cwd = cwd / default_ini_filename();
-			if (fs::exists(in_cwd) && !fs::equivalent(in_cwd, master))
+
+			if (fs::exists(in_cwd) && !ini_already_found(in_cwd))
 			{
 				if (verbose)
 					u8cout << "also found in cwd " << path_to_utf8(in_cwd) << "\n";

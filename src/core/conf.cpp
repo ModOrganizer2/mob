@@ -14,38 +14,30 @@ namespace mob::details
 using key_value_map = std::map<std::string, std::string, std::less<>>;
 using section_map = std::map<std::string, key_value_map, std::less<>>;
 using task_map = std::map<std::string, section_map, std::less<>>;
-static task_map g_map;
 
+static section_map g_conf;
+static section_map g_tasks;
 
 // special cases to avoid string manipulations
 static int g_output_log_level = 3;
 static int g_file_log_level = 5;
 static bool g_dry = false;
 
+
 bool bool_from_string(std::string_view s)
 {
 	return (s == "true" || s == "yes" || s == "1");
 }
 
-
 std::string get_string(std::string_view section, std::string_view key)
 {
-	auto global = g_map.find("");
-	MOB_ASSERT(global != g_map.end());
-
-	auto sitor = global->second.find(section);
-	if (sitor == global->second.end())
-	{
-		gcx().bail_out(context::conf,
-			"conf section '{}' doesn't exist", section);
-	}
+	auto sitor = g_conf.find(section);
+	if (sitor == g_conf.end())
+		gcx().bail_out(context::conf, "[{}] doesn't exist", section);
 
 	auto kitor = sitor->second.find(key);
 	if (kitor == sitor->second.end())
-	{
-		gcx().bail_out(context::conf,
-			"key '{}' not found in section '{}'", key, section);
-	}
+		gcx().bail_out(context::conf, "no key '{}' in [{}]", key, section);
 
 	return kitor->second;
 }
@@ -70,81 +62,85 @@ bool get_bool(std::string_view section, std::string_view key)
 	return bool_from_string(s);
 }
 
-void set_string(
-	std::string_view section, std::string_view key,
-	std::string_view value)
+void set_string(std::string_view section, std::string_view key, std::string_view value)
 {
-	auto global = g_map.find("");
-	MOB_ASSERT(global != g_map.end());
-
-	auto sitor = global->second.find(section);
-	if (sitor == global->second.end())
-	{
-		gcx().bail_out(context::conf,
-			"conf section '{}' doesn't exist", section);
-	}
+	auto sitor = g_conf.find(section);
+	if (sitor == g_conf.end())
+		gcx().bail_out(context::conf, "[{}] doesn't exist", section);
 
 	auto kitor = sitor->second.find(key);
 	if (kitor == sitor->second.end())
-	{
-		gcx().bail_out(context::conf,
-			"key '{}' not found in section '{}'", key, section);
-	}
+		gcx().bail_out(context::conf, "no key '{}' [{}]", key, section);
 
 	kitor->second = value;
 }
 
-void add_string(
-	std::string_view section, std::string_view key, std::string_view value)
+void add_string(const std::string& section, const std::string& key, std::string value)
 {
-	g_map[""][std::string(section)][std::string(key)] = value;
+	g_conf[section][key] = value;
 }
 
 std::optional<std::string> find_string_for_task(
-	std::string_view task_name,
-	std::string_view section_name, std::string_view key)
+	std::string_view task_name, std::string_view key)
 {
-	auto titor = g_map.find(task_name);
-	if (titor == g_map.end())
+	// find task
+	auto titor = g_tasks.find(task_name);
+	if (titor == g_tasks.end())
 		return {};
 
 	const auto& task = titor->second;
 
-	auto sitor = task.find(section_name);
-	if (sitor == task.end())
-		return {};
-
-	const auto& section = sitor->second;
-
-	auto itor = section.find(key);
-	if (itor == section.end())
+	// find key
+	auto itor = task.find(key);
+	if (itor == task.end())
 		return {};
 
 	return itor->second;
 }
 
 std::string get_string_for_task(
-	const std::vector<std::string>& task_names,
-	std::string_view section, std::string_view key)
+	const std::vector<std::string>& task_names, std::string_view key)
 {
-	task_map::iterator task = g_map.end();
+	// there's a hierarchy for task options:
+	//
+	//  1) there's a special "_override" entry in g_tasks, for options set from
+	//     the command line that should override everything, like --no-pull
+	//     should override all pull settings for all tasks
+	//
+	//  2) if the key is not found in "_override", then there can be an entry
+	//     in g_tasks with any of given task names
+	//
+	//  3) if there's no entry for the task, or the entry doesn't have the key,
+	//     check if the task is a 'super' task (anything under
+	//     modorganizer_super); g_tasks has another special entry 'super' for
+	//     options that apply to all super tasks
+	//
+	//  4) if this is not a super task, or this key doesn't exist in the super
+	//     section, then use the generic task option for it, stored in an
+	//     element with an empty string in g_tasks
 
-	auto v = find_string_for_task("_override", section, key);
+
+	// some command line options will override any user settings, like
+	// --no-pull, those are stored in a special _override task name
+	auto v = find_string_for_task("_override", key);
 	if (v)
 		return *v;
 
+	// look for an option for this task by name
 	for (auto&& tn : task_names)
 	{
-		v = find_string_for_task(tn, section, key);
+		v = find_string_for_task(tn, key);
 		if (v)
 			return *v;
 	}
 
+	// if any of the task names correspond to a super task, look for an option
+	// for super
 	for (auto&& tn : task_names)
 	{
 		if (is_super_task(tn))
 		{
-			v = find_string_for_task("super", section, key);
+			v = find_string_for_task("super", key);
 			if (v)
 				return *v;
 
@@ -152,25 +148,37 @@ std::string get_string_for_task(
 		}
 	}
 
-	return get_string(section, key);
+	// default task options are in a special empty string entry in g_tasks
+	v = find_string_for_task("", key);
+	if (v)
+		return *v;
+
+	// doesn't exist anywhere
+	gcx().bail_out(context::conf,
+		"no task option '{}' found for any of {}",
+		key, join(task_names, ","));
 }
 
 bool get_bool_for_task(
-	const std::vector<std::string>& task_names,
-	std::string_view section, std::string_view key)
+	const std::vector<std::string>& task_names, std::string_view key)
 {
-	const std::string s = get_string_for_task(task_names, section, key);
+	const std::string s = get_string_for_task(task_names, key);
 	return bool_from_string(s);
 }
 
 void set_string_for_task(
-	std::string_view task_name, std::string_view section,
-	std::string_view key, std::string_view value)
+	const std::string& task_name, const std::string& key, std::string value)
 {
 	// make sure the key exists, will throw if it doesn't
-	get_string(section, key);
+	get_string_for_task({task_name}, key);
 
-	g_map[std::string(task_name)][std::string(section)][std::string(key)] = value;
+	g_tasks[task_name][key] = std::move(value);
+}
+
+void add_string_for_task(
+	const std::string& task_name, const std::string& key, std::string value)
+{
+	g_tasks[task_name][key] = std::move(value);
 }
 
 }	// namespace
@@ -181,48 +189,60 @@ namespace mob
 
 std::vector<std::string> format_options()
 {
-	std::size_t longest_task = 0;
-	std::size_t longest_section = 0;
+	std::size_t longest_what = 0;
 	std::size_t longest_key = 0;
 
-	for (auto&& [t, ss] : details::g_map)
+	for (auto&& [section, kvs] : details::g_conf)
 	{
-		longest_task = std::max(longest_task, t.size());
+		longest_what = std::max(longest_what, section.size());
 
-		for (auto&& [s, kv] : ss)
-		{
-			longest_section = std::max(longest_section, s.size());
-
-			for (auto&& [k, v] : kv)
-				longest_key = std::max(longest_key, k.size());
-		}
+		for (auto&& [k, v] : kvs)
+			longest_key = std::max(longest_key, k.size());
 	}
+
+	for (auto&& [k, v] : details::g_tasks[""])
+		longest_key = std::max(longest_key, k.size());
+
+	for (const auto* task : get_all_tasks())
+		longest_what = std::max(longest_what, task->name().size());
 
 	std::vector<std::string> lines;
 
 	lines.push_back(
-		pad_right("task", longest_task) + "  " +
-		pad_right("section", longest_section) + "  " +
+		pad_right("what", longest_what) + "  " +
 		pad_right("key",longest_key) + "   " +
 		"value");
 
 	lines.push_back(
-		pad_right("-", longest_task, '-') + "  " +
-		pad_right("-", longest_section, '-') + "  " +
+		pad_right("-", longest_what, '-') + "  " +
 		pad_right("-",longest_key, '-') + "   " +
 		"-----");
 
-	for (auto&& [t, ss] : details::g_map)
+	for (auto&& [section, kvs] : details::g_conf)
 	{
-		for (auto&& [s, kv] : ss)
+		for (auto&& [k, v] : kvs)
 		{
-			for (auto&& [k, v] : kv)
-			{
-				lines.push_back(
-					pad_right(t, longest_task) + "  " +
-					pad_right(s, longest_section) + "  " +
-					pad_right(k, longest_key) + " = " + v);
-			}
+			lines.push_back(
+				pad_right(section, longest_what) + "  " +
+				pad_right(k, longest_key) + " = " + v);
+		}
+	}
+
+	for (auto&& [k, v] : details::g_tasks[""])
+	{
+		lines.push_back(
+			pad_right("task", longest_what) + "  " +
+			pad_right(k, longest_key) + " = " + v);
+	}
+
+	for (const auto* t : get_all_tasks())
+	{
+		for (auto&& [k, unused] : details::g_tasks[""])
+		{
+			lines.push_back(
+				pad_right(t->name(), longest_what) + "  " +
+				pad_right(k, longest_key) + " = " +
+				details::get_string_for_task({t->name()}, k));
 		}
 	}
 
@@ -291,13 +311,13 @@ void make_canonical_path(
 
 struct parsed_option
 {
-	std::string task, section, key, value;
+	std::string section, key, value;
 };
 
 parsed_option parse_option(const std::string& s)
 {
-	// parses "task:section/key=value" where "task:" is optional
-	static std::regex re(R"((?:(.+)\:)?(.+)/(.*)=(.*))");
+	// parses "section/key=value"
+	static std::regex re(R"((.+)/(.+)=(.*))");
 	std::smatch m;
 
 	if (!std::regex_match(s, m, re))
@@ -309,9 +329,81 @@ parsed_option parse_option(const std::string& s)
 	return {
 		trim_copy(m[1].str()),
 		trim_copy(m[2].str()),
-		trim_copy(m[3].str()),
-		trim_copy(m[4].str())
+		trim_copy(m[3].str())
 	};
+}
+
+void process_option(
+	const std::string& section_string,
+	const std::string& key, const std::string& value, bool master)
+{
+	const auto col = section_string.find(":");
+	std::string task, section;
+
+	if (col == std::string::npos)
+	{
+		section = section_string;
+	}
+	else
+	{
+		task = section_string.substr(0, col);
+		section = section_string.substr(col + 1);
+	}
+
+	if (section == "task")
+	{
+		if (task == "_override")
+		{
+			details::set_string_for_task("_override", key, value);
+		}
+		else if (task != "")
+		{
+			const auto& tasks = find_tasks(task);
+			MOB_ASSERT(!tasks.empty());
+
+			for (auto& t : tasks)
+				details::set_string_for_task(t->name(), key, value);
+		}
+		else
+		{
+			if (master)
+				details::add_string_for_task("", key, value);
+			else
+				details::set_string_for_task("", key, value);
+		}
+	}
+	else
+	{
+		if (master)
+			details::add_string(section, key, value);
+		else
+			details::set_string(section, key, value);
+	}
+}
+
+void process_ini(const fs::path& ini, bool master)
+{
+	const auto data = parse_ini(ini);
+
+	for (auto&& a : data.aliases)
+		add_alias(a.first, a.second);
+
+	for (auto&& [section_string, kvs] : data.sections)
+	{
+		for (auto&& [k, v] : kvs)
+			process_option(section_string, k, v, master);
+	}
+}
+
+void process_cmd_options(const std::vector<std::string>& opts)
+{
+	gcx().debug(context::conf, "overriding from command line:");
+
+	for (auto&& o : opts)
+	{
+		const auto po = parse_option(o);
+		process_option(po.section, po.key, po.value, false);
+	}
 }
 
 void init_options(
@@ -321,110 +413,40 @@ void init_options(
 
 	// Keep track of the INI that contained a prefix:
 	fs::path ini_prefix;
-	bool add = true;
+	bool master = true;
+
 	for (auto&& ini : inis)
 	{
 		// Check if the prefix is set by this ini file:
-		fs::path cprefix = add ? fs::path{} : conf().path().prefix();
-		const auto data = parse_ini(ini);
+		fs::path cprefix = master ? fs::path{} : conf().path().prefix();
 
-		for (auto&& a : data.aliases)
-			add_alias(a.first, a.second);
-
-		for (auto&& [section_string, kvs] : data.sections)
-		{
-			const auto col = section_string.find(":");
-			std::string task, section;
-
-			if (col == std::string::npos)
-			{
-				section = section_string;
-			}
-			else
-			{
-				task = section_string.substr(0, col);
-				section = section_string.substr(col + 1);
-			}
-
-			for (auto&& [k, v] : kvs)
-			{
-				if (task.empty())
-				{
-					if (add)
-						details::add_string(section, k, v);
-					else
-						details::set_string(section, k, v);
-				}
-				else
-				{
-					if (task == "_override")
-					{
-						details::set_string_for_task("_override", section, k, v);
-					}
-					else
-					{
-						const auto& tasks = find_tasks(task);
-						MOB_ASSERT(!tasks.empty());
-
-						for (auto& t : tasks)
-							details::set_string_for_task(t->name(), section, k, v);
-					}
-				}
-			}
-		}
+		process_ini(ini, master);
 
 		if (conf().path().prefix() != cprefix)
 			ini_prefix = ini;
 
-		add = false;
+		master = false;
 	}
+
 
 	if (!opts.empty())
 	{
-		gcx().debug(context::conf, "overriding from command line:");
+		const auto prefix_before = conf().path().prefix();
 
-		for (auto&& o : opts)
+		process_cmd_options(opts);
+
+		if (conf().path().prefix() != prefix_before)
 		{
-			const auto po = parse_option(o);
-
-			if (po.section == "paths" && po.key == "prefix")
-			{
-				ini_prefix = "";
-			}
-
-			if (po.task.empty())
-			{
-				details::set_string(po.section, po.key, po.value);
-			}
-			else
-			{
-				if (po.task == "_override")
-				{
-					details::set_string_for_task(
-						"_override", po.section, po.key, po.value);
-				}
-				else
-				{
-					const auto& tasks = find_tasks(po.task);
-
-					if (tasks.empty())
-					{
-						gcx().bail_out(context::generic,
-							"no task matching '{}' found (command line option)",
-							po.task);
-					}
-
-					for (auto& t : tasks)
-					{
-						details::set_string_for_task(
-							t->name(), po.section, po.key, po.value);
-					}
-				}
-			}
+			// overridden by command line
+			ini_prefix = "";
 		}
 	}
 
+
 	set_special_options();
+
+	if (!conf().path().prefix().empty())
+		make_canonical_path("prefix", ini_prefix.empty() ? fs::current_path() : ini_prefix.parent_path(), "");
 
 	auto log_file = conf().global().log_file();
 	if (log_file.is_relative())
@@ -455,9 +477,6 @@ void init_options(
 	details::set_string("tools", "vcvars", path_to_utf8(find_vcvars()));
 
 	this_env::append_to_path(conf().path().get("qt_bin"));
-
-	if (!conf().path().prefix().empty())
-		make_canonical_path("prefix", ini_prefix.empty() ? fs::current_path() : ini_prefix.parent_path(), "");
 
 	make_canonical_path("cache",             conf().path().prefix(), "downloads");
 	make_canonical_path("build",             conf().path().prefix(), "build");
@@ -639,12 +658,12 @@ conf_task::conf_task(std::vector<std::string> names)
 
 std::string conf_task::get(std::string_view key) const
 {
-	return details::get_string_for_task(names_, "task", key);
+	return details::get_string_for_task(names_, key);
 }
 
 bool conf_task::get_bool(std::string_view key) const
 {
-	return details::get_bool_for_task(names_, "task", key);
+	return details::get_bool_for_task(names_, key);
 }
 
 

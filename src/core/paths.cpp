@@ -151,9 +151,6 @@ fs::path find_root(bool verbose)
 	{
 		// doesn't exist, maybe this is the build directory
 
-		if (verbose)
-			u8cout << path_to_utf8(third_party) << " doesn't exist\n";
-
 		auto p = mob_exe_dir;
 
 		if (p.filename().u8string() == u8"x64")
@@ -164,7 +161,7 @@ fs::path find_root(bool verbose)
 				p.filename().u8string() == u8"Release")
 			{
 				if (verbose)
-					u8cout << "this is mob's build directory, looking up\n";
+					u8cout << "mob.exe is in its build directory, looking up\n";
 
 				// mob_exe_dir is in the build directory
 				third_party = mob_exe_dir / ".." / ".." / ".." / "third-party";

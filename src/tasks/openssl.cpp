@@ -17,7 +17,7 @@ std::string openssl::version()
 
 bool openssl::prebuilt()
 {
-	return conf().prebuilt().use_prebuilt("openssl");
+	return conf().prebuilt().get<bool>("openssl");
 }
 
 fs::path openssl::source_path()
