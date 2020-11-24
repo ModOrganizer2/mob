@@ -152,48 +152,6 @@ private:
 };
 
 
-
-
-class git_submodule_adder : public instrumentable<2>
-{
-public:
-	enum class times
-	{
-		add_submodule_wait,
-		add_submodule
-	};
-
-	~git_submodule_adder();
-
-	static git_submodule_adder& instance();
-
-	void queue(git g);
-	void stop();
-
-private:
-	struct sleeper
-	{
-		std::mutex m;
-		std::condition_variable cv;
-		bool ready = false;
-	};
-
-	context cx_;
-	std::thread thread_;
-	std::vector<git> queue_;
-	mutable std::mutex queue_mutex_;
-	std::atomic<bool> quit_;
-	sleeper sleeper_;
-
-	git_submodule_adder();
-	void run();
-
-	void thread_fun();
-	void wakeup();
-	void process();
-};
-
-
 class extractor : public basic_process_runner
 {
 public:
@@ -252,80 +210,6 @@ private:
 };
 
 
-class cmake : public basic_process_runner
-{
-public:
-	enum generators
-	{
-		vs    = 0x01,
-		jom   = 0x02
-	};
-
-	enum ops
-	{
-		generate =1 ,
-		clean
-	};
-
-	cmake(ops o=generate);
-
-	static fs::path binary();
-
-	cmake& generator(generators g);
-	cmake& generator(const std::string& g);
-	cmake& root(const fs::path& p);
-	cmake& output(const fs::path& p);
-	cmake& prefix(const fs::path& s);
-	cmake& def(const std::string& name, const std::string& value);
-	cmake& def(const std::string& name, const fs::path& p);
-	cmake& def(const std::string& name, const char* s);
-	cmake& architecture(arch a);
-	cmake& cmd(const std::string& s);
-
-	// returns the path given in output(), if it was set
-	//
-	// if not, returns the build path based on the parameters (for example,
-	// `vsbuild_32/` for a 32-bit arch with the VS generator
-	//
-	fs::path build_path() const;
-
-	// returns build_path(), used by task::run_tool()
-	//
-	fs::path result() const;
-
-protected:
-	void do_run() override;
-
-private:
-	struct gen_info
-	{
-		std::string dir;
-		std::string name;
-		std::string x86;
-		std::string x64;
-
-		std::string get_arch(arch a) const;
-		std::string output_dir(arch a) const;
-	};
-
-	ops op_;
-	fs::path root_;
-	generators gen_;
-	std::string genstring_;
-	fs::path prefix_;
-	std::vector<std::pair<std::string, std::string>> def_;
-	fs::path output_;
-	arch arch_;
-	std::string cmd_;
-
-	void do_clean();
-	void do_generate();
-
-	static const std::map<generators, gen_info>& all_generators();
-	static const gen_info& get_generator(generators g);
-};
-
-
 class jom : public basic_process_runner
 {
 public:
@@ -358,59 +242,6 @@ private:
 	flags_t flags_;
 	arch arch_;
 };
-
-
-class msbuild : public basic_process_runner
-{
-public:
-	enum flags_t
-	{
-		noflags        = 0x00,
-		single_job     = 0x01,
-		allow_failure  = 0x02
-	};
-
-	enum ops
-	{
-		build = 1,
-		clean
-	};
-
-	msbuild(ops o=build);
-
-	static fs::path binary();
-
-	msbuild& solution(const fs::path& sln);
-	msbuild& targets(const std::vector<std::string>& names);
-	msbuild& parameters(const std::vector<std::string>& params);
-	msbuild& config(const std::string& s);
-	msbuild& platform(const std::string& s);
-	msbuild& architecture(arch a);
-	msbuild& flags(flags_t f);
-	msbuild& prepend_path(const fs::path& p);
-
-	int result() const;
-
-protected:
-	void do_run() override;
-
-private:
-	ops op_;
-	fs::path sln_;
-	std::vector<std::string> targets_;
-	std::vector<std::string> params_;
-	std::string config_;
-	std::string platform_;
-	arch arch_;
-	flags_t flags_;
-	std::vector<fs::path> prepend_path_;
-
-	void do_clean();
-	void do_build();
-	void do_run(const std::vector<std::string>& targets);
-};
-
-MOB_ENUM_OPERATORS(msbuild::flags_t);
 
 
 class vs : public basic_process_runner
@@ -599,3 +430,5 @@ private:
 
 
 #include "git.h"
+#include "cmake.h"
+#include "msbuild.h"

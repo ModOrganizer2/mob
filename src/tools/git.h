@@ -128,4 +128,44 @@ private:
 		const std::string& url_pattern={});
 };
 
+
+class git_submodule_adder : public instrumentable<2>
+{
+public:
+	enum class times
+	{
+		add_submodule_wait,
+		add_submodule
+	};
+
+	~git_submodule_adder();
+
+	static git_submodule_adder& instance();
+
+	void queue(git g);
+	void stop();
+
+private:
+	struct sleeper
+	{
+		std::mutex m;
+		std::condition_variable cv;
+		bool ready = false;
+	};
+
+	context cx_;
+	std::thread thread_;
+	std::vector<git> queue_;
+	mutable std::mutex queue_mutex_;
+	std::atomic<bool> quit_;
+	sleeper sleeper_;
+
+	git_submodule_adder();
+	void run();
+
+	void thread_fun();
+	void wakeup();
+	void process();
+};
+
 }	// namespace

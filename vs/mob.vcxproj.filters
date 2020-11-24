@@ -272,5 +272,11 @@
     <ClInclude Include="..\src\tools\git.h">
       <Filter>src\tools</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\tools\cmake.h">
+      <Filter>src\tools</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\tools\msbuild.h">
+      <Filter>src\tools</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

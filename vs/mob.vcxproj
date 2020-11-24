@@ -136,7 +136,9 @@
     <ClInclude Include="..\src\pch.h" />
     <ClInclude Include="..\src\tasks\task.h" />
     <ClInclude Include="..\src\tasks\tasks.h" />
+    <ClInclude Include="..\src\tools\cmake.h" />
     <ClInclude Include="..\src\tools\git.h" />
+    <ClInclude Include="..\src\tools\msbuild.h" />
     <ClInclude Include="..\src\tools\tools.h" />
     <ClInclude Include="..\src\utility.h" />
     <ClInclude Include="..\src\utility\algo.h" />
