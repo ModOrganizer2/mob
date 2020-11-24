@@ -4,11 +4,27 @@
 #include "../core/process.h"
 #include "../utility/threading.h"
 
-namespace mob
+namespace mob::details
 {
 
-constexpr git::ops no_op(git::ops(0));
 const std::string default_github_url_pattern = "git@github.com:{}/{}";
+
+template <class F>
+void for_each_ts(const fs::path& root, F&& f)
+{
+	for (auto&& e : fs::recursive_directory_iterator(root))
+	{
+		if (!e.is_regular_file())
+			continue;
+
+		const auto p = e.path();
+
+		if (!path_to_utf8(p.extension()).ends_with(".ts"))
+			continue;
+
+		f(p);
+	}
+}
 
 
 [[nodiscard]] process make_process()
@@ -265,144 +281,15 @@ const std::string default_github_url_pattern = "git@github.com:{}/{}";
 		.cwd(root);
 }
 
+}	// namespace
 
-git::git(ops o)
-	: basic_process_runner("git"), op_(o)
+
+namespace mob
 {
-}
 
-void git::delete_directory(const context& cx, const fs::path& p)
+git::git(fs::path root, basic_process_runner* runner)
+	: root_(std::move(root)), runner_(runner)
 {
-	git g(no_op);
-	g.root(p);
-
-	if (!conf().global().get<bool>("ignore_uncommitted"))
-	{
-		if (g.has_uncommitted_changes())
-		{
-			cx.bail_out(context::redownload,
-				"will not delete {}, has uncommitted changes; "
-				"see --ignore-uncommitted-changes", p);
-		}
-
-		if (g.has_stashed_changes())
-		{
-			cx.bail_out(context::redownload,
-				"will not delete {}, has stashed changes; "
-				"see --ignore-uncommitted-changes", p);
-		}
-	}
-
-	cx.trace(context::redownload, "deleting directory controlled by git{}", p);
-	op::delete_directory(cx, p, op::optional);
-}
-
-void git::set_credentials(
-	const fs::path& repo,
-	const std::string& username, const std::string& email)
-{
-	git(no_op)
-		.root(repo)
-		.credentials(username, email)
-		.do_set_credentials();
-}
-
-void git::set_remote(
-	const fs::path& repo,
-	std::string org, std::string key,
-	bool no_push_upstream, bool push_default_origin)
-{
-	git(no_op)
-		.root(repo)
-		.remote(org, key, no_push_upstream, push_default_origin)
-		.do_set_remote();
-}
-
-void git::ignore_ts(const fs::path& repo, bool b)
-{
-	git(no_op)
-		.root(repo)
-		.ignore_ts_on_clone(b)
-		.do_ignore_ts();
-}
-
-bool git::has_remote(const fs::path& repo, const std::string& name)
-{
-	git g(no_op);
-	g.root(repo);
-	return g.has_remote(name);
-}
-
-void git::add_remote(
-	const fs::path& repo, const std::string& remote_name,
-	const std::string& username, const std::string& key, bool push_default,
-	const std::string& url_pattern)
-{
-	git g(no_op);
-	g.root(repo);
-
-	const auto gf = g.git_file();
-
-	if (!g.has_remote(remote_name))
-	{
-		g.add_remote(remote_name, make_url(username, gf, url_pattern));
-
-		if (push_default)
-			g.set_config("remote.pushdefault", remote_name);
-
-		if (!key.empty())
-			g.set_config("remote." + remote_name + ".puttykeyfile", key);
-	}
-}
-
-bool git::is_git_repo(const fs::path& p)
-{
-	git g(no_op);
-	g.root(p);
-	return g.is_repo();
-}
-
-bool git::remote_branch_exists(const mob::url& u, const std::string& name)
-{
-	git g(no_op);
-	g.url(u);
-	g.branch(name);
-	return g.remote_branch_exists();
-}
-
-void git::init_repo(const fs::path& p)
-{
-	git g(no_op);
-	g.root(p);
-	g.init();
-}
-
-void git::apply(const fs::path& p, const std::string& diff)
-{
-	mob::apply(p, diff).run_and_join();
-}
-
-void git::fetch(
-	const fs::path& p, const std::string& remote, const std::string& branch)
-{
-	mob::fetch(p, remote, branch).run_and_join();
-}
-
-void git::checkout(const fs::path& p, const std::string& what)
-{
-	mob::checkout(p, what).run_and_join();
-}
-
-void git::checkout(const std::string& what)
-{
-	execute_and_join(mob::checkout(root_, what));
-}
-
-std::string git::current_branch(const fs::path& root)
-{
-	auto p = mob::current_branch(root);
-	p.run_and_join();
-	return trim_copy(p.stdout_string());
 }
 
 fs::path git::binary()
@@ -410,48 +297,319 @@ fs::path git::binary()
 	return conf().tool().get("git");
 }
 
-git& git::url(const mob::url& u)
+int git::run(process&& p)
+{
+	if (runner_)
+		return runner_->execute_and_join(p);
+	else
+		return p.run_and_join();
+}
+
+int git::run(process& p)
+{
+	if (runner_)
+		return runner_->execute_and_join(p);
+	else
+		return p.run_and_join();
+}
+
+const context& git::cx()
+{
+	if (runner_)
+		return runner_->cx();
+	else
+		return gcx();
+}
+
+void git::clone(const mob::url& url, const std::string& branch, bool shallow)
+{
+	run(details::clone(root_, url, branch, shallow));
+}
+
+void git::pull(const mob::url& url, const std::string& branch)
+{
+	run(details::pull(root_, url, branch));
+}
+
+void git::set_credentials(const std::string& username, const std::string& email)
+{
+	cx().debug(context::generic, "setting up credentials");
+
+	if (!username.empty())
+		set_config("user.name", username);
+
+	if (!email.empty())
+		set_config("user.email", email);
+}
+
+void git::set_remote(
+	std::string org, std::string key,
+	bool no_push_upstream, bool push_default_origin)
+{
+	if (has_remote("upstream"))
+	{
+		cx().trace(context::generic, "upstream remote already exists");
+		return;
+	}
+
+	const auto gf = git_file();
+
+	rename_remote("origin", "upstream");
+
+	if (no_push_upstream)
+		set_remote_push("upstream", "nopushurl");
+
+	add_remote("origin", org, key, push_default_origin);
+}
+
+void git::rename_remote(const std::string& from, const std::string& to)
+{
+	run(details::rename_remote(root_, from, to));
+}
+
+void git::set_config(const std::string& key, const std::string& value)
+{
+	run(details::set_config(root_, key, value));
+}
+
+void git::set_remote_push(const std::string& remote, const std::string& url)
+{
+	run(details::set_remote_push(root_, remote, url));
+}
+
+void git::set_assume_unchanged(const fs::path& file, bool on)
+{
+	run(details::set_assume_unchanged(root_, file, on));
+}
+
+void git::ignore_ts(bool b)
+{
+	details::for_each_ts(root_, [&](auto&& p)
+	{
+		const auto rp = fs::relative(p, root_);
+
+		if (is_tracked(rp))
+		{
+			cx().trace(context::generic, "  . {}", rp);
+			set_assume_unchanged(rp, b);
+		}
+		else
+		{
+			cx().trace(context::generic, "  . {} (skipping, not tracked)", rp);
+		}
+	});
+}
+
+void git::revert_ts()
+{
+	details::for_each_ts(root_, [&](auto&& p)
+	{
+		const auto rp = fs::relative(p, root_);
+
+		if (!is_tracked(rp))
+		{
+			cx().debug(context::generic,
+				"won't try to revert ts file '{}', not tracked", rp);
+
+			return;
+		}
+
+		run(details::revert(root_, p));
+	});
+}
+
+bool git::is_tracked(const fs::path& file)
+{
+	return (run(details::is_tracked(root_, file)) == 0);
+}
+
+bool git::has_remote(const std::string& name)
+{
+	return (run(details::has_remote(root_, name)) == 0);
+}
+
+void git::add_remote(
+	const std::string& remote_name,
+	const std::string& username, const std::string& key, bool push_default,
+	const std::string& url_pattern)
+{
+	const auto gf = git_file();
+
+	if (!has_remote(remote_name))
+	{
+		run(details::add_remote(
+			root_, remote_name, make_url(username, gf, url_pattern)));
+
+		if (push_default)
+			set_config("remote.pushdefault", remote_name);
+
+		if (!key.empty())
+			set_config("remote." + remote_name + ".puttykeyfile", key);
+	}
+}
+
+void git::init_repo()
+{
+	run(details::init(root_));
+}
+
+void git::apply(const std::string& diff)
+{
+	run(details::apply(root_, diff));
+}
+
+void git::fetch(const std::string& remote, const std::string& branch)
+{
+	run(details::fetch(root_, remote, branch));
+}
+
+void git::checkout(const std::string& what)
+{
+	run(details::checkout(root_, what));
+}
+
+std::string git::current_branch()
+{
+	auto p = details::current_branch(root_);
+	run(p);
+	return trim_copy(p.stdout_string());
+}
+
+std::string git::git_file()
+{
+	auto p = details::git_file(root_);
+	run(p);
+	const std::string out = p.stdout_string();
+
+	const auto last_slash = out.find_last_of("/");
+	if (last_slash == std::string::npos)
+	{
+		u8cerr << "bad get-url output '" << out << "'\n";
+		throw bailed();
+	}
+
+	auto s = trim_copy(out.substr(last_slash + 1));
+
+	if (s.empty())
+	{
+		u8cerr << "bad get-url output '" << out << "'\n";
+		throw bailed();
+	}
+
+	return s;
+}
+
+void git::delete_directory(const context& cx, const fs::path& dir)
+{
+	git g(dir);
+
+	if (!conf().global().get<bool>("ignore_uncommitted"))
+	{
+		if (g.has_uncommitted_changes())
+		{
+			cx.bail_out(context::redownload,
+				"will not delete {}, has uncommitted changes; "
+				"see --ignore-uncommitted-changes", dir);
+		}
+
+		if (g.has_stashed_changes())
+		{
+			cx.bail_out(context::redownload,
+				"will not delete {}, has stashed changes; "
+				"see --ignore-uncommitted-changes", dir);
+		}
+	}
+
+	cx.trace(context::redownload,
+		"deleting directory controlled by git {}", dir);
+
+	op::delete_directory(cx, dir, op::optional);
+}
+
+bool git::is_git_repo()
+{
+	return (run(details::is_repo(root_)) == 0);
+}
+
+bool git::remote_branch_exists(const mob::url& u, const std::string& name)
+{
+	return (details::remote_branch_exists(u, name).run_and_join() == 0);
+}
+
+bool git::has_uncommitted_changes()
+{
+	auto p = details::has_uncommitted_changes(root_);
+	run(p);
+	return (p.stdout_string() != "");
+}
+
+bool git::has_stashed_changes()
+{
+	auto p = details::has_stashed_changes(root_);
+	return (run(p) == 0);
+}
+
+std::string git::make_url(
+	const std::string& org, const std::string& git_file,
+	const std::string& url_pattern)
+{
+	const std::string pattern = url_pattern.empty() ?
+		details::default_github_url_pattern : url_pattern;
+
+	return fmt::format(pattern, org, git_file);
+}
+
+
+git_tool::git_tool(ops o)
+	: basic_process_runner("git"), op_(o)
+{
+}
+
+git_tool& git_tool::url(const mob::url& u)
 {
 	url_ = u;
 	return *this;
 }
 
-git& git::branch(const std::string& name)
-{
-	branch_ = name;
-	return *this;
-}
-
-git& git::root(const fs::path& dir)
+git_tool& git_tool::root(const fs::path& dir)
 {
 	root_ = dir;
 	return *this;
 }
 
-const fs::path& git::root() const
+git_tool& git_tool::branch(const std::string& name)
 {
-	return root_;
+	branch_ = name;
+	return *this;
 }
 
-git& git::credentials(const std::string& username, const std::string& email)
+git_tool& git_tool::ignore_ts_on_clone(bool b)
+{
+	ignore_ts_ = b;
+	return *this;
+}
+
+git_tool& git_tool::revert_ts_on_pull(bool b)
+{
+	revert_ts_ = b;
+	return *this;
+}
+
+git_tool& git_tool::credentials(
+	const std::string& username, const std::string& email)
 {
 	creds_username_ = username;
 	creds_email_ = email;
 	return *this;
 }
 
-git& git::submodule_name(const std::string& name)
+git_tool& git_tool::shallow(bool b)
 {
-	submodule_ = name;
+	shallow_ = b;
 	return *this;
 }
 
-const std::string& git::submodule_name() const
-{
-	return submodule_;
-}
-
-git& git::remote(
+git_tool& git_tool::remote(
 	std::string org, std::string key,
 	bool no_push_upstream, bool push_default_origin)
 {
@@ -463,29 +621,10 @@ git& git::remote(
 	return *this;
 }
 
-git& git::ignore_ts_on_clone(bool b)
-{
-	ignore_ts_ = b;
-	return *this;
-}
-
-git& git::revert_ts_on_pull(bool b)
-{
-	revert_ts_ = b;
-	return *this;
-}
-
-git& git::shallow(bool b)
-{
-	shallow_ = b;
-	return *this;
-}
-
-void git::do_run()
+void git_tool::do_run()
 {
 	if (url_.empty() || root_.empty())
 		cx().bail_out(context::generic, "git missing parameters");
-
 
 	switch (op_)
 	{
@@ -507,12 +646,6 @@ void git::do_run()
 			break;
 		}
 
-		case ops::add_submodule:
-		{
-			do_add_submodule();
-			break;
-		}
-
 		default:
 		{
 			cx().bail_out(context::generic, "git unknown op {}", op_);
@@ -520,18 +653,13 @@ void git::do_run()
 	}
 }
 
-void git::do_add_submodule()
-{
-	execute_and_join(mob::add_submodule(root_, branch_, submodule_, url_));
-}
-
-void git::do_clone_or_pull()
+void git_tool::do_clone_or_pull()
 {
 	if (!do_clone())
 		do_pull();
 }
 
-bool git::do_clone()
+bool git_tool::do_clone()
 {
 	const fs::path dot_git = root_ / ".git";
 	if (fs::exists(dot_git))
@@ -540,208 +668,70 @@ bool git::do_clone()
 		return false;
 	}
 
-	execute_and_join(mob::clone(root_, url_, branch_, shallow_));
+	git g(root_, this);
+
+	g.clone(url_, branch_, shallow_);
 
 	if (!creds_username_.empty() || !creds_email_.empty())
-		do_set_credentials();
+		g.set_credentials(creds_username_, creds_email_);
 
 	if (!remote_org_.empty())
-		do_set_remote();
+		g.set_remote(remote_org_, remote_key_, no_push_upstream_, push_default_origin_);
 
 	if (ignore_ts_)
-		do_ignore_ts();
+		g.ignore_ts(true);
 
 	return true;
 }
 
-void git::do_pull()
+void git_tool::do_pull()
 {
+	git g(root_, this);
+
 	if (revert_ts_)
-		do_revert_ts();
+		g.revert_ts();
 
-	execute_and_join(mob::pull(root_, url_, branch_));
+	g.pull(url_, branch_);
 }
 
-void git::do_set_credentials()
+
+git_submodule_tool::git_submodule_tool()
+	: basic_process_runner("git submodule")
 {
-	cx().debug(context::generic, "setting up credentials");
-
-	if (!creds_username_.empty())
-		set_config("user.name", creds_username_);
-
-	if (!creds_email_.empty())
-		set_config("user.email", creds_email_);
 }
 
-void git::do_set_remote()
+git_submodule_tool& git_submodule_tool::url(const mob::url& u)
 {
-	if (has_remote("upstream"))
-	{
-		cx().trace(context::generic, "upstream remote already exists");
-		return;
-	}
-
-	const auto gf = git_file();
-
-	rename_remote("origin", "upstream");
-
-	if (no_push_upstream_)
-		set_remote_push("upstream", "nopushurl");
-
-	add_remote("origin", make_url(remote_org_, gf));
-
-	if (push_default_origin_)
-		set_config("remote.pushdefault", "origin");
-
-	if (!remote_key_.empty())
-		set_config("remote.origin.puttykeyfile", remote_key_);
+	url_ = u;
+	return *this;
 }
 
-template <class F>
-void for_each_ts(const fs::path& root, F&& f)
+git_submodule_tool& git_submodule_tool::root(const fs::path& dir)
 {
-	for (auto&& e : fs::recursive_directory_iterator(root))
-	{
-		if (!e.is_regular_file())
-			continue;
-
-		const auto p = e.path();
-
-		if (!path_to_utf8(p.extension()).ends_with(".ts"))
-			continue;
-
-		f(p);
-	}
+	root_ = dir;
+	return *this;
 }
 
-void git::do_ignore_ts()
+git_submodule_tool& git_submodule_tool::branch(const std::string& name)
 {
-	for_each_ts(root_, [&](auto&& p)
-	{
-		const auto rp = fs::relative(p, root_);
-
-		if (is_tracked(rp))
-		{
-			cx().trace(context::generic, "  . {}", rp);
-			set_assume_unchanged(rp, true);
-		}
-		else
-		{
-			cx().trace(context::generic, "  . {} (skipping, not tracked)", rp);
-		}
-	});
+	branch_ = name;
+	return *this;
 }
 
-void git::do_revert_ts()
+git_submodule_tool& git_submodule_tool::submodule(const std::string& name)
 {
-	for_each_ts(root_, [&](auto&& p)
-	{
-		const auto rp = fs::relative(p, root_);
-
-		if (!is_tracked(rp))
-		{
-			cx().debug(context::generic,
-				"won't try to revert ts file '{}', not tracked", rp);
-
-			return;
-		}
-
-		execute_and_join(mob::revert(root_, p));
-	});
+	submodule_ = name;
+	return *this;
 }
 
-void git::set_config(const std::string& key, const std::string& value)
+const std::string& git_submodule_tool::submodule() const
 {
-	execute_and_join(mob::set_config(root_, key, value));
+	return submodule_;
 }
 
-bool git::has_remote(const std::string& name)
+void git_submodule_tool::do_run()
 {
-	return (execute_and_join(mob::has_remote(root_, name)) == 0);
-}
-
-void git::rename_remote(const std::string& from, const std::string& to)
-{
-	execute_and_join(mob::rename_remote(root_, from, to));
-}
-
-void git::add_remote(const std::string& name, const std::string& url)
-{
-	execute_and_join(mob::add_remote(root_, name, url));
-}
-
-void git::set_remote_push(const std::string& remote, const std::string& url)
-{
-	execute_and_join(mob::set_remote_push(root_, remote, url));
-}
-
-void git::set_assume_unchanged(const fs::path& file, bool on)
-{
-	execute_and_join(mob::set_assume_unchanged(root_, file, on));
-}
-
-bool git::is_tracked(const fs::path& file)
-{
-	return (execute_and_join(mob::is_tracked(root_, file)) == 0);
-}
-
-bool git::is_repo()
-{
-	return (execute_and_join(mob::is_repo(root_)) == 0);
-}
-
-bool git::remote_branch_exists()
-{
-	return (execute_and_join(mob::remote_branch_exists(url_, branch_)) == 0);
-}
-
-bool git::has_uncommitted_changes()
-{
-	execute_and_join(mob::has_uncommitted_changes(root_));
-	return (get_process().stdout_string() != "");
-}
-
-bool git::has_stashed_changes()
-{
-	return (execute_and_join(mob::has_stashed_changes(root_)) == 0);
-}
-
-void git::init()
-{
-	execute_and_join(mob::init(root_));
-}
-
-std::string git::git_file()
-{
-	execute_and_join(mob::git_file(root_));
-	const std::string out = get_process().stdout_string();
-
-	const auto last_slash = out.find_last_of("/");
-	if (last_slash == std::string::npos)
-	{
-		u8cerr << "bad get-url output '" << out << "'\n";
-		throw bailed();
-	}
-
-	auto s = trim_copy(out.substr(last_slash + 1));
-
-	if (s.empty())
-	{
-		u8cerr << "bad get-url output '" << out << "'\n";
-		throw bailed();
-	}
-
-	return s;
-}
-
-std::string git::make_url(
-	const std::string& org, const std::string& git_file,
-	const std::string& url_pattern)
-	{
-	const std::string pattern =
-		url_pattern.empty() ? default_github_url_pattern : url_pattern;
-
-	return fmt::format(pattern, org, git_file);
+	execute_and_join(details::add_submodule(root_, branch_, submodule_, url_));
 }
 
 
@@ -774,7 +764,7 @@ git_submodule_adder& git_submodule_adder::instance()
 	return *g_sa_instance;
 }
 
-void git_submodule_adder::queue(git g)
+void git_submodule_adder::queue(git_submodule_tool g)
 {
 	std::scoped_lock lock(queue_mutex_);
 	queue_.emplace_back(std::move(g));
@@ -830,7 +820,7 @@ void git_submodule_adder::wakeup()
 
 void git_submodule_adder::process()
 {
-	std::vector<git> v;
+	std::vector<git_submodule_tool> v;
 
 	{
 		std::scoped_lock lock(queue_mutex_);
@@ -845,7 +835,7 @@ void git_submodule_adder::process()
 		instrument<times::add_submodule>([&]
 		{
 			cx_.trace(context::generic,
-				"git_submodule_adder: running {}", g.submodule_name());
+				"git_submodule_adder: running {}", g.submodule());
 
 			g.run(cx_);
 		});

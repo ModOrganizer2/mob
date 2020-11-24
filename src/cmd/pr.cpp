@@ -133,12 +133,13 @@ int pr_command::pull()
 				<< "checking out pr " << pr.number << " "
 				<< "in " << task->name() << "\n";
 
-			git::fetch(
-				task->this_source_path(),
+			git g(task->this_source_path());
+
+			g.fetch(
 				task->git_url().string(),
 				fmt::format("pull/{}/head", pr.number));
 
-			git::checkout(task->this_source_path(), "FETCH_HEAD");
+			g.checkout("FETCH_HEAD");
 		}
 
 		u8cout << "note: all these repos are now in detached HEAD state\n";
@@ -179,7 +180,7 @@ int pr_command::revert()
 
 			u8cout << "reverting " << task->name() << " to master\n";
 
-			git::checkout(task->this_source_path(), "master");
+			git(task->this_source_path()).checkout("master");
 		}
 
 		return 0;

@@ -23,13 +23,13 @@ public:
 
 	void run(context& cx);
 	void interrupt();
+	const context& cx() const;
 
 	void result() {}
 
 protected:
 	tool(std::string name);
 
-	const context& cx() const;
 
 	bool interrupted() const;
 
@@ -106,7 +106,9 @@ public:
 	basic_process_runner(basic_process_runner&&);
 	~basic_process_runner();
 
+	int execute_and_join(const process& p);
 	void join();
+
 	int exit_code() const;
 
 protected:
@@ -117,7 +119,6 @@ protected:
 
 	void do_interrupt() override;
 	int execute_and_join();
-	int execute_and_join(const process& p);
 
 private:
 	std::unique_ptr<process> process_;

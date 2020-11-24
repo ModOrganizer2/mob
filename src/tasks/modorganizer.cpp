@@ -132,10 +132,10 @@ void modorganizer::do_fetch()
 void modorganizer::do_build_and_install()
 {
 	git_submodule_adder::instance().queue(std::move(
-		task_conf().make_git(git::ops::add_submodule)
+		git_submodule_tool()
 			.url(git_url())
 			.branch(task_conf().mo_branch())
-			.submodule_name(name())
+			.submodule(name())
 			.root(super_path())));
 
 	if (!fs::exists(this_source_path() / "CMakeLists.txt"))
@@ -211,14 +211,16 @@ void modorganizer::initialize_super(const fs::path& super_root)
 
 	cx().trace(context::generic, "checking super");
 
-	if (git::is_git_repo(super_root))
+	git g(super_root);
+
+	if (g.is_git_repo())
 	{
 		cx().debug(context::generic, "super already initialized");
 		return;
 	}
 
 	cx().trace(context::generic, "initializing super");
-	git::init_repo(super_root);
+	g.init_repo();
 }
 
 }	// namespace
