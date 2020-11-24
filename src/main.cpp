@@ -175,7 +175,7 @@ std::shared_ptr<command> handle_command_line(const std::vector<std::string>& arg
 		all_groups.push_back(c->group());
 
 
-	// vs reports a no-op on the left side of the comman, which is incorrect
+	// vs reports a no-op on the left side of the command, which is incorrect
 #pragma warning(suppress: 4548)
 	auto cli = (all_groups, command::common_options_group());
 	auto pr = clipp::parse(args, cli);
