@@ -117,6 +117,7 @@ protected:
 
 	void do_interrupt() override;
 	int execute_and_join();
+	int execute_and_join(const process& p);
 
 private:
 	std::unique_ptr<process> process_;

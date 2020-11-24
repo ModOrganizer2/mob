@@ -330,7 +330,7 @@ void release_command::check_repos_for_branch()
 		{
 			const auto* o = dynamic_cast<const tasks::modorganizer*>(t);
 
-			if (!git::branch_exists(o->git_url(), branch_))
+			if (!git::remote_branch_exists(o->git_url(), branch_))
 			{
 				gcx().error(context::generic,
 					"branch {} doesn't exist in the {} repo",

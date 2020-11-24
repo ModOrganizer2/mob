@@ -46,7 +46,7 @@ public:
 		bool push_default, const std::string& url_pattern={});
 
 	static bool is_git_repo(const fs::path& p);
-	static bool branch_exists(const mob::url& u, const std::string& name);
+	static bool remote_branch_exists(const mob::url& u, const std::string& name);
 	static void init_repo(const fs::path& p);
 
 	static void apply(const fs::path& p, const std::string& diff);
@@ -93,8 +93,6 @@ private:
 	bool revert_ts_ = false;
 	bool shallow_ = false;
 
-	process make_process();
-
 	void do_clone_or_pull();
 	bool do_clone();
 	void do_pull();
@@ -111,12 +109,9 @@ private:
 	void add_remote(const std::string& name, const std::string& url);
 	void set_remote_push(const std::string& remote, const std::string& url);
 	void set_assume_unchanged(const fs::path& relative_file, bool on);
-	void apply(const std::string& diff);
-	void fetch(const std::string& remote, const std::string& branch);
 	void checkout(const std::string& what);
-	std::string current_branch();
 	bool is_repo();
-	bool branch_exists();
+	bool remote_branch_exists();
 	bool has_uncommitted_changes();
 	bool has_stashed_changes();
 	void init();
@@ -127,6 +122,7 @@ private:
 		const std::string& org, const std::string& git_file,
 		const std::string& url_pattern={});
 };
+
 
 
 class git_submodule_adder : public instrumentable<2>

@@ -531,6 +531,13 @@ void process::join()
 		cx_->trace(context::cmd, "process interrupted and finished");
 }
 
+int process::run_and_join()
+{
+	run();
+	join();
+	return exit_code();
+}
+
 void process::on_timeout(bool& already_interrupted)
 {
 	read_pipes(false);

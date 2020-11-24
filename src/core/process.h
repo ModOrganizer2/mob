@@ -324,6 +324,9 @@ public:
 	//
 	void join();
 
+	// calls run(), join() and returns exit_code()
+	//
+	int run_and_join();
 
 	// exit code of the process, only valid after join() returns
 	//
