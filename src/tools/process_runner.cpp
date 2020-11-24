@@ -30,10 +30,11 @@ void basic_process_runner::do_interrupt()
 	process_->interrupt();
 }
 
-int basic_process_runner::execute_and_join(const process& p)
+int basic_process_runner::execute_and_join(process& p)
 {
-	set_process(p);
-	return execute_and_join();
+	set_name(p.name());
+	p.set_context(&cx());
+	return p.run_and_join();
 }
 
 int basic_process_runner::execute_and_join()

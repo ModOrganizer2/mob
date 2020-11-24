@@ -579,15 +579,14 @@ void process::read_pipe(
 						return;
 				}
 
-				// remember this log line, can be dumped after the process
-				// terminates
-				io_.logs[f.lv].emplace_back(std::move(line));
-
 				// don't log when ignore_output_on_success was specified, the
 				// process must finish before knowing whether to log or not
 				if (!is_set(flags_, ignore_output_on_success))
 					cx_->log_string(f.r, f.lv, f.line);
 
+				// remember this log line, can be dumped after the process
+				// terminates
+				io_.logs[f.lv].emplace_back(std::move(line));
 			});
 
 			break;
@@ -701,14 +700,18 @@ void process::on_process_successful()
 			"process exit code is {} (considered success), "
 			"but stderr had something", exec_.code);
 
-		cx_->warning(context::cmd, "process was: {}", make_cmd());
-		cx_->warning(context::cmd, "stderr:");
+		// don't re-log the same stuff
+		if (io_.err.flags != forward_to_log)
+		{
+			cx_->warning(context::cmd, "process was: {}", make_cmd());
+			cx_->warning(context::cmd, "stderr:");
 
-		for (auto&& line : warnings)
-			cx_->warning(context::std_err, "        {}", line);
+			for (auto&& line : warnings)
+				cx_->warning(context::std_err, "        {}", line);
 
-		for (auto&& line : errors)
-			cx_->warning(context::std_err, "        {}", line);
+			for (auto&& line : errors)
+				cx_->warning(context::std_err, "        {}", line);
+		}
 	}
 }
 

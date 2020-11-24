@@ -359,7 +359,7 @@ void git::set_remote(
 	if (no_push_upstream)
 		set_remote_push("upstream", "nopushurl");
 
-	add_remote("origin", org, key, push_default_origin);
+	add_remote("origin", org, key, push_default_origin, {}, gf);
 }
 
 void git::rename_remote(const std::string& from, const std::string& to)
@@ -431,9 +431,11 @@ bool git::has_remote(const std::string& name)
 void git::add_remote(
 	const std::string& remote_name,
 	const std::string& username, const std::string& key, bool push_default,
-	const std::string& url_pattern)
+	const std::string& url_pattern, const std::string& opt_git_file)
 {
-	const auto gf = git_file();
+	auto gf = opt_git_file;
+	if (gf.empty())
+		gf = git_file();
 
 	if (!has_remote(remote_name))
 	{
@@ -475,6 +477,13 @@ std::string git::current_branch()
 	return trim_copy(p.stdout_string());
 }
 
+void git::add_submodule(
+	const std::string& branch, const std::string& submodule,
+	const mob::url& url)
+{
+	run(details::add_submodule(root_, branch, submodule, url));
+}
+
 std::string git::git_file()
 {
 	auto p = details::git_file(root_);
@@ -484,7 +493,7 @@ std::string git::git_file()
 	const auto last_slash = out.find_last_of("/");
 	if (last_slash == std::string::npos)
 	{
-		u8cerr << "bad get-url output '" << out << "'\n";
+		cx().error(context::generic, "bad get-url output '{}'", out);
 		throw bailed();
 	}
 
@@ -492,7 +501,7 @@ std::string git::git_file()
 
 	if (s.empty())
 	{
-		u8cerr << "bad get-url output '" << out << "'\n";
+		cx().error(context::generic, "bad get-url output '{}'", out);
 		throw bailed();
 	}
 
@@ -731,7 +740,7 @@ const std::string& git_submodule_tool::submodule() const
 
 void git_submodule_tool::do_run()
 {
-	execute_and_join(details::add_submodule(root_, branch_, submodule_, url_));
+	git(root_, this).add_submodule(branch_, submodule_, url_);
 }
 
 

@@ -276,7 +276,9 @@ private:
 			}
 
 			std::wcerr << "bad format string '" << s << "'\n";
-			MOB_ASSERT(false, "bad format string");
+
+			if (IsDebuggerPresent())
+				DebugBreak();
 		}
 	}
 

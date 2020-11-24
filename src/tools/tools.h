@@ -106,7 +106,7 @@ public:
 	basic_process_runner(basic_process_runner&&);
 	~basic_process_runner();
 
-	int execute_and_join(const process& p);
+	int execute_and_join(process& p);
 	void join();
 
 	int exit_code() const;

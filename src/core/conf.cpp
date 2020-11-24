@@ -541,7 +541,12 @@ void init_options(
 
 	for (auto&& ini : inis)
 	{
-		const fs::path prefix_before = conf().path().prefix();
+		fs::path prefix_before;
+
+		// if this is the master ini, the prefix doesn't exist in the config
+		// yet because no inis have been loaded
+		if (!master)
+			prefix_before = conf().path().prefix();
 
 		process_ini(ini, master);
 

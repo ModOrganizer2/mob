@@ -27,8 +27,8 @@ public:
 
 	void add_remote(
 		const std::string& remote_name,
-		const std::string& org, const std::string& key,
-		bool push_default, const std::string& url_pattern={});
+		const std::string& org, const std::string& key, bool push_default,
+		const std::string& url_pattern={}, const std::string& git_file={});
 
 	void rename_remote(const std::string& from, const std::string& to);
 
@@ -47,6 +47,10 @@ public:
 	void fetch(const std::string& remote, const std::string& branch);
 
 	void checkout(const std::string& what);
+
+	void add_submodule(
+		const std::string& branch, const std::string& submodule,
+		const mob::url& url);
 
 	std::string current_branch();
 
