@@ -247,7 +247,7 @@ fs::path find_vs()
 	if (output.empty())
 		gcx().bail_out(context::conf, "vswhere failed");
 
-	const auto lines = split(path_to_utf8(output), "\r\n");
+	const auto lines = split(output, "\r\n");
 
 	if (lines.empty())
 	{

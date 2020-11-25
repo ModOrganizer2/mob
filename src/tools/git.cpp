@@ -34,7 +34,7 @@ void for_each_ts(const fs::path& root, F&& f)
 		.set("GIT_TERMINAL_PROMPT", "0");
 
 	return std::move(process()
-		.binary(git_tool::binary())
+		.binary(git_wrap::binary())
 		.env(e));
 }
 
@@ -287,17 +287,17 @@ void for_each_ts(const fs::path& root, F&& f)
 namespace mob
 {
 
-git_tool::git_tool(fs::path root, basic_process_runner* runner)
+git_wrap::git_wrap(fs::path root, basic_process_runner* runner)
 	: root_(std::move(root)), runner_(runner)
 {
 }
 
-fs::path git_tool::binary()
+fs::path git_wrap::binary()
 {
 	return conf().tool().get("git");
 }
 
-int git_tool::run(process&& p)
+int git_wrap::run(process&& p)
 {
 	if (runner_)
 		return runner_->execute_and_join(p);
@@ -305,7 +305,7 @@ int git_tool::run(process&& p)
 		return p.run_and_join();
 }
 
-int git_tool::run(process& p)
+int git_wrap::run(process& p)
 {
 	if (runner_)
 		return runner_->execute_and_join(p);
@@ -313,7 +313,7 @@ int git_tool::run(process& p)
 		return p.run_and_join();
 }
 
-const context& git_tool::cx()
+const context& git_wrap::cx()
 {
 	if (runner_)
 		return runner_->cx();
@@ -321,17 +321,17 @@ const context& git_tool::cx()
 		return gcx();
 }
 
-void git_tool::clone(const mob::url& url, const std::string& branch, bool shallow)
+void git_wrap::clone(const mob::url& url, const std::string& branch, bool shallow)
 {
 	run(details::clone(root_, url, branch, shallow));
 }
 
-void git_tool::pull(const mob::url& url, const std::string& branch)
+void git_wrap::pull(const mob::url& url, const std::string& branch)
 {
 	run(details::pull(root_, url, branch));
 }
 
-void git_tool::set_credentials(const std::string& username, const std::string& email)
+void git_wrap::set_credentials(const std::string& username, const std::string& email)
 {
 	cx().debug(context::generic, "setting up credentials");
 
@@ -342,7 +342,7 @@ void git_tool::set_credentials(const std::string& username, const std::string& e
 		set_config("user.email", email);
 }
 
-void git_tool::set_remote(
+void git_wrap::set_remote(
 	std::string org, std::string key,
 	bool no_push_upstream, bool push_default_origin)
 {
@@ -362,27 +362,27 @@ void git_tool::set_remote(
 	add_remote("origin", org, key, push_default_origin, {}, gf);
 }
 
-void git_tool::rename_remote(const std::string& from, const std::string& to)
+void git_wrap::rename_remote(const std::string& from, const std::string& to)
 {
 	run(details::rename_remote(root_, from, to));
 }
 
-void git_tool::set_config(const std::string& key, const std::string& value)
+void git_wrap::set_config(const std::string& key, const std::string& value)
 {
 	run(details::set_config(root_, key, value));
 }
 
-void git_tool::set_remote_push(const std::string& remote, const std::string& url)
+void git_wrap::set_remote_push(const std::string& remote, const std::string& url)
 {
 	run(details::set_remote_push(root_, remote, url));
 }
 
-void git_tool::set_assume_unchanged(const fs::path& file, bool on)
+void git_wrap::set_assume_unchanged(const fs::path& file, bool on)
 {
 	run(details::set_assume_unchanged(root_, file, on));
 }
 
-void git_tool::ignore_ts(bool b)
+void git_wrap::ignore_ts(bool b)
 {
 	details::for_each_ts(root_, [&](auto&& p)
 	{
@@ -400,7 +400,7 @@ void git_tool::ignore_ts(bool b)
 	});
 }
 
-void git_tool::revert_ts()
+void git_wrap::revert_ts()
 {
 	details::for_each_ts(root_, [&](auto&& p)
 	{
@@ -418,17 +418,17 @@ void git_tool::revert_ts()
 	});
 }
 
-bool git_tool::is_tracked(const fs::path& file)
+bool git_wrap::is_tracked(const fs::path& file)
 {
 	return (run(details::is_tracked(root_, file)) == 0);
 }
 
-bool git_tool::has_remote(const std::string& name)
+bool git_wrap::has_remote(const std::string& name)
 {
 	return (run(details::has_remote(root_, name)) == 0);
 }
 
-void git_tool::add_remote(
+void git_wrap::add_remote(
 	const std::string& remote_name,
 	const std::string& username, const std::string& key, bool push_default,
 	const std::string& url_pattern, const std::string& opt_git_file)
@@ -450,41 +450,41 @@ void git_tool::add_remote(
 	}
 }
 
-void git_tool::init_repo()
+void git_wrap::init_repo()
 {
 	run(details::init(root_));
 }
 
-void git_tool::apply(const std::string& diff)
+void git_wrap::apply(const std::string& diff)
 {
 	run(details::apply(root_, diff));
 }
 
-void git_tool::fetch(const std::string& remote, const std::string& branch)
+void git_wrap::fetch(const std::string& remote, const std::string& branch)
 {
 	run(details::fetch(root_, remote, branch));
 }
 
-void git_tool::checkout(const std::string& what)
+void git_wrap::checkout(const std::string& what)
 {
 	run(details::checkout(root_, what));
 }
 
-std::string git_tool::current_branch()
+std::string git_wrap::current_branch()
 {
 	auto p = details::current_branch(root_);
 	run(p);
 	return trim_copy(p.stdout_string());
 }
 
-void git_tool::add_submodule(
+void git_wrap::add_submodule(
 	const std::string& branch, const std::string& submodule,
 	const mob::url& url)
 {
 	run(details::add_submodule(root_, branch, submodule, url));
 }
 
-std::string git_tool::git_file()
+std::string git_wrap::git_file()
 {
 	auto p = details::git_file(root_);
 	run(p);
@@ -508,9 +508,9 @@ std::string git_tool::git_file()
 	return s;
 }
 
-void git_tool::delete_directory(const context& cx, const fs::path& dir)
+void git_wrap::delete_directory(const context& cx, const fs::path& dir)
 {
-	git_tool g(dir);
+	git_wrap g(dir);
 
 	if (!conf().global().get<bool>("ignore_uncommitted"))
 	{
@@ -535,30 +535,30 @@ void git_tool::delete_directory(const context& cx, const fs::path& dir)
 	op::delete_directory(cx, dir, op::optional);
 }
 
-bool git_tool::is_git_repo()
+bool git_wrap::is_git_repo()
 {
 	return (run(details::is_repo(root_)) == 0);
 }
 
-bool git_tool::remote_branch_exists(const mob::url& u, const std::string& name)
+bool git_wrap::remote_branch_exists(const mob::url& u, const std::string& name)
 {
 	return (details::remote_branch_exists(u, name).run_and_join() == 0);
 }
 
-bool git_tool::has_uncommitted_changes()
+bool git_wrap::has_uncommitted_changes()
 {
 	auto p = details::has_uncommitted_changes(root_);
 	run(p);
 	return (p.stdout_string() != "");
 }
 
-bool git_tool::has_stashed_changes()
+bool git_wrap::has_stashed_changes()
 {
 	auto p = details::has_stashed_changes(root_);
 	return (run(p) == 0);
 }
 
-std::string git_tool::make_url(
+std::string git_wrap::make_url(
 	const std::string& org, const std::string& git_file,
 	const std::string& url_pattern)
 {
@@ -677,7 +677,7 @@ bool git::do_clone()
 		return false;
 	}
 
-	git_tool g(root_, this);
+	git_wrap g(root_, this);
 
 	g.clone(url_, branch_, shallow_);
 
@@ -695,7 +695,7 @@ bool git::do_clone()
 
 void git::do_pull()
 {
-	git_tool g(root_, this);
+	git_wrap g(root_, this);
 
 	if (revert_ts_)
 		g.revert_ts();
@@ -740,7 +740,7 @@ const std::string& git_submodule::submodule() const
 
 void git_submodule::do_run()
 {
-	git_tool(root_, this).add_submodule(branch_, submodule_, url_);
+	git_wrap(root_, this).add_submodule(branch_, submodule_, url_);
 }
 
 

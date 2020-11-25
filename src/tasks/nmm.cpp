@@ -30,7 +30,7 @@ void nmm::do_clean(clean c)
 	{
 		if (is_set(c, clean::reclone))
 		{
-			git_tool::delete_directory(cx(), source_path());
+			git_wrap::delete_directory(cx(), source_path());
 			return;
 		}
 

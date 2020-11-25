@@ -29,7 +29,7 @@ void installer::do_clean(clean c)
 	instrument<times::clean>([&]
 	{
 		if (is_set(c, clean::reclone))
-			git_tool::delete_directory(cx(), source_path());
+			git_wrap::delete_directory(cx(), source_path());
 
 		if (is_set(c, clean::rebuild))
 			op::delete_directory(cx(), conf().path().install_installer());

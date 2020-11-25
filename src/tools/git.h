@@ -3,12 +3,12 @@
 namespace mob
 {
 
-class git_tool
+class git_wrap
 {
 public:
 	static fs::path binary();
 
-	git_tool(fs::path root, basic_process_runner* runner=nullptr);
+	git_wrap(fs::path root, basic_process_runner* runner=nullptr);
 
 	void clone(const mob::url& url, const std::string& branch, bool shallow);
 	void pull(const mob::url& url, const std::string& branch);

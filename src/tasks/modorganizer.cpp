@@ -101,7 +101,7 @@ void modorganizer::do_clean(clean c)
 	{
 		if (is_set(c, clean::reclone))
 		{
-			git_tool::delete_directory(cx(), this_source_path());
+			git_wrap::delete_directory(cx(), this_source_path());
 			return;
 		}
 
@@ -211,7 +211,7 @@ void modorganizer::initialize_super(const fs::path& super_root)
 
 	cx().trace(context::generic, "checking super");
 
-	git_tool g(super_root);
+	git_wrap g(super_root);
 
 	if (g.is_git_repo())
 	{

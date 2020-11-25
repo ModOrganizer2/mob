@@ -36,7 +36,7 @@ fs::path find_program_files_x64();
 fs::path find_vs();
 
 // returns the absolute path to Qt's root directory, the one that contains
-// the msvc_xxx directory; bails if not found
+// bin, include, etc.; bails if not found
 //
 fs::path find_qt();
 

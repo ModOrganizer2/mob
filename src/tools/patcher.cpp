@@ -31,7 +31,7 @@ patcher& patcher::file(const fs::path& p)
 
 patcher& patcher::root(const fs::path& dir)
 {
-	output_ = dir;
+	root_ = dir;
 	return *this;
 }
 
@@ -107,7 +107,7 @@ void patcher::do_patch(const fs::path& patch_file)
 		.binary(binary())
 		.arg("--read-only", "ignore")
 		.arg("--strip", "0")
-		.arg("--directory", output_)
+		.arg("--directory", root_)
 		.arg("--quiet", process::log_quiet);
 
 	const auto check = process(base)

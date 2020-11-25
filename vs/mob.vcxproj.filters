@@ -201,6 +201,9 @@
     <ClCompile Include="..\src\core\paths.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\tools\python.cpp">
+      <Filter>src\tools</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\pch.h">
