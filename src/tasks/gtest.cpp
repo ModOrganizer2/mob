@@ -30,7 +30,7 @@ void gtest::do_clean(clean c)
 	{
 		if (is_set(c, clean::reclone))
 		{
-			git::delete_directory(cx(), source_path());
+			git_tool::delete_directory(cx(), source_path());
 			return;
 		}
 

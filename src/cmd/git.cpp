@@ -176,8 +176,8 @@ void git_command::do_set_remotes()
 void git_command::do_set_remotes(const fs::path& r)
 {
 	u8cout << "setting up " << path_to_utf8(r.filename()) << "\n";
-	git(r).set_credentials(username_, email_);
-	git(r).set_remote(username_, key_, nopush_, push_default_);
+	git_tool(r).set_credentials(username_, email_);
+	git_tool(r).set_remote(username_, key_, nopush_, push_default_);
 }
 
 void git_command::do_add_remote()
@@ -202,7 +202,7 @@ void git_command::do_add_remote()
 void git_command::do_add_remote(const fs::path& r)
 {
 	u8cout << path_to_utf8(r.filename()) << "\n";
-	git(r).add_remote(remote_, username_, key_, push_default_);
+	git_tool(r).add_remote(remote_, username_, key_, push_default_);
 }
 
 void git_command::do_ignore_ts()
@@ -228,7 +228,7 @@ void git_command::do_ignore_ts()
 void git_command::do_ignore_ts(const fs::path& r)
 {
 	u8cout << path_to_utf8(r.filename()) << "\n";
-	git(r).ignore_ts(tson_);
+	git_tool(r).ignore_ts(tson_);
 }
 
 void git_command::do_branches()
@@ -237,7 +237,7 @@ void git_command::do_branches()
 
 	for (auto&& r : get_repos())
 	{
-		const auto b = git(r).current_branch();
+		const auto b = git_tool(r).current_branch();
 		if (b == "master" && !all_branches_)
 			continue;
 

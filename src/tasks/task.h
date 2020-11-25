@@ -55,7 +55,7 @@ public:
 	bool remote_no_push_upstream() const;
 	bool remote_push_default_origin() const;
 
-	git_tool make_git(git_tool::ops o=git_tool::clone_or_pull) const;
+	git make_git(git::ops o=git::clone_or_pull) const;
 
 	std::string make_git_url(
 		const std::string& org, const std::string& repo) const;

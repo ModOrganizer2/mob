@@ -338,12 +338,12 @@ bool task_conf_holder::remote_push_default_origin() const
 	return conf().task(task_.names()).get<bool>("remote_push_default_origin");
 }
 
-git_tool task_conf_holder::make_git(git_tool::ops o) const
+git task_conf_holder::make_git(git::ops o) const
 {
-	if (o == git_tool::clone_or_pull && no_pull())
-		o = git_tool::clone;
+	if (o == git::clone_or_pull && no_pull())
+		o = git::clone;
 
-	git_tool g(o);
+	git g(o);
 
 	g.ignore_ts_on_clone(ignore_ts());
 	g.revert_ts_on_pull(revert_ts());

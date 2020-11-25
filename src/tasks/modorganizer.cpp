@@ -101,7 +101,7 @@ void modorganizer::do_clean(clean c)
 	{
 		if (is_set(c, clean::reclone))
 		{
-			git::delete_directory(cx(), this_source_path());
+			git_tool::delete_directory(cx(), this_source_path());
 			return;
 		}
 
@@ -132,7 +132,7 @@ void modorganizer::do_fetch()
 void modorganizer::do_build_and_install()
 {
 	git_submodule_adder::instance().queue(std::move(
-		git_submodule_tool()
+		git_submodule()
 			.url(git_url())
 			.branch(task_conf().mo_branch())
 			.submodule(name())
@@ -211,7 +211,7 @@ void modorganizer::initialize_super(const fs::path& super_root)
 
 	cx().trace(context::generic, "checking super");
 
-	git g(super_root);
+	git_tool g(super_root);
 
 	if (g.is_git_repo())
 	{

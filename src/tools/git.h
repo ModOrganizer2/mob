@@ -3,12 +3,12 @@
 namespace mob
 {
 
-class git
+class git_tool
 {
 public:
 	static fs::path binary();
 
-	git(fs::path root, basic_process_runner* runner=nullptr);
+	git_tool(fs::path root, basic_process_runner* runner=nullptr);
 
 	void clone(const mob::url& url, const std::string& branch, bool shallow);
 	void pull(const mob::url& url, const std::string& branch);
@@ -78,7 +78,7 @@ private:
 
 
 
-class git_tool : public basic_process_runner
+class git : public basic_process_runner
 {
 public:
 	enum ops
@@ -88,18 +88,18 @@ public:
 		clone_or_pull
 	};
 
-	git_tool(ops o);
+	git(ops o);
 
-	git_tool& url(const mob::url& u);
-	git_tool& root(const fs::path& dir);
-	git_tool& branch(const std::string& name);
+	git& url(const mob::url& u);
+	git& root(const fs::path& dir);
+	git& branch(const std::string& name);
 
-	git_tool& ignore_ts_on_clone(bool b);
-	git_tool& revert_ts_on_pull(bool b);
-	git_tool& credentials(const std::string& username, const std::string& email);
-	git_tool& shallow(bool b);
+	git& ignore_ts_on_clone(bool b);
+	git& revert_ts_on_pull(bool b);
+	git& credentials(const std::string& username, const std::string& email);
+	git& shallow(bool b);
 
-	git_tool& remote(
+	git& remote(
 		std::string org, std::string key,
 		bool no_push_upstream, bool push_default_origin);
 
@@ -128,15 +128,15 @@ private:
 };
 
 
-class git_submodule_tool : public basic_process_runner
+class git_submodule : public basic_process_runner
 {
 public:
-	git_submodule_tool();
+	git_submodule();
 
-	git_submodule_tool& url(const mob::url& u);
-	git_submodule_tool& root(const fs::path& dir);
-	git_submodule_tool& branch(const std::string& name);
-	git_submodule_tool& submodule(const std::string& name);
+	git_submodule& url(const mob::url& u);
+	git_submodule& root(const fs::path& dir);
+	git_submodule& branch(const std::string& name);
+	git_submodule& submodule(const std::string& name);
 
 	const std::string& submodule() const;
 
@@ -164,7 +164,7 @@ public:
 
 	static git_submodule_adder& instance();
 
-	void queue(git_submodule_tool g);
+	void queue(git_submodule g);
 	void stop();
 
 private:
@@ -177,7 +177,7 @@ private:
 
 	context cx_;
 	std::thread thread_;
-	std::vector<git_submodule_tool> queue_;
+	std::vector<git_submodule> queue_;
 	mutable std::mutex queue_mutex_;
 	std::atomic<bool> quit_;
 	sleeper sleeper_;
