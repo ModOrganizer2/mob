@@ -110,14 +110,14 @@ void patcher::do_patch(const fs::path& patch_file)
 		.arg("--directory", root_)
 		.arg("--quiet", process::log_quiet);
 
-	const auto check = process(base)
+	auto check = process(base)
 		.flags(process::allow_failure)
 		.arg("--dry-run")
 		.arg("--force")
 		.arg("--reverse")
 		.arg("--input", patch_file);
 
-	const auto apply = process(base)
+	auto apply = process(base)
 		.arg("--forward")
 		.arg("--batch")
 		.arg("--input", patch_file);
@@ -130,8 +130,7 @@ void patcher::do_patch(const fs::path& patch_file)
 		cx().trace(context::generic,
 			"checking if already patched");
 
-		set_process(check);
-		const auto ret = execute_and_join();
+		const auto ret = execute_and_join(check);
 
 		if (ret == 0)
 		{
@@ -155,8 +154,7 @@ void patcher::do_patch(const fs::path& patch_file)
 		// apply
 
 		cx().trace(context::generic, "applying patch {}", patch_file);
-		set_process(apply);
-		execute_and_join();
+		execute_and_join(apply);
 	}
 }
 

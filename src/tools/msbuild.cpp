@@ -191,8 +191,7 @@ void msbuild::do_run(const std::vector<std::string>& targets)
 		.cwd(sln_.parent_path())
 		.env(e);
 
-	set_process(p);
-	execute_and_join();
+	execute_and_join(p);
 }
 
 void msbuild::do_clean()

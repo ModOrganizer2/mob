@@ -179,13 +179,11 @@ void vs::do_upgrade()
 		return;
 	}
 
-	set_process(process()
+	execute_and_join(process()
 		.binary(devenv_binary())
 		.env(env::vs(arch::x64))
 		.arg("/upgrade")
 		.arg(sln_));
-
-	execute_and_join();
 }
 
 
@@ -213,11 +211,6 @@ std::string vswhere::find_vs()
 nuget::nuget(fs::path sln)
 	: basic_process_runner("nuget"), sln_(std::move(sln))
 {
-	set_process(process()
-		.binary(binary())
-		.arg("restore")
-		.arg(sln_)
-		.cwd(sln_.parent_path()));
 }
 
 fs::path nuget::binary()
@@ -227,7 +220,11 @@ fs::path nuget::binary()
 
 void nuget::do_run()
 {
-	execute_and_join();
+	execute_and_join(process()
+		.binary(binary())
+		.arg("restore")
+		.arg(sln_)
+		.cwd(sln_.parent_path()));
 }
 
 
@@ -305,15 +302,13 @@ void transifex::do_init()
 
 	// exit code is 2 when the directory already contains a .tx
 
-	set_process(process()
+	execute_and_join(process()
 		.binary(binary())
 		.success_exit_codes({0, 2})
 		.flags(process::ignore_output_on_success)
 		.arg("init")
 		.arg("--no-interactive")
 		.cwd(root_));
-
-	execute_and_join();
 }
 
 void transifex::do_config()
@@ -323,7 +318,7 @@ void transifex::do_config()
 
 	op::create_directories(cx(), root_, op::unsafe);
 
-	set_process(process()
+	execute_and_join(process()
 		.binary(binary())
 		.stdout_level(stdout_)
 		.arg("config")
@@ -332,8 +327,6 @@ void transifex::do_config()
 		.env(this_env::get()
 			.set("TX_TOKEN", key_))
 		.cwd(root_));
-
-	execute_and_join();
 }
 
 void transifex::do_pull()
@@ -355,8 +348,7 @@ void transifex::do_pull()
 	if (force_)
 		p.arg("--force");
 
-	set_process(p);
-	execute_and_join();
+	execute_and_join(p);
 }
 
 
@@ -431,8 +423,7 @@ void lrelease::do_run()
 	p
 		.arg("-qm", (out_ / qm));
 
-	set_process(p);
-	execute_and_join();
+	execute_and_join(p);
 }
 
 
@@ -457,11 +448,9 @@ void iscc::do_run()
 	if (iss_.empty())
 		cx().bail_out(context::generic, "iscc missing iss file");
 
-	set_process(process()
+	execute_and_join(process()
 		.binary(binary())
 		.arg(iss_));
-
-	execute_and_join();
 }
 
 }	// namespace

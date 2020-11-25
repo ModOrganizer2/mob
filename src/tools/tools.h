@@ -249,44 +249,37 @@ public:
 	// changes the name of this tool to the process' name, gives the tool's
 	// context to the process, and runs and joins it, returning the exit code
 	//
-	// does not copy the process
-	//
-	// tools normally use the protected set_process() and execute_and_join(),
-	// but this is used by git_wrap, which can be run standalone from the
-	// command line, or reused by the `git` class in tasks
+	// this is normally used by the derived classes, but it's public because
+	// some command line wrappers also use it, like git_wrap, which can be run
+	// standalone from the command line, or reused by the `git` class in tasks
 	//
 	// when git_wrap is used for tasks, it's given the `git` tool used by the
 	// task and calls this function to run processes in the context of the tool;
 	// when standalone, it just executes process objects directly
 	//
+	// the given process object must live until this function returns, the exit
+	// code returned by exit_code() is stored separately
+	//
 	int execute_and_join(process& p);
 
-	// exit code of the process
+	// exit code of the last process that was run
 	//
 	int exit_code() const;
 
 protected:
 	basic_process_runner(std::string name);
 
-	// makes a copy of the given process and stores it
-	//
-	void set_process(const process& p);
-
-	// returns the internal process copied from set_process(), used by derived
-	// classes to get information about the process, like the output
-	//
-	process& get_process();
-
 	// interrupts the internal process
 	//
 	void do_interrupt() override;
 
-	// executes the internal process and waits until it terminates
-	//
-	int execute_and_join();
-
 private:
-	std::unique_ptr<process> process_;
+	// process given in execute_in_join(), used by do_interrupt()
+	//
+	process* p_;
+
+	// last exit code
+	int code_;
 };
 
 

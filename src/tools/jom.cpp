@@ -89,8 +89,7 @@ void jom::do_run()
 		.flags(pflags)
 		.env(env::vs(arch_));
 
-	set_process(p);
-	execute_and_join();
+	execute_and_join(p);
 }
 
 }	// namespace

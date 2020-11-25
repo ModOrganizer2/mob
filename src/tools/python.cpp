@@ -47,8 +47,7 @@ void python::do_run()
 		.env(this_env::get()
 			.set("PYTHONUTF8", "1"));
 
-	set_process(p);
-	execute_and_join();
+	execute_and_join(p);
 }
 
 
@@ -107,7 +106,7 @@ void pip::do_ensure()
 	//
 	// so just filter it out
 
-	set_process(process()
+	execute_and_join(process()
 		.stderr_filter([](auto&& f)
 		{
 			if (f.line.find("which is not on PATH") != -1)
@@ -118,29 +117,23 @@ void pip::do_ensure()
 		.binary(tasks::python::python_exe())
 		.arg("-m", "ensurepip"));
 
-	execute_and_join();
-
 
 	// upgrade
-	set_process(process()
+	execute_and_join(process()
 		.binary(tasks::python::python_exe())
 		.arg("-m pip")
 		.arg("install")
 		.arg("--no-warn-script-location")
 		.arg("--upgrade pip"));
 
-	execute_and_join();
-
 
 	// ssl errors while downloading through python without certifi
-	set_process(process()
+	execute_and_join(process()
 		.binary(tasks::python::python_exe())
 		.arg("-m pip")
 		.arg("install")
 		.arg("--no-warn-script-location")
 		.arg("certifi"));
-
-	execute_and_join();
 }
 
 void pip::do_install()
@@ -165,13 +158,12 @@ void pip::do_install()
 		.env(this_env::get()
 			.set("PYTHONUTF8", "1"));
 
-	set_process(p);
-	execute_and_join();
+	execute_and_join(p);
 }
 
 void pip::do_download()
 {
-	set_process(process()
+	execute_and_join(process()
 		.binary(tasks::python::python_exe())
 		.chcp(65001)
 		.stdout_encoding(encodings::utf8)
@@ -185,8 +177,6 @@ void pip::do_download()
 		.arg(package_ + "==" + version_)
 		.env(this_env::get()
 			.set("PYTHONUTF8", "1")));
-
-	execute_and_join();
 }
 
 }	// namespace

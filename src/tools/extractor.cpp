@@ -90,11 +90,12 @@ void extractor::do_run()
 			.arg("-ttar")
 			.arg("-o", where_, process::nospace);
 
-		set_process(process::pipe(extract_tar, extract_gz));
+		auto piped = process::pipe(extract_tar, extract_gz);
+		execute_and_join(piped);
 	}
 	else
 	{
-		set_process(process()
+		execute_and_join(process()
 			.binary(binary())
 			.arg("x")
 			.arg("-aoa")
@@ -104,7 +105,6 @@ void extractor::do_run()
 			.arg(file_));
 	}
 
-	execute_and_join();
 	check_duplicate_directory(ifile.file());
 
 	delete_output.cancel();

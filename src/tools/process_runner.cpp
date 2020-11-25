@@ -7,7 +7,7 @@ namespace mob
 {
 
 basic_process_runner::basic_process_runner(std::string name)
-	: tool(std::move(name)), process_(new process)
+	: tool(std::move(name)), p_(nullptr), code_(0)
 {
 }
 
@@ -15,41 +15,24 @@ basic_process_runner::basic_process_runner(basic_process_runner&& r) = default;
 
 basic_process_runner::~basic_process_runner() = default;
 
-void basic_process_runner::set_process(const process& p)
-{
-	process_.reset(new process(p));
-}
-
-process& basic_process_runner::get_process()
-{
-	return *process_;
-}
-
 void basic_process_runner::do_interrupt()
 {
-	process_->interrupt();
+	if (p_)
+		p_->interrupt();
 }
 
 int basic_process_runner::execute_and_join(process& p)
 {
+	p_ = &p;
 	set_name(p.name());
 	p.set_context(&cx());
-	return p.run_and_join();
-}
-
-int basic_process_runner::execute_and_join()
-{
-	set_name(process_->name());
-	process_->set_context(&cx());
-	process_->run();
-	process_->join();
-
-	return process_->exit_code();
+	code_ = p.run_and_join();
+	return code_;
 }
 
 int basic_process_runner::exit_code() const
 {
-	return process_->exit_code();
+	return code_;
 }
 
 
