@@ -156,13 +156,16 @@ std::string get_string_for_task(
 	// for super
 	for (auto&& tn : task_names)
 	{
-		if (is_super_task(tn))
+		for (auto&& t : find_tasks(tn))
 		{
-			v = find_string_for_task("super", key);
-			if (v)
-				return *v;
+			if (t->is_super())
+			{
+				v = find_string_for_task("super", key);
+				if (v)
+					return *v;
 
-			break;
+				break;
+			}
 		}
 	}
 

@@ -10,7 +10,7 @@ namespace mob
 
 class interrupted {};
 
-static std::vector<std::unique_ptr<task>> g_tasks;
+static std::vector<std::unique_ptr<task>> g_top_level_tasks;
 static std::vector<task*> g_all_tasks;
 static std::atomic<bool> g_interrupt = false;
 static alias_map g_aliases;
@@ -19,7 +19,7 @@ std::mutex task::interrupt_mutex_;
 
 void add_task(std::unique_ptr<task> t)
 {
-	g_tasks.push_back(std::move(t));
+	g_top_level_tasks.push_back(std::move(t));
 }
 
 std::vector<task*> get_all_tasks()
@@ -36,7 +36,7 @@ std::vector<task*> get_top_level_tasks()
 {
 	std::vector<task*> v;
 
-	for (auto&& t : g_tasks)
+	for (auto&& t : g_top_level_tasks)
 		v.push_back(t.get());
 
 	return v;
@@ -156,7 +156,7 @@ void run_all_tasks()
 {
 	try
 	{
-		for (auto& t : g_tasks)
+		for (auto& t : g_top_level_tasks)
 		{
 			t->fetch();
 
@@ -164,7 +164,7 @@ void run_all_tasks()
 				throw interrupted();
 		}
 
-		for (auto& t : g_tasks)
+		for (auto& t : g_top_level_tasks)
 		{
 			t->join();
 
@@ -185,20 +185,6 @@ void run_all_tasks()
 	catch(interrupted&)
 	{
 	}
-}
-
-bool is_super_task(const std::string& name)
-{
-	for (auto& t : g_all_tasks)
-	{
-		for (auto&& tn : t->names())
-		{
-			if (tn == name)
-				return t->is_super();
-		}
-	}
-
-	return false;
 }
 
 void add_alias(std::string name, std::vector<std::string> names)
@@ -431,7 +417,7 @@ void task::interrupt_all()
 	std::scoped_lock lock(interrupt_mutex_);
 
 	g_interrupt = true;
-	for (auto&& t : g_tasks)
+	for (auto&& t : g_top_level_tasks)
 		t->interrupt();
 }
 
