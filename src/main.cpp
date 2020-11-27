@@ -23,14 +23,11 @@ void add_tasks()
 	//
 	// mob doesn't have a concept of task dependencies, just task ordering, so
 	// if a task depends on another, it has to be earlier in the order
-	//
-	// true/false arguments to parallel_tasks is whether the sub tasks are super
-	// tasks
 
 
 	// third-party tasks
 
-	add_task<parallel_tasks>(false)
+	add_task<parallel_tasks>()
 		.add_task<sevenz>()
 		.add_task<zlib>()
 		.add_task<fmt>()
@@ -42,18 +39,18 @@ void add_tasks()
 		.add_task<bzip2>()
 		.add_task<nmm>();
 
-	add_task<parallel_tasks>(false)
+	add_task<parallel_tasks>()
 		.add_task<tasks::python>()
 		.add_task<boost>()
 		.add_task<boost_di>()
 		.add_task<lz4>()
 		.add_task<spdlog>();
 
-	add_task<parallel_tasks>(false)
+	add_task<parallel_tasks>()
 		.add_task<sip>()
 		.add_task<ncc>();
 
-	add_task<parallel_tasks>(false)
+	add_task<parallel_tasks>()
 		.add_task<pyqt>()
 		.add_task<usvfs>()
 		.add_task<stylesheets>()
@@ -68,11 +65,11 @@ void add_tasks()
 	// most of the alternate names below are from the transifex slugs, which
 	// are sometimes different from the project names, for whatever reason
 
-	add_task<parallel_tasks>(true)
+	add_task<parallel_tasks>()
 		.add_task<mo>("cmake_common")
 		.add_task<mo>("modorganizer-uibase");
 
-	add_task<parallel_tasks>(true)
+	add_task<parallel_tasks>()
 		.add_task<mo>("modorganizer-game_features")
 		.add_task<mo>("modorganizer-archive")
 		.add_task<mo>("modorganizer-lootcli")
@@ -88,7 +85,7 @@ void add_tasks()
 	// the gamebryo flag must be set for all game plugins that inherit from
 	// the gamebryo classes; this will merge the .ts file from gamebryo with
 	// the one from the specific plugin
-	add_task<parallel_tasks>(true)
+	add_task<parallel_tasks>()
 		.add_task<mo>("modorganizer-game_oblivion", mo::gamebryo)
 		.add_task<mo>("modorganizer-game_fallout3", mo::gamebryo)
 		.add_task<mo>("modorganizer-game_fallout4", mo::gamebryo)
@@ -101,7 +98,7 @@ void add_tasks()
 		.add_task<mo>("modorganizer-game_ttw", mo::gamebryo)
 		.add_task<mo>("modorganizer-game_enderal", mo::gamebryo);
 
-	add_task<parallel_tasks>(true)
+	add_task<parallel_tasks>()
 		.add_task<mo>({"modorganizer-tool_inieditor", "inieditor"})
 		.add_task<mo>("modorganizer-tool_inibakery")
 		.add_task<mo>("modorganizer-preview_base")
@@ -120,7 +117,7 @@ void add_tasks()
 		.add_task<mo>("modorganizer-plugin_python")
 		.add_task<translations>();
 
-	add_task<parallel_tasks>(true)
+	add_task<parallel_tasks>()
 		.add_task<mo>({"modorganizer-tool_configurator", "pycfg"})
 		.add_task<mo>("modorganizer-fnistool")
 		.add_task<mo>("modorganizer-basic_games")

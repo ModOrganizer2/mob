@@ -689,9 +689,20 @@ void task::run_tool_impl(tool* t)
 }
 
 
-parallel_tasks::parallel_tasks(bool super)
-	: container_task("parallel"), super_(super)
+parallel_tasks::parallel_tasks()
+	: container_task("parallel")
 {
+}
+
+void parallel_tasks::add_task(std::unique_ptr<task> t)
+{
+	if (!children_.empty() && children_[0]->is_super() != t->is_super())
+	{
+		gcx().bail_out(context::generic,
+			"parallel task can't mix super and non-super tasks");
+	}
+
+	children_.push_back(std::move(t));
 }
 
 std::vector<task*> parallel_tasks::children() const
@@ -706,7 +717,10 @@ std::vector<task*> parallel_tasks::children() const
 
 bool parallel_tasks::is_super() const
 {
-	return super_;
+	if (children_.empty())
+		return false;
+
+	return children_[0]->is_super();
 }
 
 void parallel_tasks::run()

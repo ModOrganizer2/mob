@@ -191,7 +191,7 @@ public:
 class parallel_tasks : public container_task
 {
 public:
-	parallel_tasks(bool super);
+	parallel_tasks();
 
 	bool enabled() const override
 	{
@@ -201,20 +201,20 @@ public:
 	template <class Task, class... Args>
 	parallel_tasks& add_task(Args&&... args)
 	{
-		children_.push_back(
-			std::make_unique<Task>(std::forward<Args>(args)...));
-
+		add_task(std::make_unique<Task>(std::forward<Args>(args)...));
 		return *this;
 	}
 
 	template <class Task, class T, class... Args>
 	parallel_tasks& add_task(std::initializer_list<T> il, Args&&... args)
 	{
-		children_.push_back(
-			std::make_unique<Task>(std::move(il), std::forward<Args>(args)...));
+		add_task(std::make_unique<Task>(
+			std::move(il), std::forward<Args>(args)...));
 
 		return *this;
 	}
+
+	void add_task(std::unique_ptr<task> t);
 
 	fs::path get_source_path() const override
 	{
@@ -248,7 +248,6 @@ protected:
 	void do_clean(clean c) override;
 
 private:
-	bool super_;
 	std::vector<std::unique_ptr<task>> children_;
 	std::vector<std::thread> threads_;
 };
