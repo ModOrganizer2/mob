@@ -54,6 +54,11 @@ bool modorganizer::is_gamebryo_plugin() const
 	return is_set(flags_, gamebryo);
 }
 
+bool modorganizer::is_nuget_plugin() const
+{
+	return is_set(flags_, nuget);
+}
+
 fs::path modorganizer::source_path()
 {
 	return {};
@@ -145,6 +150,15 @@ void modorganizer::do_build_and_install()
 	{
 		run_tool(create_this_cmake_tool());
 	});
+
+	// until https://gitlab.kitware.com/cmake/cmake/-/issues/20646 is resolved,
+	// we need a manual way of running the msbuild -t:restore
+	if (is_nuget_plugin()) {
+		instrument<times::build>([&]
+		{
+			run_tool(create_this_msbuild_tool().targets({ "restore" }));
+		});
+	}
 
 	instrument<times::build>([&]
 	{
