@@ -31,8 +31,10 @@ void extractor::do_run()
 {
 	interruption_file ifile(cx(), where_, "extractor");
 
+	// check interruption file from last run
 	if (ifile.exists())
 	{
+		// resume the extraction, will overwrite
 		cx().debug(context::generic,
 			"previous extraction was interrupted; resuming");
 	}
@@ -40,11 +42,14 @@ void extractor::do_run()
 	{
 		if (conf().global().reextract())
 		{
+			// output already exists, no interruption file, but the user wants
+			// to re-extract
 			cx().debug(context::reextract, "deleting {}", where_);
 			op::delete_directory(cx(), where_, op::optional);
 		}
 		else
 		{
+			// output already exists, no interruption file, assume it's fine
 			cx().debug(context::bypass, "directory {} already exists", where_);
 			return;
 		}
@@ -52,14 +57,23 @@ void extractor::do_run()
 
 	cx().debug(context::generic, "extracting {} into {}", file_, where_);
 
+	op::create_directories(cx(), where_);
+
+	// will be left on disk on crashes or interruptions
 	ifile.create();
 
-	op::create_directories(cx(), where_);
+	// deletes the directory in the destructor if in case of hard failure, but
+	// not interruptions so extraction is resumed later
 	directory_deleter delete_output(cx(), where_);
 
-	// the -spe from 7z is supposed to figure out if there's a folder in the
-	// archive with the same name as the target and extract its content to
-	// avoid duplicating the folder
+	// some archives have a top-level directory, others have files directly in
+	// it, and it sucks to have special cases that know about individual
+	// third parties, so this tries to figure out whether to move the files
+	// after extraction
+	//
+	// now, the -spe flag from 7z is supposed to figure out if there's a folder
+	// in the archive with the same name as the target and extract its content
+	// to avoid duplicating the folder
 	//
 	// however, it fails miserably if there are files along with that folder,
 	// which is the case for openssl:
@@ -68,52 +82,66 @@ void extractor::do_run()
 	//   +- openssl-1.1.1d/
 	//   +- pax_global_header
 	//
-	// that pax_global_header makes 7z fail with "unspecified error"
+	// that pax_global_header makes 7z fail with "unspecified error", so -spe
+	// just can't be used at all
 	//
 	// so the handling of a duplicate directory is done manually in
-	// check_duplicate_directory() below
+	// check_duplicate_directory() below, unfortunately
 
 	if (file_.u8string().ends_with(u8".tar.gz"))
 	{
+		// tar in gz, must be piped, 7z can't do it in one step
+
 		cx().trace(context::generic, "this is a tar.gz, piping");
 
+		// untar
 		auto extract_tar = process()
 			.binary(binary())
-			.arg("x")
-			.arg("-so", file_);
+			.arg("x")     // extract
+			.arg("-so")   // output to stdout
+			.arg(file_);  // input file
 
+		// decompress
 		auto extract_gz = process()
 			.binary(binary())
-			.arg("x")
-			.arg("-aoa")
-			.arg("-si")
-			.arg("-ttar")
-			.arg("-o", where_, process::nospace);
+			.arg("x")     // extract
+			.arg("-aoa")  // overwrite all without prompt
+			.arg("-si")   // read from stdin
+			.arg("-ttar") // type is tar
+			.arg("-o", where_, process::nospace);  // output file
 
 		auto piped = process::pipe(extract_tar, extract_gz);
 		execute_and_join(piped);
 	}
 	else
 	{
+		// not tar, just extract directly
+
 		execute_and_join(process()
 			.binary(binary())
-			.arg("x")
-			.arg("-aoa")
-			.arg("-bd")
-			.arg("-bb0")
-			.arg("-o", where_, process::nospace)
-			.arg(file_));
+			.arg("x")     // extract
+			.arg("-aoa")  // overwrite all without prompt
+			.arg("-bd")   // no progress indicator
+			.arg("-bb0")  // disable log
+			.arg("-o", where_, process::nospace)  // output file
+			.arg(file_)); // input file
 	}
 
-	check_duplicate_directory(ifile.file());
+	// moves files up if necessary
+	check_for_top_level_directory(ifile.file());
 
+	// success or interruption, don't delete the directory
 	delete_output.cancel();
 
 	if (!interrupted())
+	{
+		// extraction finished and not interrupted, everything worked, so remove
+		// the interruption file
 		ifile.remove();
+	}
 }
 
-void extractor::check_duplicate_directory(const fs::path& ifile)
+void extractor::check_for_top_level_directory(const fs::path& ifile)
 {
 	const auto dir_name = where_.filename();
 
@@ -149,7 +177,7 @@ void extractor::check_duplicate_directory(const fs::path& ifile)
 		if (!fs::is_regular_file(e.path()))
 		{
 			// don't know what to do with archives that have the
-			// same directory _and_ other directories
+			// same directory _and_ other directories, bail out for now
 			cx().bail_out(context::generic,
 				"check_duplicate_directory: {} is yet another directory",
 				e.path());
@@ -198,14 +226,19 @@ void archiver::create_from_glob(
 
 	auto p = process()
 		.binary(extractor::binary())
-		.arg("a")
-		.arg(out)
-		.arg("-r")
-		.arg("-mx=5")
-		.arg(glob);
+		.arg("a")      // add to archive
+		.arg(out)      // output file
+		.arg("-r")     // recursive
+		.arg("-mx=5")  // normal compression level
+		.arg(glob);    // input file
 
 	for (auto&& i : ignore)
+	{
+		// x: exclude
+		// r: recurse
+		// !: filename or glob
 		p.arg("-xr!", i, process::nospace);
+	}
 
 	p.run();
 	p.join();
@@ -218,6 +251,8 @@ void archiver::create_from_files(
 	std::string list_file_text;
 	std::error_code ec;
 
+	// make each file relative to files_root, convert to utf8 and put in
+	// list_file_text separated by newlines
 	for (auto&& f : files)
 	{
 		fs::path rf = fs::relative(f, files_root, ec);
@@ -232,6 +267,8 @@ void archiver::create_from_files(
 	}
 
 	const auto list_file = make_temp_file();
+
+	// always delete the list file when done
 	guard g([&]
 	{
 		if (fs::exists(list_file))
@@ -246,8 +283,8 @@ void archiver::create_from_files(
 
 	auto p = process()
 		.binary(extractor::binary())
-		.arg("a")
-		.arg(out)
+		.arg("a")    // add to archive
+		.arg(out)    // output file
 		.arg("@", list_file, process::nospace)
 		.cwd(files_root);
 

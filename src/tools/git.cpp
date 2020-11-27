@@ -26,6 +26,16 @@ void for_each_ts(const fs::path& root, F&& f)
 	}
 }
 
+std::string make_url(
+	const std::string& org, const std::string& git_file,
+	const std::string& url_pattern)
+{
+	const std::string pattern = url_pattern.empty() ?
+		details::default_github_url_pattern : url_pattern;
+
+	return fmt::format(pattern, org, git_file);
+}
+
 
 [[nodiscard]] process make_process()
 {
@@ -342,7 +352,7 @@ void git_wrap::set_credentials(const std::string& username, const std::string& e
 		set_config("user.email", email);
 }
 
-void git_wrap::set_remote(
+void git_wrap::set_origin_and_upstream_remotes(
 	std::string org, std::string key,
 	bool no_push_upstream, bool push_default_origin)
 {
@@ -440,7 +450,7 @@ void git_wrap::add_remote(
 	if (!has_remote(remote_name))
 	{
 		run(details::add_remote(
-			root_, remote_name, make_url(username, gf, url_pattern)));
+			root_, remote_name, details::make_url(username, gf, url_pattern)));
 
 		if (push_default)
 			set_config("remote.pushdefault", remote_name);
@@ -558,19 +568,10 @@ bool git_wrap::has_stashed_changes()
 	return (run(p) == 0);
 }
 
-std::string git_wrap::make_url(
-	const std::string& org, const std::string& git_file,
-	const std::string& url_pattern)
-{
-	const std::string pattern = url_pattern.empty() ?
-		details::default_github_url_pattern : url_pattern;
 
-	return fmt::format(pattern, org, git_file);
-}
-
-
-git::git(ops o)
-	: basic_process_runner("git"), op_(o)
+git::git(ops o) :
+	basic_process_runner("git"), op_(o), ignore_ts_(false), revert_ts_(false),
+	shallow_(false), no_push_upstream_(false), push_default_origin_(false)
 {
 }
 
@@ -651,7 +652,9 @@ void git::do_run()
 
 		case ops::clone_or_pull:
 		{
-			do_clone_or_pull();
+			if (!do_clone())
+				do_pull();
+
 			break;
 		}
 
@@ -660,12 +663,6 @@ void git::do_run()
 			cx().bail_out(context::generic, "git unknown op {}", op_);
 		}
 	}
-}
-
-void git::do_clone_or_pull()
-{
-	if (!do_clone())
-		do_pull();
 }
 
 bool git::do_clone()
@@ -685,7 +682,10 @@ bool git::do_clone()
 		g.set_credentials(creds_username_, creds_email_);
 
 	if (!remote_org_.empty())
-		g.set_remote(remote_org_, remote_key_, no_push_upstream_, push_default_origin_);
+	{
+		g.set_origin_and_upstream_remotes(
+			remote_org_, remote_key_, no_push_upstream_, push_default_origin_);
+	}
 
 	if (ignore_ts_)
 		g.ignore_ts(true);

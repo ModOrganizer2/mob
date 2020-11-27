@@ -231,9 +231,14 @@ private:
 	//
 	fs::path path_for_url(const mob::url& u) const;
 
-	// checks if the file exists
+	// checks if one of the output files already exists, sets file_ to it if
+	// necessary and returns true
 	//
-	bool try_picking(const fs::path& file);
+	bool use_existing();
+
+	// tries to download the given url, returns whether it succeeded
+	//
+	bool try_download(const mob::url& u);
 };
 
 
@@ -355,7 +360,7 @@ private:
 	// some archives have a top level directory, this moves all the files up one
 	// directory and deletes the now empty top level directory
 	//
-	void check_duplicate_directory(const fs::path& ifile);
+	void check_for_top_level_directory(const fs::path& ifile);
 };
 
 
@@ -572,6 +577,8 @@ public:
 	static std::string sdk();
 
 
+	// what run() should do
+	//
 	enum ops
 	{
 		upgrade = 1

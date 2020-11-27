@@ -176,8 +176,11 @@ void git_command::do_set_remotes()
 void git_command::do_set_remotes(const fs::path& r)
 {
 	u8cout << "setting up " << path_to_utf8(r.filename()) << "\n";
+
 	git_wrap(r).set_credentials(username_, email_);
-	git_wrap(r).set_remote(username_, key_, nopush_, push_default_);
+
+	git_wrap(r).set_origin_and_upstream_remotes(
+		username_, key_, nopush_, push_default_);
 }
 
 void git_command::do_add_remote()
