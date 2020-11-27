@@ -164,104 +164,95 @@ fs::path translations::source_path()
 
 void translations::do_clean(clean c)
 {
-	instrument<times::clean>([&]
-	{
-		if (is_set(c, clean::redownload))
-			op::delete_directory(cx(), source_path(), op::optional);
+	if (is_set(c, clean::redownload))
+		op::delete_directory(cx(), source_path(), op::optional);
 
-		if (is_set(c, clean::rebuild))
-		{
-			op::delete_file_glob(
-				cx(),
-				conf().path().install_translations() / "*.qm",
-				op::optional);
-		}
-	});
+	if (is_set(c, clean::rebuild))
+	{
+		op::delete_file_glob(
+			cx(),
+			conf().path().install_translations() / "*.qm",
+			op::optional);
+	}
 }
 
 void translations::do_fetch()
 {
-	instrument<times::fetch>([&]
+	const url u =
+		conf().transifex().get("url") + "/" +
+		conf().transifex().get("team") + "/" +
+		conf().transifex().get("project");
+
+	const std::string key = conf().transifex().get("key");
+
+	if (key.empty() && !this_env::get_opt("TX_TOKEN"))
 	{
-		const url u =
-			conf().transifex().get("url") + "/" +
-			conf().transifex().get("team") + "/" +
-			conf().transifex().get("project");
+		cx().warning(context::generic,
+			"no key was in the INI and the TX_TOKEN env variable doesn't "
+			"exist, this will probably fail");
+	}
 
-		const std::string key = conf().transifex().get("key");
+	cx().debug(context::generic, "init tx");
+	run_tool(transifex(transifex::init)
+		.root(source_path()));
 
-		if (key.empty() && !this_env::get_opt("TX_TOKEN"))
-		{
-			cx().warning(context::generic,
-				"no key was in the INI and the TX_TOKEN env variable doesn't "
-				"exist, this will probably fail");
-		}
+	if (conf().transifex().get<bool>("configure"))
+	{
+		cx().debug(context::generic, "configuring");
+		run_tool(transifex(transifex::config)
+			.root(source_path())
+			.api_key(key)
+			.url(u));
+	}
+	else
+	{
+		cx().trace(context::generic, "skipping configuring");
+	}
 
-		cx().debug(context::generic, "init tx");
-		run_tool(transifex(transifex::init)
-			.root(source_path()));
-
-		if (conf().transifex().get<bool>("configure"))
-		{
-			cx().debug(context::generic, "configuring");
-			run_tool(transifex(transifex::config)
-				.root(source_path())
-				.api_key(key)
-				.url(u));
-		}
-		else
-		{
-			cx().trace(context::generic, "skipping configuring");
-		}
-
-		if (conf().transifex().get<bool>("pull"))
-		{
-			cx().debug(context::generic, "pulling");
-			run_tool(transifex(transifex::pull)
-				.root(source_path())
-				.api_key(key)
-				.minimum(conf().transifex().get<int>("minimum"))
-				.force(conf().transifex().get<bool>("force")));
-		}
-		else
-		{
-			cx().trace(context::generic, "skipping pulling");
-		}
-	});
+	if (conf().transifex().get<bool>("pull"))
+	{
+		cx().debug(context::generic, "pulling");
+		run_tool(transifex(transifex::pull)
+			.root(source_path())
+			.api_key(key)
+			.minimum(conf().transifex().get<int>("minimum"))
+			.force(conf().transifex().get<bool>("force")));
+	}
+	else
+	{
+		cx().trace(context::generic, "skipping pulling");
+	}
 }
 
 void translations::do_build_and_install()
 {
-	instrument<times::build>([&]
+	const auto root = source_path() / "translations";
+	const auto dest = conf().path().install_translations();
+	const projects ps(root);
+
+	op::create_directories(cx(), dest);
+
+	for (auto&& w : ps.warnings())
+		cx().warning(context::generic, "{}", w);
+
+	thread_pool tp;
+
+	for (auto& p : ps.get())
 	{
-		const auto root = source_path() / "translations";
-		const auto dest = conf().path().install_translations();
-		const projects ps(root);
-
-		op::create_directories(cx(), dest);
-
-		for (auto&& w : ps.warnings())
-			cx().warning(context::generic, "{}", w);
-
-		thread_pool tp;
-
-		for (auto& p : ps.get())
+		for (auto& lg : p.langs)
 		{
-			for (auto& lg : p.langs)
+			tp.add([&]
 			{
-				tp.add([&]
+				threaded_run(lg.name + "." + p.name, [&]
 				{
-					threaded_run(lg.name + "." + p.name, [&]
-					{
-						run_tool(lrelease()
-							.project(p.name)
-							.sources(lg.ts_files)
-							.out(dest));
-					});
+					run_tool(lrelease()
+						.project(p.name)
+						.sources(lg.ts_files)
+						.out(dest));
 				});
-			}
+			});
 		}
-	});
+	}
 }
 
 }	// namespace

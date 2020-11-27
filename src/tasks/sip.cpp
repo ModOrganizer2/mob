@@ -60,18 +60,15 @@ fs::path sip::module_source_path()
 
 void sip::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	if (is_set(c, clean::reextract))
 	{
-		if (is_set(c, clean::reextract))
-		{
-			cx().trace(context::reextract, "deleting {}", source_path());
-			op::delete_directory(cx(), source_path(), op::optional);
-			return;
-		}
+		cx().trace(context::reextract, "deleting {}", source_path());
+		op::delete_directory(cx(), source_path(), op::optional);
+		return;
+	}
 
-		if (is_set(c, clean::rebuild))
-			op::delete_directory(cx(), source_path() / "build", op::optional);
-	});
+	if (is_set(c, clean::rebuild))
+		op::delete_directory(cx(), source_path() / "build", op::optional);
 }
 
 void sip::do_fetch()
@@ -81,22 +78,13 @@ void sip::do_fetch()
 
 void sip::do_build_and_install()
 {
-	instrument<times::fetch>([&]
-	{
-		download();
-	});
+	download();
 
-	instrument<times::extract>([&]
-	{
-		run_tool(extractor()
-			.file(download_file())
-			.output(source_path()));
-	});
+	run_tool(extractor()
+		.file(download_file())
+		.output(source_path()));
 
-	instrument<times::build>([&]
-	{
-		generate();
-	});
+	generate();
 
 	op::copy_file_to_dir_if_better(cx(),
 		source_path() / "sip.h",

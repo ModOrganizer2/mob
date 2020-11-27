@@ -26,13 +26,10 @@ fs::path licenses::source_path()
 
 void licenses::do_build_and_install()
 {
-	instrument<times::install>([&]
-	{
-		op::copy_glob_to_dir_if_better(cx(),
-			conf().path().licenses() / "*",
-			conf().path().install_licenses(),
-			op::copy_files|op::copy_dirs);
-	});
+	op::copy_glob_to_dir_if_better(cx(),
+		conf().path().licenses() / "*",
+		conf().path().install_licenses(),
+		op::copy_files|op::copy_dirs);
 }
 
 }	// namespace

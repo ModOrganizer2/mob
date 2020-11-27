@@ -230,10 +230,6 @@ private:
 	// directory below it
 	//
 	void create_prefix_ini();
-
-	// for instrumentation
-	//
-	void dump_timings();
 };
 
 
@@ -300,10 +296,6 @@ private:
 	std::vector<std::string> tasks_;
 
 	void dump(const std::vector<task*>& v, std::size_t indent) const;
-
-	void dump_tasks(
-		const std::vector<task*>& v, std::size_t indent, bool recurse) const;
-
 	void dump_aliases() const;
 };
 

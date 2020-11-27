@@ -6,8 +6,6 @@
 namespace mob
 {
 
-constexpr bool do_timings = false;
-
 build_command::build_command()
 	: command(requires_options | handle_sigint)
 {
@@ -158,9 +156,6 @@ int build_command::do_run()
 
 		run_all_tasks();
 
-		if (do_timings)
-			dump_timings();
-
 		if (!keep_msbuild_)
 			terminate_msbuild();
 
@@ -189,48 +184,6 @@ void build_command::create_prefix_ini()
 			<< "[paths]\n"
 			<< "prefix = .\n";
 	}
-}
-
-void build_command::dump_timings()
-{
-	using namespace std::chrono;
-
-	std::ofstream out("timings.txt");
-
-	// generates a file with line being "task,start_time,end_time,step"
-	//
-	// uibase,0,1,fetch
-	// uibase,1,2,configure
-	// uibase,2,3,build
-	// modorganizer,4,5,fetch
-	// modorganizer,5,6,configure
-	// modorganizer,6,7,build
-
-	auto write = [&](auto&& inst)
-	{
-		for (auto&& t : inst.instrumented_tasks())
-		{
-			for (auto&& tp : t.tps)
-			{
-				const auto start_ms = static_cast<double>(
-					duration_cast<milliseconds>(tp.start).count());
-
-				const auto end_ms = static_cast<double>(
-					duration_cast<milliseconds>(tp.end).count());
-
-				out
-					<< inst.instrumentable_name() << "\t"
-					<< (start_ms / 1000.0) << "\t"
-					<< (end_ms / 1000.0) << "\t"
-					<< t.name << "\n";
-			}
-		}
-	};
-
-	for (auto&& tk : get_all_tasks())
-		write(*tk);
-
-	write(git_submodule_adder::instance());
 }
 
 void build_command::terminate_msbuild()

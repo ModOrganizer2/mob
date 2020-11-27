@@ -49,40 +49,34 @@ fs::path stylesheets::source_path()
 
 void stylesheets::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	if (is_set(c, clean::redownload))
 	{
-		if (is_set(c, clean::redownload))
-		{
-			for (auto&& r : releases())
-				run_tool(make_downloader_tool(r, downloader::clean));
-		}
+		for (auto&& r : releases())
+			run_tool(make_downloader_tool(r, downloader::clean));
+	}
 
-		if (is_set(c, clean::reextract))
+	if (is_set(c, clean::reextract))
+	{
+		for (auto&& r : releases())
 		{
-			for (auto&& r : releases())
-			{
-				const auto p = release_build_path(r);
+			const auto p = release_build_path(r);
 
-				cx().trace(context::reextract, "deleting {}", p);
-				op::delete_directory(cx(), p, op::optional);
-			}
+			cx().trace(context::reextract, "deleting {}", p);
+			op::delete_directory(cx(), p, op::optional);
 		}
-	});
+	}
 }
 
 void stylesheets::do_fetch()
 {
-	instrument<times::fetch>([&]
+	for (auto&& r : releases())
 	{
-		for (auto&& r : releases())
-		{
-			const auto file = run_tool(make_downloader_tool(r));
+		const auto file = run_tool(make_downloader_tool(r));
 
-			run_tool(extractor()
-				.file(file)
-				.output(release_build_path(r)));
-		}
-	});
+		run_tool(extractor()
+			.file(file)
+			.output(release_build_path(r)));
+	}
 }
 
 fs::path stylesheets::release_build_path(const release& r) const
@@ -106,19 +100,16 @@ downloader stylesheets::make_downloader_tool(
 
 void stylesheets::do_build_and_install()
 {
-	instrument<times::install>([&]
+	for (auto&& r : releases())
 	{
-		for (auto&& r : releases())
-		{
-			const fs::path src =
-				conf().path().build() / (r.name + "-v" + r.version);
+		const fs::path src =
+			conf().path().build() / (r.name + "-v" + r.version);
 
-			op::copy_glob_to_dir_if_better(cx(),
-				src / "*",
-				conf().path().install_stylesheets(),
-				op::copy_files|op::copy_dirs);
-		}
-	});
+		op::copy_glob_to_dir_if_better(cx(),
+			src / "*",
+			conf().path().install_stylesheets(),
+			op::copy_files|op::copy_dirs);
+	}
 }
 
 std::vector<stylesheets::release> stylesheets::releases()

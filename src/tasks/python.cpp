@@ -65,32 +65,29 @@ fs::path python::build_path()
 
 void python::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	if (prebuilt())
 	{
-		if (prebuilt())
-		{
-			if (is_set(c, clean::redownload))
-				run_tool(downloader(prebuilt_url(), downloader::clean));
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(prebuilt_url(), downloader::clean));
 
-			if (is_set(c, clean::reextract))
-			{
-				cx().trace(context::reextract, "deleting {}", source_path());
-				op::delete_directory(cx(), source_path(), op::optional);
-				return;
-			}
-		}
-		else
+		if (is_set(c, clean::reextract))
 		{
-			if (is_set(c, clean::reclone))
-			{
-				git_wrap::delete_directory(cx(), source_path());
-				return;
-			}
-
-			if (is_set(c, clean::rebuild))
-				run_tool(create_msbuild_tool(msbuild::clean));
+			cx().trace(context::reextract, "deleting {}", source_path());
+			op::delete_directory(cx(), source_path(), op::optional);
+			return;
 		}
-	});
+	}
+	else
+	{
+		if (is_set(c, clean::reclone))
+		{
+			git_wrap::delete_directory(cx(), source_path());
+			return;
+		}
+
+		if (is_set(c, clean::rebuild))
+			run_tool(create_msbuild_tool(msbuild::clean));
+	}
 }
 
 void python::do_fetch()
@@ -111,68 +108,47 @@ void python::do_build_and_install()
 
 void python::fetch_prebuilt()
 {
-	const auto file = instrument<times::fetch>([&]
-	{
-		return run_tool(downloader(prebuilt_url()));
-	});
+	const auto file = run_tool(downloader(prebuilt_url()));
 
-	instrument<times::extract>([&]
-	{
-		run_tool(extractor()
-			.file(file)
-			.output(source_path()));
-	});
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
 }
 
 void python::build_and_install_prebuilt()
 {
-	instrument<times::install>([&]
-	{
-		op::copy_glob_to_dir_if_better(cx(),
-			openssl::bin_path() / "*.dll",
-			python::build_path(),
-			op::copy_files);
+	op::copy_glob_to_dir_if_better(cx(),
+		openssl::bin_path() / "*.dll",
+		python::build_path(),
+		op::copy_files);
 
-		install_pip();
-		copy_files();
-	});
+	install_pip();
+	copy_files();
 }
 
 void python::fetch_from_source()
 {
-	instrument<times::fetch>([&]
-	{
-		run_tool(task_conf().make_git()
-			.url(task_conf().make_git_url("python", "cpython"))
-			.branch(version())
-			.root(source_path()));
-	});
+	run_tool(task_conf().make_git()
+		.url(task_conf().make_git_url("python", "cpython"))
+		.branch(version())
+		.root(source_path()));
 
-	instrument<times::configure>([&]
-	{
-		run_tool(vs(vs::upgrade)
-			.solution(solution_file()));
-	});
+	run_tool(vs(vs::upgrade)
+		.solution(solution_file()));
 }
 
 void python::build_and_install_from_source()
 {
-	instrument<times::build>([&]
-	{
-		run_tool(create_msbuild_tool());
-		package();
-	});
+	run_tool(create_msbuild_tool());
+	package();
 
-	instrument<times::install>([&]
-	{
-		install_pip();
+	install_pip();
 
-		op::copy_file_to_dir_if_better(cx(),
-			source_path() / "PC" / "pyconfig.h",
-			include_path());
+	op::copy_file_to_dir_if_better(cx(),
+		source_path() / "PC" / "pyconfig.h",
+		include_path());
 
-		copy_files();
-	});
+	copy_files();
 }
 
 void python::package()

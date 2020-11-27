@@ -54,11 +54,6 @@ bool modorganizer::is_gamebryo_plugin() const
 	return is_set(flags_, gamebryo);
 }
 
-bool modorganizer::is_nuget_plugin() const
-{
-	return is_set(flags_, nuget);
-}
-
 fs::path modorganizer::source_path()
 {
 	return {};
@@ -97,36 +92,27 @@ std::string modorganizer::repo() const
 
 void modorganizer::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	if (is_set(c, clean::reclone))
 	{
-		if (is_set(c, clean::reclone))
-		{
-			git_wrap::delete_directory(cx(), this_source_path());
-			return;
-		}
+		git_wrap::delete_directory(cx(), this_source_path());
+		return;
+	}
 
-		if (is_set(c, clean::reconfigure))
-			run_tool(create_this_cmake_tool(cmake::clean));
+	if (is_set(c, clean::reconfigure))
+		run_tool(create_this_cmake_tool(cmake::clean));
 
-		if (is_set(c, clean::rebuild))
-			run_tool(create_this_msbuild_tool(msbuild::clean));
-	});
+	if (is_set(c, clean::rebuild))
+		run_tool(create_this_msbuild_tool(msbuild::clean));
 }
 
 void modorganizer::do_fetch()
 {
-	instrument<times::init_super>([&]
-	{
-		initialize_super(super_path());
-	});
+	initialize_super(super_path());
 
-	instrument<times::fetch>([&]
-	{
-		run_tool(task_conf().make_git()
-			.url(git_url())
-			.branch(task_conf().mo_branch())
-			.root(this_source_path()));
-	});
+	run_tool(task_conf().make_git()
+		.url(git_url())
+		.branch(task_conf().mo_branch())
+		.root(this_source_path()));
 }
 
 void modorganizer::do_build_and_install()
@@ -146,24 +132,8 @@ void modorganizer::do_build_and_install()
 		return;
 	}
 
-	instrument<times::configure>([&]
-	{
-		run_tool(create_this_cmake_tool());
-	});
-
-	// until https://gitlab.kitware.com/cmake/cmake/-/issues/20646 is resolved,
-	// we need a manual way of running the msbuild -t:restore
-	if (is_nuget_plugin()) {
-		instrument<times::build>([&]
-		{
-			run_tool(create_this_msbuild_tool().targets({ "restore" }));
-		});
-	}
-
-	instrument<times::build>([&]
-	{
-		run_tool(create_this_msbuild_tool());
-	});
+	run_tool(create_this_cmake_tool());
+	run_tool(create_this_msbuild_tool());
 }
 
 cmake modorganizer::create_this_cmake_tool(cmake::ops o)

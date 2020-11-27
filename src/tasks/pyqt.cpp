@@ -37,36 +37,33 @@ fs::path pyqt::build_path()
 
 void pyqt::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	if (prebuilt())
 	{
-		if (prebuilt())
-		{
-			if (is_set(c, clean::redownload))
-				run_tool(downloader(prebuilt_url(), downloader::clean));
-		}
-		else
-		{
-			if (is_set(c, clean::redownload))
-				run_tool(downloader(source_url(), downloader::clean));
-		}
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(prebuilt_url(), downloader::clean));
+	}
+	else
+	{
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(source_url(), downloader::clean));
+	}
 
-		if (is_set(c, clean::reextract))
-		{
-			cx().trace(context::reextract, "deleting {}", source_path());
-			op::delete_directory(cx(), source_path(), op::optional);
-			return;
-		}
+	if (is_set(c, clean::reextract))
+	{
+		cx().trace(context::reextract, "deleting {}", source_path());
+		op::delete_directory(cx(), source_path(), op::optional);
+		return;
+	}
 
-		if (!prebuilt())
+	if (!prebuilt())
+	{
+		if (is_set(c, clean::rebuild))
 		{
-			if (is_set(c, clean::rebuild))
-			{
-				op::delete_file(cx(),
-					conf().path().cache() / sip_install_file(),
-					op::optional);
-			}
+			op::delete_file(cx(),
+				conf().path().cache() / sip_install_file(),
+				op::optional);
 		}
-	});
+	}
 }
 
 void pyqt::do_fetch()
@@ -87,68 +84,47 @@ void pyqt::do_build_and_install()
 
 void pyqt::fetch_prebuilt()
 {
-	const auto file = instrument<times::fetch>([&]
-	{
-		return run_tool(downloader(prebuilt_url()));
-	});
+	const auto file = run_tool(downloader(prebuilt_url()));
 
-	instrument<times::extract>([&]
-	{
-		run_tool(extractor()
-			.file(file)
-			.output(source_path()));
-	});
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
 }
 
 void pyqt::build_and_install_prebuilt()
 {
-	instrument<times::install>([&]
-	{
-		op::copy_glob_to_dir_if_better(cx(),
-			source_path() / "*",
-			python::source_path(),
-			op::copy_files|op::copy_dirs);
+	op::copy_glob_to_dir_if_better(cx(),
+		source_path() / "*",
+		python::source_path(),
+		op::copy_files|op::copy_dirs);
 
-		copy_files();
-	});
+	copy_files();
 }
 
 void pyqt::fetch_from_source()
 {
-	const auto file = instrument<times::fetch>([&]
-	{
-		return run_tool(downloader(source_url()));
-	});
+	const auto file = run_tool(downloader(source_url()));
 
-	instrument<times::extract>([&]
-	{
-		run_tool(extractor()
-			.file(file)
-			.output(source_path()));
-	});
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
 }
 
 void pyqt::build_and_install_from_source()
 {
-	instrument<times::build>([&]
-	{
-		run_tool(pip(pip::install)
-			.package("PyQt-builder")
-			.version(builder_version()));
+	run_tool(pip(pip::install)
+		.package("PyQt-builder")
+		.version(builder_version()));
 
-		run_tool(patcher()
-			.task(name())
-			.file("builder.py.manual_patch")
-			.root(python::site_packages_path() / "pyqtbuild"));
+	run_tool(patcher()
+		.task(name())
+		.file("builder.py.manual_patch")
+		.root(python::site_packages_path() / "pyqtbuild"));
 
-		sip_build();
-	});
+	sip_build();
 
-	instrument<times::install>([&]
-	{
-		install_sip_file();
-		copy_files();
-	});
+	install_sip_file();
+	copy_files();
 }
 
 void pyqt::sip_build()

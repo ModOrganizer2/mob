@@ -26,25 +26,16 @@ fs::path spdlog::source_path()
 
 void spdlog::do_clean(clean c)
 {
-	instrument<times::clean>([&]
-	{
-		if (is_set(c, clean::reclone))
-		{
-			git_wrap::delete_directory(cx(), source_path());
-			return;
-		}
-	});
+	if (is_set(c, clean::reclone))
+		git_wrap::delete_directory(cx(), source_path());
 }
 
 void spdlog::do_fetch()
 {
-	instrument<times::fetch>([&]
-	{
-		run_tool(task_conf().make_git()
-			.url(task_conf().make_git_url("gabime", "spdlog"))
-			.branch(version())
-			.root(source_path()));
-	});
+	run_tool(task_conf().make_git()
+		.url(task_conf().make_git_url("gabime", "spdlog"))
+		.branch(version())
+		.root(source_path()));
 }
 
 }	// namespace

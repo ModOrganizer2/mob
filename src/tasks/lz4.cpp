@@ -26,32 +26,29 @@ fs::path lz4::source_path()
 
 void lz4::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	if (prebuilt())
 	{
-		if (prebuilt())
-		{
-			if (is_set(c, clean::redownload))
-				run_tool(downloader(prebuilt_url(), downloader::clean));
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(prebuilt_url(), downloader::clean));
 
-			if (is_set(c, clean::reextract))
-			{
-				cx().trace(context::reextract, "deleting {}", source_path());
-				op::delete_directory(cx(), source_path(), op::optional);
-				return;
-			}
-		}
-		else
+		if (is_set(c, clean::reextract))
 		{
-			if (is_set(c, clean::reclone))
-			{
-				git_wrap::delete_directory(cx(), source_path());
-				return;
-			}
-
-			if (is_set(c, clean::rebuild))
-				run_tool(create_msbuild_tool(msbuild::clean));
+			cx().trace(context::reextract, "deleting {}", source_path());
+			op::delete_directory(cx(), source_path(), op::optional);
+			return;
 		}
-	});
+	}
+	else
+	{
+		if (is_set(c, clean::reclone))
+		{
+			git_wrap::delete_directory(cx(), source_path());
+			return;
+		}
+
+		if (is_set(c, clean::rebuild))
+			run_tool(create_msbuild_tool(msbuild::clean));
+	}
 }
 
 void lz4::do_fetch()
@@ -74,69 +71,51 @@ void lz4::fetch_prebuilt()
 {
 	cx().trace(context::generic, "using prebuilt lz4");
 
-	const auto file = instrument<times::fetch>([&]
-	{
-		return run_tool(downloader(prebuilt_url()));
-	});
+	const auto file = run_tool(downloader(prebuilt_url()));
 
-	instrument<times::extract>([&]
-	{
-		run_tool(extractor()
-			.file(file)
-			.output(source_path()));
-	});
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
 }
 
 void lz4::build_and_install_prebuilt()
 {
-	instrument<times::install>([&]
-	{
-		op::copy_file_to_dir_if_better(cx(),
-			source_path() / "bin" / "liblz4.pdb",
-			conf().path().install_pdbs());
+	op::copy_file_to_dir_if_better(cx(),
+		source_path() / "bin" / "liblz4.pdb",
+		conf().path().install_pdbs());
 
-		op::copy_file_to_dir_if_better(cx(),
-			source_path() / "bin" / "liblz4.dll",
-			conf().path().install_dlls());
-	});
+	op::copy_file_to_dir_if_better(cx(),
+		source_path() / "bin" / "liblz4.dll",
+		conf().path().install_dlls());
 }
 
 void lz4::fetch_from_source()
 {
-	instrument<times::fetch>([&]
-	{
-		run_tool(task_conf().make_git()
-			.url(task_conf().make_git_url("lz4","lz4"))
-			.branch(version())
-			.root(source_path()));
+	run_tool(task_conf().make_git()
+		.url(task_conf().make_git_url("lz4","lz4"))
+		.branch(version())
+		.root(source_path()));
 
-		run_tool(vs(vs::upgrade)
-			.solution(solution_file()));
-	});
+	run_tool(vs(vs::upgrade)
+		.solution(solution_file()));
 }
 
 void lz4::build_and_install_from_source()
 {
-	instrument<times::build>([&]
-	{
-		run_tool(create_msbuild_tool());
-	});
+	run_tool(create_msbuild_tool());
 
-	instrument<times::install>([&]
-	{
-		op::copy_glob_to_dir_if_better(cx(),
-			out_dir() / "*",
-			source_path() / "bin",
-			op::copy_files);
+	op::copy_glob_to_dir_if_better(cx(),
+		out_dir() / "*",
+		source_path() / "bin",
+		op::copy_files);
 
-		op::copy_file_to_dir_if_better(cx(),
-			out_dir() / "liblz4.dll",
-			conf().path().install_dlls());
+	op::copy_file_to_dir_if_better(cx(),
+		out_dir() / "liblz4.dll",
+		conf().path().install_dlls());
 
-		op::copy_file_to_dir_if_better(cx(),
-			out_dir() / "liblz4.pdb",
-			conf().path().install_pdbs());
-	});
+	op::copy_file_to_dir_if_better(cx(),
+		out_dir() / "liblz4.pdb",
+		conf().path().install_pdbs());
 }
 
 msbuild lz4::create_msbuild_tool(msbuild::ops o)

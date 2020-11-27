@@ -36,43 +36,31 @@ fs::path libloot::source_path()
 
 void libloot::do_clean(clean c)
 {
-	instrument<times::clean>([&]
-	{
-		if (is_set(c, clean::redownload))
-			run_tool(downloader(source_url(), downloader::clean));
+	if (is_set(c, clean::redownload))
+		run_tool(downloader(source_url(), downloader::clean));
 
-		if (is_set(c, clean::reextract))
-		{
-			cx().trace(context::reextract, "deleting {}", source_path());
-			op::delete_directory(cx(), source_path(), op::optional);
-			return;
-		}
-	});
+	if (is_set(c, clean::reextract))
+	{
+		cx().trace(context::reextract, "deleting {}", source_path());
+		op::delete_directory(cx(), source_path(), op::optional);
+		return;
+	}
 }
 
 void libloot::do_fetch()
 {
-	const auto file = instrument<times::fetch>([&]
-	{
-		return run_tool(downloader(source_url()));
-	});
+	const auto file = run_tool(downloader(source_url()));
 
-	instrument<times::extract>([&]
-	{
-		run_tool(extractor()
-			.file(file)
-			.output(source_path()));
-	});
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
 }
 
 void libloot::do_build_and_install()
 {
-	instrument<times::install>([&]
-	{
-		op::copy_file_to_dir_if_better(cx(),
-			source_path() / "loot.dll",
-			conf().path().install_loot());
-	});
+	op::copy_file_to_dir_if_better(cx(),
+		source_path() / "loot.dll",
+		conf().path().install_loot());
 }
 
 std::string libloot::release_name()

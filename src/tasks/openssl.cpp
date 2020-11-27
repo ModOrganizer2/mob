@@ -37,26 +37,23 @@ fs::path openssl::bin_path()
 
 void openssl::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	if (prebuilt())
 	{
-		if (prebuilt())
-		{
-			if (is_set(c, clean::redownload))
-				run_tool(downloader(prebuilt_url(), downloader::clean));
-		}
-		else
-		{
-			if (is_set(c, clean::redownload))
-				run_tool(downloader(source_url(), downloader::clean));
-		}
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(prebuilt_url(), downloader::clean));
+	}
+	else
+	{
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(source_url(), downloader::clean));
+	}
 
-		if (is_any_set(c, clean::reextract|clean::reconfigure|clean::rebuild))
-		{
-			cx().trace(context::reextract, "deleting {}", source_path());
-			op::delete_directory(cx(), source_path(), op::optional);
-			return;
-		}
-	});
+	if (is_any_set(c, clean::reextract|clean::reconfigure|clean::rebuild))
+	{
+		cx().trace(context::reextract, "deleting {}", source_path());
+		op::delete_directory(cx(), source_path(), op::optional);
+		return;
+	}
 }
 
 void openssl::do_fetch()
@@ -79,65 +76,41 @@ void openssl::fetch_prebuilt()
 {
 	cx().trace(context::generic, "using prebuilt openssl");
 
-	const auto file = instrument<times::fetch>([&]
-	{
-		return run_tool(downloader(prebuilt_url()));
-	});
+	const auto file = run_tool(downloader(prebuilt_url()));
 
-	instrument<times::extract>([&]
-	{
-		run_tool(extractor()
-			.file(file)
-			.output(source_path()));
-	});
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
 }
 
 void openssl::fetch_from_source()
 {
-	const auto file = instrument<times::fetch>([&]
-	{
-		return run_tool(downloader(source_url()));
-	});
+	const auto file = run_tool(downloader(source_url()));
 
-	instrument<times::extract>([&]
-	{
-		run_tool(extractor()
-			.file(file)
-			.output(source_path()));
-	});
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
 }
 
 void openssl::build_and_install_prebuilt()
 {
-	instrument<times::install>([&]
-	{
-		copy_files();
-	});
+	copy_files();
 }
 
 void openssl::build_and_install_from_source()
 {
-	instrument<times::configure>([&]
-	{
-		if (fs::exists(source_path() / "makefile"))
-			cx().trace(context::bypass, "openssl already configured");
-		else
-			configure();
-	});
+	if (fs::exists(source_path() / "makefile"))
+		cx().trace(context::bypass, "openssl already configured");
+	else
+		configure();
 
-	instrument<times::build>([&]
-	{
-		install_engines();
-	});
+	install_engines();
 
-	instrument<times::install>([&]
-	{
-		op::copy_file_to_dir_if_better(cx(),
-			source_path() / "ms" / "applink.c",
-			include_path());
+	op::copy_file_to_dir_if_better(cx(),
+		source_path() / "ms" / "applink.c",
+		include_path());
 
-		copy_files();
-	});
+	copy_files();
 }
 
 void openssl::configure()

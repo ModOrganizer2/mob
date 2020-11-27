@@ -337,17 +337,9 @@ private:
 // queues submodule operations with queue(), runs them in a thread because they
 // take a long time but can happen while stuff is building
 //
-class git_submodule_adder : public instrumentable<2>
+class git_submodule_adder
 {
 public:
-	// instrumentable categories
-	//
-	enum class times
-	{
-		add_submodule_wait,
-		add_submodule
-	};
-
 	// calls stop() and joins
 	//
 	~git_submodule_adder();

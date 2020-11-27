@@ -26,44 +26,41 @@ fs::path usvfs::source_path()
 
 void usvfs::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	if (prebuilt())
 	{
-		if (prebuilt())
+		if (is_set(c, clean::redownload))
 		{
-			if (is_set(c, clean::redownload))
-			{
-				const auto x86_dls =
-					create_appveyor_downloaders(arch::x86, downloader::clean);
+			const auto x86_dls =
+				create_appveyor_downloaders(arch::x86, downloader::clean);
 
-				for (auto dl : x86_dls)
-					run_tool(*dl);
+			for (auto dl : x86_dls)
+				run_tool(*dl);
 
 
-				const auto x64_dls =
-					create_appveyor_downloaders(arch::x64, downloader::clean);
+			const auto x64_dls =
+				create_appveyor_downloaders(arch::x64, downloader::clean);
 
-				for (auto dl : x64_dls)
-					run_tool(*dl);
-			}
+			for (auto dl : x64_dls)
+				run_tool(*dl);
 		}
-		else
+	}
+	else
+	{
+		if (is_set(c, clean::reclone))
 		{
-			if (is_set(c, clean::reclone))
-			{
-				git_wrap::delete_directory(cx(), source_path());
-				return;
-			}
-
-			if (is_set(c, clean::rebuild))
-			{
-				op::delete_directory(cx(), source_path() / "bin", op::optional);
-				op::delete_directory(cx(), source_path() / "lib", op::optional);
-
-				run_tool(create_msbuild_tool(arch::x86, msbuild::clean));
-				run_tool(create_msbuild_tool(arch::x64, msbuild::clean));
-			}
+			git_wrap::delete_directory(cx(), source_path());
+			return;
 		}
-	});
+
+		if (is_set(c, clean::rebuild))
+		{
+			op::delete_directory(cx(), source_path() / "bin", op::optional);
+			op::delete_directory(cx(), source_path() / "lib", op::optional);
+
+			run_tool(create_msbuild_tool(arch::x86, msbuild::clean));
+			run_tool(create_msbuild_tool(arch::x64, msbuild::clean));
+		}
+	}
 }
 
 void usvfs::do_fetch()
@@ -84,47 +81,35 @@ void usvfs::do_build_and_install()
 
 void usvfs::fetch_prebuilt()
 {
-	instrument<times::fetch>([&]
-	{
-		fetch_from_source();
-		download_from_appveyor(arch::x64);
-		download_from_appveyor(arch::x86);
-	});
+	fetch_from_source();
+	download_from_appveyor(arch::x64);
+	download_from_appveyor(arch::x86);
 }
 
 void usvfs::build_and_install_prebuilt()
 {
-	instrument<times::install>([&]
-	{
-		copy_prebuilt(arch::x86);
-		copy_prebuilt(arch::x64);
-	});
+	copy_prebuilt(arch::x86);
+	copy_prebuilt(arch::x64);
 }
 
 void usvfs::fetch_from_source()
 {
-	instrument<times::fetch>([&]
-	{
-		run_tool(task_conf().make_git()
-			.url(task_conf().make_git_url(task_conf().mo_org(), "usvfs"))
-			.branch(version())
-			.root(source_path()));
-	});
+	run_tool(task_conf().make_git()
+		.url(task_conf().make_git_url(task_conf().mo_org(), "usvfs"))
+		.branch(version())
+		.root(source_path()));
 }
 
 void usvfs::build_and_install_from_source()
 {
-	instrument<times::build>([&]
-	{
-		// usvfs doesn't use "Win32" for 32-bit, it uses "x86"
-		//
-		// note that usvfs_proxy has a custom build step in Release that runs
-		// usvfs/vsbuild/stage_helper.cmd, which copies everything into
-		// install/
+	// usvfs doesn't use "Win32" for 32-bit, it uses "x86"
+	//
+	// note that usvfs_proxy has a custom build step in Release that runs
+	// usvfs/vsbuild/stage_helper.cmd, which copies everything into
+	// install/
 
-		run_tool(create_msbuild_tool(arch::x86));
-		run_tool(create_msbuild_tool(arch::x64));
-	});
+	run_tool(create_msbuild_tool(arch::x86));
+	run_tool(create_msbuild_tool(arch::x64));
 }
 
 void usvfs::download_from_appveyor(arch a)

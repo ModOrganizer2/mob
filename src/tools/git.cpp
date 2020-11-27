@@ -761,9 +761,8 @@ void git_submodule::do_run()
 static std::unique_ptr<git_submodule_adder> g_sa_instance;
 static std::mutex g_sa_instance_mutex;
 
-git_submodule_adder::git_submodule_adder() :
-	instrumentable("submodule_adder", {"add_submodule_wait", "add_submodule"}),
-	cx_("submodule_adder"), quit_(false)
+git_submodule_adder::git_submodule_adder()
+	: cx_("submodule_adder"), quit_(false)
 {
 	run();
 }
@@ -809,12 +808,9 @@ void git_submodule_adder::thread_fun()
 	{
 		while (!quit_)
 		{
-			instrument<times::add_submodule_wait>([&]
-			{
-				std::unique_lock lk(sleeper_.m);
-				sleeper_.cv.wait(lk, [&]{ return sleeper_.ready; });
-				sleeper_.ready = false;
-			});
+			std::unique_lock lk(sleeper_.m);
+			sleeper_.cv.wait(lk, [&]{ return sleeper_.ready; });
+			sleeper_.ready = false;
 
 			if (quit_)
 				break;
@@ -853,13 +849,10 @@ void git_submodule_adder::process()
 
 	for (auto&& g : v)
 	{
-		instrument<times::add_submodule>([&]
-		{
-			cx_.trace(context::generic,
-				"git_submodule_adder: running {}", g.submodule());
+		cx_.trace(context::generic,
+			"git_submodule_adder: running {}", g.submodule());
 
-			g.run(cx_);
-		});
+		g.run(cx_);
 
 		if (quit_)
 			break;

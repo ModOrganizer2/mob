@@ -65,21 +65,9 @@ private:
 };
 
 
-class task : public instrumentable<7>
+class task
 {
 public:
-	enum class times
-	{
-		init_super,
-		fetch,
-		extract,
-		configure,
-		build,
-		install,
-		clean
-	};
-
-
 	enum class clean
 	{
 		nothing     = 0x00,
