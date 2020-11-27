@@ -1187,7 +1187,7 @@ void init_options(
 
 	make_canonical_path(
 		"install_pythoncore",
-		paths::install_dlls(), "pythoncore");
+		paths::install_bin(), "pythoncore");
 
 	make_canonical_path(
 		"install_stylesheets",
@@ -1195,7 +1195,7 @@ void init_options(
 
 	make_canonical_path(
 		"install_translations",
-		paths::install_bin(), "resources/translations");
+		paths::install_bin(), "translations");
 
 	conf::set_global("tools", "iscc", path_to_utf8(find_iscc()));
 }
