@@ -81,7 +81,7 @@ public:
 	//
 	bool has_remote(const std::string& name);
 
-	// adds a remote from github
+	// adds a remote from github, no-op if it already exists
 	//
 	// remote_name:  name of the new remote
 	//

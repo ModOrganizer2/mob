@@ -663,6 +663,8 @@ private:
 class pip : public basic_process_runner
 {
 public:
+	// what run() should do
+	//
 	enum ops
 	{
 		// installs pip if needed and updates it
@@ -734,6 +736,8 @@ public:
 	static fs::path binary();
 
 
+	// what run() should do
+	//
 	enum ops
 	{
 		// runs `ini`, initializes an empty directory to use transifex

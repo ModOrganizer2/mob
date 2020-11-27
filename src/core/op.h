@@ -51,8 +51,11 @@ void create_directories(const context& cx, const fs::path& p, flags f=noflags);
 
 // deletes the given directory, recursive
 //
-// if deletion fails because of access denied, attemps to remove the readonly
+// if deletion fails because of access denied, attempts to remove the readonly
 // flag on all files and tries again; this happens with some archives like 7z
+//
+// if the directory is controlled by git, prefer git_wrap::delete_directory(),
+// which checks for uncommitted changes before
 //
 void delete_directory(const context& cx, const fs::path& p, flags f=noflags);
 

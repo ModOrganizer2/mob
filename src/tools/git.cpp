@@ -7,8 +7,8 @@
 namespace mob::details
 {
 
-const std::string default_github_url_pattern = "git@github.com:{}/{}";
-
+// calls f() with each .ts file in the root, recursive
+//
 template <class F>
 void for_each_ts(const fs::path& root, F&& f)
 {
@@ -26,22 +26,28 @@ void for_each_ts(const fs::path& root, F&& f)
 	}
 }
 
+// returns a github url for the given org and git file
+//
 std::string make_url(
 	const std::string& org, const std::string& git_file,
 	const std::string& url_pattern)
 {
+	const std::string default_github_url_pattern = "git@github.com:{}/{}";
+
 	const std::string pattern = url_pattern.empty() ?
-		details::default_github_url_pattern : url_pattern;
+		default_github_url_pattern : url_pattern;
 
 	return fmt::format(pattern, org, git_file);
 }
 
 
+// creates a basic git process, used by all the functions below
+//
 [[nodiscard]] process make_process()
 {
 	static env e = this_env::get()
-		.set("GCM_INTERACTIVE", "never")
-		.set("GIT_TERMINAL_PROMPT", "0");
+		.set("GCM_INTERACTIVE", "never")  // disables credentials UI
+		.set("GIT_TERMINAL_PROMPT", "0"); // disables all prompts
 
 	return std::move(process()
 		.binary(git_wrap::binary())
@@ -281,7 +287,7 @@ std::string make_url(
 		.cwd(root);
 }
 
-[[nodiscard]] process git_file(const fs::path& root)
+[[nodiscard]] process remote_url(const fs::path& root)
 {
 	return make_process()
 		.stdout_flags(process::keep_in_string)
@@ -416,15 +422,17 @@ void git_wrap::revert_ts()
 	{
 		const auto rp = fs::relative(p, root_);
 
-		if (!is_tracked(rp))
+		if (is_tracked(rp))
+		{
+			run(details::revert(root_, p));
+		}
+		else
 		{
 			cx().debug(context::generic,
 				"won't try to revert ts file '{}', not tracked", rp);
 
 			return;
 		}
-
-		run(details::revert(root_, p));
 	});
 }
 
@@ -496,8 +504,10 @@ void git_wrap::add_submodule(
 
 std::string git_wrap::git_file()
 {
-	auto p = details::git_file(root_);
+	auto p = details::remote_url(root_);
 	run(p);
+
+	// contains the remote url, get the last component
 	const std::string out = p.stdout_string();
 
 	const auto last_slash = out.find_last_of("/");
@@ -521,6 +531,9 @@ std::string git_wrap::git_file()
 void git_wrap::delete_directory(const context& cx, const fs::path& dir)
 {
 	git_wrap g(dir);
+
+	// make sure there are no uncommitted or stashed changes to avoid losing
+	// data
 
 	if (!conf().global().get<bool>("ignore_uncommitted"))
 	{
@@ -749,8 +762,7 @@ static std::unique_ptr<git_submodule_adder> g_sa_instance;
 static std::mutex g_sa_instance_mutex;
 
 git_submodule_adder::git_submodule_adder() :
-	instrumentable("submodule_adder",
-		{"add_submodule_wait", "add_submodule"}),
+	instrumentable("submodule_adder", {"add_submodule_wait", "add_submodule"}),
 	cx_("submodule_adder"), quit_(false)
 {
 	run();

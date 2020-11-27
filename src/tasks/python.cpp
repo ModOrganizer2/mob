@@ -245,7 +245,7 @@ msbuild python::create_msbuild_tool(msbuild::ops o)
 		.targets({
 			"python", "pythonw", "python3dll", "select", "pyexpat",
 			"unicodedata", "_queue", "_bz2", "_ssl", "_overlapped"})
-		.parameters({
+		.properties({
 			"bz2Dir=" + path_to_utf8(bzip2::source_path()),
 			"zlibDir=" + path_to_utf8(zlib::source_path()),
 			"opensslIncludeDir=" + path_to_utf8(openssl::include_path()),

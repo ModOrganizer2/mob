@@ -37,6 +37,7 @@ void tool::run(context& cx)
 {
 	cx_ = &cx;
 
+	// tell the context this tool is running, used for logs
 	cx_->set_tool(this);
 	guard g([&]{ cx_->set_tool(nullptr); });
 
@@ -45,12 +46,12 @@ void tool::run(context& cx)
 
 void tool::interrupt()
 {
-	if (!interrupted_)
-	{
-		cx().debug(context::interruption, "interrupting {}", name_);
-		interrupted_ = true;
-		do_interrupt();
-	}
+	if (interrupted_)
+		return;
+
+	cx().debug(context::interruption, "interrupting {}", name_);
+	interrupted_ = true;
+	do_interrupt();
 }
 
 void tool::do_interrupt()
@@ -173,6 +174,8 @@ void vs::do_run()
 
 void vs::do_upgrade()
 {
+	// assume the project is already upgraded if UpgradeLog.htm exists, because
+	// upgrading is slow even if it's not necessary
 	if (fs::exists(sln_.parent_path() / "UpgradeLog.htm"))
 	{
 		cx().debug(context::generic, "project already upgraded");
@@ -324,8 +327,7 @@ void transifex::do_config()
 		.arg("config")
 		.arg("mapping-remote")
 		.arg(url_)
-		.env(this_env::get()
-			.set("TX_TOKEN", key_))
+		.env(this_env::get().set("TX_TOKEN", key_))
 		.cwd(root_));
 }
 
@@ -341,8 +343,7 @@ void transifex::do_pull()
 		.arg("--parallel")
 		.arg("--no-interactive")
 		.arg("--minimum-perc", min_)
-		.env(this_env::get()
-			.set("TX_TOKEN", key_))
+		.env(this_env::get().set("TX_TOKEN", key_))
 		.cwd(root_);
 
 	if (force_)
@@ -391,7 +392,10 @@ fs::path lrelease::qm_file() const
 	if (sources_.empty())
 		cx().bail_out(context::generic, "lrelease: no sources");
 
+	// source files are something like "fr.ts", get "fr" and use the project
+	// name to make something like "modorganizer_fr.qm"
 	const auto lang = trim_copy(path_to_utf8(sources_[0].stem()));
+
 	if (lang.empty())
 	{
 		cx().bail_out(context::generic,
@@ -403,6 +407,7 @@ fs::path lrelease::qm_file() const
 
 void lrelease::do_run()
 {
+	// that's the output file
 	const auto qm = qm_file();
 
 	auto p = process()
@@ -417,11 +422,12 @@ void lrelease::do_run()
 		});
 
 
+	// input .ts files
 	for (auto&& s : sources_)
 		p.arg(s);
 
-	p
-		.arg("-qm", (out_ / qm));
+	// output .qm file
+	p.arg("-qm", (out_ / qm));
 
 	execute_and_join(p);
 }

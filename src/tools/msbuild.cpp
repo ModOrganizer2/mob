@@ -6,16 +6,6 @@
 namespace mob
 {
 
-void error_filter(process::filter& f)
-{
-	// ": error C2065"
-	// ": error MSB1009"
-	static std::regex re(": error [A-Z]");
-	if (std::regex_search(f.line.begin(), f.line.end(), re))
-		f.lv = context::level::error;
-}
-
-
 msbuild::msbuild(ops o) :
 	basic_process_runner("msbuild"),
 	op_(o), config_("Release"), arch_(arch::def), flags_(noflags)
@@ -39,9 +29,9 @@ msbuild& msbuild::targets(const std::vector<std::string>& names)
 	return *this;
 }
 
-msbuild& msbuild::parameters(const std::vector<std::string>& params)
+msbuild& msbuild::properties(const std::vector<std::string>& props)
 {
-	params_ = params;
+	props_ = props;
 	return *this;
 }
 
@@ -105,51 +95,59 @@ void msbuild::do_run()
 
 void msbuild::do_build()
 {
-	do_run(targets_);
+	run_for_targets(targets_);
 }
 
-void msbuild::do_run(const std::vector<std::string>& targets)
+std::string msbuild::platform_property() const
+{
+	if (!platform_.empty())
+		return platform_;
+
+	switch (arch_)
+	{
+		case arch::x86:
+			return "Win32";
+
+		case arch::x64:
+			return "x64";
+
+		case arch::dont_care:
+		default:
+			cx().bail_out(context::generic, "msbuild::do_run(): bad arch");
+	}
+}
+
+void msbuild::run_for_targets(const std::vector<std::string>& targets)
 {
 	// 14.2 to v142
 	const auto toolset = "v" + replace_all(vs::toolset(), ".", "");
 
-	std::string plat;
-
-	if (platform_.empty())
-	{
-		switch (arch_)
-		{
-			case arch::x86:
-				plat = "Win32";
-				break;
-
-			case arch::x64:
-				plat = "x64";
-				break;
-
-			case arch::dont_care:
-			default:
-				cx().bail_out(context::generic, "msbuild::do_run(): bad arch");
-		}
-	}
-	else
-	{
-		plat = platform_;
-	}
-
-	auto pflags = process::noflags;
 	process p;
 
 	if (is_set(flags_, allow_failure))
 	{
-		p.stderr_level(context::level::trace);
-		pflags |= process::allow_failure;
+		// make sure errors are not displayed and mob doesn't bail out
+		p
+			.stderr_level(context::level::trace)
+			.flags(process::allow_failure);
 	}
 	else
 	{
-		p.stdout_filter([&](auto& f){ error_filter(f); });
+		p.stdout_filter([&](auto& f)
+		{
+			// ": error C2065"
+			// ": error MSB1009"
+			static std::regex re(": error [A-Z]");
+
+			// ghetto attempt at showing errors on the console, since stdout
+			// has all the compiler output
+			if (std::regex_search(f.line.begin(), f.line.end(), re))
+				f.lv = context::level::error;
+		});
 	}
 
+	// msbuild will use the console's encoding, so by invoking `chcp 65001`
+	// (the utf8 "codepage"), stdout and stderr are utf8
 	p
 		.binary(binary())
 		.chcp(65001)
@@ -159,6 +157,7 @@ void msbuild::do_run(const std::vector<std::string>& targets)
 
 	if (!is_set(flags_, single_job))
 	{
+		// multi-process
 		p
 			.arg("-maxCpuCount")
 			.arg("-property:UseMultiToolTask=true")
@@ -169,25 +168,28 @@ void msbuild::do_run(const std::vector<std::string>& targets)
 		.arg("-property:Configuration=", config_, process::quote)
 		.arg("-property:PlatformToolset=" + toolset)
 		.arg("-property:WindowsTargetPlatformVersion=" + vs::sdk())
-		.arg("-property:Platform=", plat, process::quote)
-		.arg("-property:RunCodeAnalysis=false")
+		.arg("-property:Platform=", platform_property(), process::quote)
 		.arg("-verbosity:minimal", process::log_quiet)
 		.arg("-consoleLoggerParameters:ErrorsOnly", process::log_quiet);
 
+	// some projects have code analysis turned on and can fail on preview
+	// versions, make sure it's never run
+	p.arg("-property:RunCodeAnalysis=false");
+
+	// targets
 	if (!targets.empty())
 		p.arg("-target:" + mob::join(targets, ";"));
 
-	for (auto&& param : params_)
-		p.arg("-property:" + param);
+	// properties
+	for (auto&& prop : props_)
+		p.arg("-property:" + prop);
 
 	env e = env::vs(arch_);
-
 	for (auto&& path : prepend_path_)
 		e.prepend_path(path);
 
 	p
 		.arg(sln_)
-		.flags(pflags)
 		.cwd(sln_.parent_path())
 		.env(e);
 
@@ -197,7 +199,7 @@ void msbuild::do_run(const std::vector<std::string>& targets)
 void msbuild::do_clean()
 {
 	flags_ |= allow_failure;
-	do_run(map(targets_, [&](auto&& t){ return t + ":Clean"; }));
+	run_for_targets(map(targets_, [&](auto&& t){ return t + ":Clean"; }));
 }
 
 }	// namespace

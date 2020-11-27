@@ -25,6 +25,11 @@ python& python::arg(const std::string& s)
 
 void python::do_run()
 {
+	// python is a bit finicky for utf8, so:
+	//  1) chcp changes the codepage to utf8
+	//  2) `-X utf8` and the PYTHONUTF8 environment variable are set, which
+	//     is probably redundant
+
 	auto p = process()
 		.binary(tasks::python::python_exe())
 		.chcp(65001)
@@ -32,20 +37,20 @@ void python::do_run()
 		.stderr_encoding(encodings::utf8)
 		.stderr_filter([&](process::filter& f)
 		{
+			// filter out crap from setuptools
 			if (f.line.find("zip_safe flag not set") != std::string::npos)
 				f.lv = context::level::trace;
 			else if (f.line.find("module references __file__") != std::string::npos)
 				f.lv = context::level::trace;
 		})
-		.arg("-X", "utf8");
+		.arg("-X", "utf8");  // forces utf8
 
 	for (auto&& a : args_)
 		p.arg(a);
 
 	p
 		.cwd(root_)
-		.env(this_env::get()
-			.set("PYTHONUTF8", "1"));
+		.env(this_env::get().set("PYTHONUTF8", "1"));  // forces utf8
 
 	execute_and_join(p);
 }
@@ -98,17 +103,16 @@ void pip::do_run()
 void pip::do_ensure()
 {
 	// ensure
-	//
-	// this spits out two warnings about not being on PATH and suggests to add
-	// --no-warn-script-location, but that's not actually a valid command
-	// line parameter for `ensurepip` and it fails, unlike the `install`
-	// commands below
-	//
-	// so just filter it out
-
 	execute_and_join(process()
 		.stderr_filter([](auto&& f)
 		{
+			// this spits out two warnings about not being on PATH and suggests
+			// to add --no-warn-script-location, but that's not actually a valid
+			// parameter for `ensurepip` and it fails, unlike the `install`
+			// commands below
+			//
+			// so just filter it out
+
 			if (f.line.find("which is not on PATH") != -1)
 				f.lv = context::level::debug;
 			else if (f.line.find("Consider adding this directory"))
@@ -154,9 +158,7 @@ void pip::do_install()
 	else if (!file_.empty())
 		p.arg(file_);
 
-	p
-		.env(this_env::get()
-			.set("PYTHONUTF8", "1"));
+	p.env(this_env::get().set("PYTHONUTF8", "1"));
 
 	execute_and_join(p);
 }
@@ -175,8 +177,7 @@ void pip::do_download()
 		.arg("--no-deps")
 		.arg("-d", conf().path().cache())
 		.arg(package_ + "==" + version_)
-		.env(this_env::get()
-			.set("PYTHONUTF8", "1")));
+		.env(this_env::get().set("PYTHONUTF8", "1")));
 }
 
 }	// namespace
