@@ -151,6 +151,7 @@ void tx_command::do_get()
 			"variable doesn't exist, this will probably fail)\n\n";
 	}
 
+	// copy the global context, the tools will modify it
 	context cxcopy = gcx();
 
 	u8cout << "initializing\n";
@@ -196,6 +197,7 @@ void tx_command::do_build()
 	{
 		for (auto& lg : p.langs)
 		{
+			// copy the global context, each thread must have its own
 			tp.add([&, cxcopy=gcx()]() mutable
 			{
 				lrelease()

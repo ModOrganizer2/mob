@@ -131,6 +131,7 @@ protected:
 	// since a task may be running several threads, a list of per-thread context
 	// objects is kept in contexts_ and the correct one is returned
 	//
+	context& cx();
 	const context& cx() const;
 
 	// throws if the interrupted flag is set
@@ -179,6 +180,13 @@ protected:
 	std::string make_git_url(
 		const std::string& org, const std::string& repo) const;
 
+	// called by run(), parallel(), but also parallel_tasks::run(); adds a new
+	// context for the current thread and calls f()
+	//
+	// shouldn't be used directly by tasks
+	//
+	void running_from_thread(std::string name, std::function<void ()> f);
+
 private:
 	// a struct with the thread id and a context object, defined in task.cpp
 	// to avoid pulling to many includes
@@ -206,6 +214,16 @@ private:
 	//
 	void run_tool_impl(tool* t);
 
+	// adds a new context with the given name in contexts_ for the current
+	// thread
+	//
+	void add_context_for_this_thread(std::string name);
+
+	// removes the context for the current thread from contexts_
+	//
+	void remove_context_for_this_thread();
+
+
 	// called by name_matches() when the pattern is a glob
 	//
 	bool name_matches_glob(std::string_view pattern) const;
@@ -220,11 +238,6 @@ private:
 	// frick
 	//
 	bool strings_match(std::string_view a, std::string_view b) const;
-
-	// called by run() and parallel(), adds a new context for the current thread
-	// and calls f()
-	//
-	void threaded_run(std::string name, std::function<void ()> f);
 
 
 	// calls clean_task(), then do_fetch() if needed (see --no-fetch-task);
@@ -241,7 +254,6 @@ private:
 	// --no-clean-task); no-op if the task is disabled
 	//
 	void clean_task();
-
 };
 
 

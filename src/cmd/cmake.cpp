@@ -65,7 +65,9 @@ int cmake_command::do_run()
 	if (!x64_)
 		t.architecture(arch::x86);
 
+	// copy the global context, the tool will modify it
 	context cxcopy(gcx());
+
 	t.run(cxcopy);
 
 	return 0;
