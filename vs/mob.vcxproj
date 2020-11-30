@@ -103,6 +103,7 @@
     <ClCompile Include="..\src\tasks\spdlog.cpp" />
     <ClCompile Include="..\src\tasks\stylesheets.cpp" />
     <ClCompile Include="..\src\tasks\task.cpp" />
+    <ClCompile Include="..\src\tasks\task_manager.cpp" />
     <ClCompile Include="..\src\tasks\translations.cpp" />
     <ClCompile Include="..\src\tasks\usvfs.cpp" />
     <ClCompile Include="..\src\tasks\zlib.cpp" />
@@ -137,6 +138,7 @@
     <ClInclude Include="..\src\pch.h" />
     <ClInclude Include="..\src\tasks\task.h" />
     <ClInclude Include="..\src\tasks\tasks.h" />
+    <ClInclude Include="..\src\tasks\task_manager.h" />
     <ClInclude Include="..\src\tools\cmake.h" />
     <ClInclude Include="..\src\tools\git.h" />
     <ClInclude Include="..\src\tools\msbuild.h" />

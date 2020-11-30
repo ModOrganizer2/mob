@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "commands.h"
+#include "../core/conf.h"
+#include "../tasks/task_manager.h"
 #include "../tasks/tasks.h"
+#include "../utility.h"
 
 namespace mob
 {
@@ -95,7 +98,7 @@ std::pair<const tasks::modorganizer*, std::string> pr_command::parse_pr(
 	const std::string pattern = cs[0];
 	const std::string pr_number = cs[1];
 
-	const auto* task = find_one_task(pattern);
+	const auto* task = task_manager::instance().find_one(pattern);
 	if (!task)
 		return {};
 
@@ -124,7 +127,7 @@ int pr_command::pull()
 		for (auto&& pr : okay_prs)
 		{
 			const auto* task = dynamic_cast<const tasks::modorganizer*>(
-				find_one_task(pr.repo));
+				task_manager::instance().find_one(pr.repo));
 
 			if (!task)
 				return 1;
@@ -173,7 +176,7 @@ int pr_command::revert()
 		for (auto&& pr : okay_prs)
 		{
 			const auto* task = dynamic_cast<const tasks::modorganizer*>(
-				find_one_task(pr.repo));
+				task_manager::instance().find_one(pr.repo));
 
 			if (!task)
 				return 1;
@@ -346,7 +349,7 @@ std::vector<pr_command::pr_info> pr_command::validate_prs(
 		}
 		else
 		{
-			const auto tasks = find_tasks(pr.repo);
+			const auto tasks = task_manager::instance().find(pr.repo);
 
 			if (tasks.empty())
 			{

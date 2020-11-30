@@ -4,7 +4,7 @@
 #include "context.h"
 #include "env.h"
 #include "conf.h"
-#include "../tasks/tasks.h"
+#include "../tasks/task_manager.h"
 #include "../utility/string.h"
 
 namespace mob
@@ -220,6 +220,8 @@ void parse_line(
 	ini_data& ini, std::size_t i, const std::string& line,
 	const std::string& task, const std::string& section)
 {
+	auto& tm = task_manager::instance();
+
 	const auto sep = line.find("=");
 	if (sep == std::string::npos)
 		ini_error(ini, i, "bad line '{}'", line);
@@ -232,7 +234,7 @@ void parse_line(
 
 	if (section == "aliases")
 	{
-		add_alias(k, split_quoted(v, " "));
+		tm.add_alias(k, split_quoted(v, " "));
 	}
 	else if (task.empty())
 	{
@@ -240,7 +242,7 @@ void parse_line(
 	}
 	else
 	{
-		if (!valid_task_name(task))
+		if (!tm.valid_name(task))
 			ini_error(ini, i, "no task matching '{}' found", task);
 
 		ini.set(task + ":" + section, k, v);

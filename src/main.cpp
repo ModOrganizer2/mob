@@ -5,6 +5,7 @@
 #include "core/conf.h"
 #include "core/op.h"
 #include "tasks/tasks.h"
+#include "tasks/task_manager.h"
 #include "tools/tools.h"
 #include "utility/threading.h"
 

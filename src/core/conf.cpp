@@ -6,6 +6,7 @@
 #include "paths.h"
 #include "../utility.h"
 #include "../tasks/task.h"
+#include "../tasks/task_manager.h"
 #include "../tools/tools.h"
 
 namespace mob::details
@@ -156,7 +157,7 @@ std::string get_string_for_task(
 	// for super
 	for (auto&& tn : task_names)
 	{
-		for (auto&& t : find_tasks(tn))
+		for (auto&& t : task_manager::instance().find(tn))
 		{
 			if (t->is_super())
 			{
@@ -217,6 +218,8 @@ namespace mob
 
 std::vector<std::string> format_options()
 {
+	auto& tm = task_manager::instance();
+
 	std::size_t longest_what = 0;
 	std::size_t longest_key = 0;
 
@@ -231,7 +234,7 @@ std::vector<std::string> format_options()
 	for (auto&& [k, v] : details::g_tasks[""])
 		longest_key = std::max(longest_key, k.size());
 
-	for (const auto* task : get_all_tasks())
+	for (const auto* task : tm.all())
 		longest_what = std::max(longest_what, task->name().size());
 
 	std::vector<std::string> lines;
@@ -263,7 +266,7 @@ std::vector<std::string> format_options()
 			pad_right(k, longest_key) + " = " + v);
 	}
 
-	for (const auto* t : get_all_tasks())
+	for (const auto* t : tm.all())
 	{
 		for (auto&& [k, unused] : details::g_tasks[""])
 		{
@@ -395,7 +398,7 @@ void process_option(
 			// task specific
 
 			// task must exist
-			const auto& tasks = find_tasks(task);
+			const auto& tasks = task_manager::instance().find(task);
 			MOB_ASSERT(!tasks.empty());
 
 			for (auto& t : tasks)
@@ -429,7 +432,7 @@ void process_ini(const fs::path& ini, bool master)
 	const auto data = parse_ini(ini);
 
 	for (auto&& a : data.aliases)
-		add_alias(a.first, a.second);
+		task_manager::instance().add_alias(a.first, a.second);
 
 	for (auto&& [section_string, kvs] : data.sections)
 	{

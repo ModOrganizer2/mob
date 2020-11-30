@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "task.h"
+#include "task_manager.h"
 #include "../core/conf.h"
 #include "../core/op.h"
 #include "../tools/tools.h"
@@ -7,204 +8,6 @@
 
 namespace mob
 {
-
-class interrupted {};
-
-static std::vector<std::unique_ptr<task>> g_top_level_tasks;
-static std::vector<task*> g_all_tasks;
-static std::atomic<bool> g_interrupt = false;
-static alias_map g_aliases;
-std::mutex task::interrupt_mutex_;
-
-
-void add_task(std::unique_ptr<task> t)
-{
-	g_top_level_tasks.push_back(std::move(t));
-}
-
-std::vector<task*> get_all_tasks()
-{
-	std::vector<task*> v;
-
-	for (auto&& t : g_all_tasks)
-		v.push_back(t);
-
-	return v;
-}
-
-std::vector<task*> get_top_level_tasks()
-{
-	std::vector<task*> v;
-
-	for (auto&& t : g_top_level_tasks)
-		v.push_back(t.get());
-
-	return v;
-}
-
-std::vector<task*> find_tasks_by_pattern(std::string_view pattern)
-{
-	std::vector<task*> tasks;
-
-	for (auto&& t : g_all_tasks)
-	{
-		if (pattern == "super" && t->is_super())
-		{
-			tasks.push_back(t);
-		}
-		else
-		{
-			for (auto&& n : t->names())
-			{
-				if (mob::glob_match(pattern, n))
-				{
-					tasks.push_back(t);
-					break;
-				}
-			}
-		}
-	}
-
-	return tasks;
-}
-
-std::vector<task*> find_tasks_by_alias(std::string_view pattern)
-{
-	std::vector<task*> v;
-
-	auto itor = g_aliases.find(pattern);
-	if (itor == g_aliases.end())
-		return v;
-
-	for (auto&& a : itor->second)
-	{
-		const auto temp = find_tasks_by_pattern(a);
-		v.insert(v.end(), temp.begin(), temp.end());
-	}
-
-	return v;
-}
-
-std::vector<task*> find_tasks(std::string_view pattern)
-{
-	std::vector<task*> tasks;
-
-	for (auto&& t : g_all_tasks)
-	{
-		if (pattern == "super" && t->is_super())
-		{
-			tasks.push_back(t);
-		}
-		else
-		{
-			for (auto&& n : t->names())
-			{
-				if (mob::glob_match(pattern, n))
-				{
-					tasks.push_back(t);
-					break;
-				}
-			}
-		}
-	}
-
-	if (tasks.empty())
-		tasks = find_tasks_by_alias(pattern);
-
-	return tasks;
-}
-
-task* find_one_task(std::string_view pattern, bool verbose)
-{
-	const auto tasks = find_tasks(pattern);
-
-	if (tasks.empty())
-	{
-		if (verbose)
-			u8cerr << "no task matches '" << pattern << "'\n";
-
-		return nullptr;
-	}
-	else if (tasks.size() > 1)
-	{
-		if (verbose)
-		{
-			u8cerr
-				<< "found " << tasks.size() << " matches for pattern "
-				<< "'" << pattern << "'\n"
-				<< "the pattern must only match one task\n";
-		}
-
-		return nullptr;
-	}
-
-	return tasks[0];
-}
-
-bool valid_task_name(std::string_view pattern)
-{
-	if (!find_tasks(pattern).empty())
-		return true;
-
-	if (pattern == "_override")
-		return true;
-
-	return false;
-}
-
-void run_all_tasks()
-{
-	try
-	{
-		for (auto& t : g_top_level_tasks)
-		{
-			t->fetch();
-
-			if (g_interrupt)
-				throw interrupted();
-		}
-
-		for (auto& t : g_top_level_tasks)
-		{
-			t->join();
-
-			if (g_interrupt)
-				throw interrupted();
-
-			t->build_and_install();
-
-			if (g_interrupt)
-				throw interrupted();
-
-			t->join();
-
-			if (g_interrupt)
-				throw interrupted();
-		}
-	}
-	catch(interrupted&)
-	{
-	}
-}
-
-void add_alias(std::string name, std::vector<std::string> names)
-{
-	auto itor = g_aliases.find(name);
-	if (itor != g_aliases.end())
-	{
-		gcx().warning(context::generic, "alias {} already exists", name);
-		return;
-	}
-
-	g_aliases.emplace(std::move(name), std::move(names));
-}
-
-const alias_map& get_all_aliases()
-{
-	return g_aliases;
-}
-
-
 
 std::string to_string(task::clean c)
 {
@@ -361,7 +164,7 @@ task::task(std::vector<std::string> names)
 		std::this_thread::get_id(), context(name())));
 
 	if (name() != "parallel")
-		g_all_tasks.push_back(this);
+		task_manager::instance().register_task(this);
 }
 
 task::~task()
@@ -414,11 +217,7 @@ void task::add_name(std::string s)
 
 void task::interrupt_all()
 {
-	std::scoped_lock lock(interrupt_mutex_);
-
-	g_interrupt = true;
-	for (auto&& t : g_top_level_tasks)
-		t->interrupt();
+	task_manager::instance().interrupt_all();
 }
 
 const std::string& task::name() const

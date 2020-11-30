@@ -89,7 +89,7 @@ clipp::group command::common_options_group()
 			%  "sets an option, such as 'versions/openssl=1.2'",
 
 		(clipp::option("--no-default-inis") >> o.no_default_inis)
-			% "disables auto loading of ini files, only uses --ini; the first"
+			% "disables auto loading of ini files, only uses --ini; the first "
 			  "--ini must be the master ini file";
 }
 

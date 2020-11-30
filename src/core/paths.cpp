@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "paths.h"
+#include "../tasks/task_manager.h"
 #include "../tasks/tasks.h"
 #include "../utility/string.h"
 
@@ -337,7 +338,7 @@ fs::path find_qt()
 fs::path find_iscc()
 {
 	// don't bother if the installer isn't enabled, it might fail anyway
-	if (!find_one_task("installer")->enabled())
+	if (!task_manager::instance().find_one("installer")->enabled())
 		return {};
 
 	// check from the ini first, supports both relative and absolute

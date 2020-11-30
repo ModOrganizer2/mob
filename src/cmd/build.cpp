@@ -1,7 +1,10 @@
 #include "pch.h"
 #include "commands.h"
 #include "../core/ini.h"
-#include "../tasks/tasks.h"
+#include "../core/conf.h"
+#include "../core/context.h"
+#include "../core/op.h"
+#include "../tasks/task_manager.h"
 
 namespace mob
 {
@@ -154,7 +157,7 @@ int build_command::do_run()
 	{
 		create_prefix_ini();
 
-		run_all_tasks();
+		task_manager::instance().run_all();
 
 		if (!keep_msbuild_)
 			terminate_msbuild();

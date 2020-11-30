@@ -5,6 +5,7 @@
 #include "../core/context.h"
 #include "../core/op.h"
 #include "../tasks/tasks.h"
+#include "../tasks/task_manager.h"
 #include "../utility/threading.h"
 
 namespace mob
@@ -302,7 +303,7 @@ int release_command::do_official()
 	if (!check_clean_prefix())
 		return 1;
 
-	run_all_tasks();
+	task_manager::instance().run_all();
 	build_command::terminate_msbuild();
 
 	prepare();
@@ -321,7 +322,7 @@ void release_command::check_repos_for_branch()
 	thread_pool tp;
 	std::atomic<bool> failed = false;
 
-	for (const auto* t : find_tasks("super"))
+	for (const auto* t : task_manager::instance().find("super"))
 	{
 		if (!t->enabled())
 			continue;

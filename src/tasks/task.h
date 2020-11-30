@@ -10,30 +10,6 @@ namespace mob
 class task;
 class tool;
 
-void add_task(std::unique_ptr<task> t);
-
-template <class Task, class... Args>
-Task& add_task(Args&&... args)
-{
-	auto sp = std::make_unique<Task>(std::forward<Args>(args)...);
-	auto* p = sp.get();
-	add_task(std::move(sp));
-	return *p;
-}
-
-void run_all_tasks();
-bool is_super_task(const std::string& name);
-std::vector<task*> find_tasks(std::string_view pattern);
-task* find_one_task(std::string_view pattern, bool verbose=true);
-bool valid_task_name(std::string_view pattern);
-
-std::vector<task*> get_all_tasks();
-std::vector<task*> get_top_level_tasks();
-
-using alias_map = std::map<std::string, std::vector<std::string>, std::less<>>;
-void add_alias(std::string name, std::vector<std::string> patterns);
-const alias_map& get_all_aliases();
-
 
 class task_conf_holder
 {
@@ -145,8 +121,6 @@ private:
 
 	std::vector<tool*> tools_;
 	mutable std::mutex tools_mutex_;
-
-	static std::mutex interrupt_mutex_;
 
 	clean make_clean_flags() const;
 	void run_tool_impl(tool* t);

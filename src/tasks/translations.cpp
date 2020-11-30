@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "tasks.h"
+#include "task_manager.h"
 #include "../core/env.h"
 #include "../utility/threading.h"
 
@@ -48,7 +49,7 @@ void translations::projects::create()
 bool translations::projects::is_gamebryo_plugin(
 	const std::string& dir, const std::string& project)
 {
-	auto tasks = find_tasks(project);
+	auto tasks = task_manager::instance().find(project);
 	if (tasks.empty())
 	{
 		warnings_.push_back(::fmt::format(
