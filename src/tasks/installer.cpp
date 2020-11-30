@@ -5,7 +5,7 @@ namespace mob::tasks
 {
 
 installer::installer()
-	: basic_task("installer", "modorganizer-Installer")
+	: basic_task("installer")
 {
 }
 

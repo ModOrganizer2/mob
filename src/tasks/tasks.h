@@ -305,7 +305,6 @@ public:
 	static cmake create_cmake_tool(
 		const fs::path& root, cmake::ops o=cmake::generate);
 
-	bool is_super() const override;
 	bool is_gamebryo_plugin() const;
 	bool is_nuget_plugin() const;
 

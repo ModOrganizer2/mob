@@ -68,7 +68,7 @@ task::~task()
 	{
 		join();
 	}
-	catch(bailed)
+	catch(bailed&)
 	{
 		// ignore
 	}
@@ -77,11 +77,6 @@ task::~task()
 bool task::enabled() const
 {
 	return conf().task(names()).get<bool>("enabled");
-}
-
-bool task::is_super() const
-{
-	return false;
 }
 
 const context& task::cx() const
@@ -122,9 +117,7 @@ const std::vector<std::string>& task::names() const
 
 bool task::name_matches(std::string_view pattern) const
 {
-	if (pattern == "super")
-		return is_super();
-	else if (pattern.find('*') != std::string::npos)
+	if (pattern.find('*') != std::string::npos)
 		return name_matches_glob(pattern);
 	else
 		return name_matches_string(pattern);
@@ -474,15 +467,6 @@ parallel_tasks::parallel_tasks()
 
 void parallel_tasks::add_task(std::unique_ptr<task> t)
 {
-	if (!children_.empty() && children_[0]->is_super() != t->is_super())
-	{
-		gcx().bail_out(context::generic,
-			"parallel task can't mix super and non-super tasks: "
-			"{} super={}, {} super={}",
-			children_[0]->name(), children_[0]->is_super(),
-			t->name(), t->is_super());
-	}
-
 	children_.push_back(std::move(t));
 }
 
@@ -494,14 +478,6 @@ std::vector<task*> parallel_tasks::children() const
 		v.push_back(t.get());
 
 	return v;
-}
-
-bool parallel_tasks::is_super() const
-{
-	if (children_.empty())
-		return false;
-
-	return children_[0]->is_super();
 }
 
 void parallel_tasks::run()

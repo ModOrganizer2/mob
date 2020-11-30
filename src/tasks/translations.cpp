@@ -59,13 +59,13 @@ bool translations::projects::is_gamebryo_plugin(
 		return false;
 	}
 
-	const task& t = *tasks[0];
+	const task* t = tasks[0];
+	const auto* mo_task = static_cast<const modorganizer*>(t);
 
-	if (!t.is_super())
+	if (!mo_task)
 		return false;
 
-	const auto& mo_task = static_cast<const modorganizer&>(t);
-	return mo_task.is_gamebryo_plugin();
+	return mo_task->is_gamebryo_plugin();
 }
 
 void translations::projects::handle_project_dir(const fs::path& dir)

@@ -288,7 +288,6 @@ public:
 protected:
 	clipp::group do_group() override;
 	int do_run() override;
-	std::string do_doc() override;
 
 private:
 	bool all_ = false;

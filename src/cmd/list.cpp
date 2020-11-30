@@ -97,12 +97,4 @@ void list_command::dump_aliases() const
 		u8cout << " - " << k << ": " << join(patterns, ", ") << "\n";
 }
 
-
-std::string list_command::do_doc()
-{
-	return
-		"Lists all available tasks. The special task name `super` is a\n"
-		"shorthand for all modorganizer tasks.";
-}
-
 }	// namespace

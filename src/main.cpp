@@ -129,6 +129,8 @@ void add_tasks()
 		.add_task<mo>({"modorganizer-preview_dds", "ddspreview"})
 		.add_task<mo>({"modorganizer", "organizer"});
 
+	// other tasks
+
 	add_task<translations>();
 	add_task<installer>();
 }

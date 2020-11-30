@@ -116,7 +116,8 @@ std::optional<std::string> find_string_for_task(
 	return itor->second;
 }
 
-// gets an option for any of the given task names, typically aliases
+// gets an option for any of the given task names, typically what task::names()
+// returns, which contains the main task name plus some alternate names
 //
 // there's a hierarchy for task options:
 //
@@ -127,14 +128,8 @@ std::optional<std::string> find_string_for_task(
 //  2) if the key is not found in "_override", then there can be an entry
 //     in g_tasks with any of given task names
 //
-//  3) if there's no entry for the task, or the entry doesn't have the key,
-//     check if the task is a 'super' task (anything under
-//     modorganizer_super); g_tasks has another special entry 'super' for
-//     options that apply to all super tasks
-//
-//  4) if this is not a super task, or this key doesn't exist in the super
-//     section, then use the generic task option for it, stored in an
-//     element with an empty string in g_tasks
+//  3) if the key doesn't exist, then use the generic task option for it, stored
+//     in an element with an empty string in g_tasks
 //
 std::string get_string_for_task(
 	const std::vector<std::string>& task_names, std::string_view key)
@@ -151,23 +146,6 @@ std::string get_string_for_task(
 		v = find_string_for_task(tn, key);
 		if (v)
 			return *v;
-	}
-
-	// if any of the task names correspond to a super task, look for an option
-	// for super
-	for (auto&& tn : task_names)
-	{
-		for (auto&& t : task_manager::instance().find(tn))
-		{
-			if (t->is_super())
-			{
-				v = find_string_for_task("super", key);
-				if (v)
-					return *v;
-
-				break;
-			}
-		}
 	}
 
 	// default task options are in a special empty string entry in g_tasks

@@ -41,8 +41,6 @@ public:
 	virtual std::string get_version() const = 0;
 	virtual const bool get_prebuilt() const = 0;
 
-	virtual bool is_super() const;
-
 	virtual void run();
 	virtual void interrupt();
 	virtual void join();
@@ -185,8 +183,6 @@ public:
 	{
 		return false;
 	}
-
-	bool is_super() const override;
 
 	void run() override;
 	void interrupt() override;

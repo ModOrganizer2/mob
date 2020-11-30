@@ -44,11 +44,6 @@ bool modorganizer::prebuilt()
 	return false;
 }
 
-bool modorganizer::is_super() const
-{
-	return true;
-}
-
 bool modorganizer::is_gamebryo_plugin() const
 {
 	return is_set(flags_, gamebryo);
