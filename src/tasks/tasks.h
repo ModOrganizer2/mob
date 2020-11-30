@@ -10,6 +10,9 @@
 namespace mob::tasks
 {
 
+// single header for all the tasks, not worth having a header per task
+
+
 class boost : public basic_task<boost>
 {
 public:
@@ -48,19 +51,7 @@ private:
 		const std::vector<std::string>& components,
 		const std::string& link, const std::string& runtime_link, arch a);
 
-	static std::string source_download_filename();
-	static fs::path config_jam_file();
-	static url prebuilt_url();
-	static url source_url();
-	static fs::path b2_exe();
-	static std::string python_dll();
-	static std::string python_version_for_dll();
-	static std::string python_version_for_jam();
-	static std::string boost_version_no_patch_underscores();
-	static std::string boost_version_no_tags();
-	static std::string boost_version_no_tags_underscores();
-	static std::string boost_version_all_underscores();
-	static std::string address_model_for_arch(arch a);
+	void copy_boost_python_dll();
 };
 
 
@@ -81,6 +72,8 @@ protected:
 };
 
 
+// needed by python
+//
 class bzip2 : public basic_task<bzip2>
 {
 public:
@@ -93,9 +86,6 @@ public:
 protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
-
-private:
-	static url source_url();
 };
 
 
@@ -111,9 +101,6 @@ public:
 protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
-
-private:
-	static url source_url();
 };
 
 
@@ -130,15 +117,6 @@ protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-
-private:
-	static url source_url();
-	static fs::path solution_path();
-
-	static cmake create_cmake_tool(
-		const fs::path& src_path, cmake::ops o=cmake::ops::generate);
-
-	static msbuild create_msbuild_tool(msbuild::ops o=msbuild::ops::build);
 };
 
 
@@ -155,10 +133,6 @@ protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-
-private:
-	cmake create_cmake_tool(arch a, cmake::ops o=cmake::generate);
-	msbuild create_msbuild_tool(arch a, msbuild::ops o=msbuild::build);
 };
 
 
@@ -178,20 +152,6 @@ protected:
 };
 
 
-class licenses : public basic_task<licenses>
-{
-public:
-	licenses();
-
-	static std::string version();
-	static bool prebuilt();
-	static fs::path source_path();
-
-protected:
-	void do_build_and_install() override;
-};
-
-
 class libbsarch : public basic_task<libbsarch>
 {
 public:
@@ -205,13 +165,11 @@ protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-
-private:
-	static std::string dir_name();
-	static url source_url();
 };
 
 
+// needed by python
+//
 class libffi : public basic_task<libffi>
 {
 public:
@@ -246,10 +204,20 @@ protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
+};
 
-private:
-	static std::string release_name();
-	static url source_url();
+
+class licenses : public basic_task<licenses>
+{
+public:
+	licenses();
+
+	static std::string version();
+	static bool prebuilt();
+	static fs::path source_path();
+
+protected:
+	void do_build_and_install() override;
 };
 
 

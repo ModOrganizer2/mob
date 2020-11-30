@@ -4,6 +4,32 @@
 namespace mob::tasks
 {
 
+namespace
+{
+
+cmake create_cmake_tool(arch a, cmake::ops o=cmake::generate)
+{
+	const std::string build_dir = (a == arch::x64 ? "build" : "build_32");
+
+	return std::move(cmake(o)
+		.generator(cmake::vs)
+		.architecture(a)
+		.prefix(gtest::source_path() / build_dir)
+		.root(gtest::source_path()));
+}
+
+msbuild create_msbuild_tool(arch a, msbuild::ops o=msbuild::build)
+{
+	const fs::path build_path = create_cmake_tool(a).build_path();
+
+	return std::move(msbuild(o)
+		.architecture(a)
+		.solution(build_path / "INSTALL.vcxproj"));
+}
+
+}	// namespace
+
+
 gtest::gtest()
 	: basic_task("gtest", "googletest")
 {
@@ -51,26 +77,6 @@ void gtest::do_fetch()
 		.url(make_git_url("google", "googletest"))
 		.branch(version())
 		.root(source_path()));
-}
-
-cmake gtest::create_cmake_tool(arch a, cmake::ops o)
-{
-	const std::string build_dir = (a == arch::x64 ? "build" : "build_32");
-
-	return std::move(cmake(o)
-		.generator(cmake::vs)
-		.architecture(a)
-		.prefix(source_path() / build_dir)
-		.root(source_path()));
-}
-
-msbuild gtest::create_msbuild_tool(arch a, msbuild::ops o)
-{
-	const fs::path build_path = create_cmake_tool(a).build_path();
-
-	return std::move(msbuild(o)
-		.architecture(a)
-		.solution(build_path / "INSTALL.vcxproj"));
 }
 
 void gtest::do_build_and_install()

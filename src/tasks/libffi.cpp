@@ -4,6 +4,9 @@
 namespace mob::tasks
 {
 
+// required by python
+
+
 libffi::libffi()
 	: basic_task("libffi")
 {
@@ -16,6 +19,7 @@ std::string libffi::version()
 
 bool libffi::prebuilt()
 {
+	// actually always prebuilt
 	return false;
 }
 
@@ -26,11 +30,9 @@ fs::path libffi::source_path()
 
 void libffi::do_clean(clean c)
 {
+	// delete the whole thing
 	if (is_set(c, clean::reclone))
-	{
 		git_wrap::delete_directory(cx(), source_path());
-		return;
-	}
 }
 
 void libffi::do_fetch()

@@ -26,6 +26,7 @@ fs::path licenses::source_path()
 
 void licenses::do_build_and_install()
 {
+	// copy all files from mob's license directory to bin/licenses
 	op::copy_glob_to_dir_if_better(cx(),
 		conf().path().licenses() / "*",
 		conf().path().install_licenses(),

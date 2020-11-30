@@ -4,6 +4,34 @@
 namespace mob::tasks
 {
 
+namespace
+{
+
+std::string release_name()
+{
+	// the naming convention is `libloot-version-commit_branch-win64.7z`,
+	// such as:
+	//
+	//  libloot-0.14.6-0-g8fed4b0_dev-win64.7z
+	//  libloot-0.15.1-0-gf725dd7_0.15.1-win64.7z
+	//  libloot-0.15.2-0-g3baa0e8_master-win64.7z
+
+	return
+		"libloot-" + libloot::version() + "-" + "0-" +
+		libloot::hash() + "_" + libloot::branch() + "-" +
+		"win64";
+}
+
+url source_url()
+{
+	return
+		"https://github.com/loot/libloot/releases/download/" +
+		libloot::version() + "/" + release_name() + ".7z";
+}
+
+}	// namespace
+
+
 libloot::libloot()
 	: basic_task("libloot")
 {
@@ -36,14 +64,15 @@ fs::path libloot::source_path()
 
 void libloot::do_clean(clean c)
 {
+	// delete download
 	if (is_set(c, clean::redownload))
 		run_tool(downloader(source_url(), downloader::clean));
 
+	// delete the whole directory
 	if (is_set(c, clean::reextract))
 	{
 		cx().trace(context::reextract, "deleting {}", source_path());
 		op::delete_directory(cx(), source_path(), op::optional);
-		return;
 	}
 }
 
@@ -58,31 +87,10 @@ void libloot::do_fetch()
 
 void libloot::do_build_and_install()
 {
+	// copy dll
 	op::copy_file_to_dir_if_better(cx(),
 		source_path() / "loot.dll",
 		conf().path().install_loot());
-}
-
-std::string libloot::release_name()
-{
-	// the naming convention is `libloot-version-commit_branch-win64.7z`,
-	// such as:
-	//
-	//  libloot-0.14.6-0-g8fed4b0_dev-win64.7z
-	//  libloot-0.15.1-0-gf725dd7_0.15.1-win64.7z
-	//  libloot-0.15.2-0-g3baa0e8_master-win64.7z
-
-	return
-		"libloot-" + version() + "-" + "0-" +
-		hash() + "_" + branch() + "-" +
-		"win64";
-}
-
-url libloot::source_url()
-{
-	return
-		"https://github.com/loot/libloot/releases/download/" +
-		version() + "/" + release_name() + ".7z";
 }
 
 }	// namespace

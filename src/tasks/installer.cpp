@@ -26,9 +26,12 @@ fs::path installer::source_path()
 
 void installer::do_clean(clean c)
 {
+	// delete the git clone directory
 	if (is_set(c, clean::reclone))
 		git_wrap::delete_directory(cx(), source_path());
 
+	// the installer script outputs directly in the installer directory, delete
+	// it
 	if (is_set(c, clean::rebuild))
 		op::delete_directory(cx(), conf().path().install_installer());
 }

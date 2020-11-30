@@ -4,6 +4,22 @@
 namespace mob::tasks
 {
 
+// required by python
+
+
+namespace
+{
+
+url source_url()
+{
+	return
+		"https://sourceforge.net/projects/bzip2/files/"
+		"bzip2-" + bzip2::version() + ".tar.gz/download";
+}
+
+}	// namespace
+
+
 bzip2::bzip2()
 	: basic_task("bzip2")
 {
@@ -16,6 +32,8 @@ std::string bzip2::version()
 
 bool bzip2::prebuilt()
 {
+	// no prebuilts, just the source, required by python, which uses the
+	// source files directly
 	return false;
 }
 
@@ -26,14 +44,15 @@ fs::path bzip2::source_path()
 
 void bzip2::do_clean(clean c)
 {
+	// delete download
 	if (is_set(c, clean::redownload))
 		run_tool(downloader(source_url(), downloader::clean));
 
+	// delete the whole directory
 	if (is_set(c, clean::reextract))
 	{
 		cx().trace(context::reextract, "deleting {}", source_path());
 		op::delete_directory(cx(), source_path(), op::optional);
-		return;
 	}
 }
 
@@ -44,13 +63,6 @@ void bzip2::do_fetch()
 	run_tool(extractor()
 		.file(file)
 		.output(source_path()));
-}
-
-url bzip2::source_url()
-{
-	return
-		"https://sourceforge.net/projects/bzip2/files/"
-		"bzip2-" + version() + ".tar.gz/download";
 }
 
 }	// namespace
