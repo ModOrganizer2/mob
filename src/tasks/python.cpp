@@ -186,12 +186,12 @@ void python::copy_files()
 
 	op::copy_glob_to_dir_if_better(cx(),
 		build_path() / "libffi*.dll",
-		conf().path().install_dlls(),
+		conf().path().install_bin(),
 		op::copy_files);
 
 	op::copy_file_to_dir_if_better(cx(),
 		build_path() / ("python" + version_for_dll() + ".dll"),
-		conf().path().install_dlls());
+		conf().path().install_bin());
 
 	op::copy_file_to_dir_if_better(cx(),
 		build_path() / ("python" + version_for_dll() + ".pdb"),
@@ -204,7 +204,7 @@ void python::copy_files()
 
 	op::copy_file_to_file_if_better(cx(),
 		build_path() / "pythoncore" / ("python" + version_for_dll() + ".zip"),
-		conf().path().install_dlls() / "pythoncore.zip",
+		conf().path().install_bin() / "pythoncore.zip",
 		op::copy_files);
 }
 

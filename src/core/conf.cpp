@@ -508,9 +508,9 @@ void resolve_paths()
 	resolve_path("install_loot",         p.install_bin(),  "loot");
 	resolve_path("install_plugins",      p.install_bin(),  "plugins");
 	resolve_path("install_licenses",     p.install_bin(),  "licenses");
-	resolve_path("install_pythoncore",   p.install_dlls(), "pythoncore");
+	resolve_path("install_pythoncore",   p.install_bin(),  "pythoncore");
 	resolve_path("install_stylesheets",  p.install_bin(),  "stylesheets");
-	resolve_path("install_translations", p.install_bin(),  "resources/translations");
+	resolve_path("install_translations", p.install_bin(),  "translations");
 
 	// finally, resolve the tools that are unlikely to be in PATH; all the
 	// other tools (7z, jom, patch, etc.) are assumed to be in PATH (which
