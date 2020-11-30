@@ -64,6 +64,7 @@ public:
 	virtual bool enabled() const;
 	const std::string& name() const;
 	const std::vector<std::string>& names() const;
+	bool name_matches(std::string_view pattern) const;
 
 	virtual fs::path get_source_path() const = 0;
 	virtual std::string get_version() const = 0;

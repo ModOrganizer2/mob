@@ -242,7 +242,7 @@ void parse_line(
 	}
 	else
 	{
-		if (!tm.valid_name(task))
+		if (!tm.valid_task_name(task))
 			ini_error(ini, i, "no task matching '{}' found", task);
 
 		ini.set(task + ":" + section, k, v);

@@ -230,6 +230,20 @@ const std::vector<std::string>& task::names() const
 	return names_;
 }
 
+bool task::name_matches(std::string_view pattern) const
+{
+	for (auto&& n : names_)
+	{
+		if (mob::glob_match(pattern, n))
+			return true;
+	}
+
+	if (pattern == "super" && is_super())
+		return true;
+
+	return false;
+}
+
 void task::threaded_run(std::string thread_name, std::function<void ()> f)
 {
 	try

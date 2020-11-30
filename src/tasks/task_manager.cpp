@@ -21,28 +21,14 @@ void task_manager::add(std::unique_ptr<task> t)
 	top_level_.push_back(std::move(t));
 }
 
+void task_manager::register_task(task* t)
+{
+	all_.push_back(t);
+}
+
 std::vector<task*> task_manager::find(std::string_view pattern)
 {
-	std::vector<task*> tasks;
-
-	for (auto&& t : all_)
-	{
-		if (pattern == "super" && t->is_super())
-		{
-			tasks.push_back(t);
-		}
-		else
-		{
-			for (auto&& n : t->names())
-			{
-				if (mob::glob_match(pattern, n))
-				{
-					tasks.push_back(t);
-					break;
-				}
-			}
-		}
-	}
+	auto tasks = find_by_pattern(pattern);
 
 	if (tasks.empty())
 		tasks = find_by_alias(pattern);
@@ -54,12 +40,16 @@ task* task_manager::find_one(std::string_view pattern, bool verbose)
 {
 	const auto tasks = find(pattern);
 
+	// okay, only one match
+	if (tasks.size() == 1)
+		return tasks[0];
+
+	// bad
+
 	if (tasks.empty())
 	{
 		if (verbose)
 			u8cerr << "no task matches '" << pattern << "'\n";
-
-		return nullptr;
 	}
 	else if (tasks.size() > 1)
 	{
@@ -70,21 +60,14 @@ task* task_manager::find_one(std::string_view pattern, bool verbose)
 				<< "'" << pattern << "'\n"
 				<< "the pattern must only match one task\n";
 		}
-
-		return nullptr;
 	}
 
-	return tasks[0];
+	return nullptr;
 }
 
 std::vector<task*> task_manager::all()
 {
-	std::vector<task*> v;
-
-	for (auto&& t : all_)
-		v.push_back(t);
-
-	return v;
+	return all_;
 }
 
 std::vector<task*> task_manager::top_level()
@@ -118,31 +101,8 @@ void task_manager::run_all()
 {
 	try
 	{
-		for (auto& t : top_level_)
-		{
-			t->fetch();
-
-			if (interrupt_)
-				throw interrupted();
-		}
-
-		for (auto& t : top_level_)
-		{
-			t->join();
-
-			if (interrupt_)
-				throw interrupted();
-
-			t->build_and_install();
-
-			if (interrupt_)
-				throw interrupted();
-
-			t->join();
-
-			if (interrupt_)
-				throw interrupted();
-		}
+		for (auto&& t : top_level_)
+			t->run();
 	}
 	catch(interrupted&)
 	{
@@ -151,16 +111,15 @@ void task_manager::run_all()
 
 void task_manager::interrupt_all()
 {
+	// handles multiple tasks failing simultaneously
 	std::scoped_lock lock(interrupt_mutex_);
 
-	interrupt_ = true;
-	for (auto&& t : top_level_)
-		t->interrupt();
-}
-
-void task_manager::register_task(task* t)
-{
-	all_.push_back(t);
+	if (!interrupt_)
+	{
+		interrupt_ = true;
+		for (auto&& t : top_level_)
+			t->interrupt();
+	}
 }
 
 std::vector<task*> task_manager::find_by_pattern(std::string_view pattern)
@@ -169,31 +128,18 @@ std::vector<task*> task_manager::find_by_pattern(std::string_view pattern)
 
 	for (auto&& t : all_)
 	{
-		if (pattern == "super" && t->is_super())
-		{
+		if (t->name_matches(pattern))
 			tasks.push_back(t);
-		}
-		else
-		{
-			for (auto&& n : t->names())
-			{
-				if (mob::glob_match(pattern, n))
-				{
-					tasks.push_back(t);
-					break;
-				}
-			}
-		}
 	}
 
 	return tasks;
 }
 
-std::vector<task*> task_manager::find_by_alias(std::string_view pattern)
+std::vector<task*> task_manager::find_by_alias(std::string_view alias_name)
 {
 	std::vector<task*> v;
 
-	auto itor = aliases_.find(pattern);
+	auto itor = aliases_.find(alias_name);
 	if (itor == aliases_.end())
 		return v;
 
@@ -206,7 +152,7 @@ std::vector<task*> task_manager::find_by_alias(std::string_view pattern)
 	return v;
 }
 
-bool task_manager::valid_name(std::string_view pattern)
+bool task_manager::valid_task_name(std::string_view pattern)
 {
 	if (!find(pattern).empty())
 		return true;
