@@ -82,7 +82,7 @@ fs::path modorganizer::super_path()
 
 url modorganizer::git_url() const
 {
-	return task_conf().make_git_url(task_conf().mo_org(), repo_);
+	return make_git_url(task_conf().mo_org(), repo_);
 }
 
 std::string modorganizer::org() const
@@ -114,7 +114,7 @@ void modorganizer::do_fetch()
 {
 	initialize_super(super_path());
 
-	run_tool(task_conf().make_git()
+	run_tool(make_git()
 		.url(git_url())
 		.branch(task_conf().mo_branch())
 		.root(this_source_path()));

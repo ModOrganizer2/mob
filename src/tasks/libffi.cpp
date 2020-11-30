@@ -35,8 +35,8 @@ void libffi::do_clean(clean c)
 
 void libffi::do_fetch()
 {
-	run_tool(task_conf().make_git()
-		.url(task_conf().make_git_url("python","cpython-bin-deps"))
+	run_tool(make_git()
+		.url(make_git_url("python","cpython-bin-deps"))
 		.branch("libffi")
 		.root(source_path()));
 }

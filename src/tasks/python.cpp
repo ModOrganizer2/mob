@@ -128,8 +128,8 @@ void python::build_and_install_prebuilt()
 
 void python::fetch_from_source()
 {
-	run_tool(task_conf().make_git()
-		.url(task_conf().make_git_url("python", "cpython"))
+	run_tool(make_git()
+		.url(make_git_url("python", "cpython"))
 		.branch(version())
 		.root(source_path()));
 

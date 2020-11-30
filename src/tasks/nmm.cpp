@@ -38,8 +38,8 @@ void nmm::do_clean(clean c)
 
 void nmm::do_fetch()
 {
-	run_tool(task_conf().make_git()
-		.url(task_conf().make_git_url("Nexus-Mods", "Nexus-Mod-Manager"))
+	run_tool(make_git()
+		.url(make_git_url("Nexus-Mods", "Nexus-Mod-Manager"))
 		.branch(version())
 		.root(source_path()));
 

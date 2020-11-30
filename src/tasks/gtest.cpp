@@ -47,8 +47,8 @@ void gtest::do_clean(clean c)
 
 void gtest::do_fetch()
 {
-	run_tool(task_conf().make_git()
-		.url(task_conf().make_git_url("google", "googletest"))
+	run_tool(make_git()
+		.url(make_git_url("google", "googletest"))
 		.branch(version())
 		.root(source_path()));
 }

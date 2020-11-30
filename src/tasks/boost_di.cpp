@@ -35,8 +35,8 @@ void boost_di::do_clean(clean c)
 
 void boost_di::do_fetch()
 {
-	run_tool(task_conf().make_git()
-		.url(task_conf().make_git_url("boost-experimental", "di"))
+	run_tool(make_git()
+		.url(make_git_url("boost-experimental", "di"))
 		.branch("cpp14")
 		.root(source_path()));
 }

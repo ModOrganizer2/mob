@@ -32,8 +32,8 @@ void spdlog::do_clean(clean c)
 
 void spdlog::do_fetch()
 {
-	run_tool(task_conf().make_git()
-		.url(task_conf().make_git_url("gabime", "spdlog"))
+	run_tool(make_git()
+		.url(make_git_url("gabime", "spdlog"))
 		.branch(version())
 		.root(source_path()));
 }

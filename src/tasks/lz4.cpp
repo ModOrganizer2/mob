@@ -91,8 +91,8 @@ void lz4::build_and_install_prebuilt()
 
 void lz4::fetch_from_source()
 {
-	run_tool(task_conf().make_git()
-		.url(task_conf().make_git_url("lz4","lz4"))
+	run_tool(make_git()
+		.url(make_git_url("lz4","lz4"))
 		.branch(version())
 		.root(source_path()));
 

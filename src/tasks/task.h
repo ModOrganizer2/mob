@@ -10,37 +10,6 @@ namespace mob
 class task;
 class tool;
 
-
-class task_conf_holder
-{
-public:
-	task_conf_holder(const task& t);
-
-	std::string mo_org() const;
-	std::string mo_branch() const;
-	bool no_pull() const;
-	bool revert_ts() const;
-	bool ignore_ts()const;
-	std::string git_url_prefix() const;
-	bool git_shallow() const;
-	std::string git_user() const;
-	std::string git_email() const;
-	bool set_origin_remote() const;
-	std::string remote_org() const;
-	std::string remote_key() const;
-	bool remote_no_push_upstream() const;
-	bool remote_push_default_origin() const;
-
-	git make_git(git::ops o=git::clone_or_pull) const;
-
-	std::string make_git_url(
-		const std::string& org, const std::string& repo) const;
-
-private:
-	const task& task_;
-};
-
-
 class task
 {
 public:
@@ -108,7 +77,12 @@ protected:
 	void threaded_run(std::string name, std::function<void ()> f);
 	void parallel(std::vector<std::pair<std::string, std::function<void ()>>> v);
 
-	task_conf_holder task_conf() const;
+	conf_task task_conf() const;
+
+	git make_git(git::ops o=git::clone_or_pull) const;
+
+	std::string make_git_url(
+		const std::string& org, const std::string& repo) const;
 
 private:
 	struct thread_context;

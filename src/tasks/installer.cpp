@@ -37,8 +37,8 @@ void installer::do_fetch()
 {
 	const std::string repo = "modorganizer-Installer";
 
-	run_tool(task_conf().make_git()
-		.url(task_conf().make_git_url(task_conf().mo_org(), repo))
+	run_tool(make_git()
+		.url(make_git_url(task_conf().mo_org(), repo))
 		.branch(task_conf().mo_branch())
 		.root(source_path()));
 }

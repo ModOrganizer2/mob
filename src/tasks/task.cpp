@@ -52,111 +52,6 @@ struct task::thread_context
 };
 
 
-task_conf_holder::task_conf_holder(const task& t)
-	: task_(t)
-{
-}
-
-std::string task_conf_holder::mo_org() const
-{
-	return conf().task(task_.names()).get("mo_org");
-}
-
-std::string task_conf_holder::mo_branch() const
-{
-	return conf().task(task_.names()).get("mo_branch");
-}
-
-bool task_conf_holder::no_pull() const
-{
-	return conf().task(task_.names()).get<bool>("no_pull");
-}
-
-bool task_conf_holder::revert_ts() const
-{
-	return conf().task(task_.names()).get<bool>("revert_ts");
-}
-
-bool task_conf_holder::ignore_ts()const
-{
-	return conf().task(task_.names()).get<bool>("ignore_ts");
-}
-
-std::string task_conf_holder::git_url_prefix() const
-{
-	return conf().task(task_.names()).get("git_url_prefix");
-}
-
-bool task_conf_holder::git_shallow() const
-{
-	return conf().task(task_.names()).get<bool>("git_shallow");
-}
-
-std::string task_conf_holder::git_user() const
-{
-	return conf().task(task_.names()).get("git_username");
-}
-
-std::string task_conf_holder::git_email() const
-{
-	return conf().task(task_.names()).get("git_email");
-}
-
-bool task_conf_holder::set_origin_remote() const
-{
-	return conf().task(task_.names()).get<bool>("set_origin_remote");
-}
-
-std::string task_conf_holder::remote_org() const
-{
-	return conf().task(task_.names()).get("remote_org");
-}
-
-std::string task_conf_holder::remote_key() const
-{
-	return conf().task(task_.names()).get("remote_key");
-}
-
-bool task_conf_holder::remote_no_push_upstream() const
-{
-	return conf().task(task_.names()).get<bool>("remote_no_push_upstream");
-}
-
-bool task_conf_holder::remote_push_default_origin() const
-{
-	return conf().task(task_.names()).get<bool>("remote_push_default_origin");
-}
-
-git task_conf_holder::make_git(git::ops o) const
-{
-	if (o == git::clone_or_pull && no_pull())
-		o = git::clone;
-
-	git g(o);
-
-	g.ignore_ts_on_clone(ignore_ts());
-	g.revert_ts_on_pull(revert_ts());
-	g.credentials(git_user(), git_email());
-	g.shallow(git_shallow());
-
-	if (set_origin_remote())
-	{
-		g.remote(
-			remote_org(), remote_key(),
-			remote_no_push_upstream(),
-			remote_push_default_origin());
-	}
-
-	return g;
-}
-
-std::string task_conf_holder::make_git_url(
-	const std::string& org, const std::string& repo) const
-{
-	return git_url_prefix() + org + "/" + repo + ".git";
-}
-
-
 task::task(std::vector<std::string> names)
 	: names_(std::move(names)), interrupted_(false)
 {
@@ -302,9 +197,39 @@ void task::parallel(std::vector<std::pair<std::string, std::function<void ()>>> 
 		t.join();
 }
 
-task_conf_holder task::task_conf() const
+conf_task task::task_conf() const
 {
-	return task_conf_holder(*this);
+	return conf().task(names());
+}
+
+git task::make_git(git::ops o) const
+{
+	if (o == git::clone_or_pull && task_conf().no_pull())
+		o = git::clone;
+
+	git g(o);
+
+	g.ignore_ts_on_clone(task_conf().ignore_ts());
+	g.revert_ts_on_pull(task_conf().revert_ts());
+	g.credentials(task_conf().git_user(), task_conf().git_email());
+	g.shallow(task_conf().git_shallow());
+
+	if (task_conf().set_origin_remote())
+	{
+		g.remote(
+			task_conf().remote_org(),
+			task_conf().remote_key(),
+			task_conf().remote_no_push_upstream(),
+			task_conf().remote_push_default_origin());
+	}
+
+	return g;
+}
+
+std::string task::make_git_url(
+	const std::string& org, const std::string& repo) const
+{
+	return task_conf().git_url_prefix() + org + "/" + repo + ".git";
 }
 
 void task::run()
