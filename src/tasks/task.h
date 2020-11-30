@@ -28,11 +28,13 @@ public:
 	task& operator=(const task&) = delete;
 	virtual ~task();
 
-	static void interrupt_all();
-
 	virtual bool enabled() const;
 	const std::string& name() const;
 	const std::vector<std::string>& names() const;
+
+	// case insensitive, underscores and dashes are equivalent; gets converted
+	// to a regex where * becomes .*
+	//
 	bool name_matches(std::string_view pattern) const;
 
 	virtual fs::path get_source_path() const = 0;
@@ -44,10 +46,6 @@ public:
 	virtual void run();
 	virtual void interrupt();
 	virtual void join();
-
-	virtual void clean_task();
-	virtual void fetch();
-	virtual void build_and_install();
 
 protected:
 	template <class... Names>
@@ -99,6 +97,14 @@ private:
 
 	clean make_clean_flags() const;
 	void run_tool_impl(tool* t);
+
+	bool name_matches_glob(std::string_view pattern) const;
+	bool name_matches_string(std::string_view pattern) const;
+	bool strings_match(std::string_view a, std::string_view b) const;
+
+	void clean_task();
+	void fetch();
+	void build_and_install();
 };
 
 
@@ -186,15 +192,7 @@ public:
 	void interrupt() override;
 	void join() override;
 
-	void fetch() override;
-	void build_and_install() override;
-
 	std::vector<task*> children() const override;
-
-protected:
-	void do_fetch() override;
-	void do_build_and_install() override;
-	void do_clean(clean c) override;
 
 private:
 	std::vector<std::unique_ptr<task>> children_;

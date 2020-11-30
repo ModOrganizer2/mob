@@ -115,8 +115,7 @@ void add_tasks()
 		.add_task<mo>("modorganizer-installer_ncc")
 		.add_task<mo>("modorganizer-installer_wizard")
 		.add_task<mo>("modorganizer-bsa_extractor")
-		.add_task<mo>("modorganizer-plugin_python")
-		.add_task<translations>();
+		.add_task<mo>("modorganizer-plugin_python");
 
 	add_task<parallel_tasks>()
 		.add_task<mo>({"modorganizer-tool_configurator", "pycfg"})
@@ -130,6 +129,7 @@ void add_tasks()
 		.add_task<mo>({"modorganizer-preview_dds", "ddspreview"})
 		.add_task<mo>({"modorganizer", "organizer"});
 
+	add_task<translations>();
 	add_task<installer>();
 }
 
@@ -210,10 +210,10 @@ int run(const std::vector<std::string>& args)
 	font_restorer fr;
 	curl_init curl;
 
-	add_tasks();
-
 	try
 	{
+		add_tasks();
+
 		auto c = handle_command_line(args);
 		if (!c)
 			return 1;

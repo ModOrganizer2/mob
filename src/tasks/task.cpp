@@ -110,11 +110,6 @@ void task::add_name(std::string s)
 	names_.push_back(s);
 }
 
-void task::interrupt_all()
-{
-	task_manager::instance().interrupt_all();
-}
-
 const std::string& task::name() const
 {
 	return names_[0];
@@ -127,16 +122,75 @@ const std::vector<std::string>& task::names() const
 
 bool task::name_matches(std::string_view pattern) const
 {
+	if (pattern == "super")
+		return is_super();
+	else if (pattern.find('*') != std::string::npos)
+		return name_matches_glob(pattern);
+	else
+		return name_matches_string(pattern);
+}
+
+bool task::name_matches_glob(std::string_view pattern) const
+{
+	try
+	{
+		std::string fixed_pattern(pattern);
+		fixed_pattern = replace_all(fixed_pattern, "*", ".*");
+		fixed_pattern = replace_all(fixed_pattern, "_", "-");
+
+		std::regex re(fixed_pattern, std::regex::icase);
+
+		for (auto&& n : names_)
+		{
+			std::string fixed_name(n);
+			fixed_name = replace_all(fixed_name, "_", "-");
+
+			if (std::regex_match(fixed_name, re))
+				return true;
+		}
+
+		return false;
+	}
+	catch(std::exception&)
+	{
+		u8cerr
+			<< "bad glob '" << pattern << "'\n"
+			<< "globs are actually bastardized regexes where '*' is "
+			<< "replaced by '.*', so don't push it\n";
+
+		throw bailed();
+	}
+}
+
+bool task::name_matches_string(std::string_view pattern) const
+{
 	for (auto&& n : names_)
 	{
-		if (mob::glob_match(pattern, n))
+		if (strings_match(n, pattern))
 			return true;
 	}
 
-	if (pattern == "super" && is_super())
-		return true;
-
 	return false;
+}
+
+bool task::strings_match(std::string_view a, std::string_view b) const
+{
+	if (a.size() != b.size())
+		return false;
+
+	for (std::size_t i=0; i<a.size(); ++i)
+	{
+		if ((a[i] == '-' || a[i] == '_') && (b[i] == '-' || b[i] == '_'))
+			continue;
+
+		const auto ac = static_cast<unsigned char>(a[i]);
+		const auto bc = static_cast<unsigned char>(b[i]);
+
+		if (std::tolower(ac) != std::tolower(bc))
+			return false;
+	}
+
+	return true;
 }
 
 void task::threaded_run(std::string thread_name, std::function<void ()> f)
@@ -171,7 +225,7 @@ void task::threaded_run(std::string thread_name, std::function<void ()> f)
 		gcx().error(context::generic,
 			"{} bailed out, interrupting all tasks", name());
 
-		interrupt_all();
+		task_manager::instance().interrupt_all();
 	}
 	catch(interrupted)
 	{
@@ -423,7 +477,10 @@ void parallel_tasks::add_task(std::unique_ptr<task> t)
 	if (!children_.empty() && children_[0]->is_super() != t->is_super())
 	{
 		gcx().bail_out(context::generic,
-			"parallel task can't mix super and non-super tasks");
+			"parallel task can't mix super and non-super tasks: "
+			"{} super={}, {} super={}",
+			children_[0]->name(), children_[0]->is_super(),
+			t->name(), t->is_super());
 	}
 
 	children_.push_back(std::move(t));
@@ -460,7 +517,6 @@ void parallel_tasks::run()
 	join();
 }
 
-
 void parallel_tasks::interrupt()
 {
 	for (auto& t : children_)
@@ -473,46 +529,6 @@ void parallel_tasks::join()
 		t.join();
 
 	threads_.clear();
-}
-
-void parallel_tasks::fetch()
-{
-	// no-op
-}
-
-void parallel_tasks::build_and_install()
-{
-	threaded_run(name(), [&]
-	{
-		for (auto& t : children_)
-		{
-			threads_.push_back(start_thread([&]
-			{
-				t->run();
-			}));
-		}
-	});
-}
-
-void parallel_tasks::do_fetch()
-{
-}
-
-void parallel_tasks::do_build_and_install()
-{
-}
-
-void parallel_tasks::do_clean(clean)
-{
-	for (auto& t : children_)
-	{
-		threads_.push_back(start_thread([&]
-		{
-			t->clean_task();
-		}));
-	}
-
-	join();
 }
 
 }	// namespace

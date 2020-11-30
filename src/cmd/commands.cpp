@@ -4,7 +4,7 @@
 #include "../net.h"
 #include "../core/conf.h"
 #include "../core/ini.h"
-#include "../tasks/tasks.h"
+#include "../tasks/task_manager.h"
 #include "../tools/tools.h"
 #include "../utility/threading.h"
 
@@ -14,7 +14,7 @@ namespace mob
 BOOL WINAPI signal_handler(DWORD) noexcept
 {
 	gcx().debug(context::generic, "caught sigint");
-	task::interrupt_all();
+	task_manager::instance().interrupt_all();
 	return TRUE;
 }
 

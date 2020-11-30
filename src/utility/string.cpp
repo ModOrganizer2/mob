@@ -5,32 +5,6 @@
 namespace mob
 {
 
-bool glob_match(std::string_view pattern, std::string_view s)
-{
-	try
-	{
-		std::string fixed_pattern(pattern);
-		fixed_pattern = replace_all(fixed_pattern, "*", ".*");
-		fixed_pattern = replace_all(fixed_pattern, "_", "-");
-
-		std::string fixed_string(s);
-		fixed_string = replace_all(fixed_string, "_", "-");
-
-		std::regex re(fixed_pattern, std::regex::icase);
-
-		return std::regex_match(fixed_string, re);
-	}
-	catch(std::exception&)
-	{
-		u8cerr
-			<< "bad glob '" << pattern << "'\n"
-			<< "globs are actually bastardized regexes where '*' is "
-			<< "replaced by '.*', so don't push it\n";
-
-		throw bailed();
-	}
-}
-
 std::string replace_all(
 	std::string s, const std::string& from, const std::string& to)
 {

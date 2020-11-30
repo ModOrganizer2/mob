@@ -808,9 +808,11 @@ void git_submodule_adder::thread_fun()
 	{
 		while (!quit_)
 		{
-			std::unique_lock lk(sleeper_.m);
-			sleeper_.cv.wait(lk, [&]{ return sleeper_.ready; });
-			sleeper_.ready = false;
+			{
+				std::unique_lock lk(sleeper_.m);
+				sleeper_.cv.wait(lk, [&]{ return sleeper_.ready; });
+				sleeper_.ready = false;
+			}
 
 			if (quit_)
 				break;
