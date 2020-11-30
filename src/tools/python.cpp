@@ -113,9 +113,9 @@ void pip::do_ensure()
 			//
 			// so just filter it out
 
-			if (f.line.find("which is not on PATH") != -1)
+			if (f.line.find("which is not on PATH") != std::string::npos)
 				f.lv = context::level::debug;
-			else if (f.line.find("Consider adding this directory"))
+			else if (f.line.find("Consider adding this") != std::string::npos)
 				f.lv = context::level::debug;
 		})
 		.binary(tasks::python::python_exe())
