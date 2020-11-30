@@ -19,7 +19,6 @@ std::string to_string(task::clean c)
 		case task::clean::reextract: break;
 		case task::clean::reconfigure: break;
 		case task::clean::rebuild: break;
-		case task::clean::everything: break;
 	}
 
 	std::vector<std::string> v;
@@ -37,6 +36,26 @@ std::string to_string(task::clean c)
 		v.push_back("rebuild");
 
 	return join(v, "|");
+}
+
+task::clean make_clean_flags()
+{
+	task::clean c = task::clean::nothing;
+	const auto g = conf().global();
+
+	if (g.redownload())
+		c |= task::clean::redownload;
+
+	if (g.reextract())
+		c |= task::clean::reextract;
+
+	if (g.reconfigure())
+		c |= task::clean::reconfigure;
+
+	if (g.rebuild())
+		c |= task::clean::rebuild;
+
+	return c;
 }
 
 
@@ -62,21 +81,27 @@ task::task(std::vector<std::string> names)
 		task_manager::instance().register_task(this);
 }
 
-task::~task()
-{
-	try
-	{
-		join();
-	}
-	catch(bailed&)
-	{
-		// ignore
-	}
-}
+// anchor
+task::~task() = default;
 
 bool task::enabled() const
 {
 	return conf().task(names()).get<bool>("enabled");
+}
+
+void task::do_clean(clean)
+{
+	// no-op
+}
+
+void task::do_fetch()
+{
+	// no-op
+}
+
+void task::do_build_and_install()
+{
+	// no-op
 }
 
 const context& task::cx() const
@@ -94,15 +119,6 @@ const context& task::cx() const
 	}
 
 	return bad;
-}
-
-void task::add_name(std::string s)
-{
-	auto itor = std::find(names_.begin(), names_.end(), s);
-	if (itor != names_.end())
-		return;
-
-	names_.push_back(s);
 }
 
 const std::string& task::name() const
@@ -226,22 +242,19 @@ void task::threaded_run(std::string thread_name, std::function<void ()> f)
 	}
 }
 
-void task::parallel(std::vector<std::pair<std::string, std::function<void ()>>> v)
+void task::parallel(parallel_functions v, std::optional<std::size_t> threads)
 {
-	std::vector<std::thread> ts;
+	thread_pool tp(threads);
 
 	for (auto&& [name, f] : v)
 	{
 		cx().trace(context::generic, "running in parallel: {}", name);
 
-		ts.push_back(start_thread([this, name, f]
+		tp.add([this, name, f]
 		{
 			threaded_run(name, f);
-		}));
+		});
 	}
-
-	for (auto&& t : ts)
-		t.join();
 }
 
 conf_task task::task_conf() const
@@ -249,10 +262,9 @@ conf_task task::task_conf() const
 	return conf().task(names());
 }
 
-git task::make_git(git::ops o) const
+git task::make_git() const
 {
-	if (o == git::clone_or_pull && task_conf().no_pull())
-		o = git::clone;
+	const auto o = task_conf().no_pull() ? git::clone : git::clone_or_pull;
 
 	git g(o);
 
@@ -279,6 +291,16 @@ std::string task::make_git_url(
 	return task_conf().git_url_prefix() + org + "/" + repo + ".git";
 }
 
+fs::path task::get_source_path() const
+{
+	return {};
+}
+
+bool task::get_prebuilt() const
+{
+	return false;
+}
+
 void task::run()
 {
 	threaded_run(name(), [&]
@@ -292,13 +314,9 @@ void task::run()
 		cx().info(context::generic, "running task");
 
 		fetch();
-		join();
-
 		check_interrupted();
 
 		build_and_install();
-		join();
-
 		check_interrupted();
 	});
 }
@@ -311,12 +329,6 @@ void task::interrupt()
 
 	for (auto* t : tools_)
 		t->interrupt();
-}
-
-void task::join()
-{
-	if (thread_.joinable())
-		thread_.join();
 }
 
 void task::clean_task()
@@ -348,33 +360,27 @@ void task::fetch()
 		return;
 	}
 
-	thread_ = start_thread([&]
+	clean_task();
+	check_interrupted();
+
+	if (conf().global().fetch())
 	{
-		threaded_run(name(), [&]
+		cx().info(context::generic, "fetching");
+		do_fetch();
+
+		check_interrupted();
+
+		if (!get_source_path().empty())
 		{
-			clean_task();
-			check_interrupted();
+			cx().debug(context::generic, "patching");
 
-			if (conf().global().fetch())
-			{
-				cx().info(context::generic, "fetching");
-				do_fetch();
+			run_tool(patcher()
+				.task(name(), get_prebuilt())
+				.root(get_source_path()));
+		}
 
-				check_interrupted();
-
-				if (!get_source_path().empty())
-				{
-					cx().debug(context::generic, "patching");
-
-					run_tool(patcher()
-						.task(name(), get_prebuilt())
-						.root(get_source_path()));
-				}
-
-				check_interrupted();
-			}
-		});
-	});
+		check_interrupted();
+	}
 }
 
 void task::build_and_install()
@@ -389,38 +395,12 @@ void task::build_and_install()
 		return;
 	}
 
-	thread_ = start_thread([&]
-	{
-		threaded_run(name(), [&]
-		{
-			check_interrupted();
+	check_interrupted();
 
-			cx().info(context::generic, "build and install");
-			do_build_and_install();
+	cx().info(context::generic, "build and install");
+	do_build_and_install();
 
-			check_interrupted();
-		});
-	});
-}
-
-task::clean task::make_clean_flags() const
-{
-	clean c = clean::nothing;
-	const auto g = conf().global();
-
-	if (g.redownload())
-		c |= clean::redownload;
-
-	if (g.reextract())
-		c |= clean::reextract;
-
-	if (g.reconfigure())
-		c |= clean::reconfigure;
-
-	if (g.rebuild())
-		c |= clean::rebuild;
-
-	return c;
+	check_interrupted();
 }
 
 void task::check_interrupted()
@@ -461,8 +441,18 @@ void task::run_tool_impl(tool* t)
 
 
 parallel_tasks::parallel_tasks()
-	: container_task("parallel")
+	: task("parallel")
 {
+}
+
+parallel_tasks::~parallel_tasks()
+{
+	join();
+}
+
+bool parallel_tasks::enabled() const
+{
+	return true;
 }
 
 void parallel_tasks::add_task(std::unique_ptr<task> t)

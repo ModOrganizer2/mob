@@ -179,8 +179,15 @@ void set_thread_exception_handlers()
 }
 
 
-thread_pool::thread_pool(std::size_t count)
-	: count_(std::max<std::size_t>(1, count))
+std::size_t make_thread_count(std::optional<std::size_t> count)
+{
+	static const auto def = std::thread::hardware_concurrency();
+	return std::max<std::size_t>(1, count.value_or(def));
+}
+
+
+thread_pool::thread_pool(std::optional<std::size_t> count)
+	: count_(make_thread_count(count))
 {
 	for (std::size_t i=0; i<count_; ++i)
 		threads_.emplace_back(std::make_unique<thread_info>());
@@ -226,7 +233,7 @@ bool thread_pool::try_add(fun thread_fun)
 		t->running = true;
 		t->thread_fun = thread_fun;
 
-		t->thread = std::thread([&]
+		t->thread = start_thread([&]
 		{
 			t->thread_fun();
 			t->running = false;

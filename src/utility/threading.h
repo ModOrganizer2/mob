@@ -28,7 +28,10 @@ class thread_pool
 public:
 	typedef std::function<void ()> fun;
 
-	thread_pool(std::size_t count=std::thread::hardware_concurrency());
+	thread_pool(std::optional<std::size_t> count={});
+
+	// joins
+	//
 	~thread_pool();
 
 	// non-copyable

@@ -82,8 +82,8 @@ void list_command::dump(const std::vector<task*>& v, std::size_t indent) const
 			<< " - " << join(t->names(), ",")
 			<< "\n";
 
-		if (auto* ct=dynamic_cast<container_task*>(t))
-			dump(ct->children(), indent + 1);
+		if (auto* pt=dynamic_cast<parallel_tasks*>(t))
+			dump(pt->children(), indent + 1);
 	}
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "task.h"
+#include "../tools/tools.h"
 #include "../net.h"
 #include "../utility.h"
 #include "../core/conf.h"

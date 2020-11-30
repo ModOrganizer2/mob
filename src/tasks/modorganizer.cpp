@@ -7,13 +7,17 @@ namespace mob::tasks
 static std::mutex g_super_mutex;
 static std::atomic<bool> g_super_initialized = false;
 
-std::string make_short_name(const std::string& name)
+std::vector<std::string> make_names(std::vector<std::string> names)
 {
-	const auto dash = name.find("-");
-	if (dash == std::string::npos)
-		return name;
+	auto short_name = names[0];
 
-	return name.substr(dash + 1);
+	const auto dash = short_name.find("-");
+	if (dash != std::string::npos)
+		short_name = short_name.substr(dash + 1);
+
+	names.insert(names.begin(), short_name);
+
+	return names;
 }
 
 
@@ -28,10 +32,8 @@ modorganizer::modorganizer(std::vector<const char*> names, flags f)
 }
 
 modorganizer::modorganizer(std::vector<std::string> names, flags f)
-	: basic_task(make_short_name(names[0])), repo_(names[0]), flags_(f)
+	: basic_task(make_names(names)), repo_(names[0]), flags_(f)
 {
-	for (auto&& n : names)
-		add_name(std::move(n));
 }
 
 std::string modorganizer::version()

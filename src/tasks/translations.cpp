@@ -236,24 +236,23 @@ void translations::do_build_and_install()
 	for (auto&& w : ps.warnings())
 		cx().warning(context::generic, "{}", w);
 
-	thread_pool tp;
+	parallel_functions v;
 
 	for (auto& p : ps.get())
 	{
 		for (auto& lg : p.langs)
 		{
-			tp.add([&]
+			v.push_back({lg.name + "." + p.name, [&]
 			{
-				threaded_run(lg.name + "." + p.name, [&]
-				{
-					run_tool(lrelease()
-						.project(p.name)
-						.sources(lg.ts_files)
-						.out(dest));
-				});
-			});
+				run_tool(lrelease()
+					.project(p.name)
+					.sources(lg.ts_files)
+					.out(dest));
+			}});
 		}
 	}
+
+	parallel(v);
 }
 
 }	// namespace
