@@ -63,20 +63,6 @@ task::clean make_clean_flags()
 }
 
 
-// kept in task::contexts_, one per thread
-//
-struct task::thread_context
-{
-	std::thread::id tid;
-	context cx;
-
-	thread_context(std::thread::id tid, context cx)
-		: tid(tid), cx(std::move(cx))
-	{
-	}
-};
-
-
 task::task(std::vector<std::string> names)
 	: names_(std::move(names)), interrupted_(false)
 {
@@ -128,11 +114,9 @@ const context& task::cx() const
 	{
 		std::scoped_lock lock(contexts_mutex_);
 
-		for (auto& td : contexts_)
-		{
-			if (td->tid == tid)
-				return td->cx;
-		}
+		auto itor = contexts_.find(tid);
+		if (itor != contexts_.end())
+			return *itor->second;
 	}
 
 	return bad;
@@ -230,9 +214,19 @@ void task::add_context_for_this_thread(std::string name)
 {
 	std::scoped_lock lock(contexts_mutex_);
 
-	// adds a context for the current thread with the given name
-	contexts_.push_back(std::make_unique<thread_context>(
-		std::this_thread::get_id(), std::move(name)));
+	const auto tid = std::this_thread::get_id();
+
+	// there might already be a context for this thread, such as when run()
+	// is called, because it's typically called from the same thread as the
+	// one that created the task, and a context is added in the task's
+	// constructor
+	//
+	// but run() can also be called from parallel_tasks in a thread, so make
+	// sure there's a context for it
+
+	auto itor = contexts_.find(tid);
+	if (itor == contexts_.end())
+		contexts_.emplace(tid, std::make_unique<context>(std::move(name)));
 }
 
 void task::remove_context_for_this_thread()
@@ -243,14 +237,9 @@ void task::remove_context_for_this_thread()
 
 	const auto tid = std::this_thread::get_id();
 
-	for (auto itor=contexts_.begin(); itor!=contexts_.end(); ++itor)
-	{
-		if ((*itor)->tid == tid)
-		{
-			contexts_.erase(itor);
-			break;
-		}
-	}
+	auto itor = contexts_.find(tid);
+	if (itor != contexts_.end())
+		contexts_.erase(itor);
 }
 
 void task::running_from_thread(
@@ -347,19 +336,25 @@ void task::run()
 		return;
 	}
 
-	cx().info(context::generic, "running task");
+	// make sure there's a context for this thread; run() can be called from
+	// the main thread or from parallel_tasks, for example, so it might be in
+	// a new thread or not
+	running_from_thread(name(), [&]
+	{
+		cx().info(context::generic, "running task");
 
-	// clean task if needed
-	clean_task();
-	check_interrupted();
+		// clean task if needed
+		clean_task();
+		check_interrupted();
 
-	// fetch task if needed
-	fetch();
-	check_interrupted();
+		// fetch task if needed
+		fetch();
+		check_interrupted();
 
-	// build/install if needed
-	build_and_install();
-	check_interrupted();
+		// build/install if needed
+		build_and_install();
+		check_interrupted();
+	});
 }
 
 void task::interrupt()
@@ -498,15 +493,9 @@ std::vector<task*> parallel_tasks::children() const
 
 void parallel_tasks::run()
 {
-	// create a thread for each child, call running_from_thread() from them
-	// to make sure they have their own log context, and calls run()
+	// creates a thread for each child and calls run()
 	for (auto& t : children_)
-	{
-		threads_.push_back(start_thread([&]
-		{
-			running_from_thread(t->name(), [&]{ t->run(); });
-		}));
-	}
+		threads_.push_back(start_thread([&] { t->run(); }));
 
 	join();
 }

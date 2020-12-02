@@ -532,28 +532,42 @@ void git_wrap::delete_directory(const context& cx, const fs::path& dir)
 {
 	git_wrap g(dir);
 
-	// make sure there are no uncommitted or stashed changes to avoid losing
-	// data
-
-	if (!conf().global().get<bool>("ignore_uncommitted"))
+	// this can be called on directories not actually controlled by git, such
+	// as when:
+	//   1) building a third-party as a prebuilt, then
+	//   2) switching to build from source and giving --new
+	//
+	// in this case, the task will use git_wrap::delete_directory() because it's
+	// building from source, but the directory was actually created with the
+	// prebuilt
+	//
+	// so check first to avoid outputting git errors because it doesn't know
+	// about the directory
+	if (g.is_git_repo())
 	{
-		if (g.has_uncommitted_changes())
+		// make sure there are no uncommitted or stashed changes to avoid losing
+		// data
+
+		if (!conf().global().get<bool>("ignore_uncommitted"))
 		{
-			cx.bail_out(context::redownload,
-				"will not delete {}, has uncommitted changes; "
-				"see --ignore-uncommitted-changes", dir);
+			if (g.has_uncommitted_changes())
+			{
+				cx.bail_out(context::redownload,
+					"will not delete {}, has uncommitted changes; "
+					"see --ignore-uncommitted-changes", dir);
+			}
+
+			if (g.has_stashed_changes())
+			{
+				cx.bail_out(context::redownload,
+					"will not delete {}, has stashed changes; "
+					"see --ignore-uncommitted-changes", dir);
+			}
 		}
 
-		if (g.has_stashed_changes())
-		{
-			cx.bail_out(context::redownload,
-				"will not delete {}, has stashed changes; "
-				"see --ignore-uncommitted-changes", dir);
-		}
+		cx.trace(context::redownload,
+			"deleting directory controlled by git {}", dir);
 	}
-
-	cx.trace(context::redownload,
-		"deleting directory controlled by git {}", dir);
 
 	op::delete_directory(cx, dir, op::optional);
 }

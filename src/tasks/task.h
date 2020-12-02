@@ -10,8 +10,8 @@ class conf_task;
 class git;
 
 
-// base class for all tasks, although tasks will actually inherit from
-// basic_task<> below
+// ultimate base class for all tasks, although all tasks actually inherit from
+// basic_task<> below except for modorganizer
 //
 class task
 {
@@ -180,19 +180,7 @@ protected:
 	std::string make_git_url(
 		const std::string& org, const std::string& repo) const;
 
-	// called by run(), parallel(), but also parallel_tasks::run(); adds a new
-	// context for the current thread and calls f()
-	//
-	// shouldn't be used directly by tasks
-	//
-	void running_from_thread(std::string name, std::function<void ()> f);
-
 private:
-	// a struct with the thread id and a context object, defined in task.cpp
-	// to avoid pulling to many includes
-	//
-	struct thread_context;
-
 	// names for this task
 	const std::vector<std::string> names_;
 
@@ -202,7 +190,7 @@ private:
 	std::atomic<bool> interrupted_;
 
 	// holds a context per thread, added/removed in threaded_run()
-	std::vector<std::unique_ptr<thread_context>> contexts_;
+	std::map<std::thread::id, std::unique_ptr<context>> contexts_;
 	mutable std::mutex contexts_mutex_;
 
 	// list of active tools, added/removed in run_tool()
@@ -213,6 +201,13 @@ private:
 	// called by run_tool, does the actual work
 	//
 	void run_tool_impl(tool* t);
+
+	// called by run(), parallel(), but also parallel_tasks::run(); adds a new
+	// context for the current thread and calls f()
+	//
+	// shouldn't be used directly by tasks
+	//
+	void running_from_thread(std::string name, std::function<void ()> f);
 
 	// adds a new context with the given name in contexts_ for the current
 	// thread
@@ -269,6 +264,7 @@ MOB_ENUM_OPERATORS(task::clean);
 //
 // since the modorganizer task is reused for all super projects, it doesn't
 // have the static member functions and implement these two functions itself
+// by inheriting directly from task
 //
 template <class Task>
 class basic_task : public task

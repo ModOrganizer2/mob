@@ -4,20 +4,62 @@
 namespace mob::tasks
 {
 
-static std::mutex g_super_mutex;
-static std::atomic<bool> g_super_initialized = false;
-
+// given a vector of names (some projects have more than one, see add_tasks() in
+// main.cpp), this prepends the simplified name to the vector and returns it
+//
+// most MO project names are something like "modorganizer-uibase" on github and
+// the simplified name is used for two main reasons:
+//
+//  1) individual directories in modorganizer_super have historically used the
+//     simplified name only
+//
+//  2) it's useful to have an simplified name for use on the command line
+//
 std::vector<std::string> make_names(std::vector<std::string> names)
 {
-	auto short_name = names[0];
+	// first name in the list might be a "modorganizer-something"
+	const auto main_name = names[0];
 
-	const auto dash = short_name.find("-");
+	const auto dash = main_name.find("-");
 	if (dash != std::string::npos)
-		short_name = short_name.substr(dash + 1);
-
-	names.insert(names.begin(), short_name);
+	{
+		// remove the part before the dash and the dash
+		names.insert(names.begin(), main_name.substr(dash + 1));
+	}
 
 	return names;
+}
+
+// creates the repo in modorganizer_super, used to add submodules
+//
+// only one task will end up past the mutex and the flag, so it's only done
+// once
+//
+void initialize_super(context& cx, const fs::path& super_root)
+{
+	static std::mutex mutex;
+	static bool initialized = false;
+
+	std::scoped_lock lock(mutex);
+	if (initialized)
+		return;
+
+	initialized = true;
+
+	cx.trace(context::generic, "checking super");
+
+	git_wrap g(super_root);
+
+	// happens when running mob again in the same build tree
+	if (g.is_git_repo())
+	{
+		cx.debug(context::generic, "super already initialized");
+		return;
+	}
+
+	// create empty repo
+	cx.trace(context::generic, "initializing super");
+	g.init_repo();
 }
 
 
@@ -32,18 +74,8 @@ modorganizer::modorganizer(std::vector<const char*> names, flags f)
 }
 
 modorganizer::modorganizer(std::vector<std::string> names, flags f)
-	: basic_task(make_names(names)), repo_(names[0]), flags_(f)
+	: task(make_names(names)), repo_(names[0]), flags_(f)
 {
-}
-
-std::string modorganizer::version()
-{
-	return {};
-}
-
-bool modorganizer::prebuilt()
-{
-	return false;
 }
 
 bool modorganizer::is_gamebryo_plugin() const
@@ -56,19 +88,18 @@ bool modorganizer::is_nuget_plugin() const
 	return is_set(flags_, nuget);
 }
 
-fs::path modorganizer::source_path()
+fs::path modorganizer::source_path() const
 {
-	return {};
-}
-
-fs::path modorganizer::this_source_path() const
-{
+	// something like build/modorganizer_super/uibase
 	return super_path() / name();
 }
 
-fs::path modorganizer::this_solution_path() const
+fs::path modorganizer::project_file_path() const
 {
-	const auto build_path = create_cmake_tool(this_source_path()).build_path();
+	// ask cmake for the build path it would use
+	const auto build_path = create_cmake_tool(source_path()).build_path();
+
+	// use the INSTALL project
 	return build_path / "INSTALL.vcxproj";
 }
 
@@ -94,31 +125,41 @@ std::string modorganizer::repo() const
 
 void modorganizer::do_clean(clean c)
 {
+	// delete the whole directory
 	if (is_set(c, clean::reclone))
 	{
-		git_wrap::delete_directory(cx(), this_source_path());
+		git_wrap::delete_directory(cx(), source_path());
+
+		// no need to do anything else
 		return;
 	}
 
+	// cmake clean
 	if (is_set(c, clean::reconfigure))
-		run_tool(create_this_cmake_tool(cmake::clean));
+		run_tool(create_cmake_tool(cmake::clean));
 
+	// msbuild clean
 	if (is_set(c, clean::rebuild))
-		run_tool(create_this_msbuild_tool(msbuild::clean));
+		run_tool(create_msbuild_tool(msbuild::clean));
 }
 
 void modorganizer::do_fetch()
 {
-	initialize_super(super_path());
+	// make sure the super directory is initialized, only done once
+	initialize_super(cx(), super_path());
 
+	// clone/pull
 	run_tool(make_git()
 		.url(git_url())
 		.branch(task_conf().mo_branch())
-		.root(this_source_path()));
+		.root(source_path()));
 }
 
 void modorganizer::do_build_and_install()
 {
+	// adds a git submodule in modorganizer_super for this project; note that
+	// git_submodule_adder runs a thread because adding submodules is slow, but
+	// can happen while stuff is building
 	git_submodule_adder::instance().queue(std::move(
 		git_submodule()
 			.url(git_url())
@@ -126,7 +167,9 @@ void modorganizer::do_build_and_install()
 			.submodule(name())
 			.root(super_path())));
 
-	if (!fs::exists(this_source_path() / "CMakeLists.txt"))
+	// not all modorganizer projects need to actually be built, such as
+	// cmake_common, so don't try if there's no cmake file
+	if (!fs::exists(source_path() / "CMakeLists.txt"))
 	{
 		cx().trace(context::generic,
 			"{} has no CMakeLists.txt, not building", repo_);
@@ -134,19 +177,23 @@ void modorganizer::do_build_and_install()
 		return;
 	}
 
-	run_tool(create_this_cmake_tool());
+	// run cmake
+	run_tool(create_cmake_tool());
 
+	// run restore for nuget
+	//
 	// until https://gitlab.kitware.com/cmake/cmake/-/issues/20646 is resolved,
 	// we need a manual way of running the msbuild -t:restore
 	if (is_nuget_plugin())
-		run_tool(create_this_msbuild_tool().targets({ "restore" }));
+		run_tool(create_msbuild_tool().targets({ "restore" }));
 
-	run_tool(create_this_msbuild_tool());
+	// run msbuild
+	run_tool(create_msbuild_tool());
 }
 
-cmake modorganizer::create_this_cmake_tool(cmake::ops o)
+cmake modorganizer::create_cmake_tool(cmake::ops o)
 {
-	return create_cmake_tool(this_source_path(), o);
+	return create_cmake_tool(source_path(), o);
 }
 
 cmake modorganizer::create_cmake_tool(const fs::path& root, cmake::ops o)
@@ -171,34 +218,12 @@ cmake modorganizer::create_cmake_tool(const fs::path& root, cmake::ops o)
 		.root(root));
 }
 
-msbuild modorganizer::create_this_msbuild_tool(msbuild::ops o)
+msbuild modorganizer::create_msbuild_tool(msbuild::ops o)
 {
 	return std::move(msbuild(o)
-		.solution(this_solution_path())
+		.solution(project_file_path())
 		.config("RelWithDebInfo")
 		.architecture(arch::x64));
-}
-
-void modorganizer::initialize_super(const fs::path& super_root)
-{
-	std::scoped_lock lock(g_super_mutex);
-	if (g_super_initialized)
-		return;
-
-	g_super_initialized = true;
-
-	cx().trace(context::generic, "checking super");
-
-	git_wrap g(super_root);
-
-	if (g.is_git_repo())
-	{
-		cx().debug(context::generic, "super already initialized");
-		return;
-	}
-
-	cx().trace(context::generic, "initializing super");
-	g.init_repo();
 }
 
 }	// namespace

@@ -136,7 +136,7 @@ int pr_command::pull()
 				<< "checking out pr " << pr.number << " "
 				<< "in " << task->name() << "\n";
 
-			git_wrap g(task->this_source_path());
+			git_wrap g(task->source_path());
 
 			g.fetch(
 				task->git_url().string(),
@@ -183,7 +183,7 @@ int pr_command::revert()
 
 			u8cout << "reverting " << task->name() << " to master\n";
 
-			git_wrap(task->this_source_path()).checkout("master");
+			git_wrap(task->source_path()).checkout("master");
 		}
 
 		return 0;

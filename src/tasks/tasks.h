@@ -236,10 +236,6 @@ protected:
 	void do_build_and_install() override;
 
 private:
-	static fs::path solution_dir();
-	static fs::path solution_file();
-	static fs::path out_dir();
-
 	void fetch_prebuilt();
 	void build_and_install_prebuilt();
 
@@ -247,41 +243,78 @@ private:
 	void build_and_install_from_source();
 
 	msbuild create_msbuild_tool(msbuild::ops o=msbuild::build);
-	static url prebuilt_url();
 };
 
 
-class modorganizer : public basic_task<modorganizer>
+// a task for all modorganizer projects except for the installer, which is
+// technically an MO project but is built differently
+//
+// note that this doesn't inherit from basic_task because it doesn't have the
+// usual static functions for source_path() and prebuilt() since there's a
+// variety of modorganizer objects, one per project
+//
+class modorganizer : public task
 {
 public:
+	// path of the root modorganizer_super directory
+	//
+	static fs::path super_path();
+
+	// creates the same cmake tool as the one used to build the various MO
+	// projects, used internally, but also by the cmake command
+	//
+	static cmake create_cmake_tool(
+		const fs::path& root, cmake::ops o=cmake::generate);
+
+
+	// flags for some MO projects
 	enum flags
 	{
 		noflags  = 0x00,
+
+		// gamebryo project, used by the translations task because these
+		// projects have multiple .ts files that have to be merged
 		gamebryo = 0x01,
+
+		// project that uses nuget, cmake doesn't support those right now, so
+		// `msbuild -t:restore` has to be run manually
 		nuget   = 0x02,
 	};
 
+	// some mo tasks have more than one name, mostly because the transifex slugs
+	// are different than the names on github; the std::string and const char*
+	// overloads are because they're constructed from initializer lists and it's
+	// more convenient that way
 	modorganizer(std::string name, flags f=noflags);
 	modorganizer(std::vector<std::string> names, flags f=noflags);
 	modorganizer(std::vector<const char*> names, flags f=noflags);
 
-	static std::string version();
-	static bool prebuilt();
 
-	static fs::path source_path();
-	static fs::path super_path();
-
-	static cmake create_cmake_tool(
-		const fs::path& root, cmake::ops o=cmake::generate);
-
+	// whether this project has the gamebryo flag on
+	//
 	bool is_gamebryo_plugin() const;
+
+	// whether this project has the nuget flag on
+	//
 	bool is_nuget_plugin() const;
 
+	// url to the git repo
+	//
 	url git_url() const;
+
+	// `mo_org` setting from the ini (typically ModOrganizer2)
+	//
 	std::string org() const;
+
+	// name of the repo on github (first name given in the constructor,
+	// something like "cmake_common" or "modorganizer-uibase")
+	//
 	std::string repo() const;
-	fs::path this_source_path() const;
-	fs::path this_solution_path() const;
+
+	// directory for the project's source, something like
+	// "build/modorganizer_super/modorganizer"
+	//
+	fs::path source_path() const;
 
 protected:
 	void do_clean(clean c) override;
@@ -292,9 +325,25 @@ private:
 	std::string repo_;
 	flags flags_;
 
-	cmake create_this_cmake_tool(cmake::ops o=cmake::generate);
-	msbuild create_this_msbuild_tool(msbuild::ops o=msbuild::build);
-	void initialize_super(const fs::path& super_root);
+	// creates the cmake tool for this MO project
+	//
+	cmake create_cmake_tool(cmake::ops o=cmake::generate);
+
+	// creates the msbuild tool for this MO project
+	//
+	msbuild create_msbuild_tool(msbuild::ops o=msbuild::build);
+
+	// this is the file targeted by the msbuild tool
+	//
+	// it's not actually the .sln file because the cmake files have historically
+	// been inconsistent in what the main project in the solution is and whether
+	// the INSTALL project was enabled or not, so just building the .sln itself
+	// might not actually build everything
+	//
+	// by targeting the INSTALL project directly, everything will always be
+	// built correctly, regardless of how the solution file is generated
+	//
+	fs::path project_file_path() const;
 };
 
 
