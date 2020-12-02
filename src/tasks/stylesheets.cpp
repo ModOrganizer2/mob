@@ -9,7 +9,17 @@ stylesheets::stylesheets()
 {
 }
 
+bool stylesheets::prebuilt()
+{
+	return false;
+}
+
 std::string stylesheets::version()
+{
+	return {};
+}
+
+fs::path stylesheets::source_path()
 {
 	return {};
 }
@@ -34,27 +44,16 @@ std::string stylesheets::dark_mode_1809_6788_version()
 	return conf().version().get("ss_dark_mode_1809_6788");
 }
 
-
-bool stylesheets::prebuilt()
-{
-	return false;
-}
-
-fs::path stylesheets::source_path()
-{
-	// all projects are dumped in the build directory; this also disables
-	// auto patching
-	return {};
-}
-
 void stylesheets::do_clean(clean c)
 {
+	// delete download file for each release
 	if (is_set(c, clean::redownload))
 	{
 		for (auto&& r : releases())
 			run_tool(make_downloader_tool(r, downloader::clean));
 	}
 
+	// delete directory for each release
 	if (is_set(c, clean::reextract))
 	{
 		for (auto&& r : releases())
@@ -69,6 +68,7 @@ void stylesheets::do_clean(clean c)
 
 void stylesheets::do_fetch()
 {
+	// download and extract file for each release
 	for (auto&& r : releases())
 	{
 		const auto file = run_tool(make_downloader_tool(r));
@@ -81,13 +81,16 @@ void stylesheets::do_fetch()
 
 fs::path stylesheets::release_build_path(const release& r) const
 {
+	// something like build/paper-mono-v2.1
 	return conf().path().build() / (r.name + "-v" + r.version);
 }
 
 downloader stylesheets::make_downloader_tool(
 	const release& r, downloader::ops o) const
 {
-	// this isn't very generic, but 6788 is the only repo so far
+	// this isn't generic at all and will probably fail for future stylesheets,
+	// but 6788 is the only repo so far and that's the convention they use for
+	// their releases
 
 	url u =
 		"https://github.com/" + r.repo + "/" + r.name + "/releases/"
@@ -102,11 +105,10 @@ void stylesheets::do_build_and_install()
 {
 	for (auto&& r : releases())
 	{
-		const fs::path src =
-			conf().path().build() / (r.name + "-v" + r.version);
-
+		// copy all the files and directories from the source directory directly
+		// into install/bin/stylesheets
 		op::copy_glob_to_dir_if_better(cx(),
-			src / "*",
+			release_build_path(r) / "*",
 			conf().path().install_stylesheets(),
 			op::copy_files|op::copy_dirs);
 	}

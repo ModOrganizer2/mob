@@ -28,7 +28,8 @@
 //      - run `pip install` with that file, which creates
 //        `python-XX/Lib/site-packages/PyQt5/sip.cp32-win_amd64.pyd`
 //      - for installation, a bunch of files from site-packages/PyQt5/ are
-//        copied into bin/plugins/data/PyQt5, including a .pyi file from sip
+//        copied into install/bin/plugins/data/PyQt5, including a .pyi file from
+//        sip
 
 
 namespace mob::tasks
@@ -299,7 +300,7 @@ void pyqt::copy_files()
 	const fs::path site_packages_pyqt =
 		python::site_packages_path() / "PyQt5";
 
-	// target directory is bin/plugins/data/PyQt5
+	// target directory is install/bin/plugins/data/PyQt5
 	const fs::path pyqt_plugin =
 		conf().path().install_plugins() / "data" / "PyQt5";
 

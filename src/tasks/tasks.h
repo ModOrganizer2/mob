@@ -519,6 +519,25 @@ private:
 };
 
 
+class sevenz : public basic_task<sevenz>
+{
+public:
+	sevenz();
+
+	static std::string version();
+	static bool prebuilt();
+	static fs::path source_path();
+
+protected:
+	void do_clean(clean c) override;
+	void do_fetch() override;
+	void do_build_and_install() override;
+
+private:
+	void build();
+};
+
+
 class sip : public basic_task<sip>
 {
 public:
@@ -539,33 +558,9 @@ protected:
 	void do_build_and_install() override;
 
 private:
-	void download();
-	void generate();
-
-	static fs::path download_file();
-};
-
-
-class sevenz : public basic_task<sevenz>
-{
-public:
-	sevenz();
-
-	static std::string version();
-	static bool prebuilt();
-	static fs::path source_path();
-
-protected:
-	void do_clean(clean c) override;
-	void do_fetch() override;
-	void do_build_and_install() override;
-
-private:
-	static url source_url();
-	static std::string version_for_url();
-	static fs::path module_to_build();
-
 	void build();
+	void generate_header();
+	void convert_script_file_to_acp(const std::string& filename);
 };
 
 
@@ -584,21 +579,29 @@ protected:
 };
 
 
+// none of this is very generic, but it works for now because there are only
+// four stylesheets
+//
 class stylesheets : public basic_task<stylesheets>
 {
 public:
 	stylesheets();
 
 	static bool prebuilt();
+
+	// empty, doesn't apply, but needed by basic_task
+	//
+	static std::string version();
+
+	// empty, doesn't apply, all projects are dumped in the build directory;
+	// this also disables auto patching
+	//
 	static fs::path source_path();
 
 	static std::string paper_lad_6788_version();
 	static std::string paper_automata_6788_version();
 	static std::string paper_mono_6788_version();
 	static std::string dark_mode_1809_6788_version();
-
-	// dummy, doesn't apply
-	static std::string version();
 
 protected:
 	void do_clean(clean c) override;

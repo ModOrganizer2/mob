@@ -470,8 +470,6 @@ std::string read_text_file_impl(const context& cx, const fs::path& p, flags f)
 std::string read_text_file(
 	const context& cx, encodings e, const fs::path& p, flags f)
 {
-	cx.trace(context::fs, "reading {}", p);
-
 	std::string bytes = read_text_file_impl(cx, p, f);
 	if (bytes.empty())
 		return bytes;

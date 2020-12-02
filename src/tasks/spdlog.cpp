@@ -26,6 +26,7 @@ fs::path spdlog::source_path()
 
 void spdlog::do_clean(clean c)
 {
+	// delete the whole directory
 	if (is_set(c, clean::reclone))
 		git_wrap::delete_directory(cx(), source_path());
 }
