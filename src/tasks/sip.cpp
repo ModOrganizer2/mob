@@ -149,13 +149,15 @@ void sip::generate()
 		op::replace_file(cx(), src, dest, backup);
 	}
 
+	// generate sip.h, will be copied to python's include directory, used
+	// by plugin_python
 	run_tool(process_runner(process()
 		.binary(sip_module_exe())
 		.chcp(850)
 		.stdout_encoding(encodings::acp)
 		.stderr_encoding(encodings::acp)
 		.arg("--sip-h")
-		.arg("PyQt5.zip")
+		.arg(pyqt::pyqt_sip_module_name())
 		.cwd(source_path())));
 }
 

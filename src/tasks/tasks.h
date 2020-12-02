@@ -402,6 +402,7 @@ public:
 
 	static fs::path source_path();
 	static fs::path include_path();
+	static fs::path build_path();
 	static fs::path bin_path();
 
 protected:
@@ -420,15 +421,12 @@ private:
 	void copy_files();
 	void copy_dlls_to(const fs::path& dir);
 	void copy_pdbs_to(const fs::path& dir);
-
-	static url source_url();
-	static url prebuilt_url();
-	static fs::path build_path();
-	static std::vector<std::string> output_names();
-	static std::string version_no_patch_underscores();
 };
 
 
+// when building from source, builds both pyqt5 and pyqt5-sip; when using the
+// prebuilt, the downloaded zip contains both
+//
 class pyqt : public basic_task<pyqt>
 {
 public:
@@ -439,6 +437,11 @@ public:
 	static bool prebuilt();
 
 	static fs::path source_path();
+	static fs::path build_path();
+
+	// "PyQt5.sip", used both in pyqt and sip
+	//
+	static std::string pyqt_sip_module_name();
 
 protected:
 	void do_clean(clean c) override;
@@ -454,12 +457,6 @@ private:
 	void sip_build();
 	void install_sip_file();
 	void copy_files();
-
-	static url source_url();
-	static url prebuilt_url();
-	static fs::path sip_install_file();
-	static fs::path build_path();
-	static std::vector<std::string> modules();
 };
 
 
@@ -477,13 +474,30 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static version_info parsed_version();
+
+	// build/python-XX
+	//
 	static fs::path source_path();
+
+	// build/python-XX/PCBuild/amd64
+	//
 	static fs::path build_path();
+
+	// build/python-XX/PCBuild/amd64/python.exe
+	//
 	static fs::path python_exe();
+
+	// build/python-XX/Include
+	//
 	static fs::path include_path();
+
+	// build/python-XX/Scripts
+	//
 	static fs::path scripts_path();
+
+	// build/python-XX/Lib/site-packages
+	//
 	static fs::path site_packages_path();
 
 protected:
@@ -502,11 +516,6 @@ private:
 	void copy_files();
 
 	msbuild create_msbuild_tool(msbuild::ops o=msbuild::build);
-
-	static std::string version_without_v();
-	static url prebuilt_url();
-	static fs::path solution_file();
-	static std::string version_for_dll();
 };
 
 

@@ -26,50 +26,45 @@ fs::path nmm::source_path()
 
 void nmm::do_clean(clean c)
 {
+	// delete the whole directory
 	if (is_set(c, clean::reclone))
 	{
 		git_wrap::delete_directory(cx(), source_path());
+
+		// no need to do anything else
 		return;
 	}
 
+	// msbuild clean
 	if (is_set(c, clean::rebuild))
 		run_tool(create_msbuild_tool(msbuild::clean));
 }
 
 void nmm::do_fetch()
 {
+	// clone/pull
 	run_tool(make_git()
 		.url(make_git_url("Nexus-Mods", "Nexus-Mod-Manager"))
 		.branch(version())
 		.root(source_path()));
 
+	// run nuget
 	run_tool(nuget(source_path() / "NexusClient.sln"));
 }
 
 void nmm::do_build_and_install()
 {
-	// nmm sometimes fails with files being locked
-	const int max_tries = 3;
-
-	for (int tries=0; tries<max_tries; ++tries)
+	build_loop(cx(), [&](bool mp)
 	{
+		// msbuild defaults to multiprocess, give allow_failure for multiprocess
+		// builds and force single_job for the last single process build
+
 		const int exit_code = run_tool(create_msbuild_tool(
-			msbuild::build, msbuild::allow_failure));
+			msbuild::build,
+			mp ? msbuild::allow_failure : msbuild::single_job));
 
-		if (exit_code == 0)
-			return;
-
-		cx().debug(context::generic,
-			"msbuild multiprocess sometimes fails with nmm because of race "
-			"conditions; trying again");
-	}
-
-	cx().debug(context::generic,
-		"msbuild multiprocess has failed more than {} times for nmm, "
-		"restarting one last time single process; that one should work",
-		max_tries);
-
-	run_tool(create_msbuild_tool(msbuild::build, msbuild::single_job));
+		return (exit_code == 0);
+	});
 }
 
 msbuild nmm::create_msbuild_tool(msbuild::ops o, msbuild::flags_t f)

@@ -330,17 +330,17 @@ bool task::get_prebuilt() const
 
 void task::run()
 {
-	if (!enabled())
-	{
-		cx().debug(context::generic, "task is disabled");
-		return;
-	}
-
 	// make sure there's a context for this thread; run() can be called from
 	// the main thread or from parallel_tasks, for example, so it might be in
 	// a new thread or not
 	running_from_thread(name(), [&]
 	{
+		if (!enabled())
+		{
+			cx().debug(context::generic, "task is disabled");
+			return;
+		}
+
 		cx().info(context::generic, "running task");
 
 		// clean task if needed

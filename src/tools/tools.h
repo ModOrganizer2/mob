@@ -917,6 +917,23 @@ private:
 	fs::path iss_;
 };
 
+
+// some tasks use a multiprocess version of their build tool to make things
+// faster, but the build process might fail because the projects are not really
+// set up correctly for multiprocess (locked files, etc.)
+//
+// that's the case for nmm, openssl and couple of others
+//
+// so `f` will first be called in a loop a couple of times with its parameter as
+// `true`; it should run the build multiprocess and return whether the build
+// succeeded, which will end the loop and return immediately
+//
+// if `f` returned false every time in the loop, it will be called one last time
+// with its parameter as `false`, which should build one final time with any
+// multiprocess flags
+//
+void build_loop(const context& cx, std::function<bool (bool)> f);
+
 }	// namespace
 
 

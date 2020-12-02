@@ -27,12 +27,16 @@ fs::path ncc::source_path()
 
 void ncc::do_clean(clean c)
 {
+	// delete the whole directory
 	if (is_set(c, clean::reclone))
 	{
 		git_wrap::delete_directory(cx(), source_path());
+
+		// no need to do anything else
 		return;
 	}
 
+	// msbuild clean
 	if (is_set(c, clean::rebuild))
 		run_tool(create_msbuild_tool(msbuild::clean));
 }
@@ -47,11 +51,13 @@ void ncc::do_fetch()
 
 void ncc::do_build_and_install()
 {
+	// build
 	run_tool(msbuild()
 		.solution(source_path() / "NexusClient.sln")
 		.targets({"NexusClientCLI"})
 		.platform("Any CPU"));
 
+	// run publish.bat, which copies a bunch of stuff to install/bin/NCC
 	const auto publish = source_path() / "publish.bat";
 
 	run_tool(process_runner(process()

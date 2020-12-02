@@ -459,4 +459,33 @@ void iscc::do_run()
 		.arg(iss_));
 }
 
+
+void build_loop(const context& cx, std::function<bool (bool)> f)
+{
+	// building sometimes fails with files being locked
+	const int max_tries = 3;
+
+	for (int tries=0; tries<max_tries; ++tries)
+	{
+		// try a multiprocess build
+		if (f(true))
+		{
+			// building succeeded, done
+			return;
+		}
+
+		cx.debug(context::generic,
+			"multiprocess build sometimes fails because of race "
+			"conditions; trying again");
+	}
+
+	cx.debug(context::generic,
+		"multiprocess build has failed more than {} times, "
+		"restarting one last time single process; that one should work",
+		max_tries);
+
+	// do one last single process build
+	f(false);
+}
+
 }	// namespace
