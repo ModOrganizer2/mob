@@ -255,16 +255,15 @@ private:
 MOB_ENUM_OPERATORS(task::clean);
 
 
-// all tasks except for modorganizer have static functions source_path() and
-// prebuilt(), which are used in a variety of places, but `task` also needs to
-// know about them
+// most tasks have static functions source_path() and prebuilt(), which are used
+// in a variety of places, but `task` also needs to know about them
 //
 // so get_source_path() and get_prebuilt() just forward to the static version
 // and basic_task uses CRTP so tasks don't have to implement both
 //
-// since the modorganizer task is reused for all super projects, it doesn't
-// have the static member functions and implement these two functions itself
-// by inheriting directly from task
+// these functions don't make sense for some tasks (stylesheets, translations,
+// etc., but also modorganizer, since it's reused for all super projects), so
+// these inherit directly from task, which has empty implementation for them
 //
 template <class Task>
 class basic_task : public task

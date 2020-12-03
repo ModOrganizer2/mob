@@ -5,23 +5,13 @@ namespace mob::tasks
 {
 
 stylesheets::stylesheets()
-	: basic_task("ss", "stylesheets")
+	: task("ss", "stylesheets")
 {
 }
 
 bool stylesheets::prebuilt()
 {
 	return false;
-}
-
-std::string stylesheets::version()
-{
-	return {};
-}
-
-fs::path stylesheets::source_path()
-{
-	return {};
 }
 
 std::string stylesheets::paper_lad_6788_version()

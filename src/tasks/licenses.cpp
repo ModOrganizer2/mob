@@ -5,23 +5,8 @@ namespace mob::tasks
 {
 
 licenses::licenses()
-	: basic_task("licenses")
+	: task("licenses")
 {
-}
-
-std::string licenses::version()
-{
-	return {};
-}
-
-bool licenses::prebuilt()
-{
-	return false;
-}
-
-fs::path licenses::source_path()
-{
-	return {};
 }
 
 void licenses::do_build_and_install()

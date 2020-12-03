@@ -207,14 +207,10 @@ protected:
 };
 
 
-class licenses : public basic_task<licenses>
+class licenses : public task
 {
 public:
 	licenses();
-
-	static std::string version();
-	static bool prebuilt();
-	static fs::path source_path();
 
 protected:
 	void do_build_and_install() override;
@@ -582,21 +578,12 @@ protected:
 // none of this is very generic, but it works for now because there are only
 // four stylesheets
 //
-class stylesheets : public basic_task<stylesheets>
+class stylesheets : public task
 {
 public:
 	stylesheets();
 
 	static bool prebuilt();
-
-	// empty, doesn't apply, but needed by basic_task
-	//
-	static std::string version();
-
-	// empty, doesn't apply, all projects are dumped in the build directory;
-	// this also disables auto patching
-	//
-	static fs::path source_path();
 
 	static std::string paper_lad_6788_version();
 	static std::string paper_automata_6788_version();
@@ -626,54 +613,93 @@ private:
 };
 
 
-class translations : public basic_task<translations>
+// see translations.cpp for more info
+//
+class translations : public task
 {
 public:
+	// given the root translations folder, will have one `project` object per
+	// directory
+	//
+	// each project will have a list of `lang` objects, each lang has the list
+	// of .ts files that need to be compiled to create the .qm file
+	//
 	class projects
 	{
 	public:
+		// a language for a project
 		struct lang
 		{
+			// language name
 			std::string name;
+
+			// .ts files that need to be compiled
 			std::vector<fs::path> ts_files;
 
 			lang(std::string n);
 		};
 
+		// a project that contains languages
 		struct project
 		{
+			// project name
 			std::string name;
+
+			// list of languages
 			std::vector<lang> langs;
 
-			project(std::string n);
+			project(std::string n={});
 		};
 
 
+		// walks the given directory and figures out projects and languages
+		//
 		projects(fs::path root);
 
+		// list of projects found, one per directory in the root
+		//
 		const std::vector<project>& get() const;
+
+		// any warnings that happened while walking the directories
+		//
 		const std::vector<std::string>& warnings() const;
 
 	private:
+		// translations directory
 		const fs::path root_;
+
+		// projects
 		std::vector<project> projects_;
+
+		// warnings
 		std::vector<std::string> warnings_;
+
+		// set of files for which a warning was added to warnings_, avoids
+		// duplicate warnings
 		std::set<fs::path> warned_;
 
-		void create();
+
+		// whether the given project name is a gamebryo task, `dir` is just for
+		// logging
+		//
 		bool is_gamebryo_plugin(
 			const std::string& dir, const std::string& project);
-		void handle_project_dir(const fs::path& dir);
 
-		lang handle_ts_file(
-			bool gamebryo, const std::string& project_name, const fs::path& f);
+		// parses the directory name, walks all the .ts files, returns a project
+		// object for them
+		//
+		project create_project(const fs::path& dir);
+
+		// returns a lang object that contains at least the given main_ts_file,
+		// but might contain more if it's a gamebryo plugin
+		//
+		lang create_lang(
+			bool gamebryo, const std::string& project_name,
+			const fs::path& main_ts_file);
 	};
 
 
 	translations();
-
-	static bool prebuilt();
-	static std::string version();
 	static fs::path source_path();
 
 protected:
@@ -732,8 +758,6 @@ protected:
 private:
 	cmake create_cmake_tool(cmake::ops o=cmake::generate);
 	msbuild create_msbuild_tool(msbuild::ops o=msbuild::build);
-
-	static url source_url();
 };
 
 }	// namespace
