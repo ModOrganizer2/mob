@@ -1,8 +1,11 @@
 #include "pch.h"
 #include "tasks.h"
 
-namespace mob
+namespace mob::tasks
 {
+
+// required by python
+
 
 libffi::libffi()
 	: basic_task("libffi")
@@ -16,35 +19,28 @@ std::string libffi::version()
 
 bool libffi::prebuilt()
 {
+	// actually always prebuilt
 	return false;
 }
 
 fs::path libffi::source_path()
 {
-	return paths::build() / "libffi";
+	return conf().path().build() / "libffi";
 }
 
 void libffi::do_clean(clean c)
 {
-	instrument<times::clean>([&]
-	{
-		if (is_set(c, clean::reclone))
-		{
-			git::delete_directory(cx(), source_path());
-			return;
-		}
-	});
+	// delete the whole thing
+	if (is_set(c, clean::reclone))
+		git_wrap::delete_directory(cx(), source_path());
 }
 
 void libffi::do_fetch()
 {
-	instrument<times::fetch>([&]
-	{
-		run_tool(task_conf().make_git()
-			.url(task_conf().make_git_url("python","cpython-bin-deps"))
-			.branch("libffi")
-			.root(source_path()));
-	});
+	run_tool(make_git()
+		.url(make_git_url("python","cpython-bin-deps"))
+		.branch("libffi")
+		.root(source_path()));
 }
 
 fs::path libffi::include_path()

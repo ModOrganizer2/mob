@@ -1,79 +1,58 @@
 #include "pch.h"
 #include "conf.h"
 #include "context.h"
-#include "process.h"
+#include "env.h"
+#include "ini.h"
+#include "paths.h"
 #include "../utility.h"
 #include "../tasks/task.h"
+#include "../tasks/task_manager.h"
 #include "../tools/tools.h"
 
-namespace mob
+namespace mob::details
 {
 
-conf::task_map conf::map_;
-int conf::output_log_level_ = 3;
-int conf::file_log_level_ = 5;
-bool conf::dry_ = false;
+using key_value_map = std::map<std::string, std::string, std::less<>>;
+using section_map = std::map<std::string, key_value_map, std::less<>>;
 
-std::string default_ini_filename()
-{
-	return "mob.ini";
-}
+// holds all the options not related to tasks (global, tools, paths, etc.)
+static section_map g_conf;
 
-bool bool_from_string(const std::string& s)
+// holds all the task options; has a special map element with an empty string
+// for options that apply to all tasks, and elements with specific task names
+// for overrides
+static section_map g_tasks;
+
+// special cases to avoid string manipulations
+static int g_output_log_level = 3;
+static int g_file_log_level = 5;
+static bool g_dry = false;
+
+bool bool_from_string(std::string_view s)
 {
 	return (s == "true" || s == "yes" || s == "1");
 }
 
-
-std::string conf::get_global(const std::string& section, const std::string& key)
+// returns a string from conf, bails out if it doesn't exist
+//
+std::string get_string(std::string_view section, std::string_view key)
 {
-	auto global = map_.find("");
-	MOB_ASSERT(global != map_.end());
-
-	auto sitor = global->second.find(section);
-	if (sitor == global->second.end())
-	{
-		gcx().bail_out(context::conf,
-			"conf section '{}' doesn't exist", section);
-	}
+	auto sitor = g_conf.find(section);
+	if (sitor == g_conf.end())
+		gcx().bail_out(context::conf, "[{}] doesn't exist", section);
 
 	auto kitor = sitor->second.find(key);
 	if (kitor == sitor->second.end())
-	{
-		gcx().bail_out(context::conf,
-			"key '{}' not found in section '{}'", key, section);
-	}
+		gcx().bail_out(context::conf, "no key '{}' in [{}]", key, section);
 
 	return kitor->second;
 }
 
-void conf::set_global(
-	const std::string& section,
-	const std::string& key, const std::string& value)
+// calls get_string(), converts to int
+//
+int get_int(std::string_view section, std::string_view key)
 {
-	auto global = map_.find("");
-	MOB_ASSERT(global != map_.end());
-
-	auto sitor = global->second.find(section);
-	if (sitor == global->second.end())
-	{
-		gcx().bail_out(context::conf,
-			"conf section '{}' doesn't exist", section);
-	}
-
-	auto kitor = sitor->second.find(key);
-	if (kitor == sitor->second.end())
-	{
-		gcx().bail_out(context::conf,
-			"key '{}' not found in section '{}'", key, section);
-	}
-
-	kitor->second = value;
-}
-
-int conf::get_global_int(const std::string& section, const std::string& key)
-{
-	const auto s = conf::get_global(section, key);
+	const auto s = get_string(section, key);
 
 	try
 	{
@@ -85,775 +64,227 @@ int conf::get_global_int(const std::string& section, const std::string& key)
 	}
 }
 
-bool conf::get_global_bool(const std::string& section, const std::string& key)
+// calls get_string(), converts to bool
+//
+bool get_bool(std::string_view section, std::string_view key)
 {
-	const auto s = conf::get_global(section, key);
+	const auto s = get_string(section, key);
 	return bool_from_string(s);
 }
 
-void conf::add_global(
-	const std::string& section,
-	const std::string& key, const std::string& value)
+// sets the given option, bails out if the option doesn't exist
+//
+void set_string(std::string_view section, std::string_view key, std::string_view value)
 {
-	map_[""][section][key] = value;
+	auto sitor = g_conf.find(section);
+	if (sitor == g_conf.end())
+		gcx().bail_out(context::conf, "[{}] doesn't exist", section);
+
+	auto kitor = sitor->second.find(key);
+	if (kitor == sitor->second.end())
+		gcx().bail_out(context::conf, "no key '{}' [{}]", key, section);
+
+	kitor->second = value;
 }
 
-std::optional<std::string> conf::find_for_task(
-	const std::string& task_name,
-	const std::string& section_name, const std::string& key)
+// sets the given option, adds it if it doesn't exist; used when setting options
+// from the master ini
+//
+void add_string(const std::string& section, const std::string& key, std::string value)
 {
-	auto titor = map_.find(task_name);
-	if (titor == map_.end())
+	g_conf[section][key] = value;
+}
+
+
+// finds an option for the given task, returns empty if not found
+//
+std::optional<std::string> find_string_for_task(
+	std::string_view task_name, std::string_view key)
+{
+	// find task
+	auto titor = g_tasks.find(task_name);
+	if (titor == g_tasks.end())
 		return {};
 
 	const auto& task = titor->second;
 
-	auto sitor = task.find(section_name);
-	if (sitor == task.end())
-		return {};
-
-	const auto& section = sitor->second;
-
-	auto itor = section.find(key);
-	if (itor == section.end())
+	// find key
+	auto itor = task.find(key);
+	if (itor == task.end())
 		return {};
 
 	return itor->second;
 }
 
-std::string conf::get_for_task(
-	const std::vector<std::string>& task_names,
-	const std::string& section, const std::string& key)
+// gets an option for any of the given task names, typically what task::names()
+// returns, which contains the main task name plus some alternate names
+//
+// there's a hierarchy for task options:
+//
+//  1) there's a special "_override" entry in g_tasks, for options set from
+//     the command line that should override everything, like --no-pull
+//     should override all pull settings for all tasks
+//
+//  2) if the key is not found in "_override", then there can be an entry
+//     in g_tasks with any of given task names
+//
+//  3) if the key doesn't exist, then use the generic task option for it, stored
+//     in an element with an empty string in g_tasks
+//
+std::string get_string_for_task(
+	const std::vector<std::string>& task_names, std::string_view key)
 {
-	task_map::iterator task = map_.end();
-
-	auto v = find_for_task("_override", section, key);
+	// some command line options will override any user settings, like
+	// --no-pull, those are stored in a special _override task name
+	auto v = find_string_for_task("_override", key);
 	if (v)
 		return *v;
 
+	// look for an option for this task by name
 	for (auto&& tn : task_names)
 	{
-		v = find_for_task(tn, section, key);
+		v = find_string_for_task(tn, key);
 		if (v)
 			return *v;
 	}
 
-	for (auto&& tn : task_names)
-	{
-		if (is_super_task(tn))
-		{
-			v = find_for_task("super", section, key);
-			if (v)
-				return *v;
+	// default task options are in a special empty string entry in g_tasks
+	v = find_string_for_task("", key);
+	if (v)
+		return *v;
 
-			break;
-		}
-	}
-
-	return get_global(section, key);
+	// doesn't exist anywhere
+	gcx().bail_out(context::conf,
+		"no task option '{}' found for any of {}",
+		key, join(task_names, ","));
 }
 
-void conf::set_for_task(
-	const std::string& task_name, const std::string& section,
-	const std::string& key, const std::string& value)
+// calls get_string_for_task(), converts to bool
+//
+bool get_bool_for_task(
+	const std::vector<std::string>& task_names, std::string_view key)
+{
+	const std::string s = get_string_for_task(task_names, key);
+	return bool_from_string(s);
+}
+
+// sets the given task option, bails out if the option doesn't exist
+//
+void set_string_for_task(
+	const std::string& task_name, const std::string& key, std::string value)
 {
 	// make sure the key exists, will throw if it doesn't
-	get_global(section, key);
+	get_string_for_task({task_name}, key);
 
-	map_[task_name][section][key] = value;
+	g_tasks[task_name][key] = std::move(value);
 }
 
-bool conf::prebuilt_by_name(const std::string& task)
+// sets the given task option, adds it if it doesn't exist; used when setting
+// options from the master ini
+//
+void add_string_for_task(
+	const std::string& task_name, const std::string& key, std::string value)
 {
-	const std::string s = get_global("prebuilt", task);
-	return bool_from_string(s);
+	g_tasks[task_name][key] = std::move(value);
 }
 
-fs::path conf::path_by_name(const std::string& name)
+}	// namespace
+
+
+namespace mob
 {
-	return get_global("paths", name);
-}
 
-std::string conf::version_by_name(const std::string& name)
+std::vector<std::string> format_options()
 {
-	return get_global("versions", name);
-}
+	auto& tm = task_manager::instance();
 
-fs::path conf::tool_by_name(const std::string& name)
-{
-	return get_global("tools", name);
-}
-
-std::string conf::global_by_name(const std::string& name)
-{
-	return get_global("global", name);
-}
-
-bool conf::bool_global_by_name(const std::string& name)
-{
-	const std::string s = global_by_name(name);
-	return bool_from_string(s);
-}
-
-std::string conf::task_option_by_name(
-	const std::vector<std::string>& task_names, const std::string& name)
-{
-	return get_for_task(task_names, "task", name);
-}
-
-bool conf::bool_task_option_by_name(
-	const std::vector<std::string>& task_names, const std::string& name)
-{
-	const std::string s = task_option_by_name(task_names, name);
-	return bool_from_string(s);
-}
-
-void conf::set_output_log_level(const std::string& s)
-{
-	if (s.empty())
-		return;
-
-	try
-	{
-		const auto i = std::stoi(s);
-
-		if (i < 0 || i > 6)
-			gcx().bail_out(context::generic, "bad output log level {}", i);
-
-		output_log_level_ = i;
-	}
-	catch(std::exception&)
-	{
-		gcx().bail_out(context::generic, "bad output log level {}", s);
-	}
-}
-
-void conf::set_file_log_level(const std::string& s)
-{
-	if (s.empty())
-		return;
-
-	try
-	{
-		const auto i = std::stoi(s);
-		if (i < 0 || i > 6)
-			gcx().bail_out(context::generic, "bad file log level {}", i);
-
-		file_log_level_ = i;
-	}
-	catch(std::exception&)
-	{
-		gcx().bail_out(context::generic, "bad file log level {}", s);
-	}
-}
-
-void conf::set_dry(const std::string& s)
-{
-	dry_ = bool_from_string(s);
-}
-
-
-std::vector<std::string> conf::format_options()
-{
-	std::size_t longest_task = 0;
-	std::size_t longest_section = 0;
+	std::size_t longest_what = 0;
 	std::size_t longest_key = 0;
 
-	for (auto&& [t, ss] : map_)
+	for (auto&& [section, kvs] : details::g_conf)
 	{
-		longest_task = std::max(longest_task, t.size());
+		longest_what = std::max(longest_what, section.size());
 
-		for (auto&& [s, kv] : ss)
-		{
-			longest_section = std::max(longest_section, s.size());
-
-			for (auto&& [k, v] : kv)
-				longest_key = std::max(longest_key, k.size());
-		}
+		for (auto&& [k, v] : kvs)
+			longest_key = std::max(longest_key, k.size());
 	}
+
+	for (auto&& [k, v] : details::g_tasks[""])
+		longest_key = std::max(longest_key, k.size());
+
+	for (const auto* task : tm.all())
+		longest_what = std::max(longest_what, task->name().size());
 
 	std::vector<std::string> lines;
 
 	lines.push_back(
-		pad_right("task", longest_task) + "  " +
-		pad_right("section", longest_section) + "  " +
+		pad_right("what", longest_what) + "  " +
 		pad_right("key",longest_key) + "   " +
 		"value");
 
 	lines.push_back(
-		pad_right("-", longest_task, '-') + "  " +
-		pad_right("-", longest_section, '-') + "  " +
+		pad_right("-", longest_what, '-') + "  " +
 		pad_right("-",longest_key, '-') + "   " +
 		"-----");
 
-	for (auto&& [t, ss] : map_)
+	for (auto&& [section, kvs] : details::g_conf)
 	{
-		for (auto&& [s, kv] : ss)
+		for (auto&& [k, v] : kvs)
 		{
-			for (auto&& [k, v] : kv)
-			{
-				lines.push_back(
-					pad_right(t, longest_task) + "  " +
-					pad_right(s, longest_section) + "  " +
-					pad_right(k, longest_key) + " = " + v);
-			}
+			lines.push_back(
+				pad_right(section, longest_what) + "  " +
+				pad_right(k, longest_key) + " = " + v);
+		}
+	}
+
+	for (auto&& [k, v] : details::g_tasks[""])
+	{
+		lines.push_back(
+			pad_right("task", longest_what) + "  " +
+			pad_right(k, longest_key) + " = " + v);
+	}
+
+	for (const auto* t : tm.all())
+	{
+		for (auto&& [k, unused] : details::g_tasks[""])
+		{
+			lines.push_back(
+				pad_right(t->name(), longest_what) + "  " +
+				pad_right(k, longest_key) + " = " +
+				details::get_string_for_task({t->name()}, k));
 		}
 	}
 
 	return lines;
 }
 
-
-struct parsed_option
+// sets commonly used options that need to be converted to int/bool, for
+// performance
+//
+void set_special_options()
 {
-	std::string task, section, key, value;
-};
-
-parsed_option parse_option(const std::string& s)
-{
-	// task:section/key=value
-	// task: is optional
-	std::regex re(R"((?:(.+)\:)?(.+)/(.*)=(.*))");
-	std::smatch m;
-
-	if (!std::regex_match(s, m, re))
-	{
-		gcx().bail_out(context::conf,
-			"bad option {}, must be [task:]section/key=value", s);
-	}
-
-	std::string task = trim_copy(m[1].str());
-	std::string section = trim_copy(m[2].str());
-	std::string key = trim_copy(m[3].str());
-	std::string value = trim_copy(m[4].str());
-
-	return {task, section, key, value};
+	details::g_output_log_level = details::get_int("global", "output_log_level");
+	details::g_file_log_level = details::get_int("global", "file_log_level");
+	details::g_dry = details::get_bool("global", "dry");
 }
 
-bool try_parts(fs::path& check, const std::vector<std::string>& parts)
-{
-	for (std::size_t i=0; i<parts.size(); ++i)
-	{
-		fs::path p = check;
-
-		for (std::size_t j=i; j<parts.size(); ++j)
-			p /= parts[j];
-
-		gcx().trace(context::conf, "trying parts {}", p);
-
-		if (fs::exists(p))
-		{
-			check = p;
-			return true;
-		}
-	}
-
-	return false;
-}
-
-fs::path mob_exe_path()
-{
-	// double the buffer size 10 times
-	const int max_tries = 10;
-
-	DWORD buffer_size = MAX_PATH;
-
-	for (int tries=0; tries<max_tries; ++tries)
-	{
-		auto buffer = std::make_unique<wchar_t[]>(buffer_size + 1);
-		DWORD n = GetModuleFileNameW(0, buffer.get(), buffer_size);
-
-		if (n == 0) {
-			const auto e = GetLastError();
-			gcx().bail_out(context::conf,
-				"can't get module filename, {}", error_message(e));
-		}
-		else if (n >= buffer_size) {
-			// buffer is too small, try again
-			buffer_size *= 2;
-		} else {
-			// if GetModuleFileName() works, `n` does not include the null
-			// terminator
-			const std::wstring s(buffer.get(), n);
-			return fs::canonical(s);
-		}
-	}
-
-	gcx().bail_out(context::conf, "can't get module filename");
-}
-
-fs::path find_root(bool verbose=false)
-{
-	gcx().trace(context::conf, "looking for root directory");
-
-	fs::path mob_exe_dir = mob_exe_path().parent_path();
-
-	auto third_party = mob_exe_dir / "third-party";
-
-	if (!fs::exists(third_party))
-	{
-		if (verbose)
-			u8cout << "no third-party here\n";
-
-		auto p = mob_exe_dir;
-
-		if (p.filename().u8string() == u8"x64")
-		{
-			p = p.parent_path();
-			if (p.filename().u8string() == u8"Debug" ||
-			    p.filename().u8string() == u8"Release")
-			{
-				if (verbose)
-					u8cout << "this is mob's build directory, looking up\n";
-
-				// mob_exe_dir is in the build directory
-				third_party = mob_exe_dir / ".." / ".." / ".." / "third-party";
-			}
-		}
-	}
-
-	if (!fs::exists(third_party))
-		gcx().bail_out(context::conf, "root directory not found");
-
-	const auto p = fs::canonical(third_party.parent_path());
-	gcx().trace(context::conf, "found root directory at {}", p);
-	return p;
-}
-
-fs::path find_in_root(const fs::path& file)
-{
-	static fs::path root = find_root();
-
-	fs::path p = root / file;
-	if (!fs::exists(p))
-		gcx().bail_out(context::conf, "{} not found", p);
-
-	gcx().trace(context::conf, "found {}", p);
-	return p;
-}
-
-
-fs::path find_third_party_directory()
-{
-	static fs::path path = find_in_root("third-party");
-	return path;
-}
-
-
-fs::path find_in_path(const std::string& exe)
-{
-	const std::wstring wexe = utf8_to_utf16(exe);
-
-	const std::size_t size = MAX_PATH;
-	wchar_t buffer[size + 1] = {};
-
-	if (SearchPathW(nullptr, wexe.c_str(), nullptr, size, buffer, nullptr))
-		return buffer;
-	else
-		return {};
-}
-
-bool find_qmake(fs::path& check)
-{
-	// try Qt/Qt5.14.2/msvc*/bin/qmake.exe
-	if (try_parts(check, {
-		"Qt",
-		"Qt" + qt::version(),
-		"msvc" + qt::vs_version() + "_64",
-		"bin",
-		"qmake.exe"}))
-	{
-		return true;
-	}
-
-	// try Qt/5.14.2/msvc*/bin/qmake.exe
-	if (try_parts(check, {
-		"Qt",
-		qt::version(),
-		"msvc" + qt::vs_version() + "_64",
-		"bin",
-		"qmake.exe"}))
-	{
-		return true;
-	}
-
-	return false;
-}
-
-bool try_qt_location(fs::path& check)
-{
-	if (!find_qmake(check))
-		return false;
-
-	check = fs::absolute(check.parent_path() / "..");
-	return true;
-}
-
-fs::path find_qt()
-{
-	fs::path p = conf::path_by_name("qt_install");
-
-	if (!p.empty())
-	{
-		p = fs::absolute(p);
-
-		if (!try_qt_location(p))
-			gcx().bail_out(context::conf, "no qt install in {}", p);
-
-		return p;
-	}
-
-
-	std::vector<fs::path> locations =
-	{
-		paths::pf_x64(),
-		"C:\\",
-		"D:\\"
-	};
-
-	// look for qmake, which is in %qt%/version/msvc.../bin
-	fs::path qmake = find_in_path("qmake.exe");
-	if (!qmake.empty())
-		locations.insert(locations.begin(), qmake.parent_path() / "../../");
-
-	// look for qtcreator.exe, which is in %qt%/Tools/QtCreator/bin
-	fs::path qtcreator = find_in_path("qtcreator.exe");
-	if (!qtcreator.empty())
-		locations.insert(locations.begin(), qtcreator.parent_path() / "../../../");
-
-	for (fs::path loc : locations)
-	{
-		loc = fs::absolute(loc);
-		if (try_qt_location(loc))
-			return loc;
-	}
-
-	gcx().bail_out(context::conf, "can't find qt install");
-}
-
-void validate_qt()
-{
-	fs::path p = qt::installation_path();
-
-	if (!try_qt_location(p))
-		gcx().bail_out(context::conf, "qt path {} doesn't exist", p);
-
-	conf::set_global("paths", "qt_install", path_to_utf8(p));
-}
-
-fs::path get_known_folder(const GUID& id)
-{
-	wchar_t* buffer = nullptr;
-	const auto r = ::SHGetKnownFolderPath(id, 0, 0, &buffer);
-
-	if (r != S_OK)
-		return {};
-
-	fs::path p = buffer;
-	::CoTaskMemFree(buffer);
-
-	return p;
-}
-
-fs::path find_program_files_x86()
-{
-	fs::path p = get_known_folder(FOLDERID_ProgramFilesX86);
-
-	if (p.empty())
-	{
-		const auto e = GetLastError();
-
-		p = fs::path(R"(C:\Program Files (x86))");
-
-		gcx().warning(context::conf,
-			"failed to get x86 program files folder, defaulting to {}, {}",
-			p, error_message(e));
-	}
-	else
-	{
-		gcx().trace(context::conf, "x86 program files is {}", p);
-	}
-
-	return p;
-}
-
-fs::path find_program_files_x64()
-{
-	fs::path p = get_known_folder(FOLDERID_ProgramFilesX64);
-
-	if (p.empty())
-	{
-		const auto e = GetLastError();
-
-		p = fs::path(R"(C:\Program Files)");
-
-		gcx().warning(context::conf,
-			"failed to get x64 program files folder, defaulting to {}, {}",
-			p, error_message(e));
-	}
-	else
-	{
-		gcx().trace(context::conf, "x64 program files is {}", p);
-	}
-
-	return p;
-}
-
-fs::path find_temp_dir()
-{
-	const std::size_t buffer_size = MAX_PATH + 2;
-	wchar_t buffer[buffer_size] = {};
-
-	if (GetTempPathW(static_cast<DWORD>(buffer_size), buffer) == 0)
-	{
-		const auto e = GetLastError();
-		gcx().bail_out(context::conf, "can't get temp path", error_message(e));
-	}
-
-	fs::path p(buffer);
-	gcx().trace(context::conf, "temp dir is {}", p);
-
-	return p;
-}
-
-fs::path find_vs()
-{
-	if (conf::dry())
-		return vs::vswhere();
-
-	auto p = process()
-		.binary(vs::vswhere())
-		.arg("-products", "*")
-		.arg("-prerelease")
-		.arg("-version", vs::version())
-		.arg("-property", "installationPath")
-		.stdout_flags(process::keep_in_string)
-		.stderr_flags(process::inherit);
-
-	p.run();
-	p.join();
-
-	if (p.exit_code() != 0)
-		gcx().bail_out(context::conf, "vswhere failed");
-
-	const fs::path path = trim_copy(p.stdout_string());
-	const auto lines = split(path_to_utf8(path), "\r\n");
-
-	if (lines.empty())
-	{
-		gcx().bail_out(context::conf, "vswhere didn't output anything");
-	}
-	else if (lines.size() > 1)
-	{
-		gcx().error(context::conf, "vswhere returned multiple installations:");
-
-		for (auto&& line : lines)
-			gcx().error(context::conf, " - {}", line);
-
-		gcx().bail_out(context::conf,
-			"specify the `vs` path in the `[paths]` section of the INI, or "
-			"pass -s paths/vs=PATH` to pick an installation");
-	}
-
-	if (!fs::exists(path))
-	{
-		gcx().bail_out(context::conf,
-			"the path given by vswhere doesn't exist: {}", path);
-	}
-
-	return path;
-}
-
-bool try_vcvars(fs::path& bat)
-{
-	if (!fs::exists(bat))
-		return false;
-
-	bat = fs::canonical(fs::absolute(bat));
-	return true;
-}
-
-void find_vcvars()
-{
-	fs::path bat = conf::tool_by_name("vcvars");
-
-	if (conf::dry())
-	{
-		if (bat.empty())
-			bat = "vcvars.bat";
-
-		return;
-	}
-	else
-	{
-		if (bat.empty())
-		{
-			bat = vs::installation_path()
-				/ "VC" / "Auxiliary" / "Build" / "vcvarsall.bat";
-
-			if (!try_vcvars(bat))
-				gcx().bail_out(context::conf, "vcvars not found at {}", bat);
-		}
-		else
-		{
-			if (!try_vcvars(bat))
-				gcx().bail_out(context::conf, "vcvars not found at {}", bat);
-		}
-	}
-
-	conf::set_global("tools", "vcvars", path_to_utf8(bat));
-	gcx().trace(context::conf, "using vcvars at {}", bat);
-}
-
-
-void ini_error(const fs::path& ini, std::size_t line, const std::string& what)
-{
-	gcx().bail_out(context::conf,
-		"{}:{}: {}",
-		path_to_utf8(ini), (line + 1), what);
-}
-
-std::vector<std::string> read_ini(const fs::path& ini)
-{
-	std::ifstream in(ini);
-
-	std::vector<std::string> lines;
-
-	for (;;)
-	{
-		std::string line;
-		std::getline(in, line);
-		trim(line);
-
-		if (!in)
-			break;
-
-		lines.push_back(std::move(line));
-	}
-
-	if (in.bad())
-		gcx().bail_out(context::conf, "failed to read ini {}", ini);
-
-	return lines;
-}
-
-void parse_section(
-	const fs::path& ini, std::size_t& i,
-	const std::vector<std::string>& lines,
-	const std::string& task, const std::string& section, bool add)
-{
-	++i;
-
-	for (;;)
-	{
-		if (i >= lines.size() || lines[i][0] == '[')
-			break;
-
-		const auto& line = lines[i];
-
-		if (line.empty() || line[0] == '#' || line[0] == ';')
-		{
-			++i;
-			continue;
-		}
-
-		const auto sep = line.find("=");
-		if (sep == std::string::npos)
-			ini_error(ini, i, "bad line '" + line + "'");
-
-		const std::string k = trim_copy(line.substr(0, sep));
-		const std::string v = trim_copy(line.substr(sep + 1));
-
-		if (k.empty())
-			ini_error(ini, i, "bad line '" + line + "'");
-
-		if (section == "aliases")
-		{
-			add_alias(k, split_quoted(v, " "));
-		}
-		else if (task.empty())
-		{
-			if (add)
-				conf::add_global(section, k, v);
-			else
-				conf::set_global(section, k, v);
-		}
-		else
-		{
-			if (task == "_override")
-			{
-				conf::set_for_task("_override", section, k, v);
-			}
-			else
-			{
-				const auto& tasks = find_tasks(task);
-
-				if (tasks.empty())
-					ini_error(ini, i, "no task matching '" + task + "' found");
-
-				for (auto& t : tasks)
-					conf::set_for_task(t->name(), section, k, v);
-			}
-		}
-
-		++i;
-	}
-}
-
-void parse_ini(const fs::path& ini, bool add)
-{
-	gcx().debug(context::conf, "using ini at {}", ini);
-
-	const auto lines = read_ini(ini);
-	std::size_t i = 0;
-
-	for (;;)
-	{
-		if (i >= lines.size())
-			break;
-
-		const auto& line = lines[i];
-		if (line.empty() || line[0] == '#' || line[0] == ';')
-		{
-			++i;
-			continue;
-		}
-
-		if (line.starts_with("[") && line.ends_with("]"))
-		{
-			const std::string s = line.substr(1, line.size() - 2);
-
-			std::string task, section;
-
-			const auto col = s.find(":");
-
-			if (col == std::string::npos)
-			{
-				section = s;
-			}
-			else
-			{
-				task = s.substr(0, col);
-				section = s.substr(col + 1);
-			}
-
-			parse_section(ini, i, lines, task, section, add);
-		}
-		else
-		{
-			ini_error(ini, i, "bad line '" + line + "'");
-		}
-	}
-}
-
-
+// sets an option `key` in the `paths` section; if the path is currently empty,
+// sets it using `f` (which is either a callable or a string)
+//
+// in any case, makes it absolute and canonical, bails out if the path does not
+// exist
+//
+// this is used for paths that should already exist (qt, vs, etc.)
+//
 template <class F>
-void set_path_if_empty(const std::string& k, F&& f)
+void set_path_if_empty(std::string_view key, F&& f)
 {
-	fs::path p = conf::get_global("paths", k);
+	// current value
+	fs::path p = conf().path().get(key);
 
 	if (p.empty())
 	{
+		// empty, set it from `f`
 		if constexpr (std::is_same_v<fs::path, std::decay_t<decltype(f)>>)
 			p = f;
 		else
@@ -862,7 +293,7 @@ void set_path_if_empty(const std::string& k, F&& f)
 
 	p = fs::absolute(p);
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 	{
 		if (!fs::exists(p))
 			gcx().bail_out(context::conf, "path {} not found", p);
@@ -870,14 +301,24 @@ void set_path_if_empty(const std::string& k, F&& f)
 		p = fs::canonical(p);
 	}
 
-	conf::set_global("paths", k, path_to_utf8(p));
+	// new value
+	details::set_string("paths", key, path_to_utf8(p));
 }
 
-void make_canonical_path(
-	const std::string& key,
-	const fs::path& default_parent, const std::string& default_dir)
+// sets an option `key` in the `paths` section:
+//   - if the path is empty, sets it as default_parent/default_dir,
+//   - if the path is not empty but is relative, resolves it against
+//     default_parent
+//
+// in any case, makes it absolute but weakly canonical since it might not exist
+// at that point (this is used for build, install, etc.)
+//
+void resolve_path(
+	std::string_view key,
+	const fs::path& default_parent, std::string_view default_dir)
 {
-	fs::path p = conf::path_by_name(key);
+	// current value
+	fs::path p = conf().path().get(key);
 
 	if (p.empty())
 	{
@@ -889,272 +330,132 @@ void make_canonical_path(
 			p = default_parent / p;
 	}
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 		p = fs::weakly_canonical(fs::absolute(p));
 
-	conf::set_global("paths", key, path_to_utf8(p));
+	details::set_string("paths", key, path_to_utf8(p));
 }
 
-void set_special_options()
+// `section_string` can be something like "global" or "paths", but also "task"
+// or a task-specific name like "uibase:task"
+//
+// `master` is true if the ini being processed is the master ini so options are
+// added to the maps instead of set, which throws if they're not found
+//
+void process_option(
+	const std::string& section_string,
+	const std::string& key, const std::string& value, bool master)
 {
-	conf::set_output_log_level(conf::get_global("global", "output_log_level"));
-	conf::set_file_log_level(conf::get_global("global", "file_log_level"));
-	conf::set_dry(conf::get_global("global", "dry"));
+	// split section string on ":"
+	const auto col = section_string.find(":");
+	std::string task, section;
+
+	if (col == std::string::npos)
+	{
+		// not a "task_name:task" section
+		section = section_string;
+	}
+	else
+	{
+		// that's a "task_name:task" section
+		task = section_string.substr(0, col);
+		section = section_string.substr(col + 1);
+	}
+
+	if (section == "task")
+	{
+		// task options go in g_tasks
+
+		if (task == "_override")
+		{
+			// special case, comes from options on the command line
+			details::set_string_for_task("_override", key, value);
+		}
+		else if (task != "")
+		{
+			// task specific
+
+			// task must exist
+			const auto& tasks = task_manager::instance().find(task);
+			MOB_ASSERT(!tasks.empty());
+
+			for (auto& t : tasks)
+				details::set_string_for_task(t->name(), key, value);
+		}
+		else
+		{
+			// global task option
+
+			if (master)
+				details::add_string_for_task("", key, value);
+			else
+				details::set_string_for_task("", key, value);
+		}
+	}
+	else
+	{
+		// not a task option, goes into g_conf
+
+		if (master)
+			details::add_string(section, key, value);
+		else
+			details::set_string(section, key, value);
+	}
 }
 
-std::vector<fs::path> find_inis(
-	bool auto_detect, const std::vector<std::string>& from_cl, bool verbose)
+// reads the given ini and adds all of its content to the options
+//
+void process_ini(const fs::path& ini, bool master)
 {
-	// the string is just for verbose
-	std::vector<std::pair<std::string, fs::path>> v;
+	const auto data = parse_ini(ini);
 
-	// adds a path to the vector; if the path already exists, moves it to
-	// the last element
-	auto add_or_move_up = [&](std::string where, fs::path p)
+	for (auto&& a : data.aliases)
+		task_manager::instance().add_alias(a.first, a.second);
+
+	for (auto&& [section_string, kvs] : data.sections)
 	{
-		for (auto itor=v.begin(); itor!=v.end(); ++itor)
-		{
-			if (fs::equivalent(p, itor->second))
-			{
-				auto pair = std::move(*itor);
-				v.erase(itor);
-				v.push_back({where + ", was " + pair.first, p});
-				return;
-			}
-		}
-
-		v.push_back({where, p});
-	};
-
-
-	fs::path master;
-
-	// auto detect from exe directory
-	if (auto_detect)
-	{
-		if (verbose)
-		{
-			const auto r = find_root(verbose);
-			u8cout << "root is " << path_to_utf8(r) << "\n";
-		}
-
-		master = find_in_root(default_ini_filename());
-
-		if (verbose)
-			u8cout << "found master " << path_to_utf8(master) << "\n";
-
-		v.push_back({"master", master});
+		for (auto&& [k, v] : kvs)
+			process_option(section_string, k, v, master);
 	}
-
-
-	// MOBINI environment variable
-	if (auto e=this_env::get_opt("MOBINI"))
-	{
-		if (verbose)
-			u8cout << "found env MOBINI: '" << *e << "'\n";
-
-		for (auto&& i : split(*e, ";"))
-		{
-			if (verbose)
-				u8cout << "checking '" << i << "'\n";
-
-			auto p = fs::path(i);
-			if (!fs::exists(p))
-			{
-				u8cerr << "ini from env MOBINI " << i << " not found\n";
-				throw bailed();
-			}
-
-			p = fs::canonical(p);
-
-			if (verbose)
-				u8cout << "ini from env: " << path_to_utf8(p) << "\n";
-
-			add_or_move_up("env", p);
-		}
-	}
-
-
-	// auto detect from the current directory
-	if (auto_detect)
-	{
-		MOB_ASSERT(!master.empty());
-
-		auto cwd = fs::current_path();
-
-		while (!cwd.empty()) {
-			const auto in_cwd = cwd / default_ini_filename();
-			if (fs::exists(in_cwd) && !fs::equivalent(in_cwd, master))
-			{
-				if (verbose)
-					u8cout << "also found in cwd " << path_to_utf8(in_cwd) << "\n";
-
-				v.push_back({ "cwd", fs::canonical(in_cwd) });
-				break;
-			}
-
-			const auto parent = cwd.parent_path();
-			if (cwd == parent)
-				break;
-
-			cwd = parent;
-		}
-	}
-
-
-	// command line
-	for (auto&& i : from_cl)
-	{
-		auto p = fs::path(i);
-		if (!fs::exists(p))
-		{
-			u8cerr << "ini " << i << " not found\n";
-			throw bailed();
-		}
-
-		p = fs::canonical(p);
-
-		if (verbose)
-			u8cout << "ini from command line: " << path_to_utf8(p) << "\n";
-
-		add_or_move_up("cl", p);
-	}
-
-
-	if (verbose)
-	{
-		u8cout << "\nhigher number overrides lower\n";
-
-		for (std::size_t i=0; i<v.size(); ++i)
-		{
-			u8cout
-				<< "  " << (i + 1) << ") "
-				<< path_to_utf8(v[i].second) << " (" << v[i].first << ")\n";
-		}
-	}
-
-
-	return map(v, [&](auto&& p){ return p.second; });
 }
 
-fs::path find_iscc()
+// parses the given option strings and adds them as options
+//
+void process_cmd_options(const std::vector<std::string>& opts)
 {
-	const auto tasks = find_tasks("installer");
-	MOB_ASSERT(tasks.size() == 1);
+	// parses "section/key=value"
+	static std::regex re(R"((.+)/(.+)=(.*))");
 
-	if (!tasks[0]->enabled())
-		return {};
+	gcx().debug(context::conf, "overriding from command line:");
 
-	auto iscc = conf::tool_by_name("iscc");
-	if (iscc.is_absolute())
+	for (auto&& o : opts)
 	{
-		if (!fs::exists(iscc))
+		std::smatch m;
+		if (!std::regex_match(o, m, re))
 		{
 			gcx().bail_out(context::conf,
-				"{} doesn't exist (from ini, absolute path)", iscc);
+				"bad option {}, must be [task:]section/key=value", o);
 		}
 
-		return iscc;
+		process_option(m[1], m[2], m[3], false);
 	}
-
-	fs::path p = find_in_path(path_to_utf8(iscc));
-	if (fs::exists(p))
-		return fs::canonical(fs::absolute(p));
-
-	for (int v : {5, 6, 7, 8})
-	{
-		const fs::path inno = ::fmt::format("inno setup {}", v);
-
-		for (fs::path pf : {paths::pf_x86(), paths::pf_x64()})
-		{
-			p = pf / inno / iscc;
-			if (fs::exists(p))
-				return fs::canonical(fs::absolute(p));
-		}
-	}
-
-	gcx().bail_out(context::conf, "can't find {} anywhere", iscc);
 }
 
-void init_options(
-	const std::vector<fs::path>& inis, const std::vector<std::string>& opts)
+// goes through all the options that have to do with paths, checks them and
+// resolves them if necessary
+//
+void resolve_paths()
 {
-	MOB_ASSERT(!inis.empty());
+	// first, if any of these paths are empty, they are set using the second
+	// argument, which can be callable or a path
+	//
+	// the resulting path is made absolute and canonical and will bail out if it
+	// doesn't exist
 
-	// Keep track of the INI that contained a prefix:
-	fs::path ini_prefix;
-	bool add = true;
-	for (auto&& ini : inis)
-	{
-		// Check if the prefix is set by this ini file:
-		fs::path cprefix = add ? fs::path{} : paths::prefix();
-		parse_ini(ini, add);
-
-		if (paths::prefix() != cprefix)
-			ini_prefix = ini;
-
-		add = false;
-	}
-
-	if (!opts.empty())
-	{
-		gcx().debug(context::conf, "overriding from command line:");
-
-		for (auto&& o : opts)
-		{
-			const auto po = parse_option(o);
-
-			if (po.section == "paths" && po.key == "prefix")
-			{
-				ini_prefix = "";
-			}
-
-			if (po.task.empty())
-			{
-				conf::set_global(po.section, po.key, po.value);
-			}
-			else
-			{
-				if (po.task == "_override")
-				{
-					conf::set_for_task("_override", po.section, po.key, po.value);
-				}
-				else
-				{
-					const auto& tasks = find_tasks(po.task);
-
-					if (tasks.empty())
-					{
-						gcx().bail_out(context::generic,
-							"no task matching '{}' found (command line option)",
-							po.task);
-					}
-
-					for (auto& t : tasks)
-						conf::set_for_task(t->name(), po.section, po.key, po.value);
-				}
-			}
-		}
-	}
-
-	set_special_options();
-
-	auto log_file = conf::log_file();
-	if (log_file.is_relative())
-		log_file = paths::prefix() / log_file;
-
-	context::set_log_file(log_file);
-
-	gcx().debug(context::conf,
-		"command line: {}", std::wstring(GetCommandLineW()));
-
-	gcx().debug(context::conf, "using inis in order:");
-
-	for (auto&& ini : inis)
-		gcx().debug(context::conf, "  . {}", ini);
-
+	// make sure third-party is in PATH before the other paths are checked
+	// because some of these paths will need to look in there to find stuff
 	set_path_if_empty("third_party", find_third_party_directory);
-	this_env::prepend_to_path(paths::third_party() / "bin");
+	this_env::prepend_to_path(conf().path().third_party() / "bin");
 
 	set_path_if_empty("pf_x86",     find_program_files_x86);
 	set_path_if_empty("pf_x64",     find_program_files_x64);
@@ -1165,44 +466,130 @@ void init_options(
 	set_path_if_empty("licenses",   find_in_root("licenses"));
 	set_path_if_empty("qt_bin",     qt::installation_path() / "bin");
 
-	find_vcvars();
-	validate_qt();
+	// second, if any of these paths are relative, they use the second argument
+	// as the root; if they're empty, they combine the second and third
+	// arguments
+	//
+	// these paths might not exist yet, so they're only made weakly canonical,
+	// they'll be created as needed during the build process
 
-	this_env::append_to_path(conf::path_by_name("qt_bin"));
+	const auto p = conf().path();
 
-	if (!paths::prefix().empty())
-		make_canonical_path("prefix", ini_prefix.empty() ? fs::current_path() : ini_prefix.parent_path(), "");
+	resolve_path("cache",                p.prefix(),       "downloads");
+	resolve_path("build",                p.prefix(),       "build");
+	resolve_path("install",              p.prefix(),       "install");
+	resolve_path("install_installer",    p.install(),      "installer");
+	resolve_path("install_bin",          p.install(),      "bin");
+	resolve_path("install_libs",         p.install(),      "libs");
+	resolve_path("install_pdbs",         p.install(),      "pdb");
+	resolve_path("install_dlls",         p.install_bin(),  "dlls");
+	resolve_path("install_loot",         p.install_bin(),  "loot");
+	resolve_path("install_plugins",      p.install_bin(),  "plugins");
+	resolve_path("install_licenses",     p.install_bin(),  "licenses");
+	resolve_path("install_pythoncore",   p.install_bin(),  "pythoncore");
+	resolve_path("install_stylesheets",  p.install_bin(),  "stylesheets");
+	resolve_path("install_translations", p.install_bin(),  "translations");
 
-	make_canonical_path("cache",             paths::prefix(), "downloads");
-	make_canonical_path("build",             paths::prefix(), "build");
-	make_canonical_path("install",           paths::prefix(), "install");
-	make_canonical_path("install_installer", paths::install(), "installer");
-	make_canonical_path("install_bin",       paths::install(), "bin");
-	make_canonical_path("install_libs",      paths::install(), "libs");
-	make_canonical_path("install_pdbs",      paths::install(), "pdb");
-	make_canonical_path("install_dlls",      paths::install_bin(), "dlls");
-	make_canonical_path("install_loot",      paths::install_bin(), "loot");
-	make_canonical_path("install_plugins",   paths::install_bin(), "plugins");
-	make_canonical_path("install_licenses",  paths::install_bin(), "licenses");
+	// finally, resolve the tools that are unlikely to be in PATH; all the
+	// other tools (7z, jom, patch, etc.) are assumed to be in PATH (which
+	// now contains third-party) or have valid absolute paths in the ini
 
-	make_canonical_path(
-		"install_pythoncore",
-		paths::install_bin(), "pythoncore");
+	details::set_string("tools", "vcvars", path_to_utf8(find_vcvars()));
+	details::set_string("tools", "iscc", path_to_utf8(find_iscc()));
+}
 
-	make_canonical_path(
-		"install_stylesheets",
-		paths::install_bin(), "stylesheets");
+void init_options(
+	const std::vector<fs::path>& inis, const std::vector<std::string>& opts)
+{
+	MOB_ASSERT(!inis.empty());
 
-	make_canonical_path(
-		"install_translations",
-		paths::install_bin(), "translations");
+	// some logging
+	gcx().debug(context::conf, "cl: {}", std::wstring(GetCommandLineW()));
+	gcx().debug(context::conf, "using inis in order:");
+	for (auto&& ini : inis)
+		gcx().debug(context::conf, "  . {}", ini);
 
-	conf::set_global("tools", "iscc", path_to_utf8(find_iscc()));
+
+	// used to resolve a relative prefix; by default, it's resolved against cwd,
+	// but if an ini other than the master contains a prefix, use the ini's
+	// parent directory instead
+	fs::path prefix_root = fs::current_path();
+
+	// true for the first ini, will add values to the configuration maps instead
+	// of setting them, which throws if the option doesn't exist
+	//
+	// the goal is that the first, master ini contains all existing options and
+	// if an option  set in another ini or on the command line doesn't exist in
+	// the master, it's an error
+	bool master = true;
+
+	for (auto&& ini : inis)
+	{
+		fs::path prefix_before;
+
+		// if this is the master ini, the prefix doesn't exist in the config
+		// yet because no inis have been loaded
+		if (!master)
+			prefix_before = conf().path().prefix();
+
+		process_ini(ini, master);
+
+		// check if the prefix was changed by this ini
+		if (!master && conf().path().prefix() != prefix_before)
+		{
+			// remember its path
+			prefix_root = ini.parent_path();
+		}
+
+		// further inis should only contain options that already exist
+		master = false;
+	}
+
+
+	if (!opts.empty())
+	{
+		const fs::path prefix_before = conf().path().prefix();
+
+		process_cmd_options(opts);
+
+		// check if the prefix was changed on the command line
+		if (conf().path().prefix() != prefix_before)
+		{
+			// use cwd as the parent of a relative prefix
+			prefix_root = fs::current_path();
+		}
+	}
+
+	// converts some options to ints or bools, these are used everywhere, like
+	// the log levels
+	set_special_options();
+
+	// an empty prefix is an error and will fail in validate_options(), but
+	// don't check it here to allow some commands to run, like `mob options`,
+	// and make sure it's not set to something that's not empty to make sure it
+	// _does_ fail later on
+	if (!conf().path().prefix().empty())
+		resolve_path("prefix", prefix_root, "");
+
+	// set up the log file, resolve against prefix if relative
+	fs::path log_file = conf().global().get("log_file");
+	if (log_file.is_relative())
+		log_file = conf().path().prefix() / log_file;
+
+	context::set_log_file(log_file);
+
+	// goes through all paths and tools, finds missing or relative stuff, bails
+	// out of stuff can't be found
+	resolve_paths();
+
+	// make sure qt's bin directory is in the path
+	this_env::append_to_path(conf().path().get("qt_bin"));
 }
 
 bool verify_options()
 {
-	if (paths::prefix().empty())
+	// can't have an empty prefix
+	if (conf().path().prefix().empty())
 	{
 		u8cerr
 			<< "missing prefix; either specify it the [paths] section of "
@@ -1211,10 +598,10 @@ bool verify_options()
 		return false;
 	}
 
-	// will be created later if it doesn't exist
-	if (fs::exists(paths::prefix()))
+	// don't build mo inside mob
+	if (fs::exists(conf().path().prefix()))
 	{
-		if (fs::equivalent(paths::prefix(), mob_exe_path().parent_path()))
+		if (fs::equivalent(conf().path().prefix(), mob_exe_path().parent_path()))
 		{
 			u8cerr
 				<< "the prefix cannot be where mob.exe is, there's already a "
@@ -1227,33 +614,103 @@ bool verify_options()
 	return true;
 }
 
-void log_options()
+
+conf_global conf::global()
 {
-	for (auto&& line : conf::format_options())
-		gcx().trace(context::conf, "{}", line);
+	return {};
 }
 
-void dump_available_options()
+conf_task conf::task(const std::vector<std::string>& names)
 {
-	for (auto&& line : conf::format_options())
-		u8cout << line << "\n";
+	return {names};
+}
+
+conf_tools conf::tool()
+{
+	return {};
+}
+
+conf_transifex conf::transifex()
+{
+	return {};
+}
+
+conf_prebuilt conf::prebuilt()
+{
+	return {};
+}
+
+conf_versions conf::version()
+{
+	return {};
+}
+
+conf_paths conf::path()
+{
+	return {};
 }
 
 
-fs::path make_temp_file()
+conf_global::conf_global()
+	: conf_section("global")
 {
-	static fs::path dir = paths::temp_dir();
+}
 
-	wchar_t name[MAX_PATH + 1] = {};
-	if (GetTempFileNameW(dir.native().c_str(), L"mob", 0, name) == 0)
-	{
-		const auto e = GetLastError();
+int conf_global::output_log_level() const
+{
+	return details::g_output_log_level;
+}
 
-		gcx().bail_out(context::conf,
-			"can't create temp file in {}, {}", dir, error_message(e));
-	}
+int conf_global::file_log_level() const
+{
+	return details::g_file_log_level;
+}
 
-	return dir / name;
+bool conf_global::dry() const
+{
+	return details::g_dry;
+}
+
+
+conf_task::conf_task(std::vector<std::string> names)
+	: names_(std::move(names))
+{
+}
+
+std::string conf_task::get(std::string_view key) const
+{
+	return details::get_string_for_task(names_, key);
+}
+
+bool conf_task::get_bool(std::string_view key) const
+{
+	return details::get_bool_for_task(names_, key);
+}
+
+
+conf_tools::conf_tools()
+	: conf_section("tools")
+{
+}
+
+conf_transifex::conf_transifex()
+	: conf_section("transifex")
+{
+}
+
+conf_versions::conf_versions()
+	: conf_section("versions")
+{
+}
+
+conf_prebuilt::conf_prebuilt()
+	: conf_section("prebuilt")
+{
+}
+
+conf_paths::conf_paths()
+	: conf_section("paths")
+{
 }
 
 }	// namespace

@@ -113,7 +113,7 @@ curl_downloader& curl_downloader::start()
 	ok_ = false;
 	cx_.debug(context::net, "downloading {} to {}", url_, path_);
 
-	if (conf::dry())
+	if (conf().global().dry())
 		return *this;
 
 	thread_ = start_thread([&]{ run(); });
@@ -241,7 +241,7 @@ size_t curl_downloader::on_write_static(
 
 	if (self->interrupt_)
 	{
-		debug("downloader: interrupting");
+		gcx().debug(context::net, "downloader: interrupting");
 		return (size * nmemb) + 1; // force failure
 	}
 
@@ -249,7 +249,7 @@ size_t curl_downloader::on_write_static(
 
 	if (self->interrupt_)
 	{
-		debug("downloader: interrupting");
+		gcx().debug(context::net, "downloader: interrupting");
 		return (size * nmemb) + 1; // force failure
 	}
 
@@ -334,7 +334,7 @@ int curl_downloader::on_progress_static(
 
 	if (self->interrupt_)
 	{
-		debug("downloader: interrupting");
+		gcx().debug(context::net, "downloader: interrupting");
 		return 1;
 	}
 
@@ -348,7 +348,7 @@ int curl_downloader::on_xfer_static(
 
 	if (self->interrupt_)
 	{
-		debug("downloader: interrupting");
+		gcx().debug(context::net, "downloader: interrupting");
 		return 1;
 	}
 

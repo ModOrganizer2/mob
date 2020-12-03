@@ -15,11 +15,6 @@ enum class encodings
 };
 
 
-// case insensitive, underscores and dashes are equivalent; gets converted to
-// a regex where * becomes .*
-//
-bool glob_match(const std::string& pattern, const std::string& s);
-
 // replaces all instances of `from` by `to`, returns a copy
 //
 std::string replace_all(
@@ -165,5 +160,212 @@ void for_each_line(std::string_view s, F&& f)
 		}
 	}
 }
+
+
+// an array of bytes using the specified encoding that can be parsed to call a
+// function with every line
+//
+// the output of a process is stored in an encoded_buffer and next_utf8_lines()
+// is called to process every line in it, avoiding copies or memory allocation,
+// except for conversions to utf8 when necessary
+//
+// if the encoding is dont_know, the buffer is basically interpreted as ascii
+// for checking newlines and the bytes are given as-is to the callback
+//
+class encoded_buffer
+{
+public:
+	// a buffer using the given encoding and starting bytes
+	//
+	encoded_buffer(encodings e=encodings::dont_know, std::string bytes={});
+
+	// copies bytes to the internal buffer
+	//
+	void add(std::string_view bytes);
+
+	// returns a copy of the internal buffer as utf8
+	//
+	std::string utf8_string() const;
+
+	// calls `f()` with a utf8 string for every non-empty line in the buffer;
+	// remembers the final offset when next_utf8_lines() was last called so
+	// lines are only processed once
+	//
+	// if `finished` is false, it's assumed that more bytes will arrive
+	// eventually, so the bytes after the last newline in the buffer are not
+	// considered a line
+	//
+	// if `finished` is true, it's assumed that the output is complete and that
+	// the final bytes before the end of the buffer are considered a valid line
+	//
+	template <class F>
+	void next_utf8_lines(bool finished, F&& f)
+	{
+		// every case is the same, except for conversions:
+		//   1) get the next, non-empty line
+		//   2) if the line is empty, there wasn't any, so break
+		//   3) convert to utf8 if needed and call f()
+
+		for (;;)
+		{
+			switch (e_)
+			{
+				case encodings::utf16:
+				{
+					std::wstring_view utf16 =
+						next_line<wchar_t>(finished, bytes_, last_);
+
+					if (utf16.empty())
+						return;
+
+					f(utf16_to_utf8(utf16));
+					break;
+				}
+
+				case encodings::acp:
+				case encodings::oem:
+				{
+					std::string_view cp =
+						next_line<char>(finished, bytes_, last_);
+
+					if (cp.empty())
+						return;
+
+					f(bytes_to_utf8(e_, cp));
+					break;
+				}
+
+				case encodings::utf8:
+				case encodings::dont_know:
+				default:
+				{
+					std::string_view utf8 =
+						next_line<char>(finished, bytes_, last_);
+
+					if (utf8.empty())
+						return;
+
+					f(std::string(utf8));
+					break;
+				}
+			}
+		}
+	}
+
+private:
+	// encoding of the buffer
+	encodings e_;
+
+	// internal buffer
+	std::string bytes_;
+
+	// offset of the last newline found the last time next_utf8_lines() was
+	// called
+	std::size_t last_;
+
+
+	// looks for the next newline character after last_ and returns a
+	// string_view of the data between the two; empty lines are ignored,
+	// handles both lf and crlf the same
+	//
+	// this is a static function, but it's always given bytes_ and last_ as
+	// arguments
+	//
+	template <class CharT>
+	static std::basic_string_view<CharT> next_line(
+		bool finished, const std::string_view bytes, std::size_t& byte_offset)
+	{
+		// number of available bytes in the buffer
+		//
+		// for utf16, it's possible (but unlikely) that the buffer has an odd
+		// number of bytes if not all the output was flushed, so don't check the
+		// last stray byte
+		//
+		// this doesn't handle stray bytes for other encodings, but they use
+		// single bytes for cr and lf, so it's fine
+		//
+		const std::size_t size = [&]
+		{
+			if constexpr (sizeof(CharT) == 2)
+			{
+				if ((bytes.size() & 1) == 1)
+					return bytes.size() - 1;
+			}
+
+			return bytes.size();
+		}();
+
+
+		// position just past where the last newline was found
+		const CharT* start = reinterpret_cast<const CharT*>(bytes.data() + byte_offset);
+
+		// end of the buffer
+		const CharT* const end = reinterpret_cast<const CharT*>(bytes.data() + size);
+
+		// current character being checked
+		const CharT* p = start;
+
+		// line that was found, or empty if none is available
+		std::basic_string_view<CharT> line;
+
+
+		// looking for a non-empty line
+		while (p != end)
+		{
+			if (*p == CharT('\n') || *p == CharT('\r'))
+			{
+				line = {start, static_cast<std::size_t>(p - start)};
+
+				// skip newline characters from this point
+				while (p != end && (*p == CharT('\n') || *p == CharT('\r')))
+					++p;
+
+				// line is not empty, take it
+				if (!line.empty())
+					break;
+
+				// line can be empty for something like \n\n, continue looking
+				// for a non-empty line if that's the case
+				start = p;
+			}
+			else
+			{
+				++p;
+			}
+		}
+
+		// if the line is empty but `finished` is true, make sure the last
+		// line in the buffer is handled
+		//
+		if (line.empty())
+		{
+			if (finished)
+			{
+				// the line is from past the last newline to the end of the
+				// buffer; this may be empty if the buffer actually ends with
+				// a newline, which is fine
+				line = {
+					reinterpret_cast<const CharT*>(bytes.data() + byte_offset),
+					size - byte_offset
+				};
+
+				// tell the caller that whole thing has been processed
+				byte_offset = bytes.size();
+			}
+		}
+		else
+		{
+			// a non-empty line was found, update the offset to be past the
+			// newline character(s)
+
+			byte_offset = static_cast<std::size_t>(
+				reinterpret_cast<const char*>(p) - bytes.data());
+
+			MOB_ASSERT(byte_offset <= bytes.size());
+		}
+
+		return line;
+	}
+};
 
 }	// namespace

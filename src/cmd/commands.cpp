@@ -3,18 +3,18 @@
 #include "../utility.h"
 #include "../net.h"
 #include "../core/conf.h"
-#include "../tasks/tasks.h"
+#include "../core/ini.h"
+#include "../tasks/task_manager.h"
 #include "../tools/tools.h"
 #include "../utility/threading.h"
 
 namespace mob
 {
 
-
 BOOL WINAPI signal_handler(DWORD) noexcept
 {
 	gcx().debug(context::generic, "caught sigint");
-	task::interrupt_all();
+	task_manager::instance().interrupt_all();
 	return TRUE;
 }
 
@@ -89,7 +89,7 @@ clipp::group command::common_options_group()
 			%  "sets an option, such as 'versions/openssl=1.2'",
 
 		(clipp::option("--no-default-inis") >> o.no_default_inis)
-			% "disables auto loading of ini files, only uses --ini; the first"
+			% "disables auto loading of ini files, only uses --ini; the first "
 			  "--ini must be the master ini file";
 }
 
@@ -220,7 +220,9 @@ int command::load_options()
 		return r;
 
 	init_options(inis_, common.options);
-	log_options();
+
+	for (auto&& line : format_options())
+		gcx().trace(context::conf, "{}", line);
 
 	if (!verify_options())
 		return 1;
@@ -332,7 +334,9 @@ clipp::group options_command::do_group()
 
 int options_command::do_run()
 {
-	dump_available_options();
+	for (auto&& line : format_options())
+		u8cout << line << "\n";
+
 	return 0;
 }
 

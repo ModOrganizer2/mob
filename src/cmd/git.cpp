@@ -85,6 +85,14 @@ clipp::group git_command::do_group()
 				clipp::command("off").set(tson_, false)
 			)
 		)
+
+		|
+
+		"branches" %
+		(clipp::command("branches").set(mode_, modes::branches),
+			clipp::option("-a", "--all").set(all_branches_)
+				% "shows all branches, including those on master"
+		)
 	);
 }
 
@@ -107,6 +115,12 @@ int git_command::do_run()
 		case modes::ignore_ts:
 		{
 			do_ignore_ts();
+			break;
+		}
+
+		case modes::branches:
+		{
+			do_branches();
 			break;
 		}
 
@@ -137,7 +151,11 @@ std::string git_command::do_doc()
 		"  remote with the same name already exists, nothing happens.\n"
 		"\n"
 		"ignore-ts\n"
-		"  Toggles the --assume-changed status of all .ts files in all repos.";
+		"  Toggles the --assume-changed status of all .ts files in all repos.\n"
+		"\n"
+		"branches\n"
+		"  Lists all git repos that are not on master. With -a, show all \n"
+		"  repos and their current branch.";
 }
 
 void git_command::do_set_remotes()
@@ -158,8 +176,11 @@ void git_command::do_set_remotes()
 void git_command::do_set_remotes(const fs::path& r)
 {
 	u8cout << "setting up " << path_to_utf8(r.filename()) << "\n";
-	git::set_credentials(r, username_, email_);
-	git::set_remote(r, username_, key_, nopush_, push_default_);
+
+	git_wrap(r).set_credentials(username_, email_);
+
+	git_wrap(r).set_origin_and_upstream_remotes(
+		username_, key_, nopush_, push_default_);
 }
 
 void git_command::do_add_remote()
@@ -184,7 +205,7 @@ void git_command::do_add_remote()
 void git_command::do_add_remote(const fs::path& r)
 {
 	u8cout << path_to_utf8(r.filename()) << "\n";
-	git::add_remote(r, remote_, username_, key_, push_default_);
+	git_wrap(r).add_remote(remote_, username_, key_, push_default_);
 }
 
 void git_command::do_ignore_ts()
@@ -210,7 +231,26 @@ void git_command::do_ignore_ts()
 void git_command::do_ignore_ts(const fs::path& r)
 {
 	u8cout << path_to_utf8(r.filename()) << "\n";
-	git::ignore_ts(r, tson_);
+	git_wrap(r).ignore_ts(tson_);
+}
+
+void git_command::do_branches()
+{
+	std::vector<std::pair<std::string, std::string>> v;
+
+	for (auto&& r : get_repos())
+	{
+		const auto b = git_wrap(r).current_branch();
+		if (b == "master" && !all_branches_)
+			continue;
+
+		if (b.empty())
+			v.push_back({r.filename().string(), "detached head"});
+		else
+			v.push_back({r.filename().string(), b});
+	}
+
+	u8cout << table(v, 0, 3) << "\n";
 }
 
 std::vector<fs::path> git_command::get_repos() const
@@ -218,15 +258,15 @@ std::vector<fs::path> git_command::get_repos() const
 	std::vector<fs::path> v;
 
 	// usvfs
-	if (fs::exists(usvfs::source_path()))
-		v.push_back(usvfs::source_path());
+	if (fs::exists(tasks::usvfs::source_path()))
+		v.push_back(tasks::usvfs::source_path());
 
 	// ncc
-	if (fs::exists(ncc::source_path()))
-		v.push_back(ncc::source_path());
+	if (fs::exists(tasks::ncc::source_path()))
+		v.push_back(tasks::ncc::source_path());
 
 
-	const auto super = modorganizer::super_path();
+	const auto super = tasks::modorganizer::super_path();
 
 	// all directories in super except for those starting with a dot
 	if (fs::exists(super))

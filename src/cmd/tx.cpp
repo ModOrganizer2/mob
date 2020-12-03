@@ -138,11 +138,11 @@ std::string tx_command::do_doc()
 void tx_command::do_get()
 {
 	const url u =
-		conf::get_global("transifex", "url") + "/" +
-		conf::get_global("transifex", "team") + "/" +
-		conf::get_global("transifex", "project");
+		conf().transifex().get("url") + "/" +
+		conf().transifex().get("team") + "/" +
+		conf().transifex().get("project");
 
-	const std::string key = conf::get_global("transifex", "key");
+	const std::string key = conf().transifex().get("key");
 
 	if (key.empty() && !this_env::get_opt("TX_TOKEN"))
 	{
@@ -151,6 +151,7 @@ void tx_command::do_get()
 			"variable doesn't exist, this will probably fail)\n\n";
 	}
 
+	// copy the global context, the tools will modify it
 	context cxcopy = gcx();
 
 	u8cout << "initializing\n";
@@ -171,8 +172,8 @@ void tx_command::do_get()
 		.stdout_level(context::level::info)
 		.root(path_)
 		.api_key(key)
-		.minimum(conf::get_global_int("transifex", "minimum"))
-		.force(conf::get_global_bool("transifex", "force"))
+		.minimum(conf().transifex().get<int>("minimum"))
+		.force(conf().transifex().get<bool>("force"))
 		.run(cxcopy);
 }
 
@@ -182,7 +183,7 @@ void tx_command::do_build()
 	if (fs::exists(root / ".tx") && fs::exists(root / "translations"))
 		root = root / "translations";
 
-	translations::projects ps(root);
+	tasks::translations::projects ps(root);
 
 	fs::path dest = dest_;
 	op::create_directories(gcx(), dest, op::unsafe);
@@ -196,6 +197,7 @@ void tx_command::do_build()
 	{
 		for (auto& lg : p.langs)
 		{
+			// copy the global context, each thread must have its own
 			tp.add([&, cxcopy=gcx()]() mutable
 			{
 				lrelease()

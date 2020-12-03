@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "tasks.h"
 
-namespace mob
+namespace mob::tasks
 {
 
 nmm::nmm()
@@ -11,7 +11,7 @@ nmm::nmm()
 
 std::string nmm::version()
 {
-	return conf::version_by_name("nmm");
+	return conf().version().get("nmm");
 }
 
 bool nmm::prebuilt()
@@ -21,64 +21,49 @@ bool nmm::prebuilt()
 
 fs::path nmm::source_path()
 {
-	return paths::build() / "Nexus-Mod-Manager";
+	return conf().path().build() / "Nexus-Mod-Manager";
 }
 
 void nmm::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	// delete the whole directory
+	if (is_set(c, clean::reclone))
 	{
-		if (is_set(c, clean::reclone))
-		{
-			git::delete_directory(cx(), source_path());
-			return;
-		}
+		git_wrap::delete_directory(cx(), source_path());
 
-		if (is_set(c, clean::rebuild))
-			run_tool(create_msbuild_tool(msbuild::clean));
-	});
+		// no need to do anything else
+		return;
+	}
+
+	// msbuild clean
+	if (is_set(c, clean::rebuild))
+		run_tool(create_msbuild_tool(msbuild::clean));
 }
 
 void nmm::do_fetch()
 {
-	instrument<times::fetch>([&]
-	{
-		run_tool(task_conf().make_git()
-			.url(task_conf().make_git_url("Nexus-Mods", "Nexus-Mod-Manager"))
-			.branch(version())
-			.root(source_path()));
+	// clone/pull
+	run_tool(make_git()
+		.url(make_git_url("Nexus-Mods", "Nexus-Mod-Manager"))
+		.branch(version())
+		.root(source_path()));
 
-		run_tool(nuget(source_path() / "NexusClient.sln"));
-	});
-
+	// run nuget
+	run_tool(nuget(source_path() / "NexusClient.sln"));
 }
 
 void nmm::do_build_and_install()
 {
-	instrument<times::build>([&]
+	build_loop(cx(), [&](bool mp)
 	{
-		// nmm sometimes fails with files being locked
-		const int max_tries = 3;
+		// msbuild defaults to multiprocess, give allow_failure for multiprocess
+		// builds and force single_job for the last single process build
 
-		for (int tries=0; tries<max_tries; ++tries)
-		{
-			const int exit_code = run_tool(create_msbuild_tool(
-				msbuild::build, msbuild::allow_failure));
+		const int exit_code = run_tool(create_msbuild_tool(
+			msbuild::build,
+			mp ? msbuild::allow_failure : msbuild::single_job));
 
-			if (exit_code == 0)
-				return;
-
-			cx().debug(context::generic,
-				"msbuild multiprocess sometimes fails with nmm because of race "
-				"conditions; trying again");
-		}
-
-		cx().debug(context::generic,
-			"msbuild multiprocess has failed more than {} times for nmm, "
-			"restarting one last time single process; that one should work",
-			max_tries);
-
-		run_tool(create_msbuild_tool(msbuild::build, msbuild::single_job));
+		return (exit_code == 0);
 	});
 }
 

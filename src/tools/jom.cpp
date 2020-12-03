@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "tools.h"
 #include "../core/conf.h"
+#include "../core/process.h"
 
 namespace mob
 {
@@ -12,12 +13,12 @@ jom::jom()
 
 fs::path jom::binary()
 {
-	return conf::tool_by_name("jom");
+	return conf().tool().get("jom");
 }
 
 jom& jom::path(const fs::path& p)
 {
-	process_.cwd(p);
+	cwd_ = p;
 	return *this;
 }
 
@@ -29,7 +30,7 @@ jom& jom::target(const std::string& s)
 
 jom& jom::def(const std::string& s)
 {
-	process_.arg(s);
+	def_.push_back(s);
 	return *this;
 }
 
@@ -52,37 +53,51 @@ int jom::result() const
 
 void jom::do_run()
 {
-	process::flags_t pflags = process::terminate_on_interrupt;
+	process p;
+
+	// jom doesn't handle sigint well, it just continues, so kill it on
+	// interruption
+	auto pflags = process::terminate_on_interrupt;
+
 	if (flags_ & allow_failure)
 	{
-		process_.stderr_level(context::level::trace);
+		// tasks will set allow_failure for the first couple of runs of jom,
+		// which often fails because of the /J multi-process flag, so don't log
+		// errors in that case
+		p.stderr_level(context::level::trace);
 		pflags |= process::allow_failure;
 	}
 
-	process_
+	p
 		.binary(binary())
+		.cwd(cwd_)
 		.stderr_filter([](process::filter& f)
 		{
+			// initial log line, can't get rid of it, /L or /NOLOGO don't seem
+			// to work
 			if (f.line.find("empower your cores") != std::string::npos)
 				f.lv = context::level::trace;
 		})
-		.arg("/C", process::log_quiet)
-		.arg("/S", process::log_quiet)
-		.arg("/L", process::log_quiet)
-		.arg("/D", process::log_dump)
-		.arg("/P", process::log_dump)
-		.arg("/W", process::log_dump)
-		.arg("/K");
+		.arg("/C", process::log_quiet)  // silent
+		.arg("/S", process::log_quiet)  // silent
+		.arg("/L", process::log_quiet)  // silent, jom likes to spew crap
+		.arg("/D", process::log_dump)   // verbose stuff
+		.arg("/P", process::log_dump)	// verbose stuff
+		.arg("/W", process::log_dump)	// verbose stuff
+		.arg("/K");                     // don't stop on errors
 
 	if (flags_ & single_job)
-		process_.arg("/J", "1");
+		p.arg("/J", "1");               // single-process
 
-	process_
+	for (auto&& def : def_)
+		p.arg(def);
+
+	p
 		.arg(target_)
 		.flags(pflags)
 		.env(env::vs(arch_));
 
-	execute_and_join();
+	execute_and_join(p);
 }
 
 }	// namespace

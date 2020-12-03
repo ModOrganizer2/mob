@@ -2,13 +2,14 @@
 #include "op.h"
 #include "conf.h"
 #include "context.h"
-#include "process.h"
 #include "../utility.h"
 #include "../tools/tools.h"
 
 namespace mob::op
 {
 
+// most of the functions from the header will check the paths, return early
+// for dry run, and then forward to these to do the actual work
 void do_touch(const context& cx, const fs::path& p);
 void do_create_directories(const context& cx, const fs::path& p);
 void do_delete_directory(const context& cx, const fs::path& p);
@@ -17,33 +18,34 @@ void do_copy_file_to_dir(const context& cx, const fs::path& f, const fs::path& d
 void do_copy_file_to_file(const context& cx, const fs::path& f, const fs::path& d);
 void do_remove_readonly(const context& cx, const fs::path& p);
 void do_rename(const context& cx, const fs::path& src, const fs::path& dest);
-void check(const context& cx, const fs::path& p);
+
+// checks whether the path is valid, bails out if not
+//
+void check(const context& cx, const fs::path& p, flags f);
 
 
-void touch(const context& cx, const fs::path& p)
+void touch(const context& cx, const fs::path& p, flags f)
 {
 	cx.trace(context::fs, "touching {}", p);
-	check(cx, p);
+	check(cx, p, f);
 
-	if (!conf::dry())
-		do_touch(cx ,p);
+	if (!conf().global().dry())
+		do_touch(cx, p);
 }
 
 void create_directories(const context& cx, const fs::path& p, flags f)
 {
 	cx.trace(context::fs, "creating dir {}", p);
+	check(cx, p, f);
 
-	if (!is_set(f, unsafe))
-		check(cx, p);
-
-	if (!conf::dry())
+	if (!conf().global().dry())
 		do_create_directories(cx, p);
 }
 
 void delete_directory(const context& cx, const fs::path& p, flags f)
 {
 	cx.trace(context::fs, "deleting dir {}", p);
-	check(cx, p);
+	check(cx, p, f);
 
 	if (!fs::exists(p))
 	{
@@ -61,14 +63,14 @@ void delete_directory(const context& cx, const fs::path& p, flags f)
 	if (fs::exists(p) && !fs::is_directory(p))
 		cx.bail_out(context::fs, "{} is not a dir", p);
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 		do_delete_directory(cx, p);
 }
 
 void delete_file(const context& cx, const fs::path& p, flags f)
 {
 	cx.trace(context::fs, "deleting file {}", p);
-	check(cx, p);
+	check(cx, p, f);
 
 	if (!fs::exists(p))
 	{
@@ -93,7 +95,7 @@ void delete_file(const context& cx, const fs::path& p, flags f)
 		return;
 	}
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 		do_delete_file(cx, p);
 }
 
@@ -124,17 +126,14 @@ void delete_file_glob(const context& cx, const fs::path& glob, flags f)
 	}
 }
 
-void remove_readonly(const context& cx, const fs::path& first)
+void remove_readonly(const context& cx, const fs::path& dir, flags f)
 {
-	cx.trace(context::fs, "removing read-only from {}", first);
-	check(cx, first);
+	cx.trace(context::fs, "removing read-only from {}", dir);
+	check(cx, dir, f);
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 	{
-		if (fs::is_regular_file(first))
-			do_remove_readonly(cx, first);
-
-		for (auto&& p : fs::recursive_directory_iterator(first))
+		for (auto&& p : fs::recursive_directory_iterator(dir))
 		{
 			if (fs::is_regular_file(p))
 				do_remove_readonly(cx, p);
@@ -216,10 +215,10 @@ bool is_source_better(
 	return false;
 }
 
-void rename(const context& cx, const fs::path& src, const fs::path& dest)
+void rename(const context& cx, const fs::path& src, const fs::path& dest, flags f)
 {
-	check(cx, src);
-	check(cx, dest);
+	check(cx, src, f);
+	check(cx, dest, f);
 
 	if (fs::exists(dest))
 	{
@@ -228,14 +227,16 @@ void rename(const context& cx, const fs::path& src, const fs::path& dest)
 	}
 
 	cx.trace(context::fs, "renaming {} to {}", src, dest);
-	do_rename(cx, src, dest);
+
+	if (!conf().global().dry())
+		do_rename(cx, src, dest);
 }
 
 void move_to_directory(
-	const context& cx, const fs::path& src, const fs::path& dest_dir)
+	const context& cx, const fs::path& src, const fs::path& dest_dir, flags f)
 {
-	check(cx, src);
-	check(cx, dest_dir);
+	check(cx, src, f);
+	check(cx, dest_dir, f);
 
 	const auto target = dest_dir / src.filename();
 
@@ -247,22 +248,21 @@ void move_to_directory(
 	}
 
 	cx.trace(context::fs, "moving {} to {}", src, target);
-	do_rename(cx, src, target);
+
+	if (!conf().global().dry())
+		do_rename(cx, src, target);
 }
 
 void copy_file_to_dir_if_better(
 	const context& cx, const fs::path& file, const fs::path& dir, flags f)
 {
-	if ((f & unsafe) == 0)
-	{
-		check(cx, file);
-		check(cx, dir);
-	}
+	check(cx, file, f);
+	check(cx, dir, f);
 
 	if (file.u8string().find(u8"*") != std::string::npos)
 		cx.bail_out(context::fs, "{} contains a glob", file);
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 	{
 		if (!fs::exists(file) || !fs::is_regular_file(file))
 		{
@@ -286,7 +286,7 @@ void copy_file_to_dir_if_better(
 	{
 		cx.trace(context::fs, "{} -> {}", file, dir);
 
-		if (!conf::dry())
+		if (!conf().global().dry())
 			do_copy_file_to_dir(cx, file, dir);
 	}
 	else
@@ -298,16 +298,13 @@ void copy_file_to_dir_if_better(
 void copy_file_to_file_if_better(
 	const context& cx, const fs::path& src, const fs::path& dest, flags f)
 {
-	if ((f & unsafe) == 0)
-	{
-		check(cx, src);
-		check(cx, dest);
-	}
+	check(cx, src, f);
+	check(cx, dest, f);
 
 	if (src.u8string().find(u8"*") != std::string::npos)
 		cx.bail_out(context::fs, "{} contains a glob", src);
 
-	if (!conf::dry())
+	if (!conf().global().dry())
 	{
 		if (!fs::exists(src))
 		{
@@ -333,7 +330,7 @@ void copy_file_to_file_if_better(
 	{
 		cx.trace(context::fs, "{} -> {}", src, dest);
 
-		if (!conf::dry())
+		if (!conf().global().dry())
 			do_copy_file_to_file(cx, src, dest);
 	}
 	else
@@ -346,6 +343,8 @@ void copy_glob_to_dir_if_better(
 	const context& cx,
 	const fs::path& src_glob, const fs::path& dest_dir, flags f)
 {
+	check(cx, dest_dir, f);
+
 	const auto file_parent = src_glob.parent_path();
 	const auto wildcard = src_glob.filename().native();
 
@@ -401,13 +400,16 @@ void copy_glob_to_dir_if_better(
 	}
 }
 
-void swap_files(
+void replace_file(
 	const context& cx, const fs::path& src, const fs::path& dest,
-	const fs::path& backup, flags)
+	const fs::path& backup, flags f)
 {
 	cx.trace(context::fs, "swapping {} and {}", src, dest);
 
-	if (conf::dry())
+	check(cx, src, f);
+	check(cx, dest, f);
+
+	if (conf().global().dry())
 		return;
 
 	const wchar_t* backup_p = nullptr;
@@ -468,8 +470,6 @@ std::string read_text_file_impl(const context& cx, const fs::path& p, flags f)
 std::string read_text_file(
 	const context& cx, encodings e, const fs::path& p, flags f)
 {
-	cx.trace(context::fs, "reading {}", p);
-
 	std::string bytes = read_text_file_impl(cx, p, f);
 	if (bytes.empty())
 		return bytes;
@@ -484,10 +484,13 @@ void write_text_file(
 	const context& cx, encodings e, const fs::path& p,
 	std::string_view utf8, flags f)
 {
-	check(cx, p);
-
 	const std::string bytes = utf8_to_bytes(e, utf8);
 	cx.trace(context::fs, "writing {} bytes to {}", bytes.size(), p);
+
+	check(cx, p, f);
+
+	if (conf().global().dry())
+		return;
 
 	{
 		std::ofstream out(p, std::ios::binary);
@@ -514,80 +517,32 @@ void write_text_file(
 void archive_from_glob(
 	const context& cx,
 	const fs::path& src_glob, const fs::path& dest_file,
-	const std::vector<std::string>& ignore)
+	const std::vector<std::string>& ignore, flags f)
 {
 	cx.trace(context::fs, "archiving {} into {}", src_glob, dest_file);
+	check(cx, dest_file, f);
 
-	if (conf::dry())
+	if (conf().global().dry())
 		return;
 
-	op::create_directories(cx, dest_file.parent_path());
-
-	auto p = process()
-		.binary(extractor::binary())
-		.arg("a")
-		.arg(dest_file)
-		.arg("-r")
-		.arg("-mx=5")
-		.arg(src_glob);
-
-	for (auto&& i : ignore)
-		p.arg("-xr!", i, process::nospace);
-
-	p.run();
-	p.join();
+	archiver::create_from_glob(cx, dest_file, src_glob, ignore);
 }
 
 void archive_from_files(
 	const context& cx,
 	const std::vector<fs::path>& files, const fs::path& files_root,
-	const fs::path& dest_file)
+	const fs::path& dest_file, flags f)
 {
+	check(cx, dest_file, f);
+
 	cx.trace(context::fs,
 		"archiving {} files rooted in {} into {}",
 		files.size(), files_root, dest_file);
 
-	if (conf::dry())
+	if (conf().global().dry())
 		return;
 
-	std::string list_file_text;
-	std::error_code ec;
-
-	for (auto&& f : files)
-	{
-		fs::path rf = fs::relative(f, files_root, ec);
-
-		if (ec)
-		{
-			cx.bail_out(context::fs,
-				"file {} is not in root {}", f, files_root);
-		}
-
-		list_file_text += path_to_utf8(rf) + "\n";
-	}
-
-	const auto list_file = make_temp_file();
-	guard g([&]
-	{
-		if (fs::exists(list_file))
-		{
-			std::error_code ec;
-			fs::remove(list_file, ec);
-		}
-	});
-
-	op::write_text_file(gcx(), encodings::utf8, list_file, list_file_text);
-	op::create_directories(cx, dest_file.parent_path());
-
-	auto p = process()
-		.binary(extractor::binary())
-		.arg("a")
-		.arg(dest_file)
-		.arg("@", list_file, process::nospace)
-		.cwd(files_root);
-
-	p.run();
-	p.join();
+	archiver::create_from_files(cx, dest_file, files, files_root);
 }
 
 
@@ -704,10 +659,13 @@ void do_rename(const context& cx, const fs::path& src, const fs::path& dest)
 	}
 }
 
-void check(const context& cx, const fs::path& p)
+void check(const context& cx, const fs::path& p, flags f)
 {
 	if (p.empty())
 		cx.bail_out(context::fs, "path is empty");
+
+	if (is_set(f, unsafe))
+		return;
 
 	auto is_inside = [](auto&& p, auto&& dir)
 	{
@@ -725,13 +683,13 @@ void check(const context& cx, const fs::path& p)
 		return true;
 	};
 
-	if (is_inside(p, paths::prefix()))
+	if (is_inside(p, conf().path().prefix()))
 		return;
 
-	if (is_inside(p, paths::temp_dir()))
+	if (is_inside(p, conf().path().temp_dir()))
 		return;
 
-	if (is_inside(p, paths::licenses()))
+	if (is_inside(p, conf().path().licenses()))
 		return;
 
 	cx.bail_out(context::fs, "path {} is outside prefix", p);

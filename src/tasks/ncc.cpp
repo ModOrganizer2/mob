@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "tasks.h"
+#include "../core/process.h"
 
-namespace mob
+namespace mob::tasks
 {
 
 ncc::ncc()
@@ -21,54 +22,48 @@ bool ncc::prebuilt()
 
 fs::path ncc::source_path()
 {
-	return paths::build() / "NexusClientCli";
+	return conf().path().build() / "NexusClientCli";
 }
 
 void ncc::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	// delete the whole directory
+	if (is_set(c, clean::reclone))
 	{
-		if (is_set(c, clean::reclone))
-		{
-			git::delete_directory(cx(), source_path());
-			return;
-		}
+		git_wrap::delete_directory(cx(), source_path());
 
-		if (is_set(c, clean::rebuild))
-			run_tool(create_msbuild_tool(msbuild::clean));
-	});
+		// no need to do anything else
+		return;
+	}
+
+	// msbuild clean
+	if (is_set(c, clean::rebuild))
+		run_tool(create_msbuild_tool(msbuild::clean));
 }
 
 void ncc::do_fetch()
 {
-	instrument<times::fetch>([&]
-	{
-		run_tool(task_conf().make_git()
-			.url(task_conf().make_git_url(task_conf().mo_org(), "modorganizer-NCC"))
-			.branch(task_conf().mo_branch())
-			.root(source_path()));
-	});
+	run_tool(make_git()
+		.url(make_git_url(task_conf().mo_org(), "modorganizer-NCC"))
+		.branch(task_conf().mo_branch())
+		.root(source_path()));
 }
 
 void ncc::do_build_and_install()
 {
-	instrument<times::build>([&]
-	{
-		run_tool(msbuild()
-			.solution(source_path() / "NexusClient.sln")
-			.targets({"NexusClientCLI"})
-			.platform("Any CPU"));
-	});
+	// build
+	run_tool(msbuild()
+		.solution(source_path() / "NexusClient.sln")
+		.targets({"NexusClientCLI"})
+		.platform("Any CPU"));
 
-	instrument<times::install>([&]
-	{
-		const auto publish = source_path() / "publish.bat";
+	// run publish.bat, which copies a bunch of stuff to install/bin/NCC
+	const auto publish = source_path() / "publish.bat";
 
-		run_tool(process_runner(process()
-			.binary(publish)
-			.stderr_level(context::level::trace)
-			.arg(paths::install_bin())));
-	});
+	run_tool(process_runner(process()
+		.binary(publish)
+		.stderr_level(context::level::trace)
+		.arg(conf().path().install_bin())));
 }
 
 msbuild ncc::create_msbuild_tool(msbuild::ops o)

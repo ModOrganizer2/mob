@@ -1,11 +1,13 @@
 #include "pch.h"
 #include "commands.h"
-#include "../tasks/tasks.h"
+#include "../core/ini.h"
+#include "../core/conf.h"
+#include "../core/context.h"
+#include "../core/op.h"
+#include "../tasks/task_manager.h"
 
 namespace mob
 {
-
-constexpr bool do_timings = false;
 
 build_command::build_command()
 	: command(requires_options | handle_sigint)
@@ -155,10 +157,7 @@ int build_command::do_run()
 	{
 		create_prefix_ini();
 
-		run_all_tasks();
-
-		if (do_timings)
-			dump_timings();
+		task_manager::instance().run_all();
 
 		if (!keep_msbuild_)
 			terminate_msbuild();
@@ -168,18 +167,20 @@ int build_command::do_run()
 	}
 	catch(bailed&)
 	{
-		error("bailing out");
+		gcx().error(context::generic, "bailing out");
 		return 1;
 	}
 }
 
 void build_command::create_prefix_ini()
 {
-	// creating prefix
-	if (!exists(paths::prefix()))
-		op::create_directories(gcx(), paths::prefix());
+	const auto prefix = conf().path().prefix();
 
-	const auto ini = paths::prefix() / default_ini_filename();
+	// creating prefix
+	if (!exists(prefix))
+		op::create_directories(gcx(), prefix);
+
+	const auto ini = prefix / default_ini_filename();
 	if (!exists(ini))
 	{
 		std::ofstream(ini)
@@ -188,51 +189,9 @@ void build_command::create_prefix_ini()
 	}
 }
 
-void build_command::dump_timings()
-{
-	using namespace std::chrono;
-
-	std::ofstream out("timings.txt");
-
-	// generates a file with line being "task,start_time,end_time,step"
-	//
-	// uibase,0,1,fetch
-	// uibase,1,2,configure
-	// uibase,2,3,build
-	// modorganizer,4,5,fetch
-	// modorganizer,5,6,configure
-	// modorganizer,6,7,build
-
-	auto write = [&](auto&& inst)
-	{
-		for (auto&& t : inst.instrumented_tasks())
-		{
-			for (auto&& tp : t.tps)
-			{
-				const auto start_ms = static_cast<double>(
-					duration_cast<milliseconds>(tp.start).count());
-
-				const auto end_ms = static_cast<double>(
-					duration_cast<milliseconds>(tp.end).count());
-
-				out
-					<< inst.instrumentable_name() << "\t"
-					<< (start_ms / 1000.0) << "\t"
-					<< (end_ms / 1000.0) << "\t"
-					<< t.name << "\n";
-			}
-		}
-	};
-
-	for (auto&& tk : get_all_tasks())
-		write(*tk);
-
-	write(git_submodule_adder::instance());
-}
-
 void build_command::terminate_msbuild()
 {
-	if (conf::dry())
+	if (conf().global().dry())
 		return;
 
 	system("taskkill /im msbuild.exe /f > NUL 2>&1");

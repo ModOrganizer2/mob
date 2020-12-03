@@ -1,8 +1,139 @@
 #include "pch.h"
 #include "tasks.h"
+#include "../core/process.h"
 
-namespace mob
+namespace mob::tasks
 {
+
+namespace
+{
+
+std::string python_version_for_dll()
+{
+	const auto v = python::parsed_version();
+
+	// 38
+	return v.major + v.minor;
+}
+
+std::string python_version_for_jam()
+{
+	const auto v = python::parsed_version();
+
+	// 3.8
+	return v.major + "." + v.minor;
+}
+
+std::string boost_version_no_patch_underscores()
+{
+	const auto v = boost::parsed_version();
+
+	// 1_72
+	return v.major + "_" + v.minor;
+}
+
+std::string boost_version_no_tags()
+{
+	const auto v = boost::parsed_version();
+
+	// 1.72[.1]
+	std::string s = v.major + "." + v.minor;
+
+	if (v.patch != "")
+		s += "." + v.patch;
+
+	return s;
+}
+
+std::string boost_version_no_tags_underscores()
+{
+	return replace_all(boost_version_no_tags(), ".", "_");
+}
+
+std::string boost_version_all_underscores()
+{
+	const auto v = boost::parsed_version();
+
+	// boost_1_72[_0[_b1_rc1]]
+	std::string s = "boost_" + v.major + "_" + v.minor;
+
+	if (v.patch != "")
+		s += "_" + v.patch;
+
+	if (v.rest != "")
+		s += "_" + replace_all(v.rest, "-", "_");
+
+	return s;
+}
+
+std::string address_model_for_arch(arch a)
+{
+	switch (a)
+	{
+		case arch::x86:
+			return "32";
+
+		case arch::x64:
+		case arch::dont_care:
+			return "64";
+
+		default:
+			gcx().bail_out(context::generic, "boost: bad arch");
+	}
+}
+
+
+std::string source_download_filename()
+{
+	return boost_version_all_underscores() + ".zip";
+}
+
+fs::path config_jam_file()
+{
+	return boost::source_path() / "user-config-64.jam";
+}
+
+url prebuilt_url()
+{
+	const auto underscores = replace_all(boost::version(), ".", "_");
+	return make_prebuilt_url("boost_prebuilt_" + underscores + ".7z");
+}
+
+url source_url()
+{
+	return
+		"https://dl.bintray.com/boostorg/release/" +
+		boost_version_no_tags() + "/source/" +
+		boost_version_all_underscores() + ".zip";
+}
+
+fs::path b2_exe()
+{
+	return boost::source_path() / "b2.exe";
+}
+
+std::string python_dll()
+{
+	std::ostringstream oss;
+
+	// builds something like boost_python38-vc142-mt-x64-1_72.dll
+
+	// boost_python38-
+	oss << "boost_python" << python_version_for_dll() + "-";
+
+	// vc142-
+	oss << "vc" + replace_all(boost::version_vs(), ".", "") << "-";
+
+	// mt-x64-1_72
+	oss << "mt-x64-" << boost_version_no_patch_underscores();
+
+	oss << ".dll";
+
+	return oss.str();
+}
+
+}	// namespace
+
 
 boost::boost()
 	: basic_task("boost")
@@ -11,31 +142,37 @@ boost::boost()
 
 std::string boost::version()
 {
-	return conf::version_by_name("boost");
+	return conf().version().get("boost");
 }
 
 std::string boost::version_vs()
 {
-	return conf::version_by_name("boost_vs");
+	return conf().version().get("boost_vs");
 }
 
 bool boost::prebuilt()
 {
-	return conf::prebuilt_by_name("boost");
+	return conf().prebuilt().get<bool>("boost");
 }
 
 fs::path boost::source_path()
 {
-	return paths::build() / ("boost_" + boost_version_no_tags_underscores());
+	// ex: build/boost_1_74_0
+	return
+		conf().path().build() /
+		("boost_" + boost_version_no_tags_underscores());
 }
 
 fs::path boost::lib_path(arch a)
 {
+	// ex: build/boost_1_74_0/lib64-msvc-14.2/lib
 	return root_lib_path(a) / "lib";
 }
 
 fs::path boost::root_lib_path(arch a)
 {
+	// ex: build/boost_1_74_0/lib64-msvc-14.2
+
 	const std::string lib =
 		"lib" + address_model_for_arch(a) + "-msvc-" + version_vs();
 
@@ -44,45 +181,49 @@ fs::path boost::root_lib_path(arch a)
 
 void boost::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	if (is_set(c, clean::redownload))
 	{
+		// delete downloaded file
+
 		if (prebuilt())
-		{
-			if (is_set(c, clean::redownload))
-				run_tool(downloader(prebuilt_url(), downloader::clean));
-		}
+			run_tool(downloader(prebuilt_url(), downloader::clean));
 		else
+			run_tool(downloader(source_url(), downloader::clean));
+	}
+
+
+	if (is_set(c, clean::reextract))
+	{
+		// delete the whole thing
+		cx().trace(context::reextract, "deleting {}", source_path());
+		op::delete_directory(cx(), source_path(), op::optional);
+
+		// no need for the rest
+		return;
+	}
+
+
+	// those don't make sense for prebults
+	if (!prebuilt())
+	{
+		if (is_set(c, clean::reconfigure))
 		{
-			if (is_set(c, clean::redownload))
-				run_tool(downloader(source_url(), downloader::clean));
+			// delete bin and b2.exe to make sure bootstrap runs again
+			op::delete_directory(cx(), source_path() / "bin.v2", op::optional);
+			op::delete_file(cx(), b2_exe(), op::optional);
+
+			// delete jam files
+			op::delete_file(cx(), config_jam_file(), op::optional);
+			op::delete_file(cx(), source_path() / "project-config.jam", op::optional);
 		}
 
-
-		if (is_set(c, clean::reextract))
+		if (is_set(c, clean::rebuild))
 		{
-			cx().trace(context::reextract, "deleting {}", source_path());
-			op::delete_directory(cx(), source_path(), op::optional);
-			return;
+			// delete libs
+			op::delete_directory(cx(), root_lib_path(arch::x86), op::optional);
+			op::delete_directory(cx(), root_lib_path(arch::x64), op::optional);
 		}
-
-
-		if (!prebuilt())
-		{
-			if (is_set(c, clean::reconfigure))
-			{
-				op::delete_directory(cx(), source_path() / "bin.v2", op::optional);
-				op::delete_file(cx(), b2_exe(), op::optional);
-			}
-
-			if (is_set(c, clean::rebuild))
-			{
-				op::delete_directory(cx(), root_lib_path(arch::x86), op::optional);
-				op::delete_directory(cx(), root_lib_path(arch::x64), op::optional);
-				op::delete_file(cx(), config_jam_file(), op::optional);
-				op::delete_file(cx(), source_path() / "project-config.jam", op::optional);
-			}
-		}
-	});
+	}
 }
 
 void boost::do_fetch()
@@ -105,61 +246,44 @@ void boost::fetch_prebuilt()
 {
 	cx().trace(context::generic, "using prebuilt boost");
 
-	const auto file = instrument<times::fetch>([&]
-	{
-		return run_tool(downloader(prebuilt_url()));
-	});
+	const auto file = run_tool(downloader(prebuilt_url()));
 
-	instrument<times::extract>([&]
-	{
-		run_tool(extractor()
-			.file(file)
-			.output(source_path()));
-	});
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
 }
 
 void boost::build_and_install_prebuilt()
 {
-	instrument<times::install>([&]
-	{
-		op::copy_file_to_dir_if_better(cx(),
-			lib_path(arch::x64) / python_dll(),
-			paths::install_bin());
-	});
+	copy_boost_python_dll();
 }
 
 void boost::fetch_from_source()
 {
-	const auto file = instrument<times::fetch>([&]
-	{
-		return run_tool(downloader(source_url()));
-	});
+	const auto file = run_tool(downloader(source_url()));
 
-	instrument<times::extract>([&]
-	{
-		run_tool(extractor()
+	run_tool(extractor()
 		.file(file)
 		.output(source_path()));
-	});
 }
 
 void boost::bootstrap()
 {
-	instrument<times::configure>([&]
-	{
-		write_config_jam();
+	// bootstrap b2
 
-		const auto bootstrap = source_path() / "bootstrap.bat";
+	write_config_jam();
 
-		run_tool(process_runner(process()
-			.binary(bootstrap)
-			.external_error_log(source_path() / "bootstrap.log")
-			.cwd(source_path())));
-	});
+	const auto bootstrap = source_path() / "bootstrap.bat";
+
+	run_tool(process_runner(process()
+		.binary(bootstrap)
+		.external_error_log(source_path() / "bootstrap.log")
+		.cwd(source_path())));
 }
 
 void boost::build_and_install_from_source()
 {
+	// bypass boostrap
 	if (fs::exists(b2_exe()))
 	{
 		cx().trace(context::bypass,
@@ -170,37 +294,45 @@ void boost::build_and_install_from_source()
 		bootstrap();
 	}
 
-	instrument<times::build>([&]
-	{
-		do_b2(
-			{"thread", "date_time", "filesystem", "locale", "program_options"},
-			"static", "static", arch::x64);
+	// some libraries only need some variants, avoid building the unnecessary
+	// ones
 
-		do_b2(
-			{"thread", "date_time", "filesystem", "locale"},
-			"static", "static", arch::x86);
+	// static link, static runtime, x64
+	do_b2(
+		{"thread", "date_time", "filesystem", "locale", "program_options"},
+		"static", "static", arch::x64);
 
-		do_b2(
-			{"thread", "date_time", "locale", "program_options"},
-			"static", "shared", arch::x64);
+	// static link, static runtime, x86, required by usvfs 32-bit
+	do_b2(
+		{"thread", "date_time", "filesystem", "locale"},
+		"static", "static", arch::x86);
 
-		do_b2(
-			{"thread", "date_time", "python", "atomic"},
-			"shared", "shared", arch::x64);
-	});
+	// static link, shared runtime, x64
+	do_b2(
+		{"thread", "date_time", "locale", "program_options"},
+		"static", "shared", arch::x64);
 
-	instrument<times::install>([&]
-	{
-		op::copy_file_to_dir_if_better(cx(),
-			lib_path(arch::x64) / python_dll(),
-			paths::install_bin());
-	});
+	// shared link, shared runtime, x64
+	do_b2(
+		{"thread", "date_time", "python", "atomic"},
+		"shared", "shared", arch::x64);
+
+	copy_boost_python_dll();
+}
+
+void boost::copy_boost_python_dll()
+{
+	op::copy_file_to_dir_if_better(cx(),
+		lib_path(arch::x64) / python_dll(),
+		conf().path().install_bin());
 }
 
 void boost::do_b2(
 	const std::vector<std::string>& components,
 	const std::string& link, const std::string& runtime_link, arch a)
 {
+	// will transform all components to --with-X
+
 	run_tool(process_runner(process()
 		.binary(b2_exe())
 		.arg("address-model=",  address_model_for_arch(a))
@@ -217,6 +349,7 @@ void boost::do_b2(
 
 void boost::write_config_jam()
 {
+	// b2 requires forward slashes
 	auto forward_slashes = [](auto&& p)
 	{
 		std::string s = path_to_utf8(p);
@@ -235,18 +368,20 @@ void boost::write_config_jam()
 		<< "  : <define>BOOST_ALL_NO_LIB=1\n"
 		<< "  ;";
 
-	cx().trace(context::generic,
-		"writing config file at {}:", config_jam_file());
-
-	for_each_line(oss.str(), [&](auto&& line)
+	// logging
 	{
-		cx().trace(context::generic, "        {}", line);
-	});
+		cx().trace(context::generic,
+			"writing config file at {}:", config_jam_file());
 
+		for_each_line(oss.str(), [&](auto&& line)
+		{
+			cx().trace(context::generic, "        {}", line);
+		});
+	}
 
+	// writing
 	op::write_text_file(cx(), encodings::utf8, config_jam_file(), oss.str());
 }
-
 
 boost::version_info boost::parsed_version()
 {
@@ -267,132 +402,9 @@ boost::version_info boost::parsed_version()
 	const auto s = version();
 
 	if (!std::regex_match(s, m, re))
-		bail_out("bad boost version '{}'", s);
+		gcx().bail_out(context::generic, "bad boost version '{}'", s);
 
 	return {m[1], m[2], m[3], m[4]};
-}
-
-std::string boost::source_download_filename()
-{
-	return boost_version_all_underscores() + ".zip";
-}
-
-fs::path boost::config_jam_file()
-{
-	return source_path() / "user-config-64.jam";
-}
-
-url boost::prebuilt_url()
-{
-	const auto underscores = replace_all(version(), ".", "_");
-	return make_prebuilt_url("boost_prebuilt_" + underscores + ".7z");
-}
-
-url boost::source_url()
-{
-	return
-		"https://dl.bintray.com/boostorg/release/" +
-		boost_version_no_tags() + "/source/" +
-		boost_version_all_underscores() + ".zip";
-}
-
-fs::path boost::b2_exe()
-{
-	return source_path() / "b2.exe";
-}
-
-std::string boost::python_dll()
-{
-	std::ostringstream oss;
-
-	// builds something like boost_python38-vc142-mt-x64-1_72.dll
-
-	// boost_python38-
-	oss << "boost_python" << python_version_for_dll() + "-";
-
-	// vc142-
-	oss << "vc" + replace_all(version_vs(), ".", "") << "-";
-
-	// mt-x64-1_72
-	oss << "mt-x64-" << boost_version_no_patch_underscores();
-
-	oss << ".dll";
-
-	return oss.str();
-}
-
-std::string boost::python_version_for_dll()
-{
-	const auto v = python::parsed_version();
-
-	// 38
-	return v.major + v.minor;
-}
-
-std::string boost::python_version_for_jam()
-{
-	const auto v = python::parsed_version();
-
-	// 3.8
-	return v.major + "." + v.minor;
-}
-
-std::string boost::boost_version_no_patch_underscores()
-{
-	const auto v = parsed_version();
-
-	// 1_72
-	return v.major + "_" + v.minor;
-}
-
-std::string boost::boost_version_no_tags()
-{
-	const auto v = parsed_version();
-
-	// 1.72[.1]
-	std::string s = v.major + "." + v.minor;
-
-	if (v.patch != "")
-		s += "." + v.patch;
-
-	return s;
-}
-
-std::string boost::boost_version_no_tags_underscores()
-{
-	return replace_all(boost_version_no_tags(), ".", "_");
-}
-
-std::string boost::boost_version_all_underscores()
-{
-	const auto v = parsed_version();
-
-	// boost_1_72[_0[_b1_rc1]]
-	std::string s = "boost_" + v.major + "_" + v.minor;
-
-	if (v.patch != "")
-		s += "_" + v.patch;
-
-	if (v.rest != "")
-		s += "_" + replace_all(v.rest, "-", "_");
-
-	return s;
-}
-
-std::string boost::address_model_for_arch(arch a)
-{
-	switch (a)
-	{
-		case arch::x86:
-			return "32";
-
-		case arch::x64:
-		case arch::dont_care:
-			return "64";
-
-		default:
-			bail_out("boost: bad arch");
-	}
 }
 
 }	// namespace

@@ -1,13 +1,17 @@
 #pragma once
 
 #include "task.h"
+#include "../tools/tools.h"
 #include "../net.h"
 #include "../utility.h"
 #include "../core/conf.h"
 #include "../core/op.h"
 
-namespace mob
+namespace mob::tasks
 {
+
+// single header for all the tasks, not worth having a header per task
+
 
 class boost : public basic_task<boost>
 {
@@ -47,19 +51,7 @@ private:
 		const std::vector<std::string>& components,
 		const std::string& link, const std::string& runtime_link, arch a);
 
-	static std::string source_download_filename();
-	static fs::path config_jam_file();
-	static url prebuilt_url();
-	static url source_url();
-	static fs::path b2_exe();
-	static std::string python_dll();
-	static std::string python_version_for_dll();
-	static std::string python_version_for_jam();
-	static std::string boost_version_no_patch_underscores();
-	static std::string boost_version_no_tags();
-	static std::string boost_version_no_tags_underscores();
-	static std::string boost_version_all_underscores();
-	static std::string address_model_for_arch(arch a);
+	void copy_boost_python_dll();
 };
 
 
@@ -80,6 +72,8 @@ protected:
 };
 
 
+// needed by python
+//
 class bzip2 : public basic_task<bzip2>
 {
 public:
@@ -92,9 +86,6 @@ public:
 protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
-
-private:
-	static url source_url();
 };
 
 
@@ -110,9 +101,6 @@ public:
 protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
-
-private:
-	static url source_url();
 };
 
 
@@ -129,15 +117,6 @@ protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-
-private:
-	static url source_url();
-	static fs::path solution_path();
-
-	static cmake create_cmake_tool(
-		const fs::path& src_path, cmake::ops o=cmake::ops::generate);
-
-	static msbuild create_msbuild_tool(msbuild::ops o=msbuild::ops::build);
 };
 
 
@@ -154,10 +133,6 @@ protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-
-private:
-	cmake create_cmake_tool(arch a, cmake::ops o=cmake::generate);
-	msbuild create_msbuild_tool(arch a, msbuild::ops o=msbuild::build);
 };
 
 
@@ -177,20 +152,6 @@ protected:
 };
 
 
-class licenses : public basic_task<licenses>
-{
-public:
-	licenses();
-
-	static std::string version();
-	static bool prebuilt();
-	static fs::path source_path();
-
-protected:
-	void do_build_and_install() override;
-};
-
-
 class libbsarch : public basic_task<libbsarch>
 {
 public:
@@ -204,13 +165,11 @@ protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
-
-private:
-	static std::string dir_name();
-	static url source_url();
 };
 
 
+// needed by python
+//
 class libffi : public basic_task<libffi>
 {
 public:
@@ -245,10 +204,16 @@ protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
+};
 
-private:
-	static std::string release_name();
-	static url source_url();
+
+class licenses : public task
+{
+public:
+	licenses();
+
+protected:
+	void do_build_and_install() override;
 };
 
 
@@ -267,10 +232,6 @@ protected:
 	void do_build_and_install() override;
 
 private:
-	static fs::path solution_dir();
-	static fs::path solution_file();
-	static fs::path out_dir();
-
 	void fetch_prebuilt();
 	void build_and_install_prebuilt();
 
@@ -278,42 +239,78 @@ private:
 	void build_and_install_from_source();
 
 	msbuild create_msbuild_tool(msbuild::ops o=msbuild::build);
-	static url prebuilt_url();
 };
 
 
-class modorganizer : public basic_task<modorganizer>
+// a task for all modorganizer projects except for the installer, which is
+// technically an MO project but is built differently
+//
+// note that this doesn't inherit from basic_task because it doesn't have the
+// usual static functions for source_path() and prebuilt() since there's a
+// variety of modorganizer objects, one per project
+//
+class modorganizer : public task
 {
 public:
+	// path of the root modorganizer_super directory
+	//
+	static fs::path super_path();
+
+	// creates the same cmake tool as the one used to build the various MO
+	// projects, used internally, but also by the cmake command
+	//
+	static cmake create_cmake_tool(
+		const fs::path& root, cmake::ops o=cmake::generate);
+
+
+	// flags for some MO projects
 	enum flags
 	{
 		noflags  = 0x00,
+
+		// gamebryo project, used by the translations task because these
+		// projects have multiple .ts files that have to be merged
 		gamebryo = 0x01,
+
+		// project that uses nuget, cmake doesn't support those right now, so
+		// `msbuild -t:restore` has to be run manually
 		nuget   = 0x02,
 	};
 
+	// some mo tasks have more than one name, mostly because the transifex slugs
+	// are different than the names on github; the std::string and const char*
+	// overloads are because they're constructed from initializer lists and it's
+	// more convenient that way
 	modorganizer(std::string name, flags f=noflags);
 	modorganizer(std::vector<std::string> names, flags f=noflags);
 	modorganizer(std::vector<const char*> names, flags f=noflags);
 
-	static std::string version();
-	static bool prebuilt();
 
-	static fs::path source_path();
-	static fs::path super_path();
-
-	static cmake create_cmake_tool(
-		const fs::path& root, cmake::ops o=cmake::generate);
-
-	bool is_super() const override;
+	// whether this project has the gamebryo flag on
+	//
 	bool is_gamebryo_plugin() const;
+
+	// whether this project has the nuget flag on
+	//
 	bool is_nuget_plugin() const;
 
+	// url to the git repo
+	//
 	url git_url() const;
+
+	// `mo_org` setting from the ini (typically ModOrganizer2)
+	//
 	std::string org() const;
+
+	// name of the repo on github (first name given in the constructor,
+	// something like "cmake_common" or "modorganizer-uibase")
+	//
 	std::string repo() const;
-	fs::path this_source_path() const;
-	fs::path this_solution_path() const;
+
+	// directory for the project's source, something like
+	// "build/modorganizer_super/modorganizer"
+	//
+	fs::path source_path() const;
 
 protected:
 	void do_clean(clean c) override;
@@ -324,10 +321,25 @@ private:
 	std::string repo_;
 	flags flags_;
 
-	cmake create_this_cmake_tool(cmake::ops o=cmake::generate);
-	msbuild create_this_msbuild_tool(msbuild::ops o=msbuild::build);
-	void initialize_super(const fs::path& super_root);
+	// creates the cmake tool for this MO project
+	//
+	cmake create_cmake_tool(cmake::ops o=cmake::generate);
 
+	// creates the msbuild tool for this MO project
+	//
+	msbuild create_msbuild_tool(msbuild::ops o=msbuild::build);
+
+	// this is the file targeted by the msbuild tool
+	//
+	// it's not actually the .sln file because the cmake files have historically
+	// been inconsistent in what the main project in the solution is and whether
+	// the INSTALL project was enabled or not, so just building the .sln itself
+	// might not actually build everything
+	//
+	// by targeting the INSTALL project directly, everything will always be
+	// built correctly, regardless of how the solution file is generated
+	//
+	fs::path project_file_path() const;
 };
 
 
@@ -386,6 +398,7 @@ public:
 
 	static fs::path source_path();
 	static fs::path include_path();
+	static fs::path build_path();
 	static fs::path bin_path();
 
 protected:
@@ -404,15 +417,12 @@ private:
 	void copy_files();
 	void copy_dlls_to(const fs::path& dir);
 	void copy_pdbs_to(const fs::path& dir);
-
-	static url source_url();
-	static url prebuilt_url();
-	static fs::path build_path();
-	static std::vector<std::string> output_names();
-	static std::string version_no_patch_underscores();
 };
 
 
+// when building from source, builds both pyqt5 and pyqt5-sip; when using the
+// prebuilt, the downloaded zip contains both
+//
 class pyqt : public basic_task<pyqt>
 {
 public:
@@ -423,6 +433,11 @@ public:
 	static bool prebuilt();
 
 	static fs::path source_path();
+	static fs::path build_path();
+
+	// "PyQt5.sip", used both in pyqt and sip
+	//
+	static std::string pyqt_sip_module_name();
 
 protected:
 	void do_clean(clean c) override;
@@ -438,12 +453,6 @@ private:
 	void sip_build();
 	void install_sip_file();
 	void copy_files();
-
-	static url source_url();
-	static url prebuilt_url();
-	static fs::path sip_install_file();
-	static fs::path build_path();
-	static std::vector<std::string> modules();
 };
 
 
@@ -461,13 +470,30 @@ public:
 
 	static std::string version();
 	static bool prebuilt();
-
 	static version_info parsed_version();
+
+	// build/python-XX
+	//
 	static fs::path source_path();
+
+	// build/python-XX/PCBuild/amd64
+	//
 	static fs::path build_path();
+
+	// build/python-XX/PCBuild/amd64/python.exe
+	//
 	static fs::path python_exe();
+
+	// build/python-XX/Include
+	//
 	static fs::path include_path();
+
+	// build/python-XX/Scripts
+	//
 	static fs::path scripts_path();
+
+	// build/python-XX/Lib/site-packages
+	//
 	static fs::path site_packages_path();
 
 protected:
@@ -486,11 +512,25 @@ private:
 	void copy_files();
 
 	msbuild create_msbuild_tool(msbuild::ops o=msbuild::build);
+};
 
-	static std::string version_without_v();
-	static url prebuilt_url();
-	static fs::path solution_file();
-	static std::string version_for_dll();
+
+class sevenz : public basic_task<sevenz>
+{
+public:
+	sevenz();
+
+	static std::string version();
+	static bool prebuilt();
+	static fs::path source_path();
+
+protected:
+	void do_clean(clean c) override;
+	void do_fetch() override;
+	void do_build_and_install() override;
+
+private:
+	void build();
 };
 
 
@@ -514,33 +554,9 @@ protected:
 	void do_build_and_install() override;
 
 private:
-	void download();
-	void generate();
-
-	static fs::path download_file();
-};
-
-
-class sevenz : public basic_task<sevenz>
-{
-public:
-	sevenz();
-
-	static std::string version();
-	static bool prebuilt();
-	static fs::path source_path();
-
-protected:
-	void do_clean(clean c) override;
-	void do_fetch() override;
-	void do_build_and_install() override;
-
-private:
-	static url source_url();
-	static std::string version_for_url();
-	static fs::path module_to_build();
-
 	void build();
+	void generate_header();
+	void convert_script_file_to_acp(const std::string& filename);
 };
 
 
@@ -559,21 +575,20 @@ protected:
 };
 
 
-class stylesheets : public basic_task<stylesheets>
+// none of this is very generic, but it works for now because there are only
+// four stylesheets
+//
+class stylesheets : public task
 {
 public:
 	stylesheets();
 
 	static bool prebuilt();
-	static fs::path source_path();
 
 	static std::string paper_lad_6788_version();
 	static std::string paper_automata_6788_version();
 	static std::string paper_mono_6788_version();
 	static std::string dark_mode_1809_6788_version();
-
-	// dummy, doesn't apply
-	static std::string version();
 
 protected:
 	void do_clean(clean c) override;
@@ -598,54 +613,93 @@ private:
 };
 
 
-class translations : public basic_task<translations>
+// see translations.cpp for more info
+//
+class translations : public task
 {
 public:
+	// given the root translations folder, will have one `project` object per
+	// directory
+	//
+	// each project will have a list of `lang` objects, each lang has the list
+	// of .ts files that need to be compiled to create the .qm file
+	//
 	class projects
 	{
 	public:
+		// a language for a project
 		struct lang
 		{
+			// language name
 			std::string name;
+
+			// .ts files that need to be compiled
 			std::vector<fs::path> ts_files;
 
 			lang(std::string n);
 		};
 
+		// a project that contains languages
 		struct project
 		{
+			// project name
 			std::string name;
+
+			// list of languages
 			std::vector<lang> langs;
 
-			project(std::string n);
+			project(std::string n={});
 		};
 
 
+		// walks the given directory and figures out projects and languages
+		//
 		projects(fs::path root);
 
+		// list of projects found, one per directory in the root
+		//
 		const std::vector<project>& get() const;
+
+		// any warnings that happened while walking the directories
+		//
 		const std::vector<std::string>& warnings() const;
 
 	private:
+		// translations directory
 		const fs::path root_;
+
+		// projects
 		std::vector<project> projects_;
+
+		// warnings
 		std::vector<std::string> warnings_;
+
+		// set of files for which a warning was added to warnings_, avoids
+		// duplicate warnings
 		std::set<fs::path> warned_;
 
-		void create();
+
+		// whether the given project name is a gamebryo task, `dir` is just for
+		// logging
+		//
 		bool is_gamebryo_plugin(
 			const std::string& dir, const std::string& project);
-		void handle_project_dir(const fs::path& dir);
 
-		lang handle_ts_file(
-			bool gamebryo, const std::string& project_name, const fs::path& f);
+		// parses the directory name, walks all the .ts files, returns a project
+		// object for them
+		//
+		project create_project(const fs::path& dir);
+
+		// returns a lang object that contains at least the given main_ts_file,
+		// but might contain more if it's a gamebryo plugin
+		//
+		lang create_lang(
+			bool gamebryo, const std::string& project_name,
+			const fs::path& main_ts_file);
 	};
 
 
 	translations();
-
-	static bool prebuilt();
-	static std::string version();
 	static fs::path source_path();
 
 protected:
@@ -704,8 +758,6 @@ protected:
 private:
 	cmake create_cmake_tool(cmake::ops o=cmake::generate);
 	msbuild create_msbuild_tool(msbuild::ops o=msbuild::build);
-
-	static url source_url();
 };
 
 }	// namespace

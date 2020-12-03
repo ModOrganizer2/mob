@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "task.h"
+#include "task_manager.h"
 #include "../core/conf.h"
 #include "../core/op.h"
 #include "../tools/tools.h"
@@ -8,210 +9,11 @@
 namespace mob
 {
 
-class interrupted {};
-
-static std::vector<std::unique_ptr<task>> g_tasks;
-static std::vector<task*> g_all_tasks;
-static std::atomic<bool> g_interrupt = false;
-static alias_map g_aliases;
-std::mutex task::interrupt_mutex_;
-
-
-void add_task(std::unique_ptr<task> t)
-{
-	g_tasks.push_back(std::move(t));
-}
-
-std::vector<task*> get_all_tasks()
-{
-	std::vector<task*> v;
-
-	for (auto&& t : g_all_tasks)
-		v.push_back(t);
-
-	return v;
-}
-
-std::vector<task*> get_top_level_tasks()
-{
-	std::vector<task*> v;
-
-	for (auto&& t : g_tasks)
-		v.push_back(t.get());
-
-	return v;
-}
-
-std::vector<task*> find_tasks_by_pattern(const std::string& pattern)
-{
-	std::vector<task*> tasks;
-
-	for (auto&& t : g_all_tasks)
-	{
-		if (pattern == "super" && t->is_super())
-		{
-			tasks.push_back(t);
-		}
-		else
-		{
-			for (auto&& n : t->names())
-			{
-				if (mob::glob_match(pattern, n))
-				{
-					tasks.push_back(t);
-					break;
-				}
-			}
-		}
-	}
-
-	return tasks;
-}
-
-std::vector<task*> find_tasks_by_alias(const std::string& pattern)
-{
-	std::vector<task*> v;
-
-	auto itor = g_aliases.find(pattern);
-	if (itor == g_aliases.end())
-		return v;
-
-	for (auto&& a : itor->second)
-	{
-		const auto temp = find_tasks_by_pattern(a);
-		v.insert(v.end(), temp.begin(), temp.end());
-	}
-
-	return v;
-}
-
-std::vector<task*> find_tasks(const std::string& pattern)
-{
-	std::vector<task*> tasks;
-
-	for (auto&& t : g_all_tasks)
-	{
-		if (pattern == "super" && t->is_super())
-		{
-			tasks.push_back(t);
-		}
-		else
-		{
-			for (auto&& n : t->names())
-			{
-				if (mob::glob_match(pattern, n))
-				{
-					tasks.push_back(t);
-					break;
-				}
-			}
-		}
-	}
-
-	if (tasks.empty())
-		tasks = find_tasks_by_alias(pattern);
-
-	return tasks;
-}
-
-task* find_one_task(const std::string& pattern, bool verbose)
-{
-	const auto tasks = find_tasks(pattern);
-
-	if (tasks.empty())
-	{
-		if (verbose)
-			u8cerr << "no task matches '" << pattern << "'\n";
-
-		return nullptr;
-	}
-	else if (tasks.size() > 1)
-	{
-		if (verbose)
-		{
-			u8cerr
-				<< "found " << tasks.size() << " matches for pattern "
-				<< "'" << pattern << "'\n"
-				<< "the pattern must only match one task\n";
-		}
-
-		return nullptr;
-	}
-
-	return tasks[0];
-}
-
-void run_all_tasks()
-{
-	try
-	{
-		for (auto& t : g_tasks)
-		{
-			t->fetch();
-
-			if (g_interrupt)
-				throw interrupted();
-		}
-
-		for (auto& t : g_tasks)
-		{
-			t->join();
-
-			if (g_interrupt)
-				throw interrupted();
-
-			t->build_and_install();
-
-			if (g_interrupt)
-				throw interrupted();
-
-			t->join();
-
-			if (g_interrupt)
-				throw interrupted();
-		}
-	}
-	catch(interrupted&)
-	{
-	}
-}
-
-bool is_super_task(const std::string& name)
-{
-	for (auto& t : g_all_tasks)
-	{
-		for (auto&& tn : t->names())
-		{
-			if (tn == name)
-				return t->is_super();
-		}
-	}
-
-	return false;
-}
-
-void add_alias(std::string name, std::vector<std::string> names)
-{
-	auto itor = g_aliases.find(name);
-	if (itor != g_aliases.end())
-	{
-		gcx().warning(context::generic, "alias {} already exists", name);
-		return;
-	}
-
-	g_aliases.emplace(std::move(name), std::move(names));
-}
-
-const alias_map& get_all_aliases()
-{
-	return g_aliases;
-}
-
-
-
+// converts the given flag to a string
+//
 std::string to_string(task::clean c)
 {
-	// generate warnings if something is added
+	// for warnings
 	switch (c)
 	{
 		case task::clean::nothing: break;
@@ -219,7 +21,6 @@ std::string to_string(task::clean c)
 		case task::clean::reextract: break;
 		case task::clean::reconfigure: break;
 		case task::clean::rebuild: break;
-		case task::clean::everything: break;
 	}
 
 	std::vector<std::string> v;
@@ -239,204 +40,86 @@ std::string to_string(task::clean c)
 	return join(v, "|");
 }
 
-
-struct task::thread_context
+// combines the clean flags depending on the configuration
+//
+task::clean make_clean_flags()
 {
-	std::thread::id tid;
-	context cx;
+	task::clean c = task::clean::nothing;
+	const auto g = conf().global();
 
-	thread_context(std::thread::id tid, context cx)
-		: tid(tid), cx(std::move(cx))
-	{
-	}
-};
+	if (g.redownload())
+		c |= task::clean::redownload;
 
+	if (g.reextract())
+		c |= task::clean::reextract;
 
-task_conf_holder::task_conf_holder(const task& t)
-	: task_(t)
-{
-}
+	if (g.reconfigure())
+		c |= task::clean::reconfigure;
 
-std::string task_conf_holder::mo_org() const
-{
-	return conf::task_option_by_name(task_.names(), "mo_org");
-}
+	if (g.rebuild())
+		c |= task::clean::rebuild;
 
-std::string task_conf_holder::mo_branch() const
-{
-	return conf::task_option_by_name(task_.names(), "mo_branch");
-}
-
-bool task_conf_holder::no_pull() const
-{
-	return conf::bool_task_option_by_name(task_.names(), "no_pull");
-}
-
-bool task_conf_holder::revert_ts() const
-{
-	return conf::bool_task_option_by_name(task_.names(), "revert_ts");
-}
-
-bool task_conf_holder::ignore_ts()const
-{
-	return conf::bool_task_option_by_name(task_.names(), "ignore_ts");
-}
-
-std::string task_conf_holder::git_url_prefix() const
-{
-	return conf::task_option_by_name(task_.names(), "git_url_prefix");
-}
-
-bool task_conf_holder::git_shallow() const
-{
-	return conf::bool_task_option_by_name(task_.names(), "git_shallow");
-}
-
-std::string task_conf_holder::git_user() const
-{
-	return conf::task_option_by_name(task_.names(), "git_username");
-}
-
-std::string task_conf_holder::git_email() const
-{
-	return conf::task_option_by_name(task_.names(), "git_email");
-}
-
-bool task_conf_holder::set_origin_remote() const
-{
-	return conf::bool_task_option_by_name(task_.names(), "set_origin_remote");
-}
-
-std::string task_conf_holder::remote_org() const
-{
-	return conf::task_option_by_name(task_.names(), "remote_org");
-}
-
-std::string task_conf_holder::remote_key() const
-{
-	return conf::task_option_by_name(task_.names(), "remote_key");
-}
-
-bool task_conf_holder::remote_no_push_upstream() const
-{
-	return conf::bool_task_option_by_name(task_.names(), "remote_no_push_upstream");
-}
-
-bool task_conf_holder::remote_push_default_origin() const
-{
-	return conf::bool_task_option_by_name(task_.names(), "remote_push_default_origin");
-}
-
-git task_conf_holder::make_git(git::ops o) const
-{
-	if (o == git::clone_or_pull && no_pull())
-		o = git::clone;
-
-	git g(o);
-
-	g.ignore_ts_on_clone(ignore_ts());
-	g.revert_ts_on_pull(revert_ts());
-	g.credentials(git_user(), git_email());
-	g.shallow(git_shallow());
-
-	if (set_origin_remote())
-	{
-		g.remote(
-			remote_org(), remote_key(),
-			remote_no_push_upstream(),
-			remote_push_default_origin());
-	}
-
-	return g;
-}
-
-std::string task_conf_holder::make_git_url(
-	const std::string& org, const std::string& repo) const
-{
-	return git_url_prefix() + org + "/" + repo + ".git";
+	return c;
 }
 
 
-std::array<std::string, 7> time_names()
+task::task(std::vector<std::string> names)
+	: names_(std::move(names)), interrupted_(false)
 {
-	return {
-		"init_super",
-		"fetch",
-		"extract",
-		"configure",
-		"build",
-		"install",
-		"clean"
-	};
-}
+	// make sure there's a context to return in cx() for the thread that created
+	// this task, there's a bunch of places where tasks need to log things
+	// before a thread is created
+	add_context_for_this_thread(name());
 
-
-task::task(std::vector<std::string> names) :
-	instrumentable(names[0], time_names()),
-	names_(std::move(names)), interrupted_(false)
-{
-	contexts_.push_back(std::make_unique<thread_context>(
-		std::this_thread::get_id(), context(name())));
-
+	// don't register parallel tasks so they're not shown to the user, they're
+	// useless
 	if (name() != "parallel")
-		g_all_tasks.push_back(this);
+		task_manager::instance().register_task(this);
 }
 
-task::~task()
-{
-	try
-	{
-		join();
-	}
-	catch(bailed)
-	{
-		// ignore
-	}
-}
+// anchor
+task::~task() = default;
 
 bool task::enabled() const
 {
-	return conf::bool_task_option_by_name(names(), "enabled");
+	return conf().task(names()).get<bool>("enabled");
 }
 
-bool task::is_super() const
+void task::do_clean(clean)
 {
-	return false;
+	// no-op
+}
+
+void task::do_fetch()
+{
+	// no-op
+}
+
+void task::do_build_and_install()
+{
+	// no-op
+}
+
+context& task::cx()
+{
+	return const_cast<context&>(std::as_const(*this).cx());
 }
 
 const context& task::cx() const
 {
-	static const context bad("?");
+	static context bad("?");
+
+	const auto tid = std::this_thread::get_id();
 
 	{
 		std::scoped_lock lock(contexts_mutex_);
 
-		for (auto& td : contexts_)
-		{
-			if (td->tid == std::this_thread::get_id())
-				return td->cx;
-		}
+		auto itor = contexts_.find(tid);
+		if (itor != contexts_.end())
+			return *itor->second;
 	}
 
 	return bad;
-}
-
-void task::add_name(std::string s)
-{
-	auto itor = std::find(names_.begin(), names_.end(), s);
-	if (itor != names_.end())
-		return;
-
-	names_.push_back(s);
-}
-
-void task::interrupt_all()
-{
-	std::scoped_lock lock(interrupt_mutex_);
-
-	g_interrupt = true;
-	for (auto&& t : g_tasks)
-		t->interrupt();
 }
 
 const std::string& task::name() const
@@ -449,70 +132,208 @@ const std::vector<std::string>& task::names() const
 	return names_;
 }
 
-void task::threaded_run(std::string thread_name, std::function<void ()> f)
+bool task::name_matches(std::string_view pattern) const
+{
+	if (pattern.find('*') != std::string::npos)
+		return name_matches_glob(pattern);
+	else
+		return name_matches_string(pattern);
+}
+
+bool task::name_matches_glob(std::string_view pattern) const
 {
 	try
 	{
-		{
-			std::scoped_lock lock(contexts_mutex_);
+		// converts '*' to '.*', changes underscores to dashes so they're
+		// equivalent, then matches the pattern as a regex, case insensitive
 
-			contexts_.push_back(std::make_unique<thread_context>(
-				std::this_thread::get_id(), context(thread_name)));
+		std::string fixed_pattern(pattern);
+		fixed_pattern = replace_all(fixed_pattern, "*", ".*");
+		fixed_pattern = replace_all(fixed_pattern, "_", "-");
+
+		std::regex re(fixed_pattern, std::regex::icase);
+
+		for (auto&& n : names_)
+		{
+			const std::string fixed_name(replace_all(n, "_", "-"));
+
+			if (std::regex_match(fixed_name, re))
+				return true;
 		}
 
-		guard g([&]
-		{
-			std::scoped_lock lock(contexts_mutex_);
+		return false;
+	}
+	catch(std::exception&)
+	{
+		u8cerr
+			<< "bad glob '" << pattern << "'\n"
+			<< "globs are actually bastardized regexes where '*' is "
+			<< "replaced by '.*', so don't push it\n";
 
-			for (auto itor=contexts_.begin(); itor!=contexts_.end(); ++itor)
-			{
-				if ((*itor)->tid == std::this_thread::get_id())
-				{
-					contexts_.erase(itor);
-					break;
-				}
-			}
-		});
+		throw bailed();
+	}
+}
+
+bool task::name_matches_string(std::string_view pattern) const
+{
+	for (auto&& n : names_)
+	{
+		if (strings_match(n, pattern))
+			return true;
+	}
+
+	return false;
+}
+
+bool task::strings_match(std::string_view a, std::string_view b) const
+{
+	// this is actually called a crapload of times and is worth the
+	// optimization, especially for debug builds
+
+	if (a.size() != b.size())
+		return false;
+
+	for (std::size_t i=0; i<a.size(); ++i)
+	{
+		// underscores and dashes are equivalent
+		if ((a[i] == '-' || a[i] == '_') && (b[i] == '-' || b[i] == '_'))
+			continue;
+
+		// case insensitive comparison
+		const auto ac = static_cast<unsigned char>(a[i]);
+		const auto bc = static_cast<unsigned char>(b[i]);
+
+		if (std::tolower(ac) != std::tolower(bc))
+			return false;
+	}
+
+	return true;
+}
+
+void task::add_context_for_this_thread(std::string name)
+{
+	std::scoped_lock lock(contexts_mutex_);
+
+	const auto tid = std::this_thread::get_id();
+
+	// there might already be a context for this thread, such as when run()
+	// is called, because it's typically called from the same thread as the
+	// one that created the task, and a context is added in the task's
+	// constructor
+	//
+	// but run() can also be called from parallel_tasks in a thread, so make
+	// sure there's a context for it
+
+	auto itor = contexts_.find(tid);
+	if (itor == contexts_.end())
+		contexts_.emplace(tid, std::make_unique<context>(std::move(name)));
+}
+
+void task::remove_context_for_this_thread()
+{
+	std::scoped_lock lock(contexts_mutex_);
+
+	// removes the context for the current thread
+
+	const auto tid = std::this_thread::get_id();
+
+	auto itor = contexts_.find(tid);
+	if (itor != contexts_.end())
+		contexts_.erase(itor);
+}
+
+void task::running_from_thread(
+	std::string thread_name, std::function<void ()> f)
+{
+	try
+	{
+		// make sure there's a context for this thread for the duration of f()
+		add_context_for_this_thread(thread_name);
+		guard g([&]{ remove_context_for_this_thread(); });
 
 		f();
 	}
 	catch(bailed e)
 	{
-		error("{} bailed out, interrupting all tasks", name());
-		interrupt_all();
+		// something in f() bailed out, interrupt everything
+
+		gcx().error(context::generic,
+			"{} bailed out, interrupting all tasks", name());
+
+		task_manager::instance().interrupt_all();
 	}
 	catch(interrupted)
 	{
+		// this task was interrupted, just quit
 		return;
 	}
 }
 
-void task::parallel(std::vector<std::pair<std::string, std::function<void ()>>> v)
+void task::parallel(parallel_functions v, std::optional<std::size_t> threads)
 {
-	std::vector<std::thread> ts;
+	thread_pool tp(threads);
 
 	for (auto&& [name, f] : v)
 	{
 		cx().trace(context::generic, "running in parallel: {}", name);
 
-		ts.push_back(start_thread([this, name, f]
-		{
-			threaded_run(name, f);
-		}));
+		tp.add([this, name, f]{ running_from_thread(name, f); });
 	}
-
-	for (auto&& t : ts)
-		t.join();
 }
 
-task_conf_holder task::task_conf() const
+conf_task task::task_conf() const
 {
-	return task_conf_holder(*this);
+	return conf().task(names());
+}
+
+git task::make_git() const
+{
+	// always either clone or pull depending on whether the repo is already
+	// there, unless --no-pull is given
+	const auto o = task_conf().no_pull() ? git::clone : git::clone_or_pull;
+
+	git g(o);
+
+	// set up the git tool with the task's settings
+	g.ignore_ts_on_clone(task_conf().ignore_ts());
+	g.revert_ts_on_pull(task_conf().revert_ts());
+	g.credentials(task_conf().git_user(), task_conf().git_email());
+	g.shallow(task_conf().git_shallow());
+
+	if (task_conf().set_origin_remote())
+	{
+		g.remote(
+			task_conf().remote_org(),
+			task_conf().remote_key(),
+			task_conf().remote_no_push_upstream(),
+			task_conf().remote_push_default_origin());
+	}
+
+	return g;
+}
+
+std::string task::make_git_url(
+	const std::string& org, const std::string& repo) const
+{
+	return task_conf().git_url_prefix() + org + "/" + repo + ".git";
+}
+
+fs::path task::get_source_path() const
+{
+	return {};
+}
+
+bool task::get_prebuilt() const
+{
+	return false;
 }
 
 void task::run()
 {
-	threaded_run(name(), [&]
+	// make sure there's a context for this thread; run() can be called from
+	// the main thread or from parallel_tasks, for example, so it might be in
+	// a new thread or not
+	running_from_thread(name(), [&]
 	{
 		if (!enabled())
 		{
@@ -522,14 +343,16 @@ void task::run()
 
 		cx().info(context::generic, "running task");
 
-		fetch();
-		join();
-
+		// clean task if needed
+		clean_task();
 		check_interrupted();
 
-		build_and_install();
-		join();
+		// fetch task if needed
+		fetch();
+		check_interrupted();
 
+		// build/install if needed
+		build_and_install();
 		check_interrupted();
 	});
 }
@@ -544,15 +367,9 @@ void task::interrupt()
 		t->interrupt();
 }
 
-void task::join()
-{
-	if (thread_.joinable())
-		thread_.join();
-}
-
 void task::clean_task()
 {
-	if (!conf::clean())
+	if (!conf().global().clean())
 		return;
 
 	if (!enabled())
@@ -560,7 +377,6 @@ void task::clean_task()
 		cx().debug(context::generic, "cleaning (skipping, task disabled)");
 		return;
 	}
-
 
 	const auto cf = make_clean_flags();
 
@@ -573,84 +389,46 @@ void task::clean_task()
 
 void task::fetch()
 {
+	if (!conf().global().fetch())
+		return;
+
 	if (!enabled())
 	{
 		cx().debug(context::generic, "fetching (skipping, task disabled)");
 		return;
 	}
 
-	thread_ = start_thread([&]
+	cx().info(context::generic, "fetching");
+
+	do_fetch();
+	check_interrupted();
+
+	// auto patching if the task has a source path
+	if (!get_source_path().empty())
 	{
-		threaded_run(name(), [&]
-		{
-			clean_task();
-			check_interrupted();
+		cx().debug(context::generic, "patching");
 
-			if (conf::fetch())
-			{
-				cx().info(context::generic, "fetching");
-				do_fetch();
-
-				check_interrupted();
-
-				if (!get_source_path().empty())
-				{
-					cx().debug(context::generic, "patching");
-
-					run_tool(patcher()
-						.task(name(), get_prebuilt())
-						.root(get_source_path()));
-				}
-
-				check_interrupted();
-			}
-		});
-	});
+		run_tool(patcher()
+			.task(name(), get_prebuilt())
+			.root(get_source_path()));
+	}
 }
 
 void task::build_and_install()
 {
-	if (!conf::build())
+	if (!conf().global().build())
 		return;
 
 	if (!enabled())
 	{
 		cx().debug(context::generic,
 			"build and install (skipping, task disabled)");
+
 		return;
 	}
 
-	thread_ = start_thread([&]
-	{
-		threaded_run(name(), [&]
-		{
-			check_interrupted();
-
-			cx().info(context::generic, "build and install");
-			do_build_and_install();
-
-			check_interrupted();
-		});
-	});
-}
-
-task::clean task::make_clean_flags() const
-{
-	clean c = clean::nothing;
-
-	if (conf::redownload())
-		c |= clean::redownload;
-
-	if (conf::reextract())
-		c |= clean::reextract;
-
-	if (conf::reconfigure())
-		c |= clean::reconfigure;
-
-	if (conf::rebuild())
-		c |= clean::rebuild;
-
-	return c;
+	cx().info(context::generic, "build and install");
+	do_build_and_install();
 }
 
 void task::check_interrupted()
@@ -662,37 +440,45 @@ void task::check_interrupted()
 void task::run_tool_impl(tool* t)
 {
 	{
+		// add tool to list so it can be interrupted
 		std::scoped_lock lock(tools_mutex_);
 		tools_.push_back(t);
 	}
 
 	guard g([&]
 	{
+		// pop the tool
 		std::scoped_lock lock(tools_mutex_);
-
-		for (auto itor=tools_.begin(); itor!=tools_.end(); ++itor)
-		{
-			if (*itor == t)
-			{
-				tools_.erase(itor);
-				break;
-			}
-		}
+		std::erase(tools_, t);
 	});
 
 	cx().debug(context::generic, "running tool {}", t->name());
 
-	context cxcopy(cx());
-
 	check_interrupted();
-	t->run(cxcopy);
+	t->run(cx());
 	check_interrupted();
 }
 
 
-parallel_tasks::parallel_tasks(bool super)
-	: container_task("parallel"), super_(super)
+parallel_tasks::parallel_tasks()
+	: task("parallel")
 {
+}
+
+parallel_tasks::~parallel_tasks()
+{
+	join();
+}
+
+bool parallel_tasks::enabled() const
+{
+	// can't disable parallel tasks
+	return true;
+}
+
+void parallel_tasks::add_task(std::unique_ptr<task> t)
+{
+	children_.push_back(std::move(t));
 }
 
 std::vector<task*> parallel_tasks::children() const
@@ -705,24 +491,14 @@ std::vector<task*> parallel_tasks::children() const
 	return v;
 }
 
-bool parallel_tasks::is_super() const
-{
-	return super_;
-}
-
 void parallel_tasks::run()
 {
+	// creates a thread for each child and calls run()
 	for (auto& t : children_)
-	{
-		threads_.push_back(start_thread([&]
-		{
-			t->run();
-		}));
-	}
+		threads_.push_back(start_thread([&] { t->run(); }));
 
 	join();
 }
-
 
 void parallel_tasks::interrupt()
 {
@@ -736,46 +512,6 @@ void parallel_tasks::join()
 		t.join();
 
 	threads_.clear();
-}
-
-void parallel_tasks::fetch()
-{
-	// no-op
-}
-
-void parallel_tasks::build_and_install()
-{
-	threaded_run(name(), [&]
-	{
-		for (auto& t : children_)
-		{
-			threads_.push_back(start_thread([&]
-			{
-				t->run();
-			}));
-		}
-	});
-}
-
-void parallel_tasks::do_fetch()
-{
-}
-
-void parallel_tasks::do_build_and_install()
-{
-}
-
-void parallel_tasks::do_clean(clean)
-{
-	for (auto& t : children_)
-	{
-		threads_.push_back(start_thread([&]
-		{
-			t->clean_task();
-		}));
-	}
-
-	join();
 }
 
 }	// namespace

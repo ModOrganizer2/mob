@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "tasks.h"
 
-namespace mob
+namespace mob::tasks
 {
 
 spdlog::spdlog()
@@ -11,7 +11,7 @@ spdlog::spdlog()
 
 std::string spdlog::version()
 {
-	return conf::version_by_name("spdlog");
+	return conf().version().get("spdlog");
 }
 
 bool spdlog::prebuilt()
@@ -21,30 +21,22 @@ bool spdlog::prebuilt()
 
 fs::path spdlog::source_path()
 {
-	return paths::build() / ("spdlog-" + version());
+	return conf().path().build() / ("spdlog-" + version());
 }
 
 void spdlog::do_clean(clean c)
 {
-	instrument<times::clean>([&]
-	{
-		if (is_set(c, clean::reclone))
-		{
-			git::delete_directory(cx(), source_path());
-			return;
-		}
-	});
+	// delete the whole directory
+	if (is_set(c, clean::reclone))
+		git_wrap::delete_directory(cx(), source_path());
 }
 
 void spdlog::do_fetch()
 {
-	instrument<times::fetch>([&]
-	{
-		run_tool(task_conf().make_git()
-			.url(task_conf().make_git_url("gabime", "spdlog"))
-			.branch(version())
-			.root(source_path()));
-	});
+	run_tool(make_git()
+		.url(make_git_url("gabime", "spdlog"))
+		.branch(version())
+		.root(source_path()));
 }
 
 }	// namespace

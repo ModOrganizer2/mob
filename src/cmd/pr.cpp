@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "commands.h"
+#include "../core/conf.h"
+#include "../tasks/task_manager.h"
 #include "../tasks/tasks.h"
+#include "../utility.h"
 
 namespace mob
 {
@@ -65,7 +68,7 @@ clipp::group pr_command::do_group()
 int pr_command::do_run()
 {
 	if (github_token_.empty())
-		github_token_ = conf::global_by_name("github_key");
+		github_token_ = conf().global().get("github_key");
 
 	if (op_ == "pull")
 		return pull();
@@ -79,7 +82,7 @@ int pr_command::do_run()
 	return 1;
 }
 
-std::pair<const modorganizer*, std::string> pr_command::parse_pr(
+std::pair<const tasks::modorganizer*, std::string> pr_command::parse_pr(
 	const std::string& pr) const
 {
 	if (pr.empty())
@@ -95,11 +98,11 @@ std::pair<const modorganizer*, std::string> pr_command::parse_pr(
 	const std::string pattern = cs[0];
 	const std::string pr_number = cs[1];
 
-	const auto* task = find_one_task(pattern);
+	const auto* task = task_manager::instance().find_one(pattern);
 	if (!task)
 		return {};
 
-	const auto* mo_task = dynamic_cast<const modorganizer*>(task);
+	const auto* mo_task = dynamic_cast<const tasks::modorganizer*>(task);
 	if (!mo_task)
 	{
 		u8cerr << "only modorganizer tasks are supported\n";
@@ -123,8 +126,8 @@ int pr_command::pull()
 	{
 		for (auto&& pr : okay_prs)
 		{
-			const auto* task = dynamic_cast<const modorganizer*>(
-				find_one_task(pr.repo));
+			const auto* task = dynamic_cast<const tasks::modorganizer*>(
+				task_manager::instance().find_one(pr.repo));
 
 			if (!task)
 				return 1;
@@ -133,12 +136,13 @@ int pr_command::pull()
 				<< "checking out pr " << pr.number << " "
 				<< "in " << task->name() << "\n";
 
-			git::fetch(
-				task->this_source_path(),
-				task->git_url().string(),
-				::fmt::format("pull/{}/head", pr.number));
+			git_wrap g(task->source_path());
 
-			git::checkout(task->this_source_path(), "FETCH_HEAD");
+			g.fetch(
+				task->git_url().string(),
+				fmt::format("pull/{}/head", pr.number));
+
+			g.checkout("FETCH_HEAD");
 		}
 
 		u8cout << "note: all these repos are now in detached HEAD state\n";
@@ -171,15 +175,15 @@ int pr_command::revert()
 	{
 		for (auto&& pr : okay_prs)
 		{
-			const auto* task = dynamic_cast<const modorganizer*>(
-				find_one_task(pr.repo));
+			const auto* task = dynamic_cast<const tasks::modorganizer*>(
+				task_manager::instance().find_one(pr.repo));
 
 			if (!task)
 				return 1;
 
 			u8cout << "reverting " << task->name() << " to master\n";
 
-			git::checkout(task->this_source_path(), "master");
+			git_wrap(task->source_path()).checkout("master");
 		}
 
 		return 0;
@@ -229,11 +233,11 @@ std::vector<pr_command::pr_info> pr_command::search_prs(
 		"https://api.github.com/search/issues?per_page=100&q="
 		"is:pr+org:{org:}+author:{author:}+is:open+head:{branch:}";
 
-	const auto search_url = ::fmt::format(
+	const auto search_url = fmt::format(
 		pattern,
-		::fmt::arg("org", org),
-		::fmt::arg("author", author),
-		::fmt::arg("branch", branch));
+		fmt::arg("org", org),
+		fmt::arg("author", author),
+		fmt::arg("branch", branch));
 
 	u8cout << "search url is " << search_url << "\n";
 
@@ -292,7 +296,7 @@ std::vector<pr_command::pr_info> pr_command::search_prs(
 }
 
 pr_command::pr_info pr_command::get_pr_info(
-	const modorganizer* task, const std::string& pr)
+	const tasks::modorganizer* task, const std::string& pr)
 {
 	nlohmann::json json;
 
@@ -302,7 +306,7 @@ pr_command::pr_info pr_command::get_pr_info(
 		return {};
 	}
 
-	const url u(::fmt::format(
+	const url u(fmt::format(
 		"https://api.github.com/repos/{}/{}/pulls/{}",
 		task->org(), task->repo(), pr));
 
@@ -345,7 +349,7 @@ std::vector<pr_command::pr_info> pr_command::validate_prs(
 		}
 		else
 		{
-			const auto tasks = find_tasks(pr.repo);
+			const auto tasks = task_manager::instance().find(pr.repo);
 
 			if (tasks.empty())
 			{
@@ -359,7 +363,8 @@ std::vector<pr_command::pr_info> pr_command::validate_prs(
 			}
 			else
 			{
-				const auto* mo_task = dynamic_cast<const modorganizer*>(tasks[0]);
+				const auto* mo_task =
+					dynamic_cast<const tasks::modorganizer*>(tasks[0]);
 
 				if (!mo_task)
 				{

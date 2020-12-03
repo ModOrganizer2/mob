@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "tools.h"
+#include "../core/process.h"
 
 namespace mob
 {
@@ -11,7 +12,7 @@ cmake::cmake(ops o)
 
 fs::path cmake::binary()
 {
-	return conf::tool_by_name("cmake");
+	return conf().tool().get("cmake");
 }
 
 cmake& cmake::generator(generators g)
@@ -46,7 +47,7 @@ cmake& cmake::prefix(const fs::path& s)
 
 cmake& cmake::def(const std::string& name, const std::string& value)
 {
-	process_.arg("-D" + name + "=" + value + "");
+	def_.emplace_back(name, value);
 	return *this;
 }
 
@@ -76,9 +77,11 @@ cmake& cmake::cmd(const std::string& s)
 
 fs::path cmake::build_path() const
 {
+	// use anything given in output()
 	if (!output_.empty())
 		return output_;
 
+	// use the build path for the given generator and architecture,
 	const auto& g = get_generator(gen_);
 	return root_ / (g.output_dir(arch_));
 }
@@ -119,7 +122,7 @@ void cmake::do_generate()
 
 	const auto& g = get_generator(gen_);
 
-	process_
+	auto p = process()
 		.stdout_encoding(encodings::utf8)
 		.stderr_encoding(encodings::utf8)
 		.binary(binary())
@@ -130,30 +133,38 @@ void cmake::do_generate()
 
 	if (genstring_.empty())
 	{
-		process_
+		// there's always a generator name, but some generators don't need
+		// an architecture flag, like jom, so get_arch() might return an empty
+		// string
+		p
 			.arg("-G", "\"" + g.name + "\"")
 			.arg(g.get_arch(arch_));
 	}
 	else
 	{
-		process_
-			.arg("-G", "\"" + genstring_ + "\"");
+		// verbatim generator string
+		p.arg("-G", "\"" + genstring_ + "\"");
 	}
 
+	// prefix
 	if (!prefix_.empty())
-		process_.arg("-DCMAKE_INSTALL_PREFIX=", prefix_, process::nospace);
+		p.arg("-DCMAKE_INSTALL_PREFIX=", prefix_);
 
+	// macros
+	for (auto&& [name, value] : def_)
+		p.arg("-D" + name + "=" + value + "");
+
+	// `..` by default, overriden by cmd()
 	if (cmd_.empty())
-		process_.arg("..");
+		p.arg("..");
 	else
-		process_.arg(cmd_);
+		p.arg(cmd_);
 
-	process_
-		.env(env::vs(arch_)
-			.set("CXXFLAGS", "/wd4566"))
+	p
+		.env(env::vs(arch_).set("CXXFLAGS", "/wd4566"))
 		.cwd(build_path());
 
-	execute_and_join();
+	execute_and_join(p);
 }
 
 void cmake::do_clean()
@@ -166,7 +177,13 @@ const std::map<cmake::generators, cmake::gen_info>& cmake::all_generators()
 {
 	static const std::map<generators, gen_info> map =
 	{
-		{ generators::jom, {"build", "NMake Makefiles JOM", "", "" }},
+		// jom doesn't need -A for architectures
+		{ generators::jom, {
+			"build",
+			"NMake Makefiles JOM",
+			"",
+			""
+		}},
 
 		{ generators::vs, {
 			"vsbuild",
@@ -185,7 +202,7 @@ const cmake::gen_info& cmake::get_generator(generators g)
 
 	auto itor = map.find(g);
 	if (itor == map.end())
-		bail_out("unknown generator");
+		gcx().bail_out(context::generic, "unknown generator");
 
 	return itor->second;
 }
@@ -214,7 +231,7 @@ std::string cmake::gen_info::get_arch(arch a) const
 			return {};
 
 		default:
-			bail_out("gen_info::get_arch(): bad arch");
+			gcx().bail_out(context::generic, "gen_info::get_arch(): bad arch");
 	}
 }
 
@@ -230,7 +247,7 @@ std::string cmake::gen_info::output_dir(arch a) const
 			return dir;
 
 		default:
-			bail_out("gen_info::get_arch(): bad arch");
+			gcx().bail_out(context::generic, "gen_info::get_arch(): bad arch");
 	}
 }
 

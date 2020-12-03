@@ -5,6 +5,7 @@
 #include "../core/context.h"
 #include "../core/op.h"
 #include "../tasks/tasks.h"
+#include "../tasks/task_manager.h"
 #include "../utility/threading.h"
 
 namespace mob
@@ -32,7 +33,7 @@ void release_command::make_bin()
 	u8cout << "making binary archive " << path_to_utf8(out) << "\n";
 
 	op::archive_from_glob(gcx(),
-		paths::install_bin() / "*", out, {"__pycache__"});
+		conf().path().install_bin() / "*", out, {"__pycache__"});
 }
 
 void release_command::make_pdbs()
@@ -41,7 +42,7 @@ void release_command::make_pdbs()
 	u8cout << "making pdbs archive " << path_to_utf8(out) << "\n";
 
 	op::archive_from_glob(gcx(),
-		paths::install_pdbs() / "*", out, {"__pycache__"});
+		conf().path().install_pdbs() / "*", out, {"__pycache__"});
 }
 
 void release_command::make_src()
@@ -68,15 +69,15 @@ void release_command::make_src()
 	std::vector<fs::path> files;
 	std::size_t total_size = 0;
 
-	if (!fs::exists(modorganizer::super_path()))
+	if (!fs::exists(tasks::modorganizer::super_path()))
 	{
 		gcx().bail_out(context::generic,
 			"modorganizer super path not found: {}",
-			modorganizer::super_path());
+			tasks::modorganizer::super_path());
 	}
 
 	// build list list
-	walk_dir(modorganizer::super_path(), files, ignore_re, total_size);
+	walk_dir(tasks::modorganizer::super_path(), files, ignore_re, total_size);
 
 	// should be below 20MB
 	const std::size_t max_expected_size = 20 * 1024 * 1024;
@@ -95,13 +96,13 @@ void release_command::make_src()
 	}
 
 	op::archive_from_files(gcx(),
-		files, modorganizer::super_path(), out);
+		files, tasks::modorganizer::super_path(), out);
 }
 
 void release_command::make_installer()
 {
 	const auto file = "Mod.Organizer-" + version_ + ".exe";
-	const auto src = paths::install_installer() / file;
+	const auto src = conf().path().install_installer() / file;
 	const auto dest = out_;
 
 	u8cout << "copying installer " << file << "\n";
@@ -302,7 +303,7 @@ int release_command::do_official()
 	if (!check_clean_prefix())
 		return 1;
 
-	run_all_tasks();
+	task_manager::instance().run_all();
 	build_command::terminate_msbuild();
 
 	prepare();
@@ -321,16 +322,16 @@ void release_command::check_repos_for_branch()
 	thread_pool tp;
 	std::atomic<bool> failed = false;
 
-	for (const auto* t : find_tasks("super"))
+	for (const auto* t : task_manager::instance().find("super"))
 	{
 		if (!t->enabled())
 			continue;
 
 		tp.add([this, t, &failed]
 		{
-			const auto* o = dynamic_cast<const modorganizer*>(t);
+			const auto* o = dynamic_cast<const tasks::modorganizer*>(t);
 
-			if (!git::branch_exists(o->git_url(), branch_))
+			if (!git_wrap::remote_branch_exists(o->git_url(), branch_))
 			{
 				gcx().error(context::generic,
 					"branch {} doesn't exist in the {} repo",
@@ -354,11 +355,13 @@ void release_command::check_repos_for_branch()
 
 bool release_command::check_clean_prefix()
 {
-	if (!fs::exists(paths::prefix()))
+	const auto prefix = conf().path().prefix();
+
+	if (!fs::exists(prefix))
 		return true;
 
 	u8cout
-		<< "prefix " << path_to_utf8(paths::prefix()) << " already exists\n"
+		<< "prefix " << path_to_utf8(prefix) << " already exists\n"
 		<< "delete? [Y/n] ";
 
 	std::wstring s;
@@ -367,7 +370,7 @@ bool release_command::check_clean_prefix()
 	if (s == L"" || s == L"y" || s == L"Y")
 	{
 		build_command::terminate_msbuild();
-		op::delete_directory(gcx(), paths::prefix());
+		op::delete_directory(gcx(), prefix);
 		return true;
 	}
 
@@ -381,7 +384,10 @@ void release_command::prepare()
 	if (rc_path_.empty())
 	{
 		rc_path_ =
-			modorganizer::super_path() / "modorganizer" / "src" / "version.rc";
+			tasks::modorganizer::super_path()
+			/ "modorganizer"
+			/ "src"
+			/ "version.rc";
 	}
 
 	// getting version from rc or exe
@@ -394,11 +400,13 @@ void release_command::prepare()
 	}
 
 	// finding output path
+	const auto prefix = conf().path().prefix();
 	out_ = fs::path(utf8_to_utf16(utf8out_));
+
 	if (out_.empty())
-		out_ = paths::prefix() / "releases" / version_;
+		out_ = prefix / "releases" / version_;
 	else if (out_.is_relative())
-		out_ = paths::prefix() / out_;
+		out_ = prefix / out_;
 }
 
 std::string release_command::do_doc()
@@ -429,7 +437,7 @@ std::string release_command::do_doc()
 
 std::string release_command::version_from_exe() const
 {
-	const auto exe = paths::install_bin() / "ModOrganizer.exe";
+	const auto exe = conf().path().install_bin() / "ModOrganizer.exe";
 
 	// getting version info size
 	DWORD dummy = 0;
@@ -484,7 +492,7 @@ std::string release_command::version_from_exe() const
 	// using the first language in the list to get FileVersion
 	const auto* lcp = static_cast<LANGANDCODEPAGE*>(value_pointer);
 
-	const auto sub_block = ::fmt::format(
+	const auto sub_block = fmt::format(
 		L"\\StringFileInfo\\{:04x}{:04x}\\FileVersion",
 		lcp->wLanguage, lcp->wCodePage);
 

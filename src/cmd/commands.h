@@ -2,11 +2,15 @@
 
 #include "../utility/enum.h"
 
+namespace mob::tasks
+{
+	class modorganizer;
+}
+
 namespace mob
 {
 
 class task;
-class modorganizer;
 class url;
 
 // base class for all commands
@@ -226,10 +230,6 @@ private:
 	// directory below it
 	//
 	void create_prefix_ini();
-
-	// for instrumentation
-	//
-	void dump_timings();
 };
 
 
@@ -258,10 +258,10 @@ private:
 	std::string pr_;
 	std::string github_token_;
 
-	std::pair<const modorganizer*, std::string> parse_pr(
+	std::pair<const tasks::modorganizer*, std::string> parse_pr(
 		const std::string& pr) const;
 
-	pr_info get_pr_info(const modorganizer* task, const std::string& pr);
+	pr_info get_pr_info(const tasks::modorganizer* task, const std::string& pr);
 
 	std::vector<pr_command::pr_info> get_matching_prs(
 		const std::string& repo_pr);
@@ -288,7 +288,6 @@ public:
 protected:
 	clipp::group do_group() override;
 	int do_run() override;
-	std::string do_doc() override;
 
 private:
 	bool all_ = false;
@@ -296,10 +295,6 @@ private:
 	std::vector<std::string> tasks_;
 
 	void dump(const std::vector<task*>& v, std::size_t indent) const;
-
-	void dump_tasks(
-		const std::vector<task*>& v, std::size_t indent, bool recurse) const;
-
 	void dump_aliases() const;
 };
 
@@ -386,7 +381,8 @@ private:
 		none = 0,
 		set_remotes,
 		add_remote,
-		ignore_ts
+		ignore_ts,
+		branches
 	};
 
 	modes mode_ = modes::none;
@@ -398,6 +394,7 @@ private:
 	bool tson_ = false;
 	bool nopush_ = false;
 	bool push_default_ = false;
+	bool all_branches_ = false;
 
 	void do_set_remotes();
 	void do_set_remotes(const fs::path& r);
@@ -407,6 +404,8 @@ private:
 
 	void do_ignore_ts();
 	void do_ignore_ts(const fs::path& r);
+
+	void do_branches();
 
 	std::vector<fs::path> get_repos() const;
 };

@@ -60,56 +60,29 @@ void downloader::do_download()
 	dl_.reset(new curl_downloader(&cx()));
 
 	cx().trace(context::net, "looking for already downloaded files");
-
-	if (!file_.empty())
+	if (use_existing())
 	{
-		if (try_picking(file_))
-			return;
+		cx().trace(context::bypass, "using {}", file_);
+		return;
 	}
-	else
-	{
-		for (auto&& u : urls_)
-		{
-			const auto file = path_for_url(u);
-
-			if (try_picking(file))
-			{
-				file_ = file;
-				return;
-			}
-		}
-	}
-
 
 	cx().trace(context::net, "no cached downloads were found, will try:");
 	for (auto&& u : urls_)
 		cx().trace(context::net, "  . {}", u);
 
-
 	// try them in order
 	for (auto&& u : urls_)
 	{
-		if (file_.empty())
-			file_ = path_for_url(u);
-
-		cx().trace(context::net, "trying {} into {}", u, file_);
-
-		dl_->start(u, file_);
-		cx().trace(context::net, "waiting for download");
-		dl_->join();
-
-		if (dl_->ok())
+		if (try_download(u))
 		{
-			cx().trace(context::net, "file {} downloaded", file_);
+			// done
 			return;
 		}
-
-		cx().debug(context::net, "download failed");
 	}
 
 	if (interrupted())
 	{
-		cx().trace(context::interruption, "");
+		cx().trace(context::interruption, "interrupted");
 		return;
 	}
 
@@ -117,15 +90,37 @@ void downloader::do_download()
 	cx().bail_out(context::net, "all urls failed to download");
 }
 
+bool downloader::try_download(const mob::url& u)
+{
+	// when file() wasn't called, the output file is created from the url
+	if (file_.empty())
+		file_ = path_for_url(u);
+
+	// downloading
+	cx().trace(context::net, "trying {} into {}", u, file_);
+	dl_->start(u, file_);
+
+	cx().trace(context::net, "waiting for download");
+	dl_->join();
+
+	if (dl_->ok())
+	{
+		// done
+		cx().trace(context::net, "file {} downloaded", file_);
+		return true;
+	}
+
+	cx().debug(context::net, "download failed");
+	return false;
+}
+
 void downloader::do_clean()
 {
-	if (!file_.empty())
+	if (file_.empty())
 	{
-		cx().debug(context::redownload, "deleting {}", file_);
-		op::delete_file(cx(), file_, op::optional);
-	}
-	else
-	{
+		// file() wasn't called, delete all the files that would be created
+		// depending on the urls given
+
 		for (auto&& u : urls_)
 		{
 			const auto file = path_for_url(u);
@@ -133,6 +128,12 @@ void downloader::do_clean()
 			cx().debug(context::redownload, "deleting {}", file);
 			op::delete_file(cx(), file, op::optional);
 		}
+	}
+	else
+	{
+		// delete the given output file
+		cx().debug(context::redownload, "deleting {}", file_);
+		op::delete_file(cx(), file_, op::optional);
 	}
 }
 
@@ -142,16 +143,28 @@ void downloader::do_interrupt()
 		dl_->interrupt();
 }
 
-bool downloader::try_picking(const fs::path& file)
+bool downloader::use_existing()
 {
-	if (fs::exists(file))
+	if (file_.empty())
 	{
-		cx().trace(context::bypass, "picking {}", file_);
-		return true;
+		// check if one of the files that would be created by a url exists
+		for (auto&& u : urls_)
+		{
+			const auto file = path_for_url(u);
+
+			if (fs::exists(file))
+			{
+				// take it
+				file_ = file;
+				return true;
+			}
+		}
 	}
 	else
 	{
-		cx().trace(context::net, "no {}", file);
+		// file() was called, check if it exists
+		if (fs::exists(file_))
+			return true;
 	}
 
 	return false;
@@ -183,7 +196,8 @@ fs::path downloader::path_for_url(const mob::url& u) const
 		filename = u.filename();
 	}
 
-	return paths::cache() / filename;
+	// downloaded files go in the cache, typically build/downloads/
+	return conf().path().cache() / filename;
 }
 
 }	// namespace

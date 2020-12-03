@@ -5,32 +5,6 @@
 namespace mob
 {
 
-bool glob_match(const std::string& pattern, const std::string& s)
-{
-	try
-	{
-		std::string fixed_pattern = pattern;
-		fixed_pattern = replace_all(fixed_pattern, "*", ".*");
-		fixed_pattern = replace_all(fixed_pattern, "_", "-");
-
-		std::string fixed_string = s;
-		fixed_string = replace_all(fixed_string, "_", "-");
-
-		std::regex re(fixed_pattern, std::regex::icase);
-
-		return std::regex_match(fixed_string, re);
-	}
-	catch(std::exception&)
-	{
-		u8cerr
-			<< "bad glob '" << pattern << "'\n"
-			<< "globs are actually bastardized regexes where '*' is "
-			<< "replaced by '.*', so don't push it\n";
-
-		throw bailed();
-	}
-}
-
 std::string replace_all(
 	std::string s, const std::string& from, const std::string& to)
 {
@@ -440,6 +414,22 @@ std::string utf8_to_bytes(encodings e, std::string_view utf8)
 std::string path_to_utf8(fs::path p)
 {
 	return utf16_to_utf8(p.native());
+}
+
+
+encoded_buffer::encoded_buffer(encodings e, std::string bytes)
+	: e_(e), bytes_(std::move(bytes)), last_(0)
+{
+}
+
+void encoded_buffer::add(std::string_view bytes)
+{
+	bytes_.append(bytes.begin(), bytes.end());
+}
+
+std::string encoded_buffer::utf8_string() const
+{
+	return bytes_to_utf8(e_, bytes_);
 }
 
 } // namespace

@@ -6,6 +6,11 @@ namespace mob
 class context;
 
 
+// returns a unique filename in the temp directory; requires inis to be loaded
+//
+fs::path make_temp_file();
+
+
 struct handle_closer
 {
 	using pointer = HANDLE;

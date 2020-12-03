@@ -1,8 +1,55 @@
 #include "pch.h"
 #include "tasks.h"
+#include "../core/process.h"
 
-namespace mob
+// see the top of pyqt.cpp for some stuff about python/sip/pyqt
+
+namespace mob::tasks
 {
+
+namespace
+{
+
+std::string version_without_v()
+{
+	const auto v = python::parsed_version();
+
+	// 3.8.1
+	std::string s = v.major + "." + v.minor;
+	if (v.patch != "")
+		s += "." + v.patch;
+
+	return s;
+}
+
+std::string version_for_dll()
+{
+	const auto v = python::parsed_version();
+
+	// 38
+	return v.major + v.minor;
+}
+
+url prebuilt_url()
+{
+	return make_prebuilt_url("python-prebuilt-" + version_without_v() + ".7z");
+}
+
+fs::path solution_file()
+{
+	return python::source_path() / "PCBuild" / "pcbuild.sln";
+}
+
+fs::path python_core_zip_file()
+{
+	return
+		python::build_path() /
+		"pythoncore" /
+		("python" + version_for_dll() + ".zip");
+}
+
+}	// namespace
+
 
 python::python()
 	: basic_task("python")
@@ -11,12 +58,12 @@ python::python()
 
 std::string python::version()
 {
-	return conf::version_by_name("python");
+	return conf().version().get("python");
 }
 
 bool python::prebuilt()
 {
-	return conf::prebuilt_by_name("python");
+	return conf().prebuilt().get<bool>("python");
 }
 
 python::version_info python::parsed_version()
@@ -29,7 +76,7 @@ python::version_info python::parsed_version()
 	const auto s = version();
 
 	if (!std::regex_match(s, m, re))
-		bail_out("bad python version '{}'", s);
+		gcx().bail_out(context::generic, "bad python version '{}'", s);
 
 	version_info v;
 
@@ -40,21 +87,9 @@ python::version_info python::parsed_version()
 	return v;
 }
 
-std::string python::version_without_v()
-{
-	const auto v = parsed_version();
-
-	// 3.8.1
-	std::string s = v.major + "." + v.minor;
-	if (v.patch != "")
-		s += "." + v.patch;
-
-	return s;
-}
-
 fs::path python::source_path()
 {
-	return paths::build() / ("python-" + version_without_v());
+	return conf().path().build() / ("python-" + version_without_v());
 }
 
 fs::path python::build_path()
@@ -64,32 +99,34 @@ fs::path python::build_path()
 
 void python::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	if (prebuilt())
 	{
-		if (prebuilt())
-		{
-			if (is_set(c, clean::redownload))
-				run_tool(downloader(prebuilt_url(), downloader::clean));
+		// delete download
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(prebuilt_url(), downloader::clean));
 
-			if (is_set(c, clean::reextract))
-			{
-				cx().trace(context::reextract, "deleting {}", source_path());
-				op::delete_directory(cx(), source_path(), op::optional);
-				return;
-			}
-		}
-		else
+		// delete the whole directory
+		if (is_set(c, clean::reextract))
 		{
-			if (is_set(c, clean::reclone))
-			{
-				git::delete_directory(cx(), source_path());
-				return;
-			}
-
-			if (is_set(c, clean::rebuild))
-				run_tool(create_msbuild_tool(msbuild::clean));
+			cx().trace(context::reextract, "deleting {}", source_path());
+			op::delete_directory(cx(), source_path(), op::optional);
 		}
-	});
+	}
+	else
+	{
+		// delete the whole directory
+		if (is_set(c, clean::reclone))
+		{
+			git_wrap::delete_directory(cx(), source_path());
+
+			// no need to do anything else
+			return;
+		}
+
+		// msbuild clean
+		if (is_set(c, clean::rebuild))
+			run_tool(create_msbuild_tool(msbuild::clean));
+	}
 }
 
 void python::do_fetch()
@@ -110,149 +147,108 @@ void python::do_build_and_install()
 
 void python::fetch_prebuilt()
 {
-	const auto file = instrument<times::fetch>([&]
-	{
-		return run_tool(downloader(prebuilt_url()));
-	});
+	const auto file = run_tool(downloader(prebuilt_url()));
 
-	instrument<times::extract>([&]
-	{
-		run_tool(extractor()
-			.file(file)
-			.output(source_path()));
-	});
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
 }
 
 void python::build_and_install_prebuilt()
 {
-	instrument<times::install>([&]
-	{
-		op::copy_glob_to_dir_if_better(cx(),
-			openssl::bin_path() / "*.dll",
-			python::build_path(),
-			op::copy_files);
-
-		install_pip();
-		copy_files();
-	});
+	install_pip();
+	copy_files();
 }
 
 void python::fetch_from_source()
 {
-	instrument<times::fetch>([&]
-	{
-		run_tool(task_conf().make_git()
-			.url(task_conf().make_git_url("python", "cpython"))
-			.branch(version())
-			.root(source_path()));
-	});
-
-	instrument<times::configure>([&]
-	{
-		run_tool(vs(vs::upgrade)
-			.solution(solution_file()));
-	});
+	run_tool(make_git()
+		.url(make_git_url("python", "cpython"))
+		.branch(version())
+		.root(source_path()));
 }
 
 void python::build_and_install_from_source()
 {
-	instrument<times::build>([&]
-	{
-		run_tool(create_msbuild_tool());
-		package();
-	});
+	// build
+	run_tool(create_msbuild_tool());
 
-	instrument<times::install>([&]
-	{
-		install_pip();
+	// package stuff into pythoncore.zip
+	package();
 
-		op::copy_file_to_dir_if_better(cx(),
-			source_path() / "PC" / "pyconfig.h",
-			include_path());
+	// install pip for other tasks that need it
+	install_pip();
 
-		copy_files();
-	});
+	// boost.python expects pyconfig.h to be in the include path
+	op::copy_file_to_dir_if_better(cx(),
+		source_path() / "PC" / "pyconfig.h",
+		include_path());
+
+	copy_files();
 }
 
 void python::package()
 {
-	bypass_file packaged_bypass(cx(), build_path(), "packaged");
-
-	if (packaged_bypass.exists())
+	if (fs::exists(python_core_zip_file()))
 	{
 		cx().trace(context::bypass, "python already packaged");
+		return;
 	}
-	else
-	{
-		const auto bat = source_path() / "python.bat";
 
-		run_tool(process_runner(process()
-			.binary(bat)
-			.arg(fs::path("PC/layout"))
-			.arg("--source", source_path())
-			.arg("--build", build_path())
-			.arg("--temp", (build_path() / "pythoncore_temp"))
-			.arg("--copy", (build_path() / "pythoncore"))
-			.arg("--preset-embed")
-			.cwd(source_path())));
+	const auto bat = source_path() / "python.bat";
 
-		op::touch(cx(), build_path() / "_mob_packaged");
-	}
+	// package libs into pythonXX.zip
+	run_tool(process_runner(process()
+		.binary(bat)
+		.arg(fs::path("PC/layout"))
+		.arg("--source", source_path())
+		.arg("--build", build_path())
+		.arg("--temp", (build_path() / "pythoncore_temp"))
+		.arg("--copy", (build_path() / "pythoncore"))
+		.arg("--preset-embed")
+		.cwd(source_path())));
 }
 
 void python::copy_files()
 {
+	// libs
 	op::copy_glob_to_dir_if_better(cx(),
 		build_path() / "*.lib",
-		paths::install_libs(),
+		conf().path().install_libs(),
 		op::copy_files);
 
+	// dlls
 	op::copy_glob_to_dir_if_better(cx(),
 		build_path() / "libffi*.dll",
-		paths::install_bin(),
+		conf().path().install_bin(),
 		op::copy_files);
 
 	op::copy_file_to_dir_if_better(cx(),
 		build_path() / ("python" + version_for_dll() + ".dll"),
-		paths::install_bin());
+		conf().path().install_bin());
 
+	// pdbs
 	op::copy_file_to_dir_if_better(cx(),
 		build_path() / ("python" + version_for_dll() + ".pdb"),
-		paths::install_pdbs());
+		conf().path().install_pdbs());
 
+	// pyd files
 	op::copy_glob_to_dir_if_better(cx(),
 		build_path() / "pythoncore/*.pyd",
-		paths::install_pythoncore(),
+		conf().path().install_pythoncore(),
 		op::copy_files);
 
+	// pythonXX.zip -> pythoncore.zip
 	op::copy_file_to_file_if_better(cx(),
-		build_path() / "pythoncore" / ("python" + version_for_dll() + ".zip"),
-		paths::install_bin() / "pythoncore.zip",
+		python_core_zip_file(),
+		conf().path().install_bin() / "pythoncore.zip",
 		op::copy_files);
 }
 
 void python::install_pip()
 {
 	cx().trace(context::generic, "installing pip");
-
-	run_tool(process_runner(process()
-		.binary(python_exe())
-		.arg("-m", "ensurepip")));
-
-	run_tool(process_runner(process()
-		.binary(python_exe())
-		.arg("-m pip")
-		.arg("install")
-		.arg("--no-warn-script-location")
-		.arg("--upgrade pip")));
-
-	// ssl errors while downloading through python without certifi
-	run_tool(process_runner(process()
-		.binary(python_exe())
-		.arg("-m pip")
-		.arg("install")
-		.arg("--no-warn-script-location")
-		.arg("certifi")));
+	run_tool(pip(pip::ensure));
 }
 
 msbuild python::create_msbuild_tool(msbuild::ops o)
@@ -262,7 +258,7 @@ msbuild python::create_msbuild_tool(msbuild::ops o)
 		.targets({
 			"python", "pythonw", "python3dll", "select", "pyexpat",
 			"unicodedata", "_queue", "_bz2", "_ssl", "_overlapped"})
-		.parameters({
+		.properties({
 			"bz2Dir=" + path_to_utf8(bzip2::source_path()),
 			"zlibDir=" + path_to_utf8(zlib::source_path()),
 			"opensslIncludeDir=" + path_to_utf8(openssl::include_path()),
@@ -289,24 +285,6 @@ fs::path python::scripts_path()
 fs::path python::site_packages_path()
 {
 	return source_path() / "Lib" / "site-packages";
-}
-
-url python::prebuilt_url()
-{
-	return make_prebuilt_url("python-prebuilt-" + version_without_v() + ".7z");
-}
-
-fs::path python::solution_file()
-{
-	return source_path() / "PCBuild" / "pcbuild.sln";
-}
-
-std::string python::version_for_dll()
-{
-	const auto v = parsed_version();
-
-	// 38
-	return v.major + v.minor;
 }
 
 }	// namespace

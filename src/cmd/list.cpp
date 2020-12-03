@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "commands.h"
-#include "../tasks/tasks.h"
+#include "../tasks/task_manager.h"
+#include "../tasks/task.h"
+#include "../utility/io.h"
 
 namespace mob
 {
@@ -37,6 +39,8 @@ clipp::group list_command::do_group()
 
 int list_command::do_run()
 {
+	auto& tm = task_manager::instance();
+
 	if (aliases_)
 	{
 		load_options();
@@ -50,14 +54,14 @@ int list_command::do_run()
 				set_task_enabled_flags(tasks_);
 
 			load_options();
-			dump(get_top_level_tasks(), 0);
+			dump(tm.top_level(), 0);
 
 			u8cout << "\n\naliases:\n";
 			dump_aliases();
 		}
 		else
 		{
-			for (auto&& t : get_all_tasks())
+			for (auto&& t : tm.all())
 				u8cout << " - " << join(t->names(), ", ") << "\n";
 		}
 	}
@@ -78,27 +82,19 @@ void list_command::dump(const std::vector<task*>& v, std::size_t indent) const
 			<< " - " << join(t->names(), ",")
 			<< "\n";
 
-		if (auto* ct=dynamic_cast<container_task*>(t))
-			dump(ct->children(), indent + 1);
+		if (auto* pt=dynamic_cast<parallel_tasks*>(t))
+			dump(pt->children(), indent + 1);
 	}
 }
 
 void list_command::dump_aliases() const
 {
-	const auto v = get_all_aliases();
+	const auto v = task_manager::instance().aliases();
 	if (v.empty())
 		return;
 
 	for (auto&& [k, patterns] : v)
 		u8cout << " - " << k << ": " << join(patterns, ", ") << "\n";
-}
-
-
-std::string list_command::do_doc()
-{
-	return
-		"Lists all available tasks. The special task name `super` is a\n"
-		"shorthand for all modorganizer tasks.";
 }
 
 }	// namespace

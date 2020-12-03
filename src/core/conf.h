@@ -1,101 +1,200 @@
 #pragma once
 
+// these shouldn't be called directly, they're used by some of the template
+// below
+//
+namespace mob::details
+{
+
+// returns an option named `key` from the given `section`
+//
+std::string get_string(std::string_view section, std::string_view key);
+
+// calls get_string(), converts to bool
+//
+bool get_bool(std::string_view section, std::string_view key);
+
+// calls get_string(), converts to in
+//
+int get_int(std::string_view section, std::string_view key);
+
+// sets the given option, bails out if the option doesn't exist
+//
+void set_string(
+	std::string_view section, std::string_view key, std::string_view value);
+
+}	// namespace
+
+
 namespace mob
 {
 
-class conf
+// reads options from the given inis and option strings, resolves all the paths
+// and necessary tools, also adds a couple of things to PATH
+//
+void init_options(
+	const std::vector<fs::path>& inis, const std::vector<std::string>& opts);
+
+// checks some of the options once everything is loaded, returns false if
+// something's wrong
+//
+bool verify_options();
+
+// returns all options formatted as three columns
+//
+std::vector<std::string> format_options();
+
+
+// base class for all conf structs
+//
+template <class DefaultType>
+class conf_section
 {
 public:
-	static std::string get_global(
-		const std::string& section, const std::string& key);
-
-	static int get_global_int(
-		const std::string& section, const std::string& key);
-
-	static bool get_global_bool(
-		const std::string& section, const std::string& key);
-
-
-	static void set_global(
-		const std::string& section,
-		const std::string& key, const std::string& value);
-
-	static void add_global(
-		const std::string& section,
-		const std::string& key, const std::string& value);
-
-
-	static std::string get_for_task(
-		const std::vector<std::string>& task_names,
-		const std::string& section, const std::string& key);
-
-	static void set_for_task(
-		const std::string& task_name, const std::string& section,
-		const std::string& key, const std::string& value);
-
-
-	static bool prebuilt_by_name(const std::string& task);
-	static fs::path path_by_name(const std::string& name);
-	static std::string version_by_name(const std::string& name);
-	static fs::path tool_by_name(const std::string& name);
-
-	static std::string global_by_name(const std::string& name);
-	static bool bool_global_by_name(const std::string& name);
-
-	static std::string task_option_by_name(
-		const std::vector<std::string>& task_names, const std::string& name);
-
-	static bool bool_task_option_by_name(
-		const std::vector<std::string>& task_names, const std::string& name);
-
-
-	static int output_log_level() { return output_log_level_; }
-	static void set_output_log_level(const std::string& s);
-
-	static int file_log_level()   { return file_log_level_; }
-	static void set_file_log_level(const std::string& s);
-
-	static bool dry() { return dry_; }
-	static void set_dry(const std::string& s);
-
-	static fs::path log_file() { return global_by_name("log_file"); }
-	static bool redownload()   { return bool_global_by_name("redownload"); }
-	static bool reextract()    { return bool_global_by_name("reextract"); }
-	static bool reconfigure()  { return bool_global_by_name("reconfigure"); }
-	static bool rebuild()      { return bool_global_by_name("rebuild"); }
-	static bool clean()        { return bool_global_by_name("clean_task"); }
-	static bool fetch()        { return bool_global_by_name("fetch_task"); }
-	static bool build()        { return bool_global_by_name("build_task"); }
-
-	static bool ignore_uncommitted()
+	DefaultType get(std::string_view key) const
 	{
-		return bool_global_by_name("ignore_uncommitted");
+		return details::get_string(name_, key);
 	}
 
-	static std::vector<std::string> format_options();
+	// undefined
+	template <class T>
+	T get(std::string_view key) const;
+
+	template <>
+	bool get<bool>(std::string_view key) const
+	{
+		return details::get_bool(name_, key);
+	}
+
+	template <>
+	int get<int>(std::string_view key) const
+	{
+		return details::get_int(name_, key);
+	}
+
+	void set(std::string_view key, std::string_view value)
+	{
+		details::set_string(name_, key, value);
+	}
+
+protected:
+	conf_section(std::string section_name)
+		: name_(std::move(section_name))
+	{
+	}
 
 private:
-	using key_value_map = std::map<std::string, std::string>;
-	using section_map = std::map<std::string, key_value_map>;
-	using task_map = std::map<std::string, section_map>;
-
-	static task_map map_;
-
-	// special cases to avoid string manipulations
-	static int output_log_level_;
-	static int file_log_level_;
-	static bool dry_;
-
-	static std::optional<std::string> find_for_task(
-		const std::string& task_name,
-		const std::string& section, const std::string& key);
+	std::string name_;
 };
 
 
-struct paths
+// options in [global]
+//
+class conf_global : public conf_section<std::string>
 {
-#define VALUE(NAME) \
-	static fs::path NAME() { return conf::path_by_name(#NAME); }
+public:
+	conf_global();
+
+	// convenience, doesn't need string manipulation
+	int output_log_level() const;
+	int file_log_level() const;
+	bool dry() const;
+
+	// convenience
+	bool redownload()   const { return get<bool>("redownload"); }
+	bool reextract()    const { return get<bool>("reextract"); }
+	bool reconfigure()  const { return get<bool>("reconfigure"); }
+	bool rebuild()      const { return get<bool>("rebuild"); }
+	bool clean()        const { return get<bool>("clean_task"); }
+	bool fetch()        const { return get<bool>("fetch_task"); }
+	bool build()        const { return get<bool>("build_task"); }
+};
+
+
+// options in [task] or [task_name:task]
+//
+class conf_task
+{
+public:
+	conf_task(std::vector<std::string> names);
+
+	std::string get(std::string_view key) const;
+
+	template <class T>
+	T get(std::string_view key) const;
+
+	template <>
+	bool get<bool>(std::string_view key) const
+	{
+		return get_bool(key);
+	}
+
+	std::string mo_org() const               { return get("mo_org"); }
+	std::string mo_branch() const			 { return get("mo_branch"); }
+	bool no_pull() const					 { return get<bool>("no_pull"); }
+	bool revert_ts() const					 { return get<bool>("revert_ts"); }
+	bool ignore_ts()const					 { return get<bool>("ignore_ts"); }
+	std::string git_url_prefix() const		 { return get("git_url_prefix"); }
+	bool git_shallow() const				 { return get<bool>("git_shallow"); }
+	std::string git_user() const			 { return get("git_username"); }
+	std::string git_email() const			 { return get("git_email"); }
+	bool set_origin_remote() const			 { return get<bool>("set_origin_remote"); }
+	std::string remote_org() const			 { return get("remote_org"); }
+	std::string remote_key() const			 { return get("remote_key"); }
+	bool remote_no_push_upstream() const	 { return get<bool>("remote_no_push_upstream"); }
+	bool remote_push_default_origin() const  { return get<bool>("remote_push_default_origin"); }
+
+private:
+	std::vector<std::string> names_;
+
+	bool get_bool(std::string_view name) const;
+};
+
+
+// options in [tools]
+//
+class conf_tools : public conf_section<fs::path>
+{
+public:
+	conf_tools();
+};
+
+
+// options in [transifex]
+//
+class conf_transifex : public conf_section<std::string>
+{
+public:
+	conf_transifex();
+};
+
+
+// options in [versions]
+//
+class conf_versions : public conf_section<std::string>
+{
+public:
+	conf_versions();
+};
+
+
+// options in [prebuilt]
+//
+class conf_prebuilt : public conf_section<std::string>
+{
+public:
+	conf_prebuilt();
+};
+
+
+// options in [paths]
+//
+class conf_paths : public conf_section<fs::path>
+{
+public:
+	conf_paths();
+
+#define VALUE(NAME) fs::path NAME() const { return get(#NAME); }
 
 	VALUE(third_party);
 	VALUE(prefix);
@@ -118,6 +217,10 @@ struct paths
 	VALUE(install_pythoncore);
 	VALUE(install_translations);
 
+	VALUE(vs);
+	VALUE(qt_install);
+	VALUE(qt_bin);
+
 	VALUE(pf_x86);
 	VALUE(pf_x64);
 	VALUE(temp_dir);
@@ -126,20 +229,19 @@ struct paths
 };
 
 
-std::string default_ini_filename();
-
-std::vector<fs::path> find_inis(
-	bool auto_detect, const std::vector<std::string>& from_cl,
-	bool verbose);
-
-void init_options(
-	const std::vector<fs::path>& inis, const std::vector<std::string>& opts);
-
-bool verify_options();
-void log_options();
-void dump_available_options();
-
-fs::path find_in_path(const std::string& exe);
-fs::path make_temp_file();
+// should be used as conf().global().whatever(), doesn't actually hold anything,
+// but it's better than a bunch of static functions
+//
+class conf
+{
+public:
+	conf_global global();
+	conf_task task(const std::vector<std::string>& names);
+	conf_tools tool();
+	conf_transifex transifex();
+	conf_prebuilt prebuilt();
+	conf_versions version();
+	conf_paths path();
+};
 
 }	// namespace

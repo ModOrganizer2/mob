@@ -3,7 +3,6 @@
 #include "net.h"
 #include "core/conf.h"
 #include "core/op.h"
-#include "core/process.h"
 #include "core/context.h"
 
 namespace mob

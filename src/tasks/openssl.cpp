@@ -1,8 +1,51 @@
 #include "pch.h"
 #include "tasks.h"
+#include "../core/process.h"
 
-namespace mob
+namespace mob::tasks
 {
+
+namespace
+{
+
+url source_url()
+{
+	return
+		"https://www.openssl.org/source/"
+		"openssl-" + openssl::version() + ".tar.gz";
+}
+
+url prebuilt_url()
+{
+	return make_prebuilt_url("openssl-prebuilt-" + openssl::version() + ".7z");
+}
+
+std::string version_no_patch_underscores()
+{
+	auto v = openssl::parsed_version();
+
+	std::string s = v.major;
+
+	if (v.minor != "")
+		s += "_" + v.minor;
+
+	return s;
+}
+
+// the filenames of the dlls, but without extension, because this is used for
+// both dlls and pdbs
+//
+std::vector<std::string> output_names()
+{
+	return
+	{
+		"libcrypto-" + version_no_patch_underscores() + "-x64",
+		"libssl-" + version_no_patch_underscores() + "-x64"
+	};
+}
+
+}	// namespace
+
 
 openssl::openssl()
 	: basic_task("openssl")
@@ -11,17 +54,17 @@ openssl::openssl()
 
 std::string openssl::version()
 {
-	return conf::version_by_name("openssl");
+	return conf().version().get("openssl");
 }
 
 bool openssl::prebuilt()
 {
-	return conf::prebuilt_by_name("openssl");
+	return conf().prebuilt().get<bool>("openssl");
 }
 
 fs::path openssl::source_path()
 {
-	return paths::build() / ("openssl-" + version());
+	return conf().path().build() / ("openssl-" + version());
 }
 
 fs::path openssl::build_path()
@@ -36,26 +79,26 @@ fs::path openssl::bin_path()
 
 void openssl::do_clean(clean c)
 {
-	instrument<times::clean>([&]
+	if (prebuilt())
 	{
-		if (prebuilt())
-		{
-			if (is_set(c, clean::redownload))
-				run_tool(downloader(prebuilt_url(), downloader::clean));
-		}
-		else
-		{
-			if (is_set(c, clean::redownload))
-				run_tool(downloader(source_url(), downloader::clean));
-		}
+		// delete prebuilt download
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(prebuilt_url(), downloader::clean));
+	}
+	else
+	{
+		// delete source download
+		if (is_set(c, clean::redownload))
+			run_tool(downloader(source_url(), downloader::clean));
+	}
 
-		if (is_any_set(c, clean::reextract|clean::reconfigure|clean::rebuild))
-		{
-			cx().trace(context::reextract, "deleting {}", source_path());
-			op::delete_directory(cx(), source_path(), op::optional);
-			return;
-		}
-	});
+	// there's no easy way to clean anything for openssl, it puts files all
+	// over the place, just delete the whole thing
+	if (is_any_set(c, clean::reextract|clean::reconfigure|clean::rebuild))
+	{
+		cx().trace(context::reextract, "deleting {}", source_path());
+		op::delete_directory(cx(), source_path(), op::optional);
+	}
 }
 
 void openssl::do_fetch()
@@ -78,65 +121,49 @@ void openssl::fetch_prebuilt()
 {
 	cx().trace(context::generic, "using prebuilt openssl");
 
-	const auto file = instrument<times::fetch>([&]
-	{
-		return run_tool(downloader(prebuilt_url()));
-	});
+	const auto file = run_tool(downloader(prebuilt_url()));
 
-	instrument<times::extract>([&]
-	{
-		run_tool(extractor()
-			.file(file)
-			.output(source_path()));
-	});
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
 }
 
 void openssl::fetch_from_source()
 {
-	const auto file = instrument<times::fetch>([&]
-	{
-		return run_tool(downloader(source_url()));
-	});
+	const auto file = run_tool(downloader(source_url()));
 
-	instrument<times::extract>([&]
-	{
-		run_tool(extractor()
-			.file(file)
-			.output(source_path()));
-	});
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
 }
 
 void openssl::build_and_install_prebuilt()
 {
-	instrument<times::install>([&]
-	{
-		copy_files();
-	});
+	// nothing to built for prebuilt, just copy
+	copy_files();
 }
 
 void openssl::build_and_install_from_source()
 {
-	instrument<times::configure>([&]
-	{
-		if (fs::exists(source_path() / "makefile"))
-			cx().trace(context::bypass, "openssl already configured");
-		else
-			configure();
-	});
+	// running the Configure perl script generates a file `makefile`; since
+	// Configuring takes forever and will fully run every time, don't run it if
+	// the makefile already exists
+	if (fs::exists(source_path() / "makefile"))
+		cx().trace(context::bypass, "openssl already configured");
+	else
+		configure();
 
-	instrument<times::build>([&]
-	{
-		install_engines();
-	});
+	// run the install_engines target in the makefile, this builds everything
+	// required
+	install_engines();
 
-	instrument<times::install>([&]
-	{
-		op::copy_file_to_dir_if_better(cx(),
-			source_path() / "ms" / "applink.c",
-			include_path());
+	// applink.c is required when building python from source, the .vcxproj
+	// assumes it's in the include path for whatever reason, so copy it there
+	op::copy_file_to_dir_if_better(cx(),
+		source_path() / "ms" / "applink.c",
+		include_path());
 
-		copy_files();
-	});
+	copy_files();
 }
 
 void openssl::configure()
@@ -156,39 +183,29 @@ void openssl::configure()
 
 void openssl::install_engines()
 {
-	const int max_tries = 3;
-
-	for (int tries=0; tries<max_tries; ++tries)
+	build_loop(cx(), [&](bool mp)
 	{
+		// jom defaults to multiprocess, give allow_failure for multiprocess
+		// builds and force single_job for the last single process build
+
 		const int exit_code = run_tool(jom()
 			.path(source_path())
 			.target("install_engines")
-			.flag(jom::allow_failure));
+			.flag(mp ? jom::allow_failure : jom::single_job));
 
-		if (exit_code == 0)
-			return;
-
-		cx().debug(context::generic,
-			"jom /J regularly fails with openssh because of race conditions; "
-			"trying again");
-	}
-
-	cx().debug(context::generic,
-		"jom /J has failed more than {} times, "
-		"restarting one last time without /J; that one should work",
-		max_tries);
-
-	run_tool(jom()
-		.path(source_path())
-		.target("install_engines")
-		.flag(jom::single_job));
+		return (exit_code == 0);
+	});
 }
 
 void openssl::copy_files()
 {
-	copy_dlls_to(paths::install_bin());
-	copy_dlls_to(paths::install_dlls());
-	copy_pdbs_to(paths::install_pdbs());
+	// duplicate the dlls to both bin/ and bin/dlls, they're needed by both
+	// MO and Qt
+	copy_dlls_to(conf().path().install_bin());
+	copy_dlls_to(conf().path().install_dlls());
+
+	// pdbs
+	copy_pdbs_to(conf().path().install_pdbs());
 }
 
 void openssl::copy_dlls_to(const fs::path& dir)
@@ -214,27 +231,6 @@ fs::path openssl::include_path()
 	return openssl::source_path() / "include";
 }
 
-url openssl::source_url()
-{
-	return
-		"https://www.openssl.org/source/"
-		"openssl-" + version() + ".tar.gz";
-}
-
-url openssl::prebuilt_url()
-{
-	return make_prebuilt_url("openssl-prebuilt-" + version() + ".7z");
-}
-
-std::vector<std::string> openssl::output_names()
-{
-	return
-	{
-		"libcrypto-" + version_no_patch_underscores() + "-x64",
-		"libssl-" + version_no_patch_underscores() + "-x64"
-	};
-}
-
 openssl::version_info openssl::parsed_version()
 {
 	// 1.2.3d
@@ -253,21 +249,9 @@ openssl::version_info openssl::parsed_version()
 	const auto s = version();
 
 	if (!std::regex_match(s, m, re))
-		bail_out("bad openssl version '{}'", s);
+		gcx().bail_out(context::generic, "bad openssl version '{}'", s);
 
 	return {m[1], m[2], m[3]};
-}
-
-std::string openssl::version_no_patch_underscores()
-{
-	auto v = parsed_version();
-
-	std::string s = v.major;
-
-	if (v.minor != "")
-		s += "_" + v.minor;
-
-	return s;
 }
 
 }	// namespace

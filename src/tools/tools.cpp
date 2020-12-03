@@ -1,9 +1,6 @@
 #include "pch.h"
 #include "tools.h"
-#include "../utility.h"
-#include "../core/op.h"
-#include "../core/conf.h"
-#include "../tasks/tasks.h"
+#include "../core/process.h"
 
 namespace mob
 {
@@ -40,6 +37,7 @@ void tool::run(context& cx)
 {
 	cx_ = &cx;
 
+	// tell the context this tool is running, used for logs
 	cx_->set_tool(this);
 	guard g([&]{ cx_->set_tool(nullptr); });
 
@@ -48,12 +46,17 @@ void tool::run(context& cx)
 
 void tool::interrupt()
 {
-	if (!interrupted_)
-	{
-		cx().debug(context::interruption, "interrupting {}", name_);
-		interrupted_ = true;
-		do_interrupt();
-	}
+	if (interrupted_)
+		return;
+
+	cx().debug(context::interruption, "interrupting {}", name_);
+	interrupted_ = true;
+	do_interrupt();
+}
+
+void tool::do_interrupt()
+{
+	// no-op
 }
 
 bool tool::interrupted() const
@@ -72,32 +75,32 @@ const context& tool::cx() const
 
 fs::path perl::binary()
 {
-	return conf::tool_by_name("perl");
+	return conf().tool().get("perl");
 }
 
 fs::path nasm::binary()
 {
-	return conf::tool_by_name("nasm");
+	return conf().tool().get("nasm");
 }
 
 fs::path qt::installation_path()
 {
-	return conf::path_by_name("qt_install");
+	return conf().path().qt_install();
 }
 
 fs::path qt::bin_path()
 {
-	return conf::path_by_name("qt_bin");
+	return conf().path().get("qt_bin");
 }
 
 std::string qt::version()
 {
-	return conf::version_by_name("qt");
+	return conf().version().get("qt");
 }
 
 std::string qt::vs_version()
 {
-	return conf::version_by_name("qt_vs");
+	return conf().version().get("qt_vs");
 }
 
 
@@ -108,42 +111,42 @@ vs::vs(ops o)
 
 fs::path vs::devenv_binary()
 {
-	return conf::tool_by_name("devenv");
+	return conf().tool().get("devenv");
 }
 
 fs::path vs::installation_path()
 {
-	return conf::path_by_name("vs");
+	return conf().path().vs();
 }
 
 fs::path vs::vswhere()
 {
-	return conf::tool_by_name("vswhere");
+	return conf().tool().get("vswhere");
 }
 
 fs::path vs::vcvars()
 {
-	return conf::tool_by_name("vcvars");
+	return conf().tool().get("vcvars");
 }
 
 std::string vs::version()
 {
-	return conf::version_by_name("vs");
+	return conf().version().get("vs");
 }
 
 std::string vs::year()
 {
-	return conf::version_by_name("vs_year");
+	return conf().version().get("vs_year");
 }
 
 std::string vs::toolset()
 {
-	return conf::version_by_name("vs_toolset");
+	return conf().version().get("vs_toolset");
 }
 
 std::string vs::sdk()
 {
-	return conf::version_by_name("sdk");
+	return conf().version().get("sdk");
 }
 
 vs& vs::solution(const fs::path& sln)
@@ -171,89 +174,60 @@ void vs::do_run()
 
 void vs::do_upgrade()
 {
+	// assume the project is already upgraded if UpgradeLog.htm exists, because
+	// upgrading is slow even if it's not necessary
 	if (fs::exists(sln_.parent_path() / "UpgradeLog.htm"))
 	{
-		debug("project already upgraded");
+		cx().debug(context::generic, "project already upgraded");
 		return;
 	}
 
-	process_
+	execute_and_join(process()
 		.binary(devenv_binary())
 		.env(env::vs(arch::x64))
 		.arg("/upgrade")
-		.arg(sln_);
+		.arg(sln_));
+}
 
-	execute_and_join();
+
+std::string vswhere::find_vs()
+{
+	auto p = process()
+		.binary(vs::vswhere())
+		.arg("-products", "*")
+		.arg("-prerelease")
+		.arg("-version", vs::version())
+		.arg("-property", "installationPath")
+		.stdout_flags(process::keep_in_string)
+		.stderr_flags(process::inherit);
+
+	p.run();
+	p.join();
+
+	if (p.exit_code() != 0)
+		return {};
+
+	return trim_copy(p.stdout_string());
 }
 
 
 nuget::nuget(fs::path sln)
 	: basic_process_runner("nuget"), sln_(std::move(sln))
 {
-	process_
-		.binary(binary())
-		.arg("restore")
-		.arg(sln_)
-		.cwd(sln_.parent_path());
 }
 
 fs::path nuget::binary()
 {
-	return conf::tool_by_name("nuget");
+	return conf().tool().get("nuget");
 }
 
 void nuget::do_run()
 {
-	execute_and_join();
-}
-
-
-pip_install::pip_install()
-	: basic_process_runner("pip install")
-{
-}
-
-pip_install& pip_install::package(const std::string& s)
-{
-	package_ = s;
-	return *this;
-}
-
-pip_install& pip_install::version(const std::string& s)
-{
-	version_ = s;
-	return *this;
-}
-
-pip_install& pip_install::file(const fs::path& p)
-{
-	file_ = p;
-	return *this;
-}
-
-void pip_install::do_run()
-{
-	process_
-		.binary(python::python_exe())
-		.chcp(65001)
-		.stdout_encoding(encodings::utf8)
-		.stderr_encoding(encodings::utf8)
-		.arg("-X", "utf8")
-		.arg("-m", "pip")
-		.arg("install")
-		.arg("--no-warn-script-location")
-		.arg("--disable-pip-version-check");
-
-	if (!package_.empty())
-		process_.arg(package_ + "==" + version_);
-	else if (!file_.empty())
-		process_.arg(file_);
-
-	process_
-		.env(this_env::get()
-			.set("PYTHONUTF8", "1"));
-
-	execute_and_join();
+	execute_and_join(process()
+		.binary(binary())
+		.arg("restore")
+		.arg(sln_)
+		.cwd(sln_.parent_path()));
 }
 
 
@@ -265,7 +239,7 @@ transifex::transifex(ops o) :
 
 fs::path transifex::binary()
 {
-	return conf::tool_by_name("tx");
+	return conf().tool().get("tx");
 }
 
 transifex& transifex::root(const fs::path& p)
@@ -331,15 +305,13 @@ void transifex::do_init()
 
 	// exit code is 2 when the directory already contains a .tx
 
-	process_ = process()
+	execute_and_join(process()
 		.binary(binary())
 		.success_exit_codes({0, 2})
 		.flags(process::ignore_output_on_success)
 		.arg("init")
 		.arg("--no-interactive")
-		.cwd(root_);
-
-	execute_and_join();
+		.cwd(root_));
 }
 
 void transifex::do_config()
@@ -349,24 +321,21 @@ void transifex::do_config()
 
 	op::create_directories(cx(), root_, op::unsafe);
 
-	process_ = process()
+	execute_and_join(process()
 		.binary(binary())
 		.stdout_level(stdout_)
 		.arg("config")
 		.arg("mapping-remote")
 		.arg(url_)
-		.env(this_env::get()
-			.set("TX_TOKEN", key_))
-		.cwd(root_);
-
-	execute_and_join();
+		.env(this_env::get().set("TX_TOKEN", key_))
+		.cwd(root_));
 }
 
 void transifex::do_pull()
 {
 	op::create_directories(cx(), root_, op::unsafe);
 
-	process_ = process()
+	auto p = process()
 		.binary(binary())
 		.stdout_level(stdout_)
 		.arg("pull")
@@ -374,14 +343,13 @@ void transifex::do_pull()
 		.arg("--parallel")
 		.arg("--no-interactive")
 		.arg("--minimum-perc", min_)
-		.env(this_env::get()
-			.set("TX_TOKEN", key_))
+		.env(this_env::get().set("TX_TOKEN", key_))
 		.cwd(root_);
 
 	if (force_)
-		process_.arg("--force");
+		p.arg("--force");
 
-	execute_and_join();
+	execute_and_join(p);
 }
 
 
@@ -392,7 +360,7 @@ lrelease::lrelease()
 
 fs::path lrelease::binary()
 {
-	return conf::tool_by_name("lrelease");
+	return conf().tool().get("lrelease");
 }
 
 lrelease& lrelease::project(const std::string& name)
@@ -424,7 +392,10 @@ fs::path lrelease::qm_file() const
 	if (sources_.empty())
 		cx().bail_out(context::generic, "lrelease: no sources");
 
+	// source files are something like "fr.ts", get "fr" and use the project
+	// name to make something like "modorganizer_fr.qm"
 	const auto lang = trim_copy(path_to_utf8(sources_[0].stem()));
+
 	if (lang.empty())
 	{
 		cx().bail_out(context::generic,
@@ -436,9 +407,10 @@ fs::path lrelease::qm_file() const
 
 void lrelease::do_run()
 {
+	// that's the output file
 	const auto qm = qm_file();
 
-	process_ = process()
+	auto p = process()
 		.binary(binary())
 		.arg("-silent")
 		.stderr_filter([](auto&& f)
@@ -450,13 +422,14 @@ void lrelease::do_run()
 		});
 
 
+	// input .ts files
 	for (auto&& s : sources_)
-		process_.arg(s);
+		p.arg(s);
 
-	process_
-		.arg("-qm", (out_ / qm));
+	// output .qm file
+	p.arg("-qm", (out_ / qm));
 
-	execute_and_join();
+	execute_and_join(p);
 }
 
 
@@ -467,7 +440,7 @@ iscc::iscc(fs::path iss)
 
 fs::path iscc::binary()
 {
-	return conf::tool_by_name("iscc");
+	return conf().tool().get("iscc");
 }
 
 iscc& iscc::iss(const fs::path& p)
@@ -481,11 +454,38 @@ void iscc::do_run()
 	if (iss_.empty())
 		cx().bail_out(context::generic, "iscc missing iss file");
 
-	process_
+	execute_and_join(process()
 		.binary(binary())
-		.arg(iss_);
+		.arg(iss_));
+}
 
-	execute_and_join();
+
+void build_loop(const context& cx, std::function<bool (bool)> f)
+{
+	// building sometimes fails with files being locked
+	const int max_tries = 3;
+
+	for (int tries=0; tries<max_tries; ++tries)
+	{
+		// try a multiprocess build
+		if (f(true))
+		{
+			// building succeeded, done
+			return;
+		}
+
+		cx.debug(context::generic,
+			"multiprocess build sometimes fails because of race "
+			"conditions; trying again");
+	}
+
+	cx.debug(context::generic,
+		"multiprocess build has failed more than {} times, "
+		"restarting one last time single process; that one should work",
+		max_tries);
+
+	// do one last single process build
+	f(false);
 }
 
 }	// namespace

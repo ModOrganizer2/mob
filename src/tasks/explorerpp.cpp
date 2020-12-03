@@ -1,8 +1,21 @@
 #include "pch.h"
 #include "tasks.h"
 
-namespace mob
+namespace mob::tasks
 {
+
+namespace
+{
+
+url source_url()
+{
+	return
+		"https://explorerplusplus.com/software/"
+		"explorer++_" + explorerpp::version() + "_x64.zip";
+}
+
+}	// namespace
+
 
 explorerpp::explorerpp()
 	: basic_task("explorerpp", "explorer++")
@@ -11,63 +24,47 @@ explorerpp::explorerpp()
 
 std::string explorerpp::version()
 {
-	return conf::version_by_name("explorerpp");
+	return conf().version().get("explorerpp");
 }
 
 bool explorerpp::prebuilt()
 {
+	// always prebuilt, direct download
 	return false;
 }
 
 fs::path explorerpp::source_path()
 {
-	return paths::build() / "explorer++";
+	return conf().path().build() / "explorer++";
 }
 
 void explorerpp::do_clean(clean c)
 {
-	instrument<times::clean>([&]
-	{
-		if (is_set(c, clean::redownload))
-			run_tool(downloader(source_url(), downloader::clean));
+	// delete download
+	if (is_set(c, clean::redownload))
+		run_tool(downloader(source_url(), downloader::clean));
 
-		if (is_set(c, clean::reextract))
-		{
-			cx().trace(context::reextract, "deleting {}", source_path());
-			op::delete_directory(cx(), source_path(), op::optional);
-			return;
-		}
-	});
+	// delete the whole directory
+	if (is_set(c, clean::reextract))
+	{
+		cx().trace(context::reextract, "deleting {}", source_path());
+		op::delete_directory(cx(), source_path(), op::optional);
+	}
 }
 
 void explorerpp::do_fetch()
 {
-	const auto file = instrument<times::fetch>([&]
-	{
-		return run_tool(downloader(source_url()));
-	});
+	const auto file = run_tool(downloader(source_url()));
 
-	instrument<times::extract>([&]
-	{
-		run_tool(extractor()
-			.file(file)
-			.output(source_path()));
-	});
+	run_tool(extractor()
+		.file(file)
+		.output(source_path()));
 
-	instrument<times::install>([&]
-	{
-		op::copy_glob_to_dir_if_better(cx(),
-			source_path() / "*",
-			paths::install_bin() / "explorer++",
-			op::copy_files);
-	});
-}
-
-url explorerpp::source_url()
-{
-	return
-		"https://explorerplusplus.com/software/"
-		"explorer++_" + version() + "_x64.zip";
+	// copy everything to install/bin/explorer++
+	op::copy_glob_to_dir_if_better(cx(),
+		source_path() / "*",
+		conf().path().install_bin() / "explorer++",
+		op::copy_files);
 }
 
 }	// namespace

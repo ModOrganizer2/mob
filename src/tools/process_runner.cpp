@@ -1,101 +1,77 @@
 #include "pch.h"
 #include "tools.h"
 #include "../core/conf.h"
+#include "../core/process.h"
 
 namespace mob
 {
 
 basic_process_runner::basic_process_runner(std::string name)
-	: tool(std::move(name))
+	: tool(std::move(name)), p_(nullptr), code_(0)
 {
 }
+
+// anchors
+basic_process_runner::basic_process_runner(basic_process_runner&& r) = default;
+basic_process_runner::~basic_process_runner() = default;
 
 void basic_process_runner::do_interrupt()
 {
-	process_.interrupt();
+	if (p_)
+		p_->interrupt();
 }
 
-int basic_process_runner::execute_and_join()
+int basic_process_runner::execute_and_join(process& p)
 {
-	set_name(process_.name());
-	process_.set_context(&cx());
-	process_.run();
-	join();
+	// remember the process for do_interrupt()
+	p_ = &p;
 
-	return process_.exit_code();
-}
+	// use the process' name for this tool
+	set_name(p.name());
 
-void basic_process_runner::join()
-{
-	process_.join();
+	// use this tool's log context for the process
+	p.set_context(&cx());
+
+	// run, remember the code because the process object might be destroyed
+	code_ = p.run_and_join();
+
+	return code_;
 }
 
 int basic_process_runner::exit_code() const
 {
-	return process_.exit_code();
+	return code_;
 }
 
-
-process_runner::process_runner(process&& p)
-	: tool(p.name()), own_(std::move(p)), p_(nullptr)
-{
-}
 
 process_runner::process_runner(process& p)
-	: tool(p.name()), p_(&p)
+	: tool(p.name()), p_(p)
 {
 }
+
+// anchor
+process_runner::~process_runner() = default;
 
 void process_runner::do_run()
 {
-	execute_and_join();
+	// use the process' name for this tool
+	set_name(p_.name());
+
+	// use this tool's log context for the process
+	p_.set_context(&cx());
+
+	// run
+	p_.run_and_join();
 }
 
 int process_runner::result() const
 {
-	return exit_code();
+	return p_.exit_code();
 }
 
 void process_runner::do_interrupt()
 {
-	real_process().interrupt();
-}
-
-int process_runner::execute_and_join()
-{
-	set_name(real_process().name());
-	real_process().set_context(&cx());
-	real_process().run();
-
-	join();
-
-	return real_process().exit_code();
-}
-
-void process_runner::join()
-{
-	real_process().join();
-}
-
-int process_runner::exit_code() const
-{
-	return real_process().exit_code();
-}
-
-process& process_runner::real_process()
-{
-	if (p_)
-		return *p_;
-	else
-		return own_;
-}
-
-const process& process_runner::real_process() const
-{
-	if (p_)
-		return *p_;
-	else
-		return own_;
+	p_.interrupt();
 }
 
 }	// namespace
