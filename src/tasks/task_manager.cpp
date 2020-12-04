@@ -103,7 +103,12 @@ void task_manager::run_all()
 	try
 	{
 		for (auto&& t : top_level_)
+		{
 			t->run();
+
+			if (interrupt_)
+				break;
+		}
 	}
 	catch(interrupted&)
 	{
