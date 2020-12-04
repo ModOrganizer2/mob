@@ -196,6 +196,30 @@ namespace mob
 
 std::vector<std::string> format_options()
 {
+	// don't log private stuff
+	auto hide = [](std::string_view section, std::string_view key)
+	{
+		if (key == "github_key")
+			return true;
+
+		if (section == "transifex" && key == "key")
+			return true;
+
+		if (key == "git_email")
+			return true;
+
+		return false;
+	};
+
+	auto make_value = [&](auto&& s, auto&& k, auto&& v) -> std::string
+	{
+		if (hide(s, k))
+			return v.empty() ? "" : "(hidden)";
+		else
+			return v;
+	};
+
+
 	auto& tm = task_manager::instance();
 
 	std::size_t longest_what = 0;
@@ -233,7 +257,7 @@ std::vector<std::string> format_options()
 		{
 			lines.push_back(
 				pad_right(section, longest_what) + "  " +
-				pad_right(k, longest_key) + " = " + v);
+				pad_right(k, longest_key) + " = " + make_value(section, k, v));
 		}
 	}
 
@@ -241,7 +265,7 @@ std::vector<std::string> format_options()
 	{
 		lines.push_back(
 			pad_right("task", longest_what) + "  " +
-			pad_right(k, longest_key) + " = " + v);
+			pad_right(k, longest_key) + " = " + make_value("", k, v));
 	}
 
 	for (const auto* t : tm.all())
@@ -251,7 +275,7 @@ std::vector<std::string> format_options()
 			lines.push_back(
 				pad_right(t->name(), longest_what) + "  " +
 				pad_right(k, longest_key) + " = " +
-				details::get_string_for_task({t->name()}, k));
+				make_value("", k, details::get_string_for_task({t->name()}, k)));
 		}
 	}
 
