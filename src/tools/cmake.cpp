@@ -53,7 +53,7 @@ cmake& cmake::def(const std::string& name, const std::string& value)
 
 cmake& cmake::def(const std::string& name, const fs::path& p)
 {
-	def(name, path_to_utf8(p));
+	def(name, "\"" + path_to_utf8(p) + "\"");
 	return *this;
 }
 
