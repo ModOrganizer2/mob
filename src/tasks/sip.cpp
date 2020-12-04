@@ -124,13 +124,14 @@ void sip::do_fetch()
 	if (fs::exists(download_file()))
 	{
 		cx().trace(context::bypass, "sip: {} already exists", download_file());
-		return;
 	}
-
-	// download
-	run_tool(pip(pip::download)
-		.package("sip")
-		.version(version()));
+	else
+	{
+		// download
+		run_tool(pip(pip::download)
+			.package("sip")
+			.version(version()));
+	}
 
 	// extract
 	run_tool(extractor()
