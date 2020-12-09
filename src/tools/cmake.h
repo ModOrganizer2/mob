@@ -79,6 +79,10 @@ public:
 	cmake& def(const std::string& name, const fs::path& p);
 	cmake& def(const std::string& name, const char* s);
 
+	// adds an arbitrary argument, passed verbatim
+	//
+	cmake& arg(std::string s);
+
 	// sets the architecture, used along with the generator to create the
 	// output directory name, but also to get the proper vcvars environment
 	// variables for the build environment
@@ -149,8 +153,8 @@ private:
 	// passed as -DCMAKE_INSTALL_PREFIX
 	fs::path prefix_;
 
-	// passed as -Dkey=value
-	std::vector<std::pair<std::string, std::string>> def_;
+	// passed verbatim
+	std::vector<std::string> args_;
 
 	// overrides build directory name
 	fs::path output_;
