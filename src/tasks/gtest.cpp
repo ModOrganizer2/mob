@@ -14,6 +14,7 @@ cmake create_cmake_tool(arch a, cmake::ops o=cmake::generate)
 	return std::move(cmake(o)
 		.generator(cmake::vs)
 		.architecture(a)
+		.arg("-Wno-deprecated")
 		.prefix(gtest::source_path() / build_dir)
 		.root(gtest::source_path()));
 }

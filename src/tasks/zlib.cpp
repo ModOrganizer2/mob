@@ -87,6 +87,7 @@ cmake zlib::create_cmake_tool(cmake::ops o)
 	return std::move(cmake(o)
 		.generator(cmake::vs)
 		.root(source_path())
+		.arg("-Wno-deprecated")
 		.prefix(source_path()));
 }
 

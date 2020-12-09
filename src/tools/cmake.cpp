@@ -47,7 +47,7 @@ cmake& cmake::prefix(const fs::path& s)
 
 cmake& cmake::def(const std::string& name, const std::string& value)
 {
-	def_.emplace_back(name, value);
+	arg("-D" + name + "=" + value);
 	return *this;
 }
 
@@ -60,6 +60,12 @@ cmake& cmake::def(const std::string& name, const fs::path& p)
 cmake& cmake::def(const std::string& name, const char* s)
 {
 	def(name, std::string(s));
+	return *this;
+}
+
+cmake& cmake::arg(std::string s)
+{
+	args_.push_back(std::move(s));
 	return *this;
 }
 
@@ -150,9 +156,7 @@ void cmake::do_generate()
 	if (!prefix_.empty())
 		p.arg("-DCMAKE_INSTALL_PREFIX=", prefix_);
 
-	// macros
-	for (auto&& [name, value] : def_)
-		p.arg("-D" + name + "=" + value + "");
+	p.args(args_);
 
 	// `..` by default, overriden by cmd()
 	if (cmd_.empty())
