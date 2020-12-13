@@ -408,7 +408,11 @@ void process::create(
 	cx_->trace(context::cmd, "creating process");
 
 	if (!cwd.empty())
-		op::create_directories(*cx_, cwd);
+	{
+		// the path might be relative, especially when it comes from the command
+		// line, in which case it would fail the safety check
+		op::create_directories(*cx_, fs::absolute(cwd));
+	}
 
 	// cwd
 	const wchar_t* cwd_p = (cwd.empty() ? nullptr : cwd.c_str());
