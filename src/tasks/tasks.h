@@ -575,20 +575,20 @@ protected:
 };
 
 
-// none of this is very generic, but it works for now because there are only
-// four stylesheets
-//
 class stylesheets : public task
 {
 public:
+	struct release
+	{
+		std::string user;
+		std::string repo;
+		std::string version;
+		std::string file;
+	};
+
 	stylesheets();
 
 	static bool prebuilt();
-
-	static std::string paper_lad_6788_version();
-	static std::string paper_automata_6788_version();
-	static std::string paper_mono_6788_version();
-	static std::string dark_mode_1809_6788_version();
 
 protected:
 	void do_clean(clean c) override;
@@ -596,20 +596,10 @@ protected:
 	void do_build_and_install() override;
 
 private:
-	struct release
-	{
-		std::string repo;
-		std::string name;
-		std::string version;
-		std::string file;
-	};
-
 	downloader make_downloader_tool(
 		const release& r, downloader::ops=downloader::download) const;
 
 	fs::path release_build_path(const release& r) const;
-
-	static std::vector<release> releases();
 };
 
 
