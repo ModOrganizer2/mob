@@ -32,7 +32,7 @@
 ```
 
 ## Slow start
-- Install Qt 5.15.0 ([Installer](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe))
+- Install Qt 5.15.2 ([Installer](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe))
   - MSVC 2019 64-bit
   - Qt WebEngine
   - Optional: Sources, Debug Information Files
