@@ -2,6 +2,7 @@
 #include "tools.h"
 #include "../core/conf.h"
 #include "../core/process.h"
+#include "../core/env.h"
 
 namespace mob
 {
@@ -59,9 +60,9 @@ msbuild& msbuild::flags(flags_t f)
 	return *this;
 }
 
-msbuild& msbuild::prepend_path(const fs::path& p)
+msbuild& msbuild::env(const mob::env& e)
 {
-	prepend_path_.push_back(p);
+	env_ = e;
 	return *this;
 }
 
@@ -184,14 +185,10 @@ void msbuild::run_for_targets(const std::vector<std::string>& targets)
 	for (auto&& prop : props_)
 		p.arg("-property:" + prop);
 
-	env e = env::vs(arch_);
-	for (auto&& path : prepend_path_)
-		e.prepend_path(path);
-
 	p
 		.arg(sln_)
 		.cwd(sln_.parent_path())
-		.env(e);
+		.env(env_ ? *env_ : env::vs(arch_));
 
 	execute_and_join(p);
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../core/env.h"
+
 namespace mob
 {
 
@@ -62,10 +64,10 @@ public:
 	// flags
 	msbuild& flags(flags_t f);
 
-	// can be called multiple times, the given paths will be prepended to PATH
-	// before invoking msbuild
+	// override the environment variables, which normally defaults to env::vs()
+	// for the arch given in architecture()
 	//
-	msbuild& prepend_path(const fs::path& p);
+	msbuild& env(const mob::env& e);
 
 	// exit code
 	//
@@ -83,6 +85,7 @@ private:
 	std::string platform_;
 	arch arch_;
 	flags_t flags_;
+	std::optional<mob::env> env_;
 	std::vector<fs::path> prepend_path_;
 
 	// runs msbuild with ":Clean" for each target given in targets(), giving

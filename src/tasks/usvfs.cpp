@@ -173,11 +173,17 @@ msbuild usvfs::create_msbuild_tool(arch a, msbuild::ops o) const
 
 	// udis requires python in its custom build step, so make sure it's on the
 	// path
+	//
+	// BOOST_PATH is in the env because external_dependencies.props will
+	// use it if it exists or reverts to a hardcoded path which might not be using
+	// the same version as mob if it wasn't updated
 	return std::move(msbuild(o)
 		.platform(plat)
 		.targets({"usvfs_proxy"})
 		.solution(source_path() / "vsbuild" / "usvfs.sln")
-		.prepend_path(python::build_path()));
+		.env(env::vs(a)
+			.prepend_path(python::build_path())
+			.set("BOOST_PATH", path_to_utf8(boost::source_path()))));
 }
 
 std::vector<std::shared_ptr<downloader>>
