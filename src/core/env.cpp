@@ -436,7 +436,7 @@ env this_env::get()
 		// keep track of the current directory, those start with an equal sign,
 		// so just ignore them
 		if (!key.empty())
-			g_sys_env.set(utf16_to_utf8(key), utf16_to_utf8(value));
+			g_sys_env.set(key, value);
 
 		// next string is one past end of value to account for null byte
 		name = value_start + value.length() + 1;
@@ -481,7 +481,7 @@ void this_env::set(const std::string& k, const std::string& v, env::flags f)
 	{
 		std::scoped_lock lock(g_sys_env_mutex);
 		if (g_sys_env_inited)
-			g_sys_env.set(k, utf16_to_utf8(wv));
+			g_sys_env.set(utf8_to_utf16(k), wv);
 	}
 }
 
