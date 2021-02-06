@@ -248,6 +248,11 @@ void context::set_log_file(const fs::path& p)
 	}
 }
 
+void context::close_log_file()
+{
+	g_log_file.reset();
+}
+
 void context::log_string(reason r, level lv, std::string_view s) const
 {
 	if (!enabled(lv))

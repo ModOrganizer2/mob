@@ -148,6 +148,10 @@ public:
 	//
 	static void set_log_file(const fs::path& p);
 
+	// closes the output file for logs, see release_command::check_clean_prefix()
+	//
+	static void close_log_file();
+
 
 	// creates a context for a task; the global context has no name
 	//

@@ -397,7 +397,7 @@ std::vector<pr_command::pr_info> pr_command::validate_prs(
 			return {};
 		}
 
-		if (!ask_yes_no("these prs will be ignored; proceed anyway?", false))
+		if (ask_yes_no("these prs will be ignored; proceed anyway?", yn::no) != yn::yes)
 			return {};
 
 		u8cout << "\n";

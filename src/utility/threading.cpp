@@ -19,9 +19,9 @@ static LPTOP_LEVEL_EXCEPTION_FILTER g_previous_handler = nullptr;
 
 void dump_stacktrace(const wchar_t* what)
 {
-	std::scoped_lock lock(global_output_mutex());
-
-	std::wcerr
+	// don't use 8ucout, don't lock the global out mutex, this can be called
+	// while the mutex is locked
+	std::wcerr << what
 		<< "\n\nmob has crashed\n"
 		<< L"*****************************\n\n"
 		<< what << L"\n\n";
