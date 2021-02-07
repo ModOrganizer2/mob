@@ -13,7 +13,9 @@ namespace mob
 
 BOOL WINAPI signal_handler(DWORD) noexcept
 {
-	gcx().debug(context::generic, "caught sigint");
+	// don't use u8cout, this would lock the global mutex, but the handler
+	// can be called while stuff is being output and the mutex is locked
+	std::wcout << L"sigint, interrupting...\n";
 	task_manager::instance().interrupt_all();
 	return TRUE;
 }

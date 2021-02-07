@@ -401,6 +401,13 @@ void process_option(
 
 			// task must exist
 			const auto& tasks = task_manager::instance().find(task);
+
+			if (tasks.empty())
+			{
+				gcx().bail_out(context::conf,
+					"bad option {}, task '{}' not found", section_string, task);
+			}
+
 			MOB_ASSERT(!tasks.empty());
 
 			for (auto& t : tasks)
@@ -522,6 +529,14 @@ void resolve_paths()
 	details::set_string("tools", "iscc", path_to_utf8(find_iscc()));
 }
 
+void conf::set_log_file()
+{
+	// set up the log file, resolve against prefix if relative
+	fs::path log_file = conf().global().get("log_file");
+	if (log_file.is_relative())
+		log_file = conf().path().prefix() / log_file;
+}
+
 void init_options(
 	const std::vector<fs::path>& inis, const std::vector<std::string>& opts)
 {
@@ -596,11 +611,7 @@ void init_options(
 		resolve_path("prefix", prefix_root, "");
 
 	// set up the log file, resolve against prefix if relative
-	fs::path log_file = conf().global().get("log_file");
-	if (log_file.is_relative())
-		log_file = conf().path().prefix() / log_file;
-
-	context::set_log_file(log_file);
+	conf().set_log_file();
 
 	// goes through all paths and tools, finds missing or relative stuff, bails
 	// out of stuff can't be found

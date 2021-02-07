@@ -81,65 +81,71 @@ std::mutex& global_output_mutex()
   return g_output_mutex;
 }
 
-bool ask_yes_no(const std::string& text, bool def)
+yn ask_yes_no(const std::string& text, yn def)
 {
 	u8cout
 		<< text
 		<< (text.empty() ? "" : " ")
-		<< (def ? "[Y/n]" : "[y/N]")
+		<< (def == yn::yes ? "[Y/n]" : "[y/N]")
 		<< " ";
 
 	// stdin is not utf8
 	std::string line;
 	std::getline(std::cin, line);
 
+	// ctrl+c
+	if (!std::cin)
+		return yn::cancelled;
+
 	if (line.empty())
 		return def;
 	else if (line == "y" || line == "Y")
-		return true;
+		return yn::yes;
+	else if (line == "n" || line == "N")
+		return yn::no;
 	else
-		return false;
+		return yn::cancelled;
 }
 
 
 void u8stream::do_output(const std::string& s)
 {
-  std::scoped_lock lock(g_output_mutex);
+	std::scoped_lock lock(g_output_mutex);
 
-  if (err_)
-  {
-	if (stderr_console)
-	  std::wcerr << utf8_to_utf16(s);
+	if (err_)
+	{
+		if (stderr_console)
+			std::wcerr << utf8_to_utf16(s);
+		else
+			std::cerr << s;
+	}
 	else
-	  std::cerr << s;
-  }
-  else
-  {
-	if (stdout_console)
-	  std::wcout << utf8_to_utf16(s);
-	else
-	  std::cout << s;
-  }
+	{
+		if (stdout_console)
+			std::wcout << utf8_to_utf16(s);
+		else
+			std::cout << s;
+	}
 }
 
 void u8stream::write_ln(std::string_view utf8)
 {
-  std::scoped_lock lock(g_output_mutex);
+	std::scoped_lock lock(g_output_mutex);
 
-  if (err_)
-  {
-	if (stderr_console)
-	  std::wcerr << utf8_to_utf16(utf8) << L"\n";
+	if (err_)
+	{
+		if (stderr_console)
+			std::wcerr << utf8_to_utf16(utf8) << L"\n";
+		else
+			std::cerr << utf8 << "\n";
+	}
 	else
-	  std::cerr << utf8 << "\n";
-  }
-  else
-  {
-	if (stdout_console)
-	  std::wcout << utf8_to_utf16(utf8) << L"\n";
-	else
-	  std::cout << utf8 << "\n";
-  }
+	{
+		if (stdout_console)
+			std::wcout << utf8_to_utf16(utf8) << L"\n";
+		else
+			std::cout << utf8 << "\n";
+	}
 }
 
 

@@ -242,6 +242,10 @@ public:
 	conf_prebuilt prebuilt();
 	conf_versions version();
 	conf_paths path();
+
+	// opens the log file, creates the directory if needed
+	//
+	void set_log_file();
 };
 
 }	// namespace

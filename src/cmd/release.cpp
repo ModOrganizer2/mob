@@ -4,6 +4,7 @@
 #include "../core/conf.h"
 #include "../core/context.h"
 #include "../core/op.h"
+#include "../core/ini.h"
 #include "../tasks/tasks.h"
 #include "../tasks/task_manager.h"
 #include "../utility/threading.h"
@@ -360,21 +361,45 @@ bool release_command::check_clean_prefix()
 	if (!fs::exists(prefix))
 		return true;
 
-	u8cout
-		<< "prefix " << path_to_utf8(prefix) << " already exists\n"
-		<< "delete? [Y/n] ";
+	bool saw_file = false;
+	const fs::path log_file = conf().global().get("log_file");
+	const std::string ini_file = default_ini_filename();
 
-	std::wstring s;
-	std::getline(std::wcin, s);
-
-	if (s == L"" || s == L"y" || s == L"Y")
+	for (auto itor : fs::directory_iterator(prefix))
 	{
-		build_command::terminate_msbuild();
-		op::delete_directory(gcx(), prefix);
+		const auto name = itor.path().filename();
+
+		// ignore ini and logs
+		if (name == log_file.filename() || name == ini_file)
+			continue;
+
+		saw_file = true;
+		break;
+	}
+
+	if (!saw_file)
+	{
+		// empty directory, that's fine
 		return true;
 	}
 
-	return false;
+	const auto q = fmt::format(
+		"prefix {} already exists, delete?", path_to_utf8(prefix));
+
+	if (ask_yes_no(q, yn::no) != yn::yes)
+		return false;
+
+	// the log file might be in this directory, close it now and reopen it
+	// when deletion is finished
+	context::close_log_file();
+
+	build_command::terminate_msbuild();
+	op::delete_directory(gcx(), prefix);
+
+	// reopen log file
+	conf().set_log_file();
+
+	return true;
 }
 
 void release_command::prepare()

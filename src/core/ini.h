@@ -27,5 +27,6 @@ struct ini_data
 };
 
 ini_data parse_ini(const fs::path& ini);
+std::string default_ini_filename();
 
 }	// namespace

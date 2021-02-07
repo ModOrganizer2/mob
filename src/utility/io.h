@@ -102,9 +102,17 @@ void set_std_streams();
 //
 std::mutex& global_output_mutex();
 
+
+enum class yn
+{
+	no = 0,
+	yes,
+	cancelled
+};
+
 // asks the user for y/n
 //
-bool ask_yes_no(const std::string& text, bool def);
+yn ask_yes_no(const std::string& text, yn def);
 
 
 // see https://github.com/isanae/mob/issues/4
