@@ -535,6 +535,8 @@ void conf::set_log_file()
 	fs::path log_file = conf().global().get("log_file");
 	if (log_file.is_relative())
 		log_file = conf().path().prefix() / log_file;
+
+	context::set_log_file(log_file);
 }
 
 void init_options(
