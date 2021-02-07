@@ -123,7 +123,6 @@ void add_tasks()
 		.add_task<mo>("modorganizer-basic_games")
 		.add_task<mo>({
 			"modorganizer-script_extender_plugin_checker",
-			"diagnose-script_extender_plugin_checker",
 			"scriptextenderpluginchecker"
 			})
 		.add_task<mo>({"modorganizer-form43_checker", "form43checker"})
