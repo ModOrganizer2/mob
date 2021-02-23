@@ -6,8 +6,6 @@ namespace mob::tasks
 
 std::vector<stylesheets::release> releases()
 {
-	// note that 6788's releases have 'v' in front of the version, but not others
-
 	return
 	{
 		{
