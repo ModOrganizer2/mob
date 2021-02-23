@@ -13,29 +13,29 @@ std::vector<stylesheets::release> releases()
 		{
 			"6788-00",
 			"paper-light-and-dark",
-			"v" + conf().version().get("ss_paper_lad_6788"),
 			conf().version().get("ss_paper_lad_6788"),
+			"paper-light-and-dark"
 		},
 
 		{
 			"6788-00",
 			"paper-automata",
-			"v" + conf().version().get("ss_paper_automata_6788"),
+			conf().version().get("ss_paper_automata_6788"),
 			"Paper-Automata"
 		},
 
 		{
 			"6788-00",
 			"paper-mono",
-			"v" + conf().version().get("ss_paper_mono_6788"),
+			conf().version().get("ss_paper_mono_6788"),
 			"Paper-Mono"
 		},
 
 		{
 			"6788-00",
 			"1809-dark-mode",
-			"v" + conf().version().get("ss_dark_mode_1809_6788"),
-			conf().version().get("ss_dark_mode_1809_6788")
+			conf().version().get("ss_dark_mode_1809_6788"),
+			"1809"
 		},
 
 		{
