@@ -220,6 +220,7 @@ public:
 	VALUE(vs);
 	VALUE(qt_install);
 	VALUE(qt_bin);
+	VALUE(qt_translations);
 
 	VALUE(pf_x86);
 	VALUE(pf_x64);

@@ -627,6 +627,11 @@ public:
 			std::vector<fs::path> ts_files;
 
 			lang(std::string n);
+
+			// if `name` has an underscore, returns the part before and after
+			// it; if there is no underscore, first is `name`, second is empty
+			//
+			std::pair<std::string, std::string> split() const;
 		};
 
 		// a project that contains languages
@@ -653,6 +658,10 @@ public:
 		// any warnings that happened while walking the directories
 		//
 		const std::vector<std::string>& warnings() const;
+
+		// return a project by name
+		//
+		std::optional<project> find(std::string_view name) const;
 
 	private:
 		// translations directory
@@ -696,6 +705,11 @@ protected:
 	void do_clean(clean c) override;
 	void do_fetch() override;
 	void do_build_and_install() override;
+
+private:
+	// copy builtin qt .qm files
+	void copy_builtin_qt_translations(
+		const projects::project& organizer_project, const fs::path& dest);
 };
 
 

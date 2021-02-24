@@ -69,6 +69,17 @@ translations::projects::lang::lang(std::string n)
 {
 }
 
+std::pair<std::string, std::string> translations::projects::lang::split() const
+{
+	const auto p = name.find('_');
+
+	if (p == std::string::npos)
+		return {{}, name};
+
+	return {name.substr(0, p), name.substr(p + 1)};
+}
+
+
 translations::projects::project::project(std::string n)
 	: name(std::move(n))
 {
@@ -78,16 +89,24 @@ translations::projects::project::project(std::string n)
 translations::projects::projects(fs::path root)
 	: root_(std::move(root))
 {
-	// walk all directories in the root, each one is a project directory that
-	// contains .ts files
-	for (auto e : fs::directory_iterator(root_))
+	try
 	{
-		if (!e.is_directory())
-			continue;
+		// walk all directories in the root, each one is a project directory that
+		// contains .ts files
+		for (auto e : fs::directory_iterator(root_))
+		{
+			if (!e.is_directory())
+				continue;
 
-		auto p = create_project(e.path());
-		if (!p.name.empty())
-			projects_.push_back(p);
+			auto p = create_project(e.path());
+			if (!p.name.empty())
+				projects_.push_back(p);
+		}
+	}
+	catch(std::exception& e)
+	{
+		gcx().bail_out(context::generic,
+			"can't walk {} for projects, {}", root_, e.what());
 	}
 }
 
@@ -100,6 +119,18 @@ translations::projects::get() const
 const std::vector<std::string>& translations::projects::warnings() const
 {
 	return warnings_;
+}
+
+std::optional<translations::projects::project>
+translations::projects::find(std::string_view name) const
+{
+	for (auto&& p : projects_)
+	{
+		if (p.name == name)
+			return p;
+	}
+
+	return {};
 }
 
 translations::projects::project
@@ -327,6 +358,7 @@ void translations::do_build_and_install()
 {
 	// 1) build the list of projects, languages and .ts files
 	// 2) run `lrelease` for every language in every project
+	// 3) copy builtin qt translations
 
 	const auto root = source_path() / "translations";
 	const auto dest = conf().path().install_translations();
@@ -361,6 +393,63 @@ void translations::do_build_and_install()
 
 	// run all the functors in parallel
 	parallel(v);
+
+	if (auto p=ps.find("organizer"))
+		copy_builtin_qt_translations(*p, dest);
+	else
+		cx().bail_out(context::generic, "organizer project not found");
+}
+
+void translations::copy_builtin_qt_translations(
+	const projects::project& p, const fs::path& dest)
+{
+	// list of prefixes in the qt translations directory
+	const std::vector<std::string> prefixes =
+	{
+		"qt", "qtbase"
+	};
+
+
+	// tries to copy the .qm file, returns false if the file doesn't exist
+	auto try_copy = [&](auto&& prefix, auto&& lang)
+	{
+		const std::string file = prefix + "_" + lang + ".qm";
+		const fs::path src = conf().path().qt_translations() / file;
+
+		if (!fs::exists(src))
+			return false;
+
+		op::copy_file_to_dir_if_better(cx(), src, dest, op::unsafe);
+		return true;
+	};
+
+
+	for (auto&& prefix : prefixes)
+	{
+		cx().debug(context::generic,
+			"copying builtin qt translations '{}'", prefix);
+
+		for (auto&& lg : p.langs)
+		{
+			// some source files use 'country_lang', others are just 'lang',
+			// such as "qt_pl.qm" and "qt_zh_CN.qm", so try both
+
+			if (try_copy(prefix, lg.name))
+				continue;
+
+			const auto [language, country] = lg.split();
+
+			if (!country.empty())
+			{
+				if (try_copy(prefix, language))
+					continue;
+			}
+
+			cx().warning(context::generic,
+				"missing builtin qt translation '{}' for lang {} from {}",
+				prefix, lg.name, conf().path().qt_translations());
+		}
+	}
 }
 
 }	// namespace
