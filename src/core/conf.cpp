@@ -488,14 +488,15 @@ void resolve_paths()
 	set_path_if_empty("third_party", find_third_party_directory);
 	this_env::prepend_to_path(conf().path().third_party() / "bin");
 
-	set_path_if_empty("pf_x86",     find_program_files_x86);
-	set_path_if_empty("pf_x64",     find_program_files_x64);
-	set_path_if_empty("vs",         find_vs);
-	set_path_if_empty("qt_install", find_qt);
-	set_path_if_empty("temp_dir",   find_temp_dir);
-	set_path_if_empty("patches",    find_in_root("patches"));
-	set_path_if_empty("licenses",   find_in_root("licenses"));
-	set_path_if_empty("qt_bin",     qt::installation_path() / "bin");
+	set_path_if_empty("pf_x86",          find_program_files_x86);
+	set_path_if_empty("pf_x64",          find_program_files_x64);
+	set_path_if_empty("vs",              find_vs);
+	set_path_if_empty("qt_install",      find_qt);
+	set_path_if_empty("temp_dir",        find_temp_dir);
+	set_path_if_empty("patches",         find_in_root("patches"));
+	set_path_if_empty("licenses",        find_in_root("licenses"));
+	set_path_if_empty("qt_bin",          qt::installation_path() / "bin");
+	set_path_if_empty("qt_translations", qt::installation_path() / "translations");
 
 	// second, if any of these paths are relative, they use the second argument
 	// as the root; if they're empty, they combine the second and third
