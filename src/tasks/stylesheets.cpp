@@ -19,7 +19,7 @@ std::vector<stylesheets::release> releases()
 			"6788-00",
 			"paper-automata",
 			conf().version().get("ss_paper_automata_6788"),
-			"Paper-Automata"
+			"3.0.Paper.Automata"
 		},
 
 		{
