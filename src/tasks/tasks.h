@@ -584,6 +584,7 @@ public:
 		std::string repo;
 		std::string version;
 		std::string file;
+		std::string top_level_folder;
 	};
 
 	stylesheets();

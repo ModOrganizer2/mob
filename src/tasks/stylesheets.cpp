@@ -12,35 +12,40 @@ std::vector<stylesheets::release> releases()
 			"6788-00",
 			"paper-light-and-dark",
 			conf().version().get("ss_paper_lad_6788"),
-			"paper-light-and-dark"
+			"paper-light-and-dark",
+			""
 		},
 
 		{
 			"6788-00",
 			"paper-automata",
 			conf().version().get("ss_paper_automata_6788"),
-			"3.0.Paper.Automata"
+			"3.0.Paper.Automata",
+			"2. Paper Automata-64439-A2-3-0-1610629680"
 		},
 
 		{
 			"6788-00",
 			"paper-mono",
 			conf().version().get("ss_paper_mono_6788"),
-			"Paper-Mono"
+			"Paper-Mono",
+			""
 		},
 
 		{
 			"6788-00",
 			"1809-dark-mode",
 			conf().version().get("ss_dark_mode_1809_6788"),
-			"1809"
+			"1809",
+			""
 		},
 
 		{
 			"Trosski",
 			"ModOrganizer_Style_Morrowind",
 			conf().version().get("ss_morrowind_trosski"),
-			"Transparent-Style-Morrowind"
+			"Transparent-Style-Morrowind",
+			""
 		}
 	};
 }
@@ -115,7 +120,8 @@ void stylesheets::do_build_and_install()
 		// copy all the files and directories from the source directory directly
 		// into install/bin/stylesheets
 		op::copy_glob_to_dir_if_better(cx(),
-			release_build_path(r) / "*",
+			r.top_level_folder.size() ? release_build_path(r) / r.top_level_folder /  "*"
+			                          : release_build_path(r) / "*",
 			conf().path().install_stylesheets(),
 			op::copy_files|op::copy_dirs);
 	}
