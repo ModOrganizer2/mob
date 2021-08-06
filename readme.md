@@ -40,8 +40,8 @@
   - Desktop development with C++
   - Git for Windows (if you don't have git already installed)
   - .NET Framework 3.5 development tools
-  - .NET Framework 4.6 targeting pack
-  - .NET Framework 4.6.1 targeting pack and SDK
+  - .NET Framework 4.6 targeting pack (alternative: [Developer Pack](https://dotnet.microsoft.com/download/dotnet-framework/net46))
+  - .NET Framework 4.8 targeting pack and SDK (alternative: [Developer Pack](https://dotnet.microsoft.com/download/dotnet-framework/net48))
 - Start a shell
   - If you have git in your path, a regular cmd shell works.
   - If not, start the _x64 Native Tools Command Prompt for VS 2019_, it'll use Git for Windows installed above.
