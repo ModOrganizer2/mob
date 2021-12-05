@@ -102,7 +102,7 @@ url prebuilt_url()
 url source_url()
 {
 	return
-		"https://dl.bintray.com/boostorg/release/" +
+		"https://boostorg.jfrog.io/artifactory/main/release/" +
 		boost_version_no_tags() + "/source/" +
 		boost_version_all_underscores() + ".zip";
 }

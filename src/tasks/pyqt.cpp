@@ -22,13 +22,13 @@
 //      - download and extract source archive
 //      - use `pip install` to install PyQt-builder
 //      - run `sip-install.exe` with the list of required modules, creating a
-//        folder for each module in PyQt5-XX/build/ with `.pyd` files
+//        folder for each module in PyQt6-XX/build/ with `.pyd` files
 //      - run `sip-module.exe --sdist`, which creates
-//        downloads/PyQt5_sip-XXX.tar.gz
+//        downloads/PyQt6_sip-XXX.tar.gz
 //      - run `pip install` with that file, which creates
-//        `python-XX/Lib/site-packages/PyQt5/sip.cp32-win_amd64.pyd`
-//      - for installation, a bunch of files from site-packages/PyQt5/ are
-//        copied into install/bin/plugins/data/PyQt5, including a .pyi file from
+//        `python-XX/Lib/site-packages/PyQt6/sip.cp32-win_amd64.pyd`
+//      - for installation, a bunch of files from site-packages/PyQt6/ are
+//        copied into install/bin/plugins/data/PyQt6, including a .pyi file from
 //        sip
 
 
@@ -41,20 +41,20 @@ namespace
 url source_url()
 {
 	return
-		"https://pypi.io/packages/source/P/PyQt5/"
-		"PyQt5-" + pyqt::version() + ".tar.gz";
+		"https://pypi.io/packages/source/P/PyQt6/"
+		"PyQt6-" + pyqt::version() + ".tar.gz";
 }
 
 url prebuilt_url()
 {
-	return make_prebuilt_url("PyQt5_gpl-prebuilt-" + pyqt::version() + ".7z");
+	return make_prebuilt_url("PyQt6_gpl-prebuilt-" + pyqt::version() + ".7z");
 }
 
 // file created by sip-module.exe
 //
 fs::path sip_install_file()
 {
-	return "PyQt5_sip-" + sip::version_for_pyqt() + ".tar.gz";
+	return "PyQt6_sip-" + sip::version_for_pyqt() + ".tar.gz";
 }
 
 std::vector<std::string> modules()
@@ -64,11 +64,12 @@ std::vector<std::string> modules()
 		"QtCore",
 		"QtGui",
 		"QtWidgets",
-		"QtOpenGL",
-		"QtSvg",
-		"_QOpenGLFunctions_2_0",
-		"_QOpenGLFunctions_2_1",
-		"_QOpenGLFunctions_4_1_Core"
+		"QtDBus",
+//		"QtOpenGL",
+		"QtSvg"//,
+//		"_QOpenGLFunctions_2_0",
+//		"_QOpenGLFunctions_2_1",
+//		"_QOpenGLFunctions_4_1_Core"
 	};
 }
 
@@ -97,7 +98,7 @@ bool pyqt::prebuilt()
 
 fs::path pyqt::source_path()
 {
-	return conf().path().build() / ("PyQt5-" + version());
+	return conf().path().build() / ("PyQt6-" + version());
 }
 
 fs::path pyqt::build_path()
@@ -107,7 +108,7 @@ fs::path pyqt::build_path()
 
 std::string pyqt::pyqt_sip_module_name()
 {
-	return "PyQt5.sip";
+	return "PyQt6.sip";
 }
 
 void pyqt::do_clean(clean c)
@@ -207,10 +208,10 @@ void pyqt::build_and_install_from_source()
 		.file("builder.py.manual_patch")
 		.root(python::site_packages_path() / "pyqtbuild"));
 
-	// build modules and generate the PyQt5_sip-XX.tar.gz file
+	// build modules and generate the PyQt6_sip-XX.tar.gz file
 	sip_build();
 
-	// run pip install for the PyQt5_sip-XX.tar.gz file
+	// run pip install for the PyQt6_sip-XX.tar.gz file
 	install_sip_file();
 
 	// copy files to build/install for MO
@@ -254,9 +255,9 @@ void pyqt::sip_build()
 			.arg("--pep484-pyi")
 			.arg("--link-full-dll")
 			.arg("--build-dir", build_path())
-			.arg("--enable", "pylupdate")  // these are not in modules so they
-			.arg("--enable", "pyrcc")      // don't get copied below
-			.args(zip(repeat("--enable"), modules()))
+//			.arg("--enable", "pylupdate")  // these are not in modules so they
+//			.arg("--enable", "pyrcc")      // don't get copied below
+//			.args(zip(repeat("--enable"), modules()))
 			.cwd(source_path())
 			.env(pyqt_env)));
 
@@ -264,7 +265,7 @@ void pyqt::sip_build()
 		built_bypass.create();
 	}
 
-	// generate the PyQt5_sip-XX.tar.gz file
+	// generate the PyQt6_sip-XX.tar.gz file
 	run_tool(process_runner(process()
 		.binary(sip::sip_module_exe())
 		.arg("--sdist")
@@ -285,7 +286,7 @@ void pyqt::install_sip_file()
 	}
 	else
 	{
-		// run `pip install` on the generated PyQt5_sip-XX.tar.gz file
+		// run `pip install` on the generated PyQt6_sip-XX.tar.gz file
 		run_tool(pip(pip::install)
 			.file(conf().path().cache() / sip_install_file()));
 
@@ -296,13 +297,13 @@ void pyqt::install_sip_file()
 
 void pyqt::copy_files()
 {
-	// pyqt puts its files in python-XX/Lib/site-packages/PyQt5
+	// pyqt puts its files in python-XX/Lib/site-packages/PyQt6
 	const fs::path site_packages_pyqt =
-		python::site_packages_path() / "PyQt5";
+		python::site_packages_path() / "PyQt6";
 
-	// target directory is install/bin/plugins/data/PyQt5
+	// target directory is install/bin/plugins/data/PyQt6
 	const fs::path pyqt_plugin =
-		conf().path().install_plugins() / "data" / "PyQt5";
+		conf().path().install_plugins() / "data" / "PyQt6";
 
 
 	// copying a bunch of files from site-packages into the plugins directory
@@ -335,16 +336,16 @@ void pyqt::copy_files()
 
 
 	// copying some dlls from Qt's installation directory into
-	// python-XX/PCBuild/amd64, those are needed by PyQt5 when building several
+	// python-XX/PCBuild/amd64, those are needed by PyQt6 when building several
 	// projects
 
 	op::copy_file_to_dir_if_better(cx(),
-		qt::bin_path() / "Qt5Core.dll",
+		qt::bin_path() / "Qt6Core.dll",
 		python::build_path(),
 		op::unsafe);   // source file is outside prefix
 
 	op::copy_file_to_dir_if_better(cx(),
-		qt::bin_path() / "Qt5Xml.dll",
+		qt::bin_path() / "Qt6Xml.dll",
 		python::build_path(),
 		op::unsafe);   // source file is outside prefix
 }

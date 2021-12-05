@@ -9,7 +9,7 @@ namespace
 
 fs::path solution_dir()
 {
-	return lz4::source_path() / "visual" / "VS2017";
+	return lz4::source_path() / "build" / "VS2017";
 }
 
 fs::path solution_file()

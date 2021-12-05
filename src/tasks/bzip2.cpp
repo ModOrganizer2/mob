@@ -13,8 +13,8 @@ namespace
 url source_url()
 {
 	return
-		"https://sourceforge.net/projects/bzip2/files/"
-		"bzip2-" + bzip2::version() + ".tar.gz/download";
+		"https://sourceware.org/pub/bzip2/"
+		"bzip2-" + bzip2::version() + ".tar.gz";
 }
 
 }	// namespace
