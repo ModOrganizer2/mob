@@ -26,8 +26,8 @@ std::string version_no_patch_underscores()
 
 	std::string s = v.major;
 
-//	if (v.minor != "")
-//		s += "_" + v.minor;
+	if (v.minor != "")
+		s += "_" + v.minor;
 
 	return s;
 }
