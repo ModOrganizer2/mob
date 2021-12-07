@@ -64,12 +64,9 @@ std::vector<std::string> modules()
 		"QtCore",
 		"QtGui",
 		"QtWidgets",
-		"QtDBus",
-//		"QtOpenGL",
-		"QtSvg"//,
-//		"_QOpenGLFunctions_2_0",
-//		"_QOpenGLFunctions_2_1",
-//		"_QOpenGLFunctions_4_1_Core"
+		"QtOpenGL",
+		"QtOpenGLWidgets",
+		"QtSvg"
 	};
 }
 
