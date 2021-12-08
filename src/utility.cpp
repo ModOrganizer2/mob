@@ -17,7 +17,7 @@ url make_prebuilt_url(const std::string& filename)
 {
 	return
 		"https://github.com/ModOrganizer2/modorganizer-umbrella/"
-		"releases/download/1.1/" + filename;
+		"releases/download/2.0/" + filename;
 }
 
 url make_appveyor_artifact_url(
