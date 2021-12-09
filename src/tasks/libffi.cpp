@@ -39,7 +39,7 @@ void libffi::do_fetch()
 {
 	run_tool(make_git()
 		.url(make_git_url("python","cpython-bin-deps"))
-		.branch("libffi")
+		.branch("libffi-3.3.0")
 		.root(source_path()));
 }
 
