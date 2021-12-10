@@ -71,7 +71,7 @@ void add_tasks()
 		.add_task<mo>("modorganizer-uibase");
 
 	add_task<parallel_tasks>()
-		.add_task<mo>("modorganizer-game_features")
+		.add_task<mo>({"modorganizer-game_features", "gamefeatures"})
 		.add_task<mo>("modorganizer-archive")
 		.add_task<mo>("modorganizer-lootcli")
 		.add_task<mo>("modorganizer-esptk")
@@ -102,7 +102,7 @@ void add_tasks()
 
 	add_task<parallel_tasks>()
 		.add_task<mo>({"modorganizer-tool_inieditor", "inieditor"})
-		.add_task<mo>("modorganizer-tool_inibakery")
+		.add_task<mo>({"modorganizer-tool_inibakery", "inibakery"})
 		.add_task<mo>("modorganizer-preview_base")
 		.add_task<mo>("modorganizer-diagnose_basic")
 		.add_task<mo>("modorganizer-check_fnis")

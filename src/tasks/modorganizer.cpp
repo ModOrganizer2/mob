@@ -76,6 +76,11 @@ modorganizer::modorganizer(std::vector<const char*> names, flags f)
 modorganizer::modorganizer(std::vector<std::string> names, flags f)
 	: task(make_names(names)), repo_(names[0]), flags_(f)
 {
+    if (names.size() > 1) {
+      project_ = names[1];
+    } else {
+      project_ = make_names(names)[0];
+    }
 }
 
 bool modorganizer::is_gamebryo_plugin() const
@@ -100,7 +105,7 @@ fs::path modorganizer::project_file_path() const
 	const auto build_path = create_cmake_tool(source_path()).build_path();
 
 	// use the INSTALL project
-	return build_path / "INSTALL.vcxproj";
+	return build_path / (project_ + ".sln");
 }
 
 fs::path modorganizer::super_path()
@@ -215,6 +220,7 @@ cmake modorganizer::create_cmake_tool(const fs::path& root, cmake::ops o)
 		.def("LIBBSARCH_ROOT",            libbsarch::source_path())
 		.def("BOOST_DI_ROOT",             boost_di::source_path())
 		.def("GTEST_ROOT",                gtest::source_path())
+		.def("OPENSSL_ROOT_DIR",          openssl::source_path())
 		.root(root));
 }
 

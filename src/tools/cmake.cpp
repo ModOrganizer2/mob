@@ -65,6 +65,7 @@ cmake& cmake::def(const std::string& name, const char* s)
 
 cmake& cmake::arg(std::string s)
 {
+    std::replace(s.begin(), s.end(), '\\', '/');
 	args_.push_back(std::move(s));
 	return *this;
 }

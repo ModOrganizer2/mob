@@ -319,6 +319,7 @@ protected:
 
 private:
 	std::string repo_;
+	std::string project_;
 	flags flags_;
 
 	// creates the cmake tool for this MO project
