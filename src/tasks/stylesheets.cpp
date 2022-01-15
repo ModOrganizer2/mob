@@ -44,7 +44,31 @@ std::vector<stylesheets::release> releases()
 			"Trosski",
 			"ModOrganizer_Style_Morrowind",
 			conf().version().get("ss_morrowind_trosski"),
-			"Transparent-Style-Morrowind",
+			"Morrowind-MO2-Stylesheet",
+			""
+		},
+
+		{
+			"Trosski",
+			"Mod-Organizer-2-Skyrim-Stylesheet",
+			conf().version().get("ss_skyrim_trosski"),
+			"Skyrim-MO2-Stylesheet",
+			""
+		},
+
+		{
+			"Trosski",
+			"ModOrganizer_Style_Fallout3",
+			conf().version().get("ss_fallout3_trosski"),
+			"Fallout3-MO2-Stylesheet",
+			""
+		},
+
+		{
+			"Trosski",
+			"Mod-Organizer2-Fallout-4-Stylesheet",
+			conf().version().get("ss_fallout4_trosski"),
+			"Fallout4-MO2-Stylesheet",
 			""
 		}
 	};
