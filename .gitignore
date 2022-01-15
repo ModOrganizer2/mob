@@ -1,6 +1,15 @@
+# mob-specific files
 /build
 /vs/obj
 /vs/.vs
 /vs/*.user
 /mob.exe
 /mob.log
+
+# Files built by mob
+/*/build
+/*/downloads
+/*/install
+/*/releases
+/*/mob.ini
+/*/mob.log
