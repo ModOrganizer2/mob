@@ -100,6 +100,27 @@ void release_command::make_src()
 		files, tasks::modorganizer::super_path(), out);
 }
 
+void release_command::make_uibase()
+{
+	const auto out = out_ / make_filename("uibase");
+	u8cout << "making uibase archive " << path_to_utf8(out) << "\n";
+
+	std::vector<fs::path> files;
+
+	if (!fs::exists(tasks::modorganizer::super_path()))
+	{
+		gcx().bail_out(context::generic,
+			"modorganizer super path not found: {}",
+			tasks::modorganizer::super_path());
+	}
+
+	op::archive_from_glob(gcx(),
+		tasks::modorganizer::super_path() / "uibase" / "src" / "*.h", out, {});
+	op::archive_from_glob(gcx(),
+		tasks::modorganizer::super_path() / "game_features" / "src" / "*.h", out, {});
+	op::archive_from_files(gcx(), { conf().path().install_libs() / "uibase.lib" }, conf().path().install_libs(), out);
+}
+
 void release_command::make_installer()
 {
 	const auto file = "Mod.Organizer-" + version_ + ".exe";
@@ -190,6 +211,11 @@ clipp::group release_command::do_group()
 				clipp::option("--src").set(src_, true) |
 				clipp::option("--no-src").set(src_, false)
 			) % "sets whether the source archive is created [default: yes]",
+
+			//(
+			//	clipp::option("--uibase").set(uibase_, true) |
+			//	clipp::option("--no-uibase").set(uibase_, false)
+			//) % "sets whether the uibase archive is created [default: yes]",
 
 			(
 				clipp::option("--inst").set(installer_, true) |
@@ -286,6 +312,9 @@ int release_command::do_devbuild()
 	if (src_)
 		make_src();
 
+	if (uibase_)
+		make_uibase();
+
 	if (installer_)
 		make_installer();
 
@@ -311,6 +340,7 @@ int release_command::do_official()
 	make_bin();
 	make_pdbs();
 	make_src();
+	make_uibase();
 	make_installer();
 
 	return 0;

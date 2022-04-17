@@ -310,6 +310,7 @@ public:
 	void make_bin();
 	void make_pdbs();
 	void make_src();
+	void make_uibase();
 	void make_installer();
 
 protected:
@@ -331,6 +332,7 @@ private:
 	bool bin_ = true;
 	bool src_ = true;
 	bool pdbs_ = true;
+	bool uibase_ = true;
 	bool installer_ = false;
 	std::string utf8out_;
 	fs::path out_;

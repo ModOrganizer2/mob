@@ -212,7 +212,7 @@ void sip::generate_header()
 	// by plugin_python
 	run_tool(process_runner(process()
 		.binary(sip_module_exe())
-		.chcp(850)
+		.chcp(65001)
 		.stdout_encoding(encodings::acp)
 		.stderr_encoding(encodings::acp)
 		.arg("--sip-h")

@@ -88,6 +88,7 @@ void add_tasks()
 	// the one from the specific plugin
 	add_task<parallel_tasks>()
 		.add_task<mo>("modorganizer-game_oblivion", mo::gamebryo)
+		.add_task<mo>("modorganizer-game_nehrim", mo::gamebryo)
 		.add_task<mo>("modorganizer-game_fallout3", mo::gamebryo)
 		.add_task<mo>("modorganizer-game_fallout4", mo::gamebryo)
 		.add_task<mo>("modorganizer-game_fallout4vr", mo::gamebryo)
