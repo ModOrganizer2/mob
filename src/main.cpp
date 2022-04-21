@@ -42,10 +42,12 @@ void add_tasks()
 
 	add_task<parallel_tasks>()
 		.add_task<tasks::python>()
-		.add_task<boost>()
-		.add_task<boost_di>()
 		.add_task<lz4>()
 		.add_task<spdlog>();
+		
+    add_task<parallel_tasks>()
+        .add_task<boost>()
+		.add_task<boost_di>();
 
 	add_task<parallel_tasks>()
 		.add_task<sip>()
@@ -102,7 +104,7 @@ void add_tasks()
 
 	add_task<parallel_tasks>()
 		.add_task<mo>({"modorganizer-tool_inieditor", "inieditor"})
-		.add_task<mo>("modorganizer-tool_inibakery")
+		.add_task<mo>({"modorganizer-tool_inibakery", "inibakery"})
 		.add_task<mo>("modorganizer-preview_base")
 		.add_task<mo>("modorganizer-diagnose_basic")
 		.add_task<mo>("modorganizer-check_fnis")
