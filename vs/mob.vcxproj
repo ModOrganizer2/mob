@@ -21,13 +21,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
@@ -93,8 +93,6 @@
     <ClCompile Include="..\src\tasks\licenses.cpp" />
     <ClCompile Include="..\src\tasks\lz4.cpp" />
     <ClCompile Include="..\src\tasks\modorganizer.cpp" />
-    <ClCompile Include="..\src\tasks\ncc.cpp" />
-    <ClCompile Include="..\src\tasks\nmm.cpp" />
     <ClCompile Include="..\src\tasks\openssl.cpp" />
     <ClCompile Include="..\src\tasks\pyqt.cpp" />
     <ClCompile Include="..\src\tasks\python.cpp" />

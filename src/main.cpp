@@ -37,8 +37,7 @@ void add_tasks()
 		.add_task<libloot>()
 		.add_task<openssl>()
 		.add_task<libffi>()
-		.add_task<bzip2>()
-		.add_task<nmm>();
+		.add_task<bzip2>();
 
 	add_task<parallel_tasks>()
 		.add_task<tasks::python>()
@@ -47,11 +46,8 @@ void add_tasks()
 		
     add_task<parallel_tasks>()
         .add_task<boost>()
-		.add_task<boost_di>();
-
-	add_task<parallel_tasks>()
-		.add_task<sip>()
-		.add_task<ncc>();
+		.add_task<boost_di>()
+		.add_task<sip>();
 
 	add_task<parallel_tasks>()
 		.add_task<pyqt>()

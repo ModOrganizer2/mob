@@ -261,11 +261,6 @@ std::vector<fs::path> git_command::get_repos() const
 	if (fs::exists(tasks::usvfs::source_path()))
 		v.push_back(tasks::usvfs::source_path());
 
-	// ncc
-	if (fs::exists(tasks::ncc::source_path()))
-		v.push_back(tasks::ncc::source_path());
-
-
 	const auto super = tasks::modorganizer::super_path();
 
 	// all directories in super except for those starting with a dot
