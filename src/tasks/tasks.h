@@ -514,6 +514,21 @@ private:
 };
 
 
+class pybind11 : public basic_task<pybind11> {
+public:
+	pybind11();
+
+	static bool prebuilt();
+	static std::string version();
+	static fs::path source_path();
+
+protected:
+	void do_clean(clean c) override;
+	void do_fetch() override;
+	void do_build_and_install() override;
+};
+
+
 class sevenz : public basic_task<sevenz>
 {
 public:

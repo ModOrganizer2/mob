@@ -51,6 +51,7 @@ void add_tasks()
 
 	add_task<parallel_tasks>()
 		.add_task<pyqt>()
+		.add_task<pybind11>()
 		.add_task<usvfs>()
 		.add_task<stylesheets>()
 		.add_task<licenses>()

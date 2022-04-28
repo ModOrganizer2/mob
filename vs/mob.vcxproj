@@ -94,6 +94,7 @@
     <ClCompile Include="..\src\tasks\lz4.cpp" />
     <ClCompile Include="..\src\tasks\modorganizer.cpp" />
     <ClCompile Include="..\src\tasks\openssl.cpp" />
+    <ClCompile Include="..\src\tasks\pybind11.cpp" />
     <ClCompile Include="..\src\tasks\pyqt.cpp" />
     <ClCompile Include="..\src\tasks\python.cpp" />
     <ClCompile Include="..\src\tasks\sevenz.cpp" />
