@@ -37,8 +37,7 @@ void add_tasks()
 		.add_task<libloot>()
 		.add_task<openssl>()
 		.add_task<libffi>()
-		.add_task<bzip2>()
-		.add_task<nmm>();
+		.add_task<bzip2>();
 
 	add_task<parallel_tasks>()
 		.add_task<tasks::python>()
@@ -47,11 +46,8 @@ void add_tasks()
 		
     add_task<parallel_tasks>()
         .add_task<boost>()
-		.add_task<boost_di>();
-
-	add_task<parallel_tasks>()
-		.add_task<sip>()
-		.add_task<ncc>();
+		.add_task<boost_di>()
+		.add_task<sip>();
 
 	add_task<parallel_tasks>()
 		.add_task<pyqt>()
@@ -73,7 +69,6 @@ void add_tasks()
 		.add_task<mo>("modorganizer-uibase");
 
 	add_task<parallel_tasks>()
-		.add_task<mo>({"modorganizer-game_features", "gamefeatures"})
 		.add_task<mo>("modorganizer-archive")
 		.add_task<mo>("modorganizer-lootcli")
 		.add_task<mo>("modorganizer-esptk")
@@ -116,7 +111,6 @@ void add_tasks()
 		.add_task<mo>("modorganizer-installer_fomod")
 		.add_task<mo>("modorganizer-installer_fomod_csharp")
 		.add_task<mo>("modorganizer-installer_omod", mo::nuget)
-		.add_task<mo>("modorganizer-installer_ncc")
 		.add_task<mo>("modorganizer-installer_wizard")
 		.add_task<mo>("modorganizer-bsa_extractor")
 		.add_task<mo>("modorganizer-plugin_python");
