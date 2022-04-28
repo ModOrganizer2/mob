@@ -217,32 +217,12 @@ void python::copy_files()
 		conf().path().install_libs(),
 		op::copy_files);
 
-	// dlls
-	op::copy_glob_to_dir_if_better(cx(),
-		build_path() / "libffi*.dll",
-		conf().path().install_bin(),
-		op::copy_files);
-
-	op::copy_file_to_dir_if_better(cx(),
-		build_path() / ("python" + version_for_dll() + ".dll"),
-		conf().path().install_bin());
-
 	// pdbs
 	op::copy_file_to_dir_if_better(cx(),
 		build_path() / ("python" + version_for_dll() + ".pdb"),
 		conf().path().install_pdbs());
 
-	// pyd files
-	op::copy_glob_to_dir_if_better(cx(),
-		build_path() / "pythoncore/*.pyd",
-		conf().path().install_pythoncore(),
-		op::copy_files);
-
-	// pythonXX.zip -> pythoncore.zip
-	op::copy_file_to_file_if_better(cx(),
-		python_core_zip_file(),
-		conf().path().install_bin() / "pythoncore.zip",
-		op::copy_files);
+	// dlls and python libraries are installed by the python plugin
 }
 
 void python::install_pip()

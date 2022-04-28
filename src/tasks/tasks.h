@@ -50,8 +50,6 @@ private:
 	void do_b2(
 		const std::vector<std::string>& components,
 		const std::string& link, const std::string& runtime_link, arch a);
-
-	void copy_boost_python_dll();
 };
 
 

@@ -7,15 +7,6 @@ namespace mob::tasks
 
 namespace
 {
-
-std::string python_version_for_dll()
-{
-	const auto v = python::parsed_version();
-
-	// 38
-	return v.major + v.minor;
-}
-
 std::string python_version_for_jam()
 {
 	const auto v = python::parsed_version();
@@ -110,26 +101,6 @@ url source_url()
 fs::path b2_exe()
 {
 	return boost::source_path() / "b2.exe";
-}
-
-std::string python_dll()
-{
-	std::ostringstream oss;
-
-	// builds something like boost_python38-vc142-mt-x64-1_72.dll
-
-	// boost_python38-
-	oss << "boost_python" << python_version_for_dll() + "-";
-
-	// vc142-
-	oss << "vc" + replace_all(boost::version_vs(), ".", "") << "-";
-
-	// mt-x64-1_72
-	oss << "mt-x64-" << boost_version_no_patch_underscores();
-
-	oss << ".dll";
-
-	return oss.str();
 }
 
 }	// namespace
@@ -255,7 +226,6 @@ void boost::fetch_prebuilt()
 
 void boost::build_and_install_prebuilt()
 {
-	copy_boost_python_dll();
 }
 
 void boost::fetch_from_source()
@@ -314,17 +284,9 @@ void boost::build_and_install_from_source()
 
 	// shared link, shared runtime, x64
 	do_b2(
-		{"thread", "date_time", "python", "atomic"},
+		{"thread", "date_time", "atomic"},
 		"shared", "shared", arch::x64);
 
-	copy_boost_python_dll();
-}
-
-void boost::copy_boost_python_dll()
-{
-	op::copy_file_to_dir_if_better(cx(),
-		lib_path(arch::x64) / python_dll(),
-		conf().path().install_bin());
 }
 
 void boost::do_b2(
