@@ -50,8 +50,6 @@ private:
 	void do_b2(
 		const std::vector<std::string>& components,
 		const std::string& link, const std::string& runtime_link, arch a);
-
-	void copy_boost_python_dll();
 };
 
 
@@ -513,6 +511,21 @@ private:
 	void copy_files();
 
 	msbuild create_msbuild_tool(msbuild::ops o=msbuild::build);
+};
+
+
+class pybind11 : public basic_task<pybind11> {
+public:
+	pybind11();
+
+	static bool prebuilt();
+	static std::string version();
+	static fs::path source_path();
+
+protected:
+	void do_clean(clean c) override;
+	void do_fetch() override;
+	void do_build_and_install() override;
 };
 
 

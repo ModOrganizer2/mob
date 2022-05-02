@@ -57,19 +57,6 @@ fs::path sip_install_file()
 	return "PyQt6_sip-" + sip::version_for_pyqt() + ".tar.gz";
 }
 
-std::vector<std::string> modules()
-{
-	return
-	{
-		"QtCore",
-		"QtGui",
-		"QtWidgets",
-		"QtOpenGL",
-		"QtOpenGLWidgets",
-		"QtSvg"
-	};
-}
-
 }	// namespace
 
 
@@ -298,39 +285,6 @@ void pyqt::copy_files()
 	const fs::path site_packages_pyqt =
 		python::site_packages_path() / "PyQt6";
 
-	// target directory is install/bin/plugins/data/PyQt6
-	const fs::path pyqt_plugin =
-		conf().path().install_plugins() / "data" / "PyQt6";
-
-
-	// copying a bunch of files from site-packages into the plugins directory
-
-	op::copy_file_to_dir_if_better(cx(),
-		site_packages_pyqt / "__init__.py",
-		pyqt_plugin);
-
-	op::copy_glob_to_dir_if_better(cx(),
-		site_packages_pyqt / "sip*",
-		pyqt_plugin,
-		op::copy_files);
-
-	for (auto&& m : modules())
-	{
-		op::copy_file_to_dir_if_better(cx(),
-			site_packages_pyqt / (m + ".pyd"),
-			pyqt_plugin);
-
-		op::copy_file_to_dir_if_better(cx(),
-			site_packages_pyqt / (m + ".pyi"),
-			pyqt_plugin,
-			op::optional);
-	}
-
-	// also copy this from sip's module/source/XX/ directory
-	op::copy_file_to_dir_if_better(cx(),
-		sip::module_source_path() / "sip.pyi",
-		pyqt_plugin);
-
 
 	// copying some dlls from Qt's installation directory into
 	// python-XX/PCBuild/amd64, those are needed by PyQt6 when building several
@@ -345,6 +299,9 @@ void pyqt::copy_files()
 		qt::bin_path() / "Qt6Xml.dll",
 		python::build_path(),
 		op::unsafe);   // source file is outside prefix
+
+	// installation of PyQt6 python files (.pyd, etc.) is done
+	// by the python plugin directly
 }
 
 }	// namespace
