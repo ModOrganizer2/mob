@@ -116,8 +116,6 @@ void release_command::make_uibase()
 
 	op::archive_from_glob(gcx(),
 		tasks::modorganizer::super_path() / "uibase" / "src" / "*.h", out, {});
-	op::archive_from_glob(gcx(),
-		tasks::modorganizer::super_path() / "game_features" / "src" / "*.h", out, {});
 	op::archive_from_files(gcx(), { conf().path().install_libs() / "uibase.lib" }, conf().path().install_libs(), out);
 }
 
