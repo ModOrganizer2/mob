@@ -318,17 +318,12 @@ void boost::write_config_jam()
 		return replace_all(s, "\\", "/");
 	};
 
+	// this currently writes an empty configuration file, at some point it was used
+	// to configure the Boost.Python built
+	//
+	// kept here in case we need a custom user-configuration in the future
+	//
 	std::ostringstream oss;
-
-	oss
-		<< "using python\n"
-		<< "  : " << python_version_for_jam() << "\n"
-		<< "  : " << forward_slashes(python::python_exe()) << "\n"
-		<< "  : " << forward_slashes(python::include_path()) << "\n"
-		<< "  : " << forward_slashes(python::build_path()) << "\n"
-		<< "  : <address-model>64\n"
-		<< "  : <define>BOOST_ALL_NO_LIB=1\n"
-		<< "  ;";
 
 	// logging
 	{
