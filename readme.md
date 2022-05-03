@@ -32,7 +32,7 @@
 ```
 
 ## Slow start
-- Install Qt 6.0.3 ([Installer](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe)) and select these components:
+- Install Qt 6.3.0 ([Installer](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe)) and select these components:
   - MSVC 2019 64-bit
   - Additional Libraries:
     - Qt WebEngine (display nexus pages)
