@@ -32,16 +32,31 @@
 ```
 
 ## Slow start
-- Install Qt 5.15.2 ([Installer](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe))
+- Install Qt 6.0.3 ([Installer](http://download.qt.io/official_releases/online_installers/qt-unified-windows-x86-online.exe)) and select these components:
   - MSVC 2019 64-bit
-  - Qt WebEngine
-  - Optional: Sources, Debug Information Files
-- Install Visual Studio 2019 ([Installer](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&rel=16))
+  - Additional Libraries:
+    - Qt WebEngine (display nexus pages)
+    - Qt Image Formats (display images in image tab and preview)
+    - Qt Positioning (required by QtWebEngine)
+    - Qt Serial Port (required by Qt Core)
+    - Qt Web Channel (required by QtWebEngine)
+    - Qt WebSockets (Nexus api/download)
+  - Optional: 
+    - Qt Source Files
+    - Qt Debug Files
+- Install Visual Studio 2022 ([Installer](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&channel=Release&version=VS2022&source=VSLandingPage&cid=2030&passive=false))
   - Desktop development with C++
-  - Git for Windows (if you don't have git already installed)
-  - .NET Framework 3.5 development tools
-  - .NET Framework 4.6 targeting pack (alternative: [Developer Pack](https://dotnet.microsoft.com/download/dotnet-framework/net46))
-  - .NET Framework 4.8 targeting pack and SDK (alternative: [Developer Pack](https://dotnet.microsoft.com/download/dotnet-framework/net48))
+  - Desktop .NET desktop development (needed by OMOD and FOMOD installers)
+  - Individual Components:
+    - .Net Framework 4.8 SDK
+    - .Net Framework 4.7.2 targeting pack  (OMOD targets 4.8 but VS still requires the package for other .Net components)
+    - Windows Universal C Runtime
+    - C++ ATL for latest v143 build Tools (x86 & x64)
+    - C++ /CLI support for v143 build Tools (Latest)  (for OMOD and FOMOD installers)
+    - Windows 11 SDK (get latest)
+    - C++ Build Tools core features 
+  - Optional:
+    - Git for Windows (if you don't have git already installed)
 - Start a shell
   - If you have git in your path, a regular cmd shell works.
   - If not, start the _x64 Native Tools Command Prompt for VS 2019_, it'll use Git for Windows installed above.
