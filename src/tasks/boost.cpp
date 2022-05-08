@@ -7,22 +7,6 @@ namespace mob::tasks
 
 namespace
 {
-std::string python_version_for_jam()
-{
-	const auto v = python::parsed_version();
-
-	// 3.8
-	return v.major + "." + v.minor;
-}
-
-std::string boost_version_no_patch_underscores()
-{
-	const auto v = boost::parsed_version();
-
-	// 1_72
-	return v.major + "_" + v.minor;
-}
-
 std::string boost_version_no_tags()
 {
 	const auto v = boost::parsed_version();
@@ -71,12 +55,6 @@ std::string address_model_for_arch(arch a)
 		default:
 			gcx().bail_out(context::generic, "boost: bad arch");
 	}
-}
-
-
-std::string source_download_filename()
-{
-	return boost_version_all_underscores() + ".zip";
 }
 
 fs::path config_jam_file()
