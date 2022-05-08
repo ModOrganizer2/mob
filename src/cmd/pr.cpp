@@ -328,7 +328,7 @@ pr_command::pr_info pr_command::get_pr_info(
 	json = nlohmann::json::parse(output);
 
 	const std::string repo = json["head"]["repo"]["name"];
-	const std::string author = json["head"]["repo"]["owner"]["login"];
+	const std::string author = json["head"]["repo"]["user"]["login"];
 	const std::string branch = json["head"]["ref"];
 
 	return {repo, author, branch};
