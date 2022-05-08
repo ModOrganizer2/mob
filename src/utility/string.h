@@ -22,22 +22,21 @@ std::string replace_all(
 
 // concatenates all elements of `v`, separated by `sep`
 //
-template <class T, class Sep>
-T join(const std::vector<T>& v, const Sep& sep)
+template <class T, class Sep, class To = T>
+auto join(const std::vector<T>& v, const Sep& sep, To prefix = {})
 {
-	T s;
 	bool first = true;
 
 	for (auto&& e : v)
 	{
 		if (!first)
-			s += sep;
+			prefix += sep;
 
-		s += e;
+		prefix += e;
 		first = false;
 	}
 
-	return s;
+	return prefix;
 }
 
 // splits the given string on any character in `seps`
