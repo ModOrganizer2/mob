@@ -83,6 +83,8 @@ protected:
 	{
 	}
 
+	const auto& name() const { return name_;  }
+
 private:
 	std::string name_;
 };
@@ -148,6 +150,53 @@ private:
 	std::vector<std::string> names_;
 
 	bool get_bool(std::string_view name) const;
+};
+
+
+// options in [task] or [task_name:task]
+//
+class conf_cmake : conf_section<std::string>
+{
+public:
+	class cmake_constant {
+		std::string value_;
+
+		// check if the given string is equivalent to this constant
+		//
+		bool is_equivalent(std::string_view other) const;
+
+		friend class conf_cmake;
+
+	public:
+		constexpr cmake_constant(std::string_view value) : value_{value} { }
+		constexpr const auto& value() const { return value_; }
+		constexpr operator const std::string& () const { return value(); }
+
+
+		friend bool operator==(cmake_constant const& lhs, cmake_constant const& rhs)
+		{
+			return lhs.is_equivalent(rhs.value());
+		}
+		friend bool operator!=(cmake_constant const& lhs, cmake_constant const& rhs)
+		{
+			return !(lhs == rhs);
+		}
+
+	};
+
+	static const cmake_constant ALWAYS;
+	static const cmake_constant LAZY;
+	static const cmake_constant NEVER;
+
+
+public:
+	conf_cmake();
+
+	cmake_constant install_message() const;
+
+private:
+	cmake_constant read_cmake_constant(
+		std::string_view key, std::vector<cmake_constant> const& allowed) const;
 };
 
 
@@ -238,6 +287,7 @@ class conf
 public:
 	conf_global global();
 	conf_task task(const std::vector<std::string>& names);
+	conf_cmake cmake();
 	conf_tools tool();
 	conf_transifex transifex();
 	conf_prebuilt prebuilt();

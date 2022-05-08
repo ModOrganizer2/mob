@@ -663,6 +663,11 @@ conf_task conf::task(const std::vector<std::string>& names)
 	return {names};
 }
 
+conf_cmake conf::cmake()
+{
+	return {};
+}
+
 conf_tools conf::tool()
 {
 	return {};
@@ -725,6 +730,47 @@ bool conf_task::get_bool(std::string_view key) const
 	return details::get_bool_for_task(names_, key);
 }
 
+
+bool conf_cmake::cmake_constant::is_equivalent(std::string_view other) const
+{
+	// _strcmpi does not have a n-overload, and since string_view is not
+	// necessarily null-terminated, _strmcpi cannot be safely used
+	return std::equal(
+		std::begin(value_), std::end(value_),
+		std::begin(other), std::end(other),
+		[](auto&& c1, auto&& c2) { return ::tolower(c1) == ::tolower(c2); }
+	);
+}
+
+conf_cmake::conf_cmake()
+	: conf_section("cmake")
+{
+}
+
+const conf_cmake::cmake_constant conf_cmake::ALWAYS{"always"};
+const conf_cmake::cmake_constant conf_cmake::LAZY{"lazy"};
+const conf_cmake::cmake_constant conf_cmake::NEVER{"never"};
+
+conf_cmake::cmake_constant conf_cmake::install_message() const
+{
+	return read_cmake_constant("install_message", { ALWAYS, LAZY, NEVER });
+}
+
+conf_cmake::cmake_constant conf_cmake::read_cmake_constant(
+	std::string_view key, std::vector<cmake_constant> const& allowed) const
+{
+	const auto value = details::get_string(name(), key);
+	for (const auto& constant : allowed)
+	{
+		if (constant.is_equivalent(value)) {
+			return constant;
+		}
+	}
+
+	gcx().bail_out(context::conf,
+		"bad value '{}' for {}/{} (expected one of {})",
+		value, name(), key, join(allowed, ", ", std::string{}));
+}
 
 conf_tools::conf_tools()
 	: conf_section("tools")
