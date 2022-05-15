@@ -135,6 +135,14 @@ private:
 		//
 		std::string get_arch(arch a) const;
 
+		// for generator that supports it, returns a toolset configuration to set
+		// the host as specified in the configuration
+		//
+		// for VS generator, this returns "-T host=XXX" if conf_host is not empty,
+		// otherwise returns an empty string
+		//
+		std::string get_host(std::string_view conf_host) const;
+
 		// return either `dir` for 64-bit or `dir` + "_32" for 32-bit
 		//
 		std::string output_dir(arch a) const;

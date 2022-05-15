@@ -192,7 +192,16 @@ public:
 public:
 	conf_cmake();
 
+	// specify the value for CMAKE_INSTALL_MESSAGE
+	//
 	cmake_constant install_message() const;
+
+	// specify the toolset host configuration, if any, this is equivalent
+	// to -T host=XXX on the command line
+	//
+	// an empty string means no host configured
+	//
+	std::string host() const;
 
 private:
 	cmake_constant read_cmake_constant(

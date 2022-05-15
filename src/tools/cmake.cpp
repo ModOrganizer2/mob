@@ -145,7 +145,8 @@ void cmake::do_generate()
 		// string
 		p
 			.arg("-G", "\"" + g.name + "\"")
-			.arg(g.get_arch(arch_));
+			.arg(g.get_arch(arch_))
+			.arg(g.get_host(conf().cmake().host()));
 	}
 	else
 	{
@@ -238,6 +239,15 @@ std::string cmake::gen_info::get_arch(arch a) const
 		default:
 			gcx().bail_out(context::generic, "gen_info::get_arch(): bad arch");
 	}
+}
+
+std::string cmake::gen_info::get_host(std::string_view conf_host) const
+{
+	if (conf_host.empty()) {
+		return {};
+	}
+
+	return "-T host=" + std::string{ conf_host };
 }
 
 std::string cmake::gen_info::output_dir(arch a) const

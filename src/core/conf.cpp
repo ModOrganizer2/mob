@@ -756,6 +756,11 @@ conf_cmake::cmake_constant conf_cmake::install_message() const
 	return read_cmake_constant("install_message", { ALWAYS, LAZY, NEVER });
 }
 
+std::string conf_cmake::host() const
+{
+	return details::get_string(name(), "host");
+}
+
 conf_cmake::cmake_constant conf_cmake::read_cmake_constant(
 	std::string_view key, std::vector<cmake_constant> const& allowed) const
 {
