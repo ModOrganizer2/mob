@@ -145,7 +145,7 @@ Container zip(const Range1& range1, const Range2& range2)
 template <class Cont, class F>
 auto map(const Cont& v, F&& f)
 {
-	using mapped_type = decltype(f(std::declval<Cont::value_type>()));
+	using mapped_type = decltype(f(std::declval<typename Cont::value_type>()));
 	std::vector<mapped_type> out;
 
 	for (auto&& e : v)
