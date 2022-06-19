@@ -27,6 +27,7 @@
 ## Quick start
 ```
 > git clone https://github.com/ModOrganizer2/mob
+> cd mob
 > bootstrap
 > mob -d c:\somewhere build
 ```
