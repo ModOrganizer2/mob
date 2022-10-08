@@ -43,7 +43,7 @@ void add_tasks()
 		.add_task<tasks::python>()
 		.add_task<lz4>()
 		.add_task<spdlog>();
-		
+
     add_task<parallel_tasks>()
         .add_task<boost>()
 		.add_task<boost_di>()

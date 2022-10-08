@@ -73,7 +73,7 @@ url source_url()
 	return
 		"https://boostorg.jfrog.io/artifactory/main/release/" +
 		boost_version_no_tags() + "/source/" +
-		boost_version_all_underscores() + ".zip";
+		boost_version_all_underscores() + ".7z";
 }
 
 fs::path b2_exe()
