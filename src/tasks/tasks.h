@@ -239,6 +239,25 @@ private:
 	msbuild create_msbuild_tool(msbuild::ops o=msbuild::build);
 };
 
+class lzokay : public basic_task<lzokay>
+{
+public:
+	lzokay();
+
+	static std::string version();
+	static bool prebuilt();
+	static fs::path source_path();
+
+protected:
+	void do_clean(clean c) override;
+	void do_fetch() override;
+	void do_build_and_install() override;
+
+private:
+	cmake create_cmake_tool(cmake::ops o=cmake::generate);
+	msbuild create_msbuild_tool(msbuild::ops o=msbuild::build);
+};
+
 
 // a task for all modorganizer projects except for the installer, which is
 // technically an MO project but is built differently

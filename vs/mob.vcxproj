@@ -92,6 +92,7 @@
     <ClCompile Include="..\src\tasks\libloot.cpp" />
     <ClCompile Include="..\src\tasks\licenses.cpp" />
     <ClCompile Include="..\src\tasks\lz4.cpp" />
+    <ClCompile Include="..\src\tasks\lzokay.cpp" />
     <ClCompile Include="..\src\tasks\modorganizer.cpp" />
     <ClCompile Include="..\src\tasks\openssl.cpp" />
     <ClCompile Include="..\src\tasks\pybind11.cpp" />

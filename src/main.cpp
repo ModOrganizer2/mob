@@ -42,6 +42,7 @@ void add_tasks()
 	add_task<parallel_tasks>()
 		.add_task<tasks::python>()
 		.add_task<lz4>()
+		.add_task<lzokay>()
 		.add_task<spdlog>();
 
     add_task<parallel_tasks>()

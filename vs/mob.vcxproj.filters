@@ -72,6 +72,9 @@
     <ClCompile Include="..\src\tasks\lz4.cpp">
       <Filter>src\tasks</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\tasks\lzokay.cpp">
+      <Filter>src\tasks</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\tasks\spdlog.cpp">
       <Filter>src\tasks</Filter>
     </ClCompile>
