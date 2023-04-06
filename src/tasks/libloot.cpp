@@ -34,16 +34,6 @@ std::string libloot::version()
 	return conf().version().get("libloot");
 }
 
-std::string libloot::hash()
-{
-	return conf().version().get("libloot_hash");
-}
-
-std::string libloot::branch()
-{
-	return conf().version().get("libloot_branch");
-}
-
 bool libloot::prebuilt()
 {
 	return false;
