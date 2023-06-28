@@ -50,11 +50,15 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ClCompile />
     <Link />
+    <ClCompile>
+      <BuildStlModules>false</BuildStlModules>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <ClCompile />
+    <ClCompile>
+      <BuildStlModules>false</BuildStlModules>
+    </ClCompile>
     <Link />
   </ItemDefinitionGroup>
   <ItemGroup>
