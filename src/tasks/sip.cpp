@@ -148,8 +148,6 @@ void sip::do_build_and_install()
 	else
 	{
 		build();
-		convert_script_file_to_acp("sip-install-script.py");
-		convert_script_file_to_acp("sip-module-script.py");
 		generate_header();
 	}
 
@@ -162,13 +160,8 @@ void sip::do_build_and_install()
 
 void sip::build()
 {
-	run_tool(mob::python()
-		.root(source_path())
-		.arg("-m")
-		.arg("pip")
-		.arg("install")
-		.arg("--no-warn-script-location")
-		.arg("."));
+	run_tool(pip(pip::install)
+		.file(source_path()));
 }
 
 void sip::convert_script_file_to_acp(const std::string& filename)
