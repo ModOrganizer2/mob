@@ -164,8 +164,11 @@ void sip::build()
 {
 	run_tool(mob::python()
 		.root(source_path())
-		.arg("setup.py")
-		.arg("install"));
+		.arg("-m")
+		.arg("pip")
+		.arg("install")
+		.arg("--no-warn-script-location")
+		.arg("."));
 }
 
 void sip::convert_script_file_to_acp(const std::string& filename)
