@@ -116,6 +116,7 @@
     <ClCompile Include="..\src\tools\git.cpp" />
     <ClCompile Include="..\src\tools\jom.cpp" />
     <ClCompile Include="..\src\tools\msbuild.cpp" />
+    <ClCompile Include="..\src\tools\nmake.cpp" />
     <ClCompile Include="..\src\tools\patcher.cpp" />
     <ClCompile Include="..\src\tools\process_runner.cpp" />
     <ClCompile Include="..\src\tools\python.cpp" />
