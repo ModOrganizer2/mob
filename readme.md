@@ -33,7 +33,7 @@
 ```
 
 ## Slow start
-- Install Qt 6.4.0 ([Installer](https://download.qt.io/official_releases/online_installers/qt-unified-windows-x64-online.exe)) and select these components:
+- Install Qt 6.5.1 ([Installer](https://download.qt.io/official_releases/online_installers/qt-unified-windows-x64-online.exe)) and select these components:
   - MSVC 2019 64-bit
   - Additional Libraries:
     - Qt WebEngine (display nexus pages)
@@ -42,7 +42,7 @@
     - Qt Serial Port (required by Qt Core)
     - Qt Web Channel (required by QtWebEngine)
     - Qt WebSockets (Nexus api/download)
-  - Optional: 
+  - Optional:
     - Qt Source Files
     - Qt Debug Files
 - Install Visual Studio 2022 ([Installer](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&channel=Release&version=VS2022&source=VSLandingPage&cid=2030&passive=false))
@@ -55,7 +55,7 @@
     - C++ ATL for latest v143 build Tools (x86 & x64)
     - C++ /CLI support for v143 build Tools (Latest)  (for OMOD and FOMOD installers)
     - Windows 11 SDK (get latest)
-    - C++ Build Tools core features 
+    - C++ Build Tools core features
   - Optional:
     - Git for Windows (if you don't have git already installed)
 - Start a shell
@@ -181,7 +181,7 @@ The versions for all the tasks.
 ### `[paths]`
 The only path that's required is `prefix`, which is where `mob` will put everything. Within this directory will be `build/`, `downloads/` and `install/`. Everything else is derived from it.
 
-If `mob` is unable to find the Qt installation directory, it can be specified in `qt_install`. This directory should contain `bin/`, `include/`, etc. It's typically something like `C:\Qt\5.14.2\msvc2017_64\`. The other path `qt_bin` will be derived from it, it's just `$qt_install/bin/`.
+If `mob` is unable to find the Qt installation directory, it can be specified in `qt_install`. This directory should contain `bin/`, `include/`, etc. It's typically something like `C:\Qt\6.5.1\msvc2019_64\`. The other path `qt_bin` will be derived from it, it's just `$qt_install/bin/`.
 
 
 ## Command line

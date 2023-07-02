@@ -458,6 +458,56 @@ private:
 	void do_patch(const fs::path& patch_file);
 };
 
+// tool that runs `nmake`
+//
+class nmake : public basic_process_runner
+{
+public:
+	// path to the job binary
+	//
+	static fs::path binary();
+
+	nmake();
+
+	// path in which to invoke nmake
+	//
+	nmake& path(const fs::path& p);
+
+	// makefile target
+	//
+	nmake& target(const std::string& s);
+
+	// adds a macro definition as "NAME=value"
+	//
+	nmake& def(const std::string& s);
+
+	// sets the architecture used to run nmake, used to get the appropriate
+	// VS environment variables, defaults to arch::def
+	//
+	nmake& architecture(arch a);
+
+	// nmake's exit code
+	//
+	int result() const;
+
+protected:
+	// runs nmake
+	//
+	void do_run() override;
+
+private:
+	// set in path()
+	fs::path cwd_;
+
+	// set in def(), just plain arguments
+	std::vector<std::string> def_;
+
+	// set in target(), another plain argument
+	std::string target_;
+
+	// set in architecture()
+	arch arch_;
+};
 
 // tool that runs `jom`, an alternative to `nmake` that supports parallel
 // builds, bundled with mob in third-party/bin

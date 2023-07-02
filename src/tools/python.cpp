@@ -150,6 +150,7 @@ void pip::do_install()
 		.arg("-X", "utf8")
 		.arg("-m", "pip")
 		.arg("install")
+		.arg("--force")
 		.arg("--no-warn-script-location")
 		.arg("--disable-pip-version-check");
 
