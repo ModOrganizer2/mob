@@ -91,9 +91,8 @@ void sevenz::build()
 {
 	build_loop(cx(), [&](bool mp)
 	{
-		const int exit_code = run_tool(jom()
+		const int exit_code = run_tool(nmake()
 			.path(module_to_build())
-			.flag(mp ? jom::allow_failure : jom::single_job)
 			.def("CPU=x64")
 			.def("NEW_COMPILER=1")
 			.def("MY_STATIC_LINK=1")
