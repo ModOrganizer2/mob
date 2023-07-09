@@ -129,6 +129,8 @@ Unless otherwise stated, applies to any task that is a git repo.
 | ---         | ---    | ---         |
 | `mo_org`    | string | The organisation name when pulling from Github. Only applies to ModOrganizer projects, plus NCC and usvfs. |
 | `mo_branch` | string | The branch name when pulling from Github. Only applies to ModOrganizer projects, plus NCC and usvfs. |
+| `mo_master` | string | The fallback branch name when pulling from Github. Only applies to ModOrganizer projects, plus NCC and usvfs.
+This branch is used when `mo_branch` does not exists. If this value is empty, the fallback mechanism is disabled (default behavior). |
 | `no_pull`   | bool   | If a repo is already cloned, a `git pull` will be done on it every time `mob build` is run. Set to `false` to never pull and build with whatever is in there. |
 | `ignore_ts` | bool   | Marks all the `.ts` files in a repo with `--assume-unchanged`. Note that `mob git ignore-ts off` can be used to revert it. |
 | `git_url_prefix` | string | When cloning a repo, the URL will be `$(git_url_prefix)mo_org/repo.git`. |
