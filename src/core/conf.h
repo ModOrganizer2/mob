@@ -131,20 +131,21 @@ public:
 		return get_bool(key);
 	}
 
-	std::string mo_org() const               { return get("mo_org"); }
-	std::string mo_branch() const			 { return get("mo_branch"); }
-	bool no_pull() const					 { return get<bool>("no_pull"); }
-	bool revert_ts() const					 { return get<bool>("revert_ts"); }
-	bool ignore_ts()const					 { return get<bool>("ignore_ts"); }
-	std::string git_url_prefix() const		 { return get("git_url_prefix"); }
-	bool git_shallow() const				 { return get<bool>("git_shallow"); }
-	std::string git_user() const			 { return get("git_username"); }
-	std::string git_email() const			 { return get("git_email"); }
-	bool set_origin_remote() const			 { return get<bool>("set_origin_remote"); }
-	std::string remote_org() const			 { return get("remote_org"); }
-	std::string remote_key() const			 { return get("remote_key"); }
-	bool remote_no_push_upstream() const	 { return get<bool>("remote_no_push_upstream"); }
-	bool remote_push_default_origin() const  { return get<bool>("remote_push_default_origin"); }
+	std::string mo_org() const { return get("mo_org"); }
+	std::string mo_branch() const { return get("mo_branch"); }
+	std::string mo_fallback_branch() const { return get("mo_fallback"); }
+	bool no_pull() const { return get<bool>("no_pull"); }
+	bool revert_ts() const { return get<bool>("revert_ts"); }
+	bool ignore_ts()const { return get<bool>("ignore_ts"); }
+	std::string git_url_prefix() const { return get("git_url_prefix"); }
+	bool git_shallow() const { return get<bool>("git_shallow"); }
+	std::string git_user() const { return get("git_username"); }
+	std::string git_email() const { return get("git_email"); }
+	bool set_origin_remote() const { return get<bool>("set_origin_remote"); }
+	std::string remote_org() const { return get("remote_org"); }
+	std::string remote_key() const { return get("remote_key"); }
+	bool remote_no_push_upstream() const { return get<bool>("remote_no_push_upstream"); }
+	bool remote_push_default_origin() const { return get<bool>("remote_push_default_origin"); }
 
 private:
 	std::vector<std::string> names_;
