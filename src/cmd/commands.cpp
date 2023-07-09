@@ -53,7 +53,7 @@ void help(const clipp::group& g, const std::string& more)
 command::common_options command::common;
 
 command::command(flags f)
-	: picked_(false), help_(false), flags_(f), code_(0)
+	: picked_(false), help_(false), flags_(f), code_()
 {
 }
 

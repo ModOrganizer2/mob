@@ -113,6 +113,10 @@ void task_manager::run_all()
 	catch(interrupted&)
 	{
 	}
+
+	for (auto&& t : top_level_) {
+		t->check_bailed();
+	}
 }
 
 void task_manager::interrupt_all()

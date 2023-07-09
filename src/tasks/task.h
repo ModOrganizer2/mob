@@ -97,6 +97,10 @@ public:
 	//
 	virtual void interrupt();
 
+	// throws if the bailed flag is set
+	//
+	virtual void check_bailed();
+
 protected:
 	using parallel_functions =
 		std::vector<std::pair<std::string, std::function<void ()>>>;
@@ -183,6 +187,11 @@ protected:
 private:
 	// names for this task
 	const std::vector<std::string> names_;
+
+	// set when bailing, checked by check_bailed(), which
+	// throws an `bailed` exception
+	//
+	std::optional<bailed> bailed_;
 
 	// set when interrupt() is called, checked by check_interrupted(), which
 	// throws an `interrupted` exception
@@ -336,6 +345,11 @@ public:
 	// calls interrupt() on all children tasks
 	//
 	void interrupt() override;
+
+	// check if any of the children has bailed and throw an appropriate
+	// exception if any
+	//
+	void check_bailed() override;
 
 	// returns children tasks
 	//
