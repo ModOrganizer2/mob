@@ -64,7 +64,7 @@ task::clean make_clean_flags()
 
 
 task::task(std::vector<std::string> names)
-	: names_(std::move(names)), interrupted_(false)
+	: names_(std::move(names)), bailed_(), interrupted_(false)
 {
 	// make sure there's a context to return in cx() for the thread that created
 	// this task, there's a bunch of places where tasks need to log things
@@ -257,6 +257,8 @@ void task::running_from_thread(
 	{
 		// something in f() bailed out, interrupt everything
 
+		bailed_ = e;
+
 		gcx().error(context::generic,
 			"{} bailed out, interrupting all tasks", name());
 
@@ -431,6 +433,13 @@ void task::build_and_install()
 	do_build_and_install();
 }
 
+void task::check_bailed()
+{
+	if (bailed_)
+		throw *bailed_;
+}
+
+
 void task::check_interrupted()
 {
 	if (interrupted_)
@@ -504,6 +513,12 @@ void parallel_tasks::interrupt()
 {
 	for (auto& t : children_)
 		t->interrupt();
+}
+
+void parallel_tasks::check_bailed()
+{
+	for (auto& t : children_)
+		t->check_bailed();
 }
 
 void parallel_tasks::join()
