@@ -4,17 +4,6 @@
 namespace mob::tasks
 {
 
-namespace
-{
-
-url source_url()
-{
-	return "https://zlib.net/zlib-" + zlib::version() + ".tar.gz";
-}
-
-}	// namespace
-
-
 zlib::zlib()
 	: basic_task("zlib")
 {
@@ -37,17 +26,12 @@ fs::path zlib::source_path()
 
 void zlib::do_clean(clean c)
 {
-	// delete download
-	if (is_set(c, clean::redownload))
-		run_tool(downloader(source_url(), downloader::clean));
-
 	// delete the whole directory
-	if (is_set(c, clean::reextract))
+	if (is_set(c, clean::reclone))
 	{
-		cx().trace(context::reextract, "deleting {}", source_path());
-		op::delete_directory(cx(), source_path(), op::optional);
+		git_wrap::delete_directory(cx(), source_path());
 
-		// nothing else to do
+		// no point in doing anything more
 		return;
 	}
 
@@ -62,11 +46,10 @@ void zlib::do_clean(clean c)
 
 void zlib::do_fetch()
 {
-	const auto file = run_tool(downloader(source_url()));
-
-	run_tool(extractor()
-		.file(file)
-		.output(source_path()));
+	run_tool(make_git()
+		.url(make_git_url("madler", "zlib"))
+		.branch(version())
+		.root(source_path()));
 }
 
 void zlib::do_build_and_install()
