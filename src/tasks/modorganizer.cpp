@@ -80,11 +80,6 @@ namespace mob::tasks {
         }
     }
 
-    bool modorganizer::is_gamebryo_plugin() const
-    {
-        return is_set(flags_, gamebryo);
-    }
-
     bool modorganizer::is_nuget_plugin() const
     {
         return is_set(flags_, nuget);
