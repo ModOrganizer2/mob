@@ -7,314 +7,292 @@
 // those are kept in this namespace so they don't leak all over the place;
 // they're used directly by context::do_log() below
 
-namespace mob::details
-{
+namespace mob::details {
 
-class mob::url;
+    class mob::url;
 
-template <class T, class=void>
-struct converter
-{
-	static const T& convert(const T& t)
-	{
-		return t;
-	}
-};
+    template <class T, class = void>
+    struct converter {
+        static const T& convert(const T& t) { return t; }
+    };
 
-template <>
-struct converter<std::wstring>
-{
-	static std::string convert(const std::wstring& s);
-};
+    template <>
+    struct converter<std::wstring> {
+        static std::string convert(const std::wstring& s);
+    };
 
-template <>
-struct converter<fs::path>
-{
-	static std::string convert(const fs::path& s);
-};
+    template <>
+    struct converter<fs::path> {
+        static std::string convert(const fs::path& s);
+    };
 
-template <>
-struct converter<url>
-{
-	static std::string convert(const url& u);
-};
+    template <>
+    struct converter<url> {
+        static std::string convert(const url& u);
+    };
 
-template <class T>
-struct converter<T, std::enable_if_t<std::is_enum_v<T>>>
-{
-	static std::string convert(T e)
-	{
-		return std::to_string(static_cast<std::underlying_type_t<T>>(e));
-	}
-};
+    template <class T>
+    struct converter<T, std::enable_if_t<std::is_enum_v<T>>> {
+        static std::string convert(T e)
+        {
+            return std::to_string(static_cast<std::underlying_type_t<T>>(e));
+        }
+    };
 
-}	// namespace
+}  // namespace mob::details
 
+namespace mob {
 
-namespace mob
-{
+    class tool;
 
-class tool;
+    // system error message
+    //
+    std::string error_message(DWORD e);
 
-// system error message
-//
-std::string error_message(DWORD e);
+    // a logger with some context, this is passed around everywhere and knows which
+    // task and tool is currently running to get better context when logging
+    //
+    // each log must have a reason, `generic` can be used if no reason makes sense
+    //
+    // in places where there is no context available, there's a global one can that
+    // be retrieved with gcx() for logging
+    //
+    // all log functions will use fmt::format() internally, so they can be used
+    // like:
+    //
+    //    cx.log(context::generic, "eat more {}", "potatoes");
+    //
+    class context {
+    public:
+        // reason for a log or bailing out
+        //
+        enum reason {
+            // generic
+            generic,
 
+            // a configuration action
+            conf,
 
-// a logger with some context, this is passed around everywhere and knows which
-// task and tool is currently running to get better context when logging
-//
-// each log must have a reason, `generic` can be used if no reason makes sense
-//
-// in places where there is no context available, there's a global one can that
-// be retrieved with gcx() for logging
-//
-// all log functions will use fmt::format() internally, so they can be used
-// like:
-//
-//    cx.log(context::generic, "eat more {}", "potatoes");
-//
-class context
-{
-public:
-	// reason for a log or bailing out
-	//
-	enum reason
-	{
-		// generic
-		generic,
+            // something was bypassed because it was already done
+            bypass,
 
-		// a configuration action
-		conf,
+            // something was done because the --redownload option was set
+            redownload,
 
-		// something was bypassed because it was already done
-		bypass,
+            // something was done because the --rebuild option was set
+            rebuild,
 
-		// something was done because the --redownload option was set
-		redownload,
+            // something was done because the --reextract option was set
+            reextract,
 
-		// something was done because the --rebuild option was set
-		rebuild,
+            // something was done in case of interruption or because something
+            // was interrupted
+            interruption,
 
-		// something was done because the --reextract option was set
-		reextract,
+            // command line of a process
+            cmd,
 
-		// something was done in case of interruption or because something
-		// was interrupted
-		interruption,
+            // output of a process
+            std_out,
+            std_err,
 
-		// command line of a process
-		cmd,
+            // a filesystem action
+            fs,
 
-		// output of a process
-		std_out,
-		std_err,
+            // a network action
+            net,
+        };
 
-		// a filesystem action
-		fs,
+        // level of a log entry, `dump` should only be used for really verbose
+        // stuff that shouldn't be very useful, like curl's debugging logs
+        //
+        enum class level {
+            dump = 1,
+            trace,
+            debug,
+            info,
+            warning,
+            error,
+        };
 
-		// a network action
-		net,
-	};
+        // returns the global context, used by gcx() below
+        //
+        static const context* global();
 
-	// level of a log entry, `dump` should only be used for really verbose
-	// stuff that shouldn't be very useful, like curl's debugging logs
-	//
-	enum class level
-	{
-		dump = 1,
-		trace,
-		debug,
-		info,
-		warning,
-		error,
-	};
+        // whether logs of this level are enabled; this normally doesn't need to be
+        // called because the logging functions will discard entries for levels that
+        // are not enabled, but it can be used for log strings that expensive to
+        // create
+        //
+        // since there are two log levels (one for console, one for file), enabled()
+        // will return true if the given level is enabled for at least one of them
+        //
+        static bool enabled(level lv);
 
-	// returns the global context, used by gcx() below
-	//
-	static const context* global();
+        // sets the output file for logs
+        //
+        static void set_log_file(const fs::path& p);
 
-	// whether logs of this level are enabled; this normally doesn't need to be
-	// called because the logging functions will discard entries for levels that
-	// are not enabled, but it can be used for log strings that expensive to
-	// create
-	//
-	// since there are two log levels (one for console, one for file), enabled()
-	// will return true if the given level is enabled for at least one of them
-	//
-	static bool enabled(level lv);
+        // closes the output file for logs, see release_command::check_clean_prefix()
+        //
+        static void close_log_file();
 
-	// sets the output file for logs
-	//
-	static void set_log_file(const fs::path& p);
+        // creates a context for a task; the global context has no name
+        //
+        context(std::string task_name);
 
-	// closes the output file for logs, see release_command::check_clean_prefix()
-	//
-	static void close_log_file();
+        // sets the tool that's currently running, may be null if there isn't one;
+        // log entries will have the name of the tool if one is set
+        //
+        void set_tool(tool* t);
 
+        // logs a simple string with the given level
+        //
+        void log_string(reason r, level lv, std::string_view s) const;
 
-	// creates a context for a task; the global context has no name
-	//
-	context(std::string task_name);
+        // logs a formatted string with the given level
+        //
+        template <class... Args>
+        void log(reason r, level lv, const char* f, Args&&... args) const
+        {
+            do_log(false, r, lv, f, std::forward<Args>(args)...);
+        }
 
-	// sets the tool that's currently running, may be null if there isn't one;
-	// log entries will have the name of the tool if one is set
-	//
-	void set_tool(tool* t);
+        // logs a formatted string with the dump level
+        //
+        template <class... Args>
+        void dump(reason r, const char* f, Args&&... args) const
+        {
+            do_log(false, r, level::dump, f, std::forward<Args>(args)...);
+        }
 
-	// logs a simple string with the given level
-	//
-	void log_string(reason r, level lv, std::string_view s) const;
+        // logs a formatted string with the trace level
+        //
+        template <class... Args>
+        void trace(reason r, const char* f, Args&&... args) const
+        {
+            do_log(false, r, level::trace, f, std::forward<Args>(args)...);
+        }
 
-	// logs a formatted string with the given level
-	//
-	template <class... Args>
-	void log(reason r, level lv, const char* f, Args&&... args) const
-	{
-		do_log(false, r, lv, f, std::forward<Args>(args)...);
-	}
+        // logs a formatted string with the debug level
+        //
+        template <class... Args>
+        void debug(reason r, const char* f, Args&&... args) const
+        {
+            do_log(false, r, level::debug, f, std::forward<Args>(args)...);
+        }
 
-	// logs a formatted string with the dump level
-	//
-	template <class... Args>
-	void dump(reason r, const char* f, Args&&... args) const
-	{
-		do_log(false, r, level::dump, f, std::forward<Args>(args)...);
-	}
+        // logs a formatted string with the info level
+        //
+        template <class... Args>
+        void info(reason r, const char* f, Args&&... args) const
+        {
+            do_log(false, r, level::info, f, std::forward<Args>(args)...);
+        }
 
-	// logs a formatted string with the trace level
-	//
-	template <class... Args>
-	void trace(reason r, const char* f, Args&&... args) const
-	{
-		do_log(false, r, level::trace, f, std::forward<Args>(args)...);
-	}
+        // logs a formatted string with the warning level
+        //
+        template <class... Args>
+        void warning(reason r, const char* f, Args&&... args) const
+        {
+            do_log(false, r, level::warning, f, std::forward<Args>(args)...);
+        }
 
-	// logs a formatted string with the debug level
-	//
-	template <class... Args>
-	void debug(reason r, const char* f, Args&&... args) const
-	{
-		do_log(false, r, level::debug, f, std::forward<Args>(args)...);
-	}
+        // logs a formatted string with the error level
+        //
+        template <class... Args>
+        void error(reason r, const char* f, Args&&... args) const
+        {
+            do_log(false, r, level::error, f, std::forward<Args>(args)...);
+        }
 
-	// logs a formatted string with the info level
-	//
-	template <class... Args>
-	void info(reason r, const char* f, Args&&... args) const
-	{
-		do_log(false, r, level::info, f, std::forward<Args>(args)...);
-	}
+        // logs a formatted string with the error level and throws a bailed
+        // exception, which will exit mob as quickly as it can, interrupting all
+        // tasks
+        //
+        template <class... Args>
+        [[noreturn]] void bail_out(reason r, const char* f, Args&&... args) const
+        {
+            do_log(true, r, level::error, f, std::forward<Args>(args)...);
+        }
 
-	// logs a formatted string with the warning level
-	//
-	template <class... Args>
-	void warning(reason r, const char* f, Args&&... args) const
-	{
-		do_log(false, r, level::warning, f, std::forward<Args>(args)...);
-	}
+    private:
+        // current task, may be empty
+        std::string task_;
 
-	// logs a formatted string with the error level
-	//
-	template <class... Args>
-	void error(reason r, const char* f, Args&&... args) const
-	{
-		do_log(false, r, level::error, f, std::forward<Args>(args)...);
-	}
+        // current tool, may be null
+        const tool* tool_;
 
-	// logs a formatted string with the error level and throws a bailed
-	// exception, which will exit mob as quickly as it can, interrupting all
-	// tasks
-	//
-	template <class... Args>
-	[[noreturn]] void bail_out(reason r, const char* f, Args&&... args) const
-	{
-		do_log(true, r, level::error, f, std::forward<Args>(args)...);
-	}
+        // all logs above end up in here; if `bail` is true, this will throw a
+        // bailed exception after logging
+        //
+        template <class... Args>
+        void do_log(bool bail, reason r, level lv, const char* f, Args&&... args) const
+        {
+            // discard log if it's not enabled and it's not bailing out
+            if (!bail && !enabled(lv))
+                return;
 
-private:
-	// current task, may be empty
-	std::string task_;
+            try {
+                // formatting string
+                const std::string s =
+                    fmt::format(f, details::converter<std::decay_t<Args>>::convert(
+                                       std::forward<Args>(args))...);
 
-	// current tool, may be null
-	const tool* tool_;
+                do_log_impl(bail, r, lv, s);
+            }
+            catch (std::exception&) {
+                // this is typically a bad format string, but there's not a lot
+                // that can be done except logging to stderr and asserting
 
+                // try to display the format string, but the console is in utf16
+                // mode and the string is utf8, so it would have to be converted,
+                // which could also fail
+                //
+                // since pretty much all format strings are ascii anyway, just do
+                // a ghetto conversion and hope it gives enough info
+                std::wstring s;
 
-	// all logs above end up in here; if `bail` is true, this will throw a
-	// bailed exception after logging
-	//
-	template <class... Args>
-	void do_log(bool bail, reason r, level lv, const char* f, Args&&... args) const
-	{
-		// discard log if it's not enabled and it's not bailing out
-		if (!bail && !enabled(lv))
-			return;
+                const char* p = f;
+                while (*p) {
+                    s += (wchar_t)*p;
+                    ++p;
+                }
 
-		try
-		{
-			// formatting string
-			const std::string s = fmt::format(
-				f, details::converter<std::decay_t<Args>>::convert(
-					std::forward<Args>(args))...);
+                std::wcerr << "bad format string '" << s << "'\n";
 
-			do_log_impl(bail, r, lv, s);
-		}
-		catch(std::exception&)
-		{
-			// this is typically a bad format string, but there's not a lot
-			// that can be done except logging to stderr and asserting
+                if (IsDebuggerPresent())
+                    DebugBreak();
+            }
+        }
 
-			// try to display the format string, but the console is in utf16
-			// mode and the string is utf8, so it would have to be converted,
-			// which could also fail
-			//
-			// since pretty much all format strings are ascii anyway, just do
-			// a ghetto conversion and hope it gives enough info
-			std::wstring s;
+        // all the calls above end up here; calls make_log_string() to get the full
+        // log line calls emit_log() with it; throws after if `bail` is true
+        //
+        void do_log_impl(bool bail, reason r, level lv, std::string_view s) const;
 
-			const char* p = f;
-			while (*p)
-			{
-				s += (wchar_t)*p;
-				++p;
-			}
+        // formats the log line: adds the timestamp, task name and tool name, if
+        // any
+        //
+        std::string_view make_log_string(reason r, level lv, std::string_view s) const;
 
-			std::wcerr << "bad format string '" << s << "'\n";
+        // writes the given string to the console and the log file, and keeps all
+        // errors and warnings in global lists so they can be dumped just before mob
+        // exits
+        //
+        void emit_log(level lv, std::string_view s) const;
+    };
 
-			if (IsDebuggerPresent())
-				DebugBreak();
-		}
-	}
+    // global context, convenience
+    //
+    inline const context& gcx()
+    {
+        return *context::global();
+    }
 
-	// all the calls above end up here; calls make_log_string() to get the full
-	// log line calls emit_log() with it; throws after if `bail` is true
-	//
-	void do_log_impl(bool bail, reason r, level lv, std::string_view s) const;
+    // called in main() just before mob exits, dumps all errors and warnings seen
+    // during the build if the console log level was high enough
+    //
+    void dump_logs();
 
-	// formats the log line: adds the timestamp, task name and tool name, if
-	// any
-	//
-	std::string_view make_log_string(
-		reason r, level lv, std::string_view s) const;
-
-	// writes the given string to the console and the log file, and keeps all
-	// errors and warnings in global lists so they can be dumped just before mob
-	// exits
-	//
-	void emit_log(level lv, std::string_view s) const;
-};
-
-
-// global context, convenience
-//
-inline const context& gcx()
-{
-	return *context::global();
-}
-
-// called in main() just before mob exits, dumps all errors and warnings seen
-// during the build if the console log level was high enough
-//
-void dump_logs();
-
-}	// namespace
+}  // namespace mob

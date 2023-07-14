@@ -7,79 +7,59 @@
 #include "utility/string.h"
 #include "utility/threading.h"
 
-namespace mob
-{
+namespace mob {
 
-// time since mob started
-//
-std::chrono::nanoseconds timestamp();
+    // time since mob started
+    //
+    std::chrono::nanoseconds timestamp();
 
+    // exception thrown when a task failed
+    //
+    class bailed {
+    public:
+        bailed(std::string s = {}) : s_(std::move(s)) {}
 
-// exception thrown when a task failed
-//
-class bailed
-{
-public:
-	bailed(std::string s={})
-		: s_(std::move(s))
-	{
-	}
+        const char* what() const { return s_.c_str(); }
 
-	const char* what() const
-	{
-		return s_.c_str();
-	}
+    private:
+        std::string s_;
+    };
 
-private:
-	std::string s_;
-};
+    // executes the given function in the destructor
+    //
+    template <class F>
+    class guard {
+    public:
+        guard(F f) : f_(f) {}
 
+        ~guard() { f_(); }
 
-// executes the given function in the destructor
-//
-template <class F>
-class guard
-{
-public:
-	guard(F f)
-		: f_(f)
-	{
-	}
+    private:
+        F f_;
+    };
 
-	~guard()
-	{
-		f_();
-	}
+    enum class arch {
+        x86 = 1,
+        x64,
+        dont_care,
 
-private:
-	F f_;
-};
+        def = x64
+    };
 
+    class url;
 
-enum class arch
-{
-	x86 = 1,
-	x64,
-	dont_care,
+    // returns a url for a prebuilt binary having the given filename; prebuilts are
+    // hosted on github, in the umbrella repo
+    //
+    url make_prebuilt_url(const std::string& filename);
 
-	def = x64
-};
+    // returns a url for an appveyor artifact; this is used by usvfs for prebuilts
+    //
+    url make_appveyor_artifact_url(arch a, const std::string& project,
+                                   const std::string& filename);
 
+    // returns "mob x.y"
+    //
+    std::string mob_version();
 
-class url;
-
-// returns a url for a prebuilt binary having the given filename; prebuilts are
-// hosted on github, in the umbrella repo
-//
-url make_prebuilt_url(const std::string& filename);
-
-// returns a url for an appveyor artifact; this is used by usvfs for prebuilts
-//
-url make_appveyor_artifact_url(
-	arch a, const std::string& project, const std::string& filename);
-
-// returns "mob x.y"
-//
-std::string mob_version();
-
-}	// namespace
+}  // namespace mob
