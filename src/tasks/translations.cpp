@@ -316,7 +316,7 @@ void translations::do_fetch()
 	const url u =
 		conf().transifex().get("url") + "/" +
 		conf().transifex().get("team") + "/" +
-		conf().transifex().get("project");
+		conf().transifex().get("project") + "/dashboard";
 
 
 	// initializing

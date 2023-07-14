@@ -310,7 +310,6 @@ void transifex::do_init()
 		.success_exit_codes({0, 2})
 		.flags(process::ignore_output_on_success)
 		.arg("init")
-		.arg("--no-interactive")
 		.cwd(root_));
 }
 
@@ -324,8 +323,8 @@ void transifex::do_config()
 	execute_and_join(process()
 		.binary(binary())
 		.stdout_level(stdout_)
-		.arg("config")
-		.arg("mapping-remote")
+		.arg("add")
+		.arg("remote")
 		.arg(url_)
 		.env(this_env::get().set("TX_TOKEN", key_))
 		.cwd(root_));
@@ -340,8 +339,6 @@ void transifex::do_pull()
 		.stdout_level(stdout_)
 		.arg("pull")
 		.arg("--all")
-		.arg("--parallel")
-		.arg("--no-interactive")
 		.arg("--minimum-perc", min_)
 		.env(this_env::get().set("TX_TOKEN", key_))
 		.cwd(root_);
