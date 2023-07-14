@@ -73,33 +73,13 @@ namespace mob {
             .add_task<mo>("modorganizer-nxmhandler")
             .add_task<mo>("modorganizer-helper")
             .add_task<mo>("githubpp")
-            .add_task<mo>("modorganizer-game_gamebryo")
             .add_task<mo>({"modorganizer-bsapacker", "bsa_packer"})
             .add_task<mo>("modorganizer-preview_bsa");
 
-        // the gamebryo flag must be set for all game plugins that inherit from
-        // the gamebryo classes; this will merge the .ts file from gamebryo with
-        // the one from the specific plugin
-        add_task<parallel_tasks>()
-            .add_task<mo>("modorganizer-game_oblivion", mo::gamebryo)
-            .add_task<mo>("modorganizer-game_nehrim", mo::gamebryo)
-            .add_task<mo>("modorganizer-game_fallout3", mo::gamebryo)
-            .add_task<mo>("modorganizer-game_fallout4", mo::gamebryo)
-            .add_task<mo>("modorganizer-game_fallout4vr", mo::gamebryo)
-            .add_task<mo>("modorganizer-game_fallout76", mo::gamebryo)
-            .add_task<mo>("modorganizer-game_falloutnv", mo::gamebryo)
-            .add_task<mo>("modorganizer-game_morrowind", mo::gamebryo)
-            .add_task<mo>("modorganizer-game_skyrim", mo::gamebryo)
-            .add_task<mo>("modorganizer-game_skyrimse", mo::gamebryo)
-            .add_task<mo>("modorganizer-game_skyrimvr", mo::gamebryo)
-            .add_task<mo>("modorganizer-game_starfield", mo::gamebryo)
-            .add_task<mo>("modorganizer-game_ttw", mo::gamebryo)
-            .add_task<mo>("modorganizer-game_enderal", mo::gamebryo)
-            .add_task<mo>("modorganizer-game_enderalse", mo::gamebryo);
+        add_task<parallel_tasks>().add_task<mo>("modorganizer-game_bethesda");
 
         add_task<parallel_tasks>()
             .add_task<mo>({"modorganizer-tool_inieditor", "inieditor"})
-            .add_task<mo>({"modorganizer-tool_inibakery", "inibakery"})
             .add_task<mo>("modorganizer-preview_base")
             .add_task<mo>("modorganizer-diagnose_basic")
             .add_task<mo>("modorganizer-check_fnis")
