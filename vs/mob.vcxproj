@@ -49,18 +49,31 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Link />
-    <ClCompile>
-      <BuildStlModules>false</BuildStlModules>
-    </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <ClCompile>
-      <BuildStlModules>false</BuildStlModules>
-    </ClCompile>
-    <Link />
-  </ItemDefinitionGroup>
+  <PropertyGroup>
+    <ComputeCompileInputsTargets>
+         $(ComputeCompileInputsTargets);
+         ForciblyDisableModules;
+      </ComputeCompileInputsTargets>
+  </PropertyGroup>
+  <Target Name="ForciblyDisableModules">
+    <PropertyGroup>
+      <EnableCppModules>false</EnableCppModules>
+      <EnableStdModules>false</EnableStdModules>
+    </PropertyGroup>
+  </Target>
+  <Target Name="ComputeStdModulesCompileInputs" Condition="'@(ClCompile)' != ''">
+    <!-- override -->
+    <PropertyGroup>
+      <EnableStdModules>false</EnableStdModules>
+    </PropertyGroup>
+  </Target>
+  <Target Name="SetModuleDependencies">
+    <!-- override -->
+    <ItemGroup>
+      <_ClCompileWithModuleDependencies Remove="@(_ClCompileWithModuleDependencies)" />
+    </ItemGroup>
+  </Target>
+  
   <ItemGroup>
     <ClCompile Include="..\src\cmd\build.cpp" />
     <ClCompile Include="..\src\cmd\cmake.cpp" />
