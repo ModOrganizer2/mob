@@ -98,7 +98,8 @@ void add_tasks()
 		.add_task<mo>("modorganizer-game_skyrimvr", mo::gamebryo)
 		.add_task<mo>("modorganizer-game_ttw", mo::gamebryo)
 		.add_task<mo>("modorganizer-game_enderal", mo::gamebryo)
-		.add_task<mo>("modorganizer-game_enderalse", mo::gamebryo);
+		.add_task<mo>("modorganizer-game_enderalse", mo::gamebryo)
+		.add_task<mo>("modorganizer-game_starfield", mo::gamebryo);
 
 	add_task<parallel_tasks>()
 		.add_task<mo>({"modorganizer-tool_inieditor", "inieditor"})
