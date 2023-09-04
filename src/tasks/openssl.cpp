@@ -20,13 +20,13 @@ url prebuilt_url()
 	return make_prebuilt_url("openssl-prebuilt-" + openssl::version() + ".7z");
 }
 
-std::string version_no_patch_underscores()
+std::string version_no_patch_underscores(bool primaryOnly = true)
 {
 	auto v = openssl::parsed_version();
 
 	std::string s = v.major;
 
-	if (v.minor != "")
+	if (v.minor != "" && !primaryOnly)
 		s += "_" + v.minor;
 
 	return s;
