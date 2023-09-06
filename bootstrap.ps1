@@ -3,8 +3,12 @@ if (!$root) {
     $root = "."
 }
 
-cmake -B build . | Out-Null
-cmake --build build --config Release -- "-p:UseMultiToolTask=true" "-noLogo" "-p:EnforceProcessCountAcrossBuilds=true" "-clp:ErrorsOnly;Verbosity=minimal"
+cmake -B $root/build $root | Out-Null
+cmake --build $root/build --config Release -- `
+    "-p:UseMultiToolTask=true" `
+    "-noLogo" `
+    "-p:EnforceProcessCountAcrossBuilds=true" `
+    "-clp:ErrorsOnly;Verbosity=minimal"
 
 if (! $?) {
     Write-Error "Build failed"
