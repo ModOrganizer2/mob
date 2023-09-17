@@ -96,6 +96,7 @@ void add_tasks()
 		.add_task<mo>("modorganizer-game_skyrim", mo::gamebryo)
 		.add_task<mo>("modorganizer-game_skyrimse", mo::gamebryo)
 		.add_task<mo>("modorganizer-game_skyrimvr", mo::gamebryo)
+		.add_task<mo>("modorganizer-game_starfield", mo::gamebryo)
 		.add_task<mo>("modorganizer-game_ttw", mo::gamebryo)
 		.add_task<mo>("modorganizer-game_enderal", mo::gamebryo)
 		.add_task<mo>("modorganizer-game_enderalse", mo::gamebryo);
