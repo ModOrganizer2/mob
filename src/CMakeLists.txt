@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 
 file(GLOB_RECURSE source_files *.cpp)
-file(GLOB RECURSE header_files *.h)
+file(GLOB_RECURSE header_files *.h)
 
-add_executable(mob ${source_files})
+add_executable(mob ${source_files} ${header_files})
 set_target_properties(mob PROPERTIES CXX_STANDARD 20)
 
 target_compile_definitions(mob PUBLIC NOMINMAX)
