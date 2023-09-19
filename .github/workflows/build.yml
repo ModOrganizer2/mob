@@ -1,0 +1,16 @@
+name: Build Mob
+
+on:
+  push:
+    branches: master
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Mob
+        shell: pwsh
+        run: ./bootstrap.ps1 -Verbose

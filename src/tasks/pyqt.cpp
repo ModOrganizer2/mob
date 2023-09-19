@@ -208,19 +208,20 @@ namespace mob::tasks {
             op::delete_directory(cx(), source_path() / "build", op::optional);
 
             // build modules
-            run_tool(process_runner(
-                process()
-                    .binary(sip::sip_install_exe())
-                    .arg("--confirm-license")
-                    .arg("--verbose", process::log_trace)
-                    .arg("--pep484-pyi")
-                    .arg("--link-full-dll")
-                    .arg("--build-dir", build_path())
-                    //			.arg("--enable", "pylupdate")  // these are not in modules
-                    //so they 			.arg("--enable", "pyrcc")      // don't get copied below
-                    //			.args(zip(repeat("--enable"), modules()))
-                    .cwd(source_path())
-                    .env(pyqt_env)));
+            run_tool(process_runner(process()
+                                        .binary(sip::sip_install_exe())
+                                        .arg("--confirm-license")
+                                        .arg("--verbose", process::log_trace)
+                                        .arg("--pep484-pyi")
+                                        .arg("--link-full-dll")
+                                        .arg("--build-dir", build_path())
+                                        //			.arg("--enable",
+                                        //"pylupdate")  // these are not in modules so
+                                        // they .arg("--enable", "pyrcc")      // don't
+                                        // get copied below
+                                        // .args(zip(repeat("--enable"), modules()))
+                                        .cwd(source_path())
+                                        .env(pyqt_env)));
 
             // done, create the bypass file
             built_bypass.create();

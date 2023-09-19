@@ -214,12 +214,12 @@ namespace mob::tasks {
     {
         // 1.2.3d
         // everything but 1 is optional
-        std::regex re("(\\d+)"  // 1
-                      "(?:"
-                      "\\.(\\d+)"  // .2
-                      "(?:"
+        std::regex re("(\\d+)"                 // 1
+                      "(?:"                    //
+                      "\\.(\\d+)"              // .2
+                      "(?:"                    //
                       "\\.(\\d+)([a-zA-Z]+)?"  // .3d
-                      ")?"
+                      ")?"                     //
                       ")?");
 
         std::smatch m;
