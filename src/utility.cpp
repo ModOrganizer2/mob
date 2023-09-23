@@ -14,8 +14,8 @@ namespace mob {
 
     url make_prebuilt_url(const std::string& filename)
     {
-        return "https://github.com/ModOrganizer2/modorganizer-umbrella/"
-               "releases/download/2.0/" +
+        return "https://github.com/ModOrganizer2/mob/"
+               "releases/download/2.5-dependencies/" +
                filename;
     }
 
