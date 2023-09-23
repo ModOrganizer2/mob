@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "tasks.h"
 #include "../core/process.h"
+#include "tasks.h"
 
 // build process for python, sip and pyqt; if one is built from source, all
 // three need to be built from source, plus openssl because python needs it
@@ -31,277 +31,249 @@
 //        copied into install/bin/plugins/data/PyQt6, including a .pyi file from
 //        sip
 
+namespace mob::tasks {
 
-namespace mob::tasks
-{
+    namespace {
 
-namespace
-{
+        url source_url()
+        {
+            return "https://pypi.io/packages/source/P/PyQt6/"
+                   "PyQt6-" +
+                   pyqt::version() + ".tar.gz";
+        }
 
-url source_url()
-{
-	return
-		"https://pypi.io/packages/source/P/PyQt6/"
-		"PyQt6-" + pyqt::version() + ".tar.gz";
-}
+        url prebuilt_url()
+        {
+            return make_prebuilt_url("PyQt6_gpl-prebuilt-" + pyqt::version() + ".7z");
+        }
 
-url prebuilt_url()
-{
-	return make_prebuilt_url("PyQt6_gpl-prebuilt-" + pyqt::version() + ".7z");
-}
+        // file created by sip-module.exe
+        //
+        fs::path sip_install_file()
+        {
+            return "PyQt6_sip-" + sip::version_for_pyqt() + ".tar.gz";
+        }
 
-// file created by sip-module.exe
-//
-fs::path sip_install_file()
-{
-	return "PyQt6_sip-" + sip::version_for_pyqt() + ".tar.gz";
-}
+    }  // namespace
 
-}	// namespace
+    pyqt::pyqt() : basic_task("pyqt") {}
 
+    std::string pyqt::version()
+    {
+        return conf().version().get("pyqt");
+    }
 
-pyqt::pyqt()
-	: basic_task("pyqt")
-{
-}
+    std::string pyqt::builder_version()
+    {
+        return conf().version().get("pyqt_builder");
+    }
 
-std::string pyqt::version()
-{
-	return conf().version().get("pyqt");
-}
+    bool pyqt::prebuilt()
+    {
+        return conf().prebuilt().get<bool>("pyqt");
+    }
 
-std::string pyqt::builder_version()
-{
-	return conf().version().get("pyqt_builder");
-}
+    fs::path pyqt::source_path()
+    {
+        return conf().path().build() / ("PyQt6-" + version());
+    }
 
-bool pyqt::prebuilt()
-{
-	return conf().prebuilt().get<bool>("pyqt");
-}
+    fs::path pyqt::build_path()
+    {
+        return source_path() / "build";
+    }
 
-fs::path pyqt::source_path()
-{
-	return conf().path().build() / ("PyQt6-" + version());
-}
+    std::string pyqt::pyqt_sip_module_name()
+    {
+        return "PyQt6.sip";
+    }
 
-fs::path pyqt::build_path()
-{
-	return source_path() / "build";
-}
+    void pyqt::do_clean(clean c)
+    {
+        if (prebuilt()) {
+            // delete prebuilt download
+            if (is_set(c, clean::redownload))
+                run_tool(downloader(prebuilt_url(), downloader::clean));
+        }
+        else {
+            // delete source download
+            if (is_set(c, clean::redownload))
+                run_tool(downloader(source_url(), downloader::clean));
+        }
 
-std::string pyqt::pyqt_sip_module_name()
-{
-	return "PyQt6.sip";
-}
+        // delete whole directory
+        if (is_set(c, clean::reextract)) {
+            cx().trace(context::reextract, "deleting {}", source_path());
+            op::delete_directory(cx(), source_path(), op::optional);
 
-void pyqt::do_clean(clean c)
-{
-	if (prebuilt())
-	{
-		// delete prebuilt download
-		if (is_set(c, clean::redownload))
-			run_tool(downloader(prebuilt_url(), downloader::clean));
-	}
-	else
-	{
-		// delete source download
-		if (is_set(c, clean::redownload))
-			run_tool(downloader(source_url(), downloader::clean));
-	}
+            // no need to do anything else
+            return;
+        }
 
-	// delete whole directory
-	if (is_set(c, clean::reextract))
-	{
-		cx().trace(context::reextract, "deleting {}", source_path());
-		op::delete_directory(cx(), source_path(), op::optional);
+        if (!prebuilt()) {
+            // delete the pyqt-sip file that's created when building from source
+            if (is_set(c, clean::rebuild)) {
+                op::delete_file(cx(), conf().path().cache() / sip_install_file(),
+                                op::optional);
+            }
+        }
+    }
 
-		// no need to do anything else
-		return;
-	}
+    void pyqt::do_fetch()
+    {
+        if (prebuilt())
+            fetch_prebuilt();
+        else
+            fetch_from_source();
+    }
 
-	if (!prebuilt())
-	{
-		// delete the pyqt-sip file that's created when building from source
-		if (is_set(c, clean::rebuild))
-		{
-			op::delete_file(cx(),
-				conf().path().cache() / sip_install_file(),
-				op::optional);
-		}
-	}
-}
+    void pyqt::do_build_and_install()
+    {
+        if (prebuilt())
+            build_and_install_prebuilt();
+        else
+            build_and_install_from_source();
+    }
 
-void pyqt::do_fetch()
-{
-	if (prebuilt())
-		fetch_prebuilt();
-	else
-		fetch_from_source();
-}
+    void pyqt::fetch_prebuilt()
+    {
+        const auto file = run_tool(downloader(prebuilt_url()));
 
-void pyqt::do_build_and_install()
-{
-	if (prebuilt())
-		build_and_install_prebuilt();
-	else
-		build_and_install_from_source();
-}
+        run_tool(extractor().file(file).output(source_path()));
+    }
 
-void pyqt::fetch_prebuilt()
-{
-	const auto file = run_tool(downloader(prebuilt_url()));
+    void pyqt::build_and_install_prebuilt()
+    {
+        // copy the prebuilt files directly into the python directory, they're
+        // required by sip, which is always built from source
+        op::copy_glob_to_dir_if_better(cx(), source_path() / "*", python::source_path(),
+                                       op::copy_files | op::copy_dirs);
 
-	run_tool(extractor()
-		.file(file)
-		.output(source_path()));
-}
+        // copy files to build/install for MO
+        copy_files();
+    }
 
-void pyqt::build_and_install_prebuilt()
-{
-	// copy the prebuilt files directly into the python directory, they're
-	// required by sip, which is always built from source
-	op::copy_glob_to_dir_if_better(cx(),
-		source_path() / "*",
-		python::source_path(),
-		op::copy_files|op::copy_dirs);
+    void pyqt::fetch_from_source()
+    {
+        const auto file = run_tool(downloader(source_url()));
 
-	// copy files to build/install for MO
-	copy_files();
-}
+        run_tool(extractor().file(file).output(source_path()));
+    }
 
-void pyqt::fetch_from_source()
-{
-	const auto file = run_tool(downloader(source_url()));
+    void pyqt::build_and_install_from_source()
+    {
+        // use pip to install the pyqt builder
+        run_tool(pip(pip::install).package("PyQt-builder").version(builder_version()));
 
-	run_tool(extractor()
-		.file(file)
-		.output(source_path()));
-}
+        // patch for builder.py
+        run_tool(patcher()
+                     .task(name())
+                     .file("builder.py.manual_patch")
+                     .root(python::site_packages_path() / "pyqtbuild"));
 
-void pyqt::build_and_install_from_source()
-{
-	// use pip to install the pyqt builder
-	run_tool(pip(pip::install)
-		.package("PyQt-builder")
-		.version(builder_version()));
+        // build modules and generate the PyQt6_sip-XX.tar.gz file
+        sip_build();
 
-	// patch for builder.py
-	run_tool(patcher()
-		.task(name())
-		.file("builder.py.manual_patch")
-		.root(python::site_packages_path() / "pyqtbuild"));
+        // run pip install for the PyQt6_sip-XX.tar.gz file
+        install_sip_file();
 
-	// build modules and generate the PyQt6_sip-XX.tar.gz file
-	sip_build();
+        // copy files to build/install for MO
+        copy_files();
+    }
 
-	// run pip install for the PyQt6_sip-XX.tar.gz file
-	install_sip_file();
+    void pyqt::sip_build()
+    {
+        // put qt and python in the path, set CL and LIB, which are used by the
+        // visual c++ compiler that's eventually spawned, and set PYTHONHOME
+        auto pyqt_env =
+            env::vs_x64()
+                .append_path({qt::bin_path(), python::build_path(),
+                              python::source_path(), python::scripts_path()})
+                .set("CL", " /MP")
+                .set("LIB", ";" + path_to_utf8(conf().path().install_libs()),
+                     env::append)
+                .set("PYTHONHOME", path_to_utf8(python::source_path()));
 
-	// copy files to build/install for MO
-	copy_files();
-}
+        // create a bypass file, because pyqt always tries to build stuff and it
+        // takes forever
+        bypass_file built_bypass(cx(), source_path(), "built");
 
-void pyqt::sip_build()
-{
-	// put qt and python in the path, set CL and LIB, which are used by the
-	// visual c++ compiler that's eventually spawned, and set PYTHONHOME
-	auto pyqt_env = env::vs_x64()
-		.append_path({
-			qt::bin_path(),
-			python::build_path(),
-			python::source_path(),
-			python::scripts_path()})
-		.set("CL", " /MP")
-		.set("LIB", ";" + path_to_utf8(conf().path().install_libs()), env::append)
-		.set("PYTHONHOME", path_to_utf8(python::source_path()));
+        if (built_bypass.exists()) {
+            cx().trace(context::bypass, "pyqt already built");
+        }
+        else {
+            // sip-install.exe has trouble with deleting the build/ directory and
+            // trying to recreate it too fast, giving an access denied error; do it
+            // here instead
+            op::delete_directory(cx(), source_path() / "build", op::optional);
 
-	// create a bypass file, because pyqt always tries to build stuff and it
-	// takes forever
-	bypass_file built_bypass(cx(), source_path(), "built");
+            // build modules
+            run_tool(process_runner(process()
+                                        .binary(sip::sip_install_exe())
+                                        .arg("--confirm-license")
+                                        .arg("--verbose", process::log_trace)
+                                        .arg("--pep484-pyi")
+                                        .arg("--link-full-dll")
+                                        .arg("--build-dir", build_path())
+                                        //			.arg("--enable",
+                                        //"pylupdate")  // these are not in modules so
+                                        // they .arg("--enable", "pyrcc")      // don't
+                                        // get copied below
+                                        // .args(zip(repeat("--enable"), modules()))
+                                        .cwd(source_path())
+                                        .env(pyqt_env)));
 
-	if (built_bypass.exists())
-	{
-		cx().trace(context::bypass, "pyqt already built");
-	}
-	else
-	{
-		// sip-install.exe has trouble with deleting the build/ directory and
-		// trying to recreate it too fast, giving an access denied error; do it
-		// here instead
-		op::delete_directory(cx(), source_path() / "build", op::optional);
+            // done, create the bypass file
+            built_bypass.create();
+        }
 
-		// build modules
-		run_tool(process_runner(process()
-			.binary(sip::sip_install_exe())
-			.arg("--confirm-license")
-			.arg("--verbose", process::log_trace)
-			.arg("--pep484-pyi")
-			.arg("--link-full-dll")
-			.arg("--build-dir", build_path())
-//			.arg("--enable", "pylupdate")  // these are not in modules so they
-//			.arg("--enable", "pyrcc")      // don't get copied below
-//			.args(zip(repeat("--enable"), modules()))
-			.cwd(source_path())
-			.env(pyqt_env)));
+        // generate the PyQt6_sip-XX.tar.gz file
+        run_tool(process_runner(process()
+                                    .binary(sip::sip_module_exe())
+                                    .arg("--sdist")
+                                    .arg(pyqt_sip_module_name())
+                                    .cwd(conf().path().cache())
+                                    .env(pyqt_env)));
+    }
 
-		// done, create the bypass file
-		built_bypass.create();
-	}
+    void pyqt::install_sip_file()
+    {
+        // create a bypass file, because pyqt always tries to install stuff and it
+        // takes forever
+        bypass_file installed_bypass(cx(), source_path(), "installed");
 
-	// generate the PyQt6_sip-XX.tar.gz file
-	run_tool(process_runner(process()
-		.binary(sip::sip_module_exe())
-		.arg("--sdist")
-		.arg(pyqt_sip_module_name())
-		.cwd(conf().path().cache())
-		.env(pyqt_env)));
-}
+        if (installed_bypass.exists()) {
+            cx().trace(context::bypass, "pyqt already installed");
+        }
+        else {
+            // run `pip install` on the generated PyQt6_sip-XX.tar.gz file
+            run_tool(
+                pip(pip::install).file(conf().path().cache() / sip_install_file()));
 
-void pyqt::install_sip_file()
-{
-	// create a bypass file, because pyqt always tries to install stuff and it
-	// takes forever
-	bypass_file installed_bypass(cx(), source_path(), "installed");
+            // done, create the bypass file
+            installed_bypass.create();
+        }
+    }
 
-	if (installed_bypass.exists())
-	{
-		cx().trace(context::bypass, "pyqt already installed");
-	}
-	else
-	{
-		// run `pip install` on the generated PyQt6_sip-XX.tar.gz file
-		run_tool(pip(pip::install)
-			.file(conf().path().cache() / sip_install_file()));
+    void pyqt::copy_files()
+    {
+        // pyqt puts its files in python-XX/Lib/site-packages/PyQt6
+        const fs::path site_packages_pyqt = python::site_packages_path() / "PyQt6";
 
-		// done, create the bypass file
-		installed_bypass.create();
-	}
-}
+        // copying some dlls from Qt's installation directory into
+        // python-XX/PCBuild/amd64, those are needed by PyQt6 when building several
+        // projects
 
-void pyqt::copy_files()
-{
-	// pyqt puts its files in python-XX/Lib/site-packages/PyQt6
-	const fs::path site_packages_pyqt =
-		python::site_packages_path() / "PyQt6";
+        op::copy_file_to_dir_if_better(cx(), qt::bin_path() / "Qt6Core.dll",
+                                       python::build_path(),
+                                       op::unsafe);  // source file is outside prefix
 
+        op::copy_file_to_dir_if_better(cx(), qt::bin_path() / "Qt6Xml.dll",
+                                       python::build_path(),
+                                       op::unsafe);  // source file is outside prefix
 
-	// copying some dlls from Qt's installation directory into
-	// python-XX/PCBuild/amd64, those are needed by PyQt6 when building several
-	// projects
+        // installation of PyQt6 python files (.pyd, etc.) is done
+        // by the python plugin directly
+    }
 
-	op::copy_file_to_dir_if_better(cx(),
-		qt::bin_path() / "Qt6Core.dll",
-		python::build_path(),
-		op::unsafe);   // source file is outside prefix
-
-	op::copy_file_to_dir_if_better(cx(),
-		qt::bin_path() / "Qt6Xml.dll",
-		python::build_path(),
-		op::unsafe);   // source file is outside prefix
-
-	// installation of PyQt6 python files (.pyd, etc.) is done
-	// by the python plugin directly
-}
-
-}	// namespace
+}  // namespace mob::tasks
