@@ -378,8 +378,13 @@ namespace mob {
 
                 MOB_ASSERT(!tasks.empty());
 
-                for (auto& t : tasks)
+                for (auto& t : tasks) {
+                    if (t->name() != task &&
+                        details::find_string_for_task(t->name(), key)) {
+                        continue;
+                    }
                     details::set_string_for_task(t->name(), key, value);
+                }
             }
             else {
                 // global task option
