@@ -56,6 +56,9 @@ namespace mob {
                 if (f.line.find("Copyright (C) Microsoft Corporation.") !=
                     std::string::npos)
                     f.lv = context::level::trace;
+                if (f.line.find("Microsoft (R) Program Maintenance Utility") !=
+                    std::string::npos)
+                    f.lv = context::level::trace;
             })
             .arg("/C", process::log_quiet)  // silent
             .arg("/S", process::log_quiet)  // silent

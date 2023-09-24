@@ -1,4 +1,10 @@
-param([switch]$Verbose)
+param(
+    [switch]
+    $Verbose,
+    [ValidateSet("Debug", "RelWithDebInfo", "Release")]
+    [string]
+    $Config = "Release"
+)
 
 $root = $PSScriptRoot
 if (!$root) {
@@ -23,7 +29,7 @@ if (! $installationPath) {
 $opts = ""
 $opts += " $root\build\mob.sln"
 $opts += " -m"
-$opts += " -p:Configuration=Release"
+$opts += " -p:Configuration=${Config}"
 $opts += " -noLogo"
 $opts += " -p:UseMultiToolTask=true"
 $opts += " -p:EnforceProcessCountAcrossBuilds=true"
@@ -45,5 +51,5 @@ if (! $?) {
     exit $LastExitCode
 }
 
-Copy-Item "$root\build\src\Release\mob.exe" "$root\mob.exe"
+Copy-Item "$root\build\src\${Config}\mob.exe" "$root\mob.exe"
 Write-Output "run ``.\mob -d prefix/path build`` to start building"
