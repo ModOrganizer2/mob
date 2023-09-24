@@ -37,9 +37,12 @@ namespace mob::tasks {
 
         url source_url()
         {
-            return "https://pypi.io/packages/source/P/PyQt6/"
-                   "PyQt6-" +
-                   pyqt::version() + ".tar.gz";
+            const auto version = pyqt::version();
+            std::string base   = "https://pypi.io/packages/source/P/PyQt6/";
+            if (version.find("dev") != std::string::npos) {
+                base = "https://riverbankcomputing.com/pypi/packages/PyQt6/";
+            }
+            return base + "PyQt6-" + pyqt::version() + ".tar.gz";
         }
 
         url prebuilt_url()
