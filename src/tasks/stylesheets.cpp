@@ -36,7 +36,7 @@ namespace mob::tasks {
 
                 {"Trosski", "Starfield_MO2_Stylesheet",
                  conf().version().get("ss_starfield_trosski"),
-                 "Transparent-Starfield_Stylesheet", ""}};
+                 "Starfield.MO2.Stylsheet", ""}};
     }
 
     stylesheets::stylesheets() : task("ss", "stylesheets") {}
