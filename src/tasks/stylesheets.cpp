@@ -32,7 +32,11 @@ namespace mob::tasks {
 
                 {"Trosski", "Mod-Organizer2-Fallout-4-Stylesheet",
                  conf().version().get("ss_fallout4_trosski"), "Fallout4-MO2-Stylesheet",
-                 ""}};
+                 ""},
+
+                {"Trosski", "Starfield_MO2_Stylesheet",
+                 conf().version().get("ss_starfield_trosski"),
+                 "Starfield.MO2.Stylsheet", ""}};
     }
 
     stylesheets::stylesheets() : task("ss", "stylesheets") {}
