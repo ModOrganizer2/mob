@@ -9,11 +9,10 @@ namespace mob::tasks {
                  conf().version().get("ss_paper_lad_6788"), "paper-light-and-dark", ""},
 
                 {"6788-00", "paper-automata",
-                 conf().version().get("ss_paper_automata_6788"), "3.0.Paper.Automata",
-                 "2. Paper Automata-64439-A2-3-0-1610629680"},
+                 conf().version().get("ss_paper_automata_6788"), "paper-automata", ""},
 
                 {"6788-00", "paper-mono", conf().version().get("ss_paper_mono_6788"),
-                 "Paper-Mono", ""},
+                 "paper-mono", ""},
 
                 {"6788-00", "1809-dark-mode",
                  conf().version().get("ss_dark_mode_1809_6788"), "1809", ""},
