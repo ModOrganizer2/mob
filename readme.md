@@ -70,14 +70,14 @@ aqt install-qt --outputdir "C:\Qt" windows desktop 6.5.3 win64_msvc2019_64 -m qt
     - C++ Build Tools core features
 
 ## Setting up MOB
-- Start the _x64 Native Tools Command Prompt for VS 2022, as Administrator, we need this for cmake (not needed if you have it available in your PATH)
+- Start the _x64 Native Tools Command Prompt for VS 2022, as Administrator, we need this for cmake & git (not needed if you have either available in your PATH)
 - Pick a folder to develop MO2 in, for these steps it'll be `C:\dev`
 - Execute these commands
 ```ps
 mkdir C:\dev
 cd C:\dev
 git clone https://github.com/ModOrganizer2/mob
- mob -d C:\dev\modorganizer build
+mob -d C:\dev\modorganizer build
 ```
 - Once `mob` is finished, everything will be in `C:\dev\modorganizer`. Mod Organizer can be run from `install\bin\ModOrganizer.exe`. The Visual Studio solution for Mod Organizer itself is `build\modorganizer_super\modorganizer\vsbuild\organizer.sln`.
 
