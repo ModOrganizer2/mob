@@ -34,24 +34,22 @@
 
 ## Extended start
 
-### Qt - CLI Install using [aqt](https://github.com/miurahr/aqtinstall)
+### Qt - CLI based install using [aqt](https://github.com/miurahr/aqtinstall)
 
-aqt is a CLI installer for Qt, this makes installing Qt extremely quick and painless, and doesn't require a login
+[aqt](https://github.com/miurahr/aqtinstall) is a CLI installer for Qt, it makes installing Qt extremely quick and painless, and doesn't require a login
 
-#### Package manager
+#### Installing aqt via package manager
 - Start an administrative terminal
-- winget: `winget install --id=miurahr.aqtinstall  -e`
+- Install aqt using one of the two popular packaage managers
+  - `winget install --id=miurahr.aqtinstall  -e`
+  - `choco install aqt`
 
-OR
-
-- chocolatey: `choco install aqt`
-
-#### Python
+#### Installing aqt via python/pip
 
 - Install [Python 3.9](https://www.python.org/downloads/release/python-390/)
 - Install [aqt](https://github.com/miurahr/aqtinstall) using `pip`
 
-### aqt
+#### Using aqt
 - Open a terminal with administrative rights, and run
 ```powershell
 aqt install-qt --outputdir "C:\Qt" windows desktop 6.5.0 win64_msvc2019_64 -m qtwebengine qtimageformats qtpositioning qtserialport qtwebchannel qtwebsockets
