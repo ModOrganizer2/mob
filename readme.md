@@ -68,9 +68,11 @@ aqt install-qt --outputdir "C:\Qt" windows desktop 6.5.0 win64_msvc2019_64 -m qt
     - C++ /CLI support for v143 build Tools (Latest)  (for OMOD and FOMOD installers)
     - Windows 11 SDK (get latest)
     - C++ Build Tools core features
+    - Git for Windows (Skip if you have this already installed outside of the VS installer)
+    - CMake tools for Windows (Skip if you have this already installed outside of the VS installer)
 
 ## Setting up MOB
-- Start the _x64 Native Tools Command Prompt for VS 2022, we need this for cmake & git (not needed if you have either available in your PATH)
+- Start the _x64 Native Tools Command Prompt for VS 2022, we need this for cmake & git (not needed if you've installed both outside of the VS installer, or have both available in your PATH)
 - Pick a folder to develop MO2 in, for these steps it'll be `C:\dev`
 - Execute these commands
 ```powershell
@@ -80,7 +82,6 @@ git clone https://github.com/ModOrganizer2/mob
 mob -d C:\dev\modorganizer build
 ```
 - Once `mob` is finished, everything will be in `C:\dev\modorganizer`. Mod Organizer can be run from `install\bin\ModOrganizer.exe`. The Visual Studio solution for Mod Organizer itself is `build\modorganizer_super\modorganizer\vsbuild\organizer.sln`.
-
 
 ### Prebuilts
 Some third-parties are not normally built from source, but this can be changed in the options by setting the various tasks in `[prebuilt]` to `false`. If OpenSSL is built from source, perl is required ([Strawberry Perl 5.30.2.1 installer](http://strawberryperl.com/download/5.30.2.1/strawberry-perl-5.30.2.1-64bit.msi)).
