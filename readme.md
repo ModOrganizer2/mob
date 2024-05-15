@@ -25,7 +25,7 @@
 
 
 ## Quick start
-```ps
+```powershell
 > git clone https://github.com/ModOrganizer2/mob
 > cd mob
 > bootstrap
@@ -38,12 +38,12 @@
 - Install [Python 3.9](https://www.python.org/downloads/release/python-390/)
 - Install [aqt](https://github.com/miurahr/aqtinstall), a CLI installer for Qt, this makes installing Qt extremely quick and painless, and doesn't require a login
 - Open a terminal with administrative rights, and run
-```ps
-aqt install-qt --outputdir "C:\Qt" windows desktop 6.5.3 win64_msvc2019_64 -m qtwebengine qtimageformats qtpositioning qtserialport qtwebchannel qtwebsockets
+```powershell
+aqt install-qt --outputdir "C:\Qt" windows desktop 6.5.0 win64_msvc2019_64 -m qtwebengine qtimageformats qtpositioning qtserialport qtwebchannel qtwebsockets
 ```
 
 ### Qt - Manual installation
-- Install Qt 6.5.3 ([Installer](https://download.qt.io/official_releases/online_installers/qt-unified-windows-x64-online.exe)) and select these components:
+- Install Qt 6.5.0 ([Installer](https://download.qt.io/official_releases/online_installers/qt-unified-windows-x64-online.exe)) and select these components:
   - MSVC 2019 64-bit
   - Additional Libraries:
     - Qt WebEngine (display nexus pages)
@@ -70,10 +70,10 @@ aqt install-qt --outputdir "C:\Qt" windows desktop 6.5.3 win64_msvc2019_64 -m qt
     - C++ Build Tools core features
 
 ## Setting up MOB
-- Start the _x64 Native Tools Command Prompt for VS 2022, as Administrator, we need this for cmake & git (not needed if you have either available in your PATH)
+- Start the _x64 Native Tools Command Prompt for VS 2022, we need this for cmake & git (not needed if you have either available in your PATH)
 - Pick a folder to develop MO2 in, for these steps it'll be `C:\dev`
 - Execute these commands
-```ps
+```powershell
 mkdir C:\dev
 cd C:\dev
 git clone https://github.com/ModOrganizer2/mob
