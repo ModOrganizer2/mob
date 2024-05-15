@@ -35,8 +35,23 @@
 ## Extended start
 
 ### Qt - CLI Install using [aqt](https://github.com/miurahr/aqtinstall)
+
+aqt is a CLI installer for Qt, this makes installing Qt extremely quick and painless, and doesn't require a login
+
+#### Package manager
+- Start an administrative terminal
+- winget: `winget install --id=miurahr.aqtinstall  -e`
+
+OR
+
+- chocolatey: `choco install aqt`
+
+#### Python
+
 - Install [Python 3.9](https://www.python.org/downloads/release/python-390/)
-- Install [aqt](https://github.com/miurahr/aqtinstall), a CLI installer for Qt, this makes installing Qt extremely quick and painless, and doesn't require a login
+- Install [aqt](https://github.com/miurahr/aqtinstall) using `pip`
+
+### aqt
 - Open a terminal with administrative rights, and run
 ```powershell
 aqt install-qt --outputdir "C:\Qt" windows desktop 6.5.0 win64_msvc2019_64 -m qtwebengine qtimageformats qtpositioning qtserialport qtwebchannel qtwebsockets
@@ -72,7 +87,7 @@ aqt install-qt --outputdir "C:\Qt" windows desktop 6.5.0 win64_msvc2019_64 -m qt
     - CMake tools for Windows (Skip if you have this already installed outside of the VS installer)
 
 ## Setting up MOB
-- Start the _x64 Native Tools Command Prompt for VS 2022, we need this for cmake & git (not needed if you've installed both outside of the VS installer, or have both available in your PATH)
+- Start the _x64 Native Tools Command Prompt for VS 2022, we need this for cmake & git (you can use a regular terminal if you've installed both outside of the VS installer, or have both available in your PATH)
 - Pick a folder to develop MO2 in, for these steps it'll be `C:\dev`
 - Execute these commands
 ```powershell
