@@ -85,8 +85,7 @@ aqt install-qt --outputdir "C:\Qt" windows desktop 6.5.0 win64_msvc2019_64 -m qt
     - CMake tools for Windows (Skip if you have this already installed outside of the VS installer)
 
 ## Setting up MOB
-- Start the _x64 Native Tools Command Prompt for VS 2022, we need this for cmake & git (you can use a regular terminal if you've installed both outside of the VS installer, or have both available in your PATH)
-- Pick a folder to develop MO2 in, for these steps it'll be `C:\dev`
+- Open a shell. If you've installed Git or CMake through the VS installer, they won't be on your PATH, so you must use x64 Native Tools Command Prompt for VS 2022.- Pick a folder to develop MO2 in, for these steps it'll be `C:\dev`
 - Execute these commands
 ```powershell
 mkdir C:\dev
