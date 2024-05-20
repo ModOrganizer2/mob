@@ -178,9 +178,7 @@ namespace mob::tasks {
     void python::prepare_dependencies()
     {
         const auto bat = source_path() / "PCBuild" / "get_externals.bat";
-        run_tool(process_runner(process()
-                                    .binary(bat)
-                                    .cwd(source_path())));
+        run_tool(process_runner(process().binary(bat).cwd(source_path())));
     }
 
     void python::package()
