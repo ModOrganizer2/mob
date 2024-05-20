@@ -146,24 +146,6 @@ namespace mob::tasks {
         void do_build_and_install() override;
     };
 
-    // needed by python
-    //
-    class libffi : public basic_task<libffi> {
-    public:
-        libffi();
-
-        static std::string version();
-        static bool prebuilt();
-
-        static fs::path source_path();
-        static fs::path include_path();
-        static fs::path lib_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-    };
-
     class libloot : public basic_task<libloot> {
     public:
         libloot();
@@ -462,6 +444,7 @@ namespace mob::tasks {
         void build_and_install_prebuilt();
         void build_and_install_from_source();
 
+        void prepare_dependencies();
         void package();
         void install_pip();
         void copy_files();
