@@ -25,26 +25,51 @@
 
 
 ## Quick start
-```
+```powershell
 > git clone https://github.com/ModOrganizer2/mob
 > cd mob
 > bootstrap
 > mob -d c:\somewhere build
 ```
 
-## Slow start
-- Install Qt 6.5.1 ([Installer](https://download.qt.io/official_releases/online_installers/qt-unified-windows-x64-online.exe)) and select these components:
+## Extended start
+
+### Qt - CLI based install using [aqt](https://github.com/miurahr/aqtinstall)
+
+[aqt](https://github.com/miurahr/aqtinstall) is a CLI installer for Qt, it makes installing Qt extremely quick and painless, and doesn't require a login
+
+#### Installing aqt via package manager
+- Start an administrative terminal
+- Install aqt using one of the two popular packaage managers
+  - `winget install --id=miurahr.aqtinstall  -e`
+  - `choco install aqt`
+
+#### Installing aqt via python/pip
+
+- Install [Python 3.9](https://www.python.org/downloads/release/python-390/)
+- Install [aqt](https://github.com/miurahr/aqtinstall) using `pip`
+
+#### Using aqt
+- Open a terminal with administrative rights, and run
+```powershell
+aqt install-qt --outputdir "C:\Qt" windows desktop 6.5.0 win64_msvc2019_64 -m qtwebengine qtimageformats qtpositioning qtserialport qtwebchannel qtwebsockets
+```
+
+### Qt - Manual installation
+- Install Qt 6.5.0 ([Installer](https://download.qt.io/official_releases/online_installers/qt-unified-windows-x64-online.exe)) and select these components:
   - MSVC 2019 64-bit
   - Additional Libraries:
     - Qt WebEngine (display nexus pages)
     - Qt Image Formats (display images in image tab and preview)
     - Qt Positioning (required by QtWebEngine)
     - Qt Serial Port (required by Qt Core)
-    - Qt Web Channel (required by QtWebEngine)
+    - Qt WebChannel (required by QtWebEngine)
     - Qt WebSockets (Nexus api/download)
   - Optional:
     - Qt Source Files
     - Qt Debug Files
+  
+### Visual Studio
 - Install Visual Studio 2022 ([Installer](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&channel=Release&version=VS2022&source=VSLandingPage&cid=2030&passive=false))
   - Desktop development with C++
   - Desktop .NET desktop development (needed by OMOD and FOMOD installers)
@@ -56,22 +81,19 @@
     - C++ /CLI support for v143 build Tools (Latest)  (for OMOD and FOMOD installers)
     - Windows 11 SDK (get latest)
     - C++ Build Tools core features
-  - Optional:
-    - Git for Windows (if you don't have git already installed)
-- Start a shell
-  - If you have git in your path, a regular cmd shell works.
-  - If not, start the _x64 Native Tools Command Prompt for VS 2019_, it'll use Git for Windows installed above.
-- Do:
-	```
-	mkdir C:\dev
-	cd C:\dev
-	git clone https://github.com/ModOrganizer2/mob
-	cd mob
-	bootstrap
-	mob -d C:\dev\modorganizer build
-	```
-- Once `mob` is finished, everything will be in `C:\dev\modorganizer`. Mod Organizer can be run from `install\bin\ModOrganizer.exe`. The Visual Studio solution for Mod Organizer itself is `build\modorganizer_super\modorganizer\vsbuild\organizer.sln`.
+    - Git for Windows (Skip if you have this already installed outside of the VS installer)
+    - CMake tools for Windows (Skip if you have this already installed outside of the VS installer)
 
+## Setting up MOB
+- Open a shell. If you've installed Git or CMake through the VS installer, they won't be on your PATH, so you must use x64 Native Tools Command Prompt for VS 2022.- Pick a folder to develop MO2 in, for these steps it'll be `C:\dev`
+- Execute these commands
+```powershell
+mkdir C:\dev
+cd C:\dev
+git clone https://github.com/ModOrganizer2/mob
+mob -d C:\dev\modorganizer build
+```
+- Once `mob` is finished, everything will be in `C:\dev\modorganizer`. Mod Organizer can be run from `install\bin\ModOrganizer.exe`. The Visual Studio solution for Mod Organizer itself is `build\modorganizer_super\modorganizer\vsbuild\organizer.sln`.
 
 ### Prebuilts
 Some third-parties are not normally built from source, but this can be changed in the options by setting the various tasks in `[prebuilt]` to `false`. If OpenSSL is built from source, perl is required ([Strawberry Perl 5.30.2.1 installer](http://strawberryperl.com/download/5.30.2.1/strawberry-perl-5.30.2.1-64bit.msi)).
