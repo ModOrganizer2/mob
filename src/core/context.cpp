@@ -5,25 +5,6 @@
 #include "../utility.h"
 #include "conf.h"
 
-namespace mob::details {
-
-    std::string converter<std::wstring>::convert(const std::wstring& s)
-    {
-        return utf16_to_utf8(s);
-    }
-
-    std::string converter<fs::path>::convert(const fs::path& s)
-    {
-        return utf16_to_utf8(s.native());
-    }
-
-    std::string converter<url>::convert(const url& u)
-    {
-        return u.string();
-    }
-
-}  // namespace mob::details
-
 namespace mob {
 
     // timestamps are relative to this

@@ -156,6 +156,9 @@ namespace mob::tasks {
 
     void python::build_and_install_from_source()
     {
+        // download externals
+        prepare_dependencies();
+
         // build
         run_tool(create_msbuild_tool());
 
@@ -170,6 +173,12 @@ namespace mob::tasks {
                                        include_path());
 
         copy_files();
+    }
+
+    void python::prepare_dependencies()
+    {
+        const auto bat = source_path() / "PCBuild" / "get_externals.bat";
+        run_tool(process_runner(process().binary(bat).cwd(source_path())));
     }
 
     void python::package()
@@ -224,9 +233,7 @@ namespace mob::tasks {
                     {"bz2Dir=" + path_to_utf8(bzip2::source_path()),
                      "zlibDir=" + path_to_utf8(zlib::source_path()),
                      "opensslIncludeDir=" + path_to_utf8(openssl::include_path()),
-                     "opensslOutDir=" + path_to_utf8(openssl::source_path()),
-                     "libffiIncludeDir=" + path_to_utf8(libffi::include_path()),
-                     "libffiOutDir=" + path_to_utf8(libffi::lib_path())}));
+                     "opensslOutDir=" + path_to_utf8(openssl::source_path())}));
     }
 
     fs::path python::python_exe()

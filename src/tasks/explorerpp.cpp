@@ -7,9 +7,8 @@ namespace mob::tasks {
 
         url source_url()
         {
-            return "https://explorerplusplus.com/software/"
-                   "explorer++_" +
-                   explorerpp::version() + "_x64.zip";
+            return "https://download.explorerplusplus.com/stable/" +
+                   explorerpp::version() + "/explorerpp_x64.zip";
         }
 
     }  // namespace

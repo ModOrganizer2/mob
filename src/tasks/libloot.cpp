@@ -60,7 +60,7 @@ namespace mob::tasks {
     void libloot::do_build_and_install()
     {
         // copy dll
-        op::copy_file_to_dir_if_better(cx(), source_path() / "loot.dll",
+        op::copy_file_to_dir_if_better(cx(), source_path() / "bin" / "loot.dll",
                                        conf().path().install_loot());
     }
 

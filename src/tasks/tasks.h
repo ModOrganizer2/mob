@@ -90,20 +90,6 @@ namespace mob::tasks {
         void do_fetch() override;
     };
 
-    class fmt : public basic_task<fmt> {
-    public:
-        fmt();
-
-        static std::string version();
-        static bool prebuilt();
-        static fs::path source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-    };
-
     class gtest : public basic_task<gtest> {
     public:
         gtest();
@@ -144,24 +130,6 @@ namespace mob::tasks {
         void do_clean(clean c) override;
         void do_fetch() override;
         void do_build_and_install() override;
-    };
-
-    // needed by python
-    //
-    class libffi : public basic_task<libffi> {
-    public:
-        libffi();
-
-        static std::string version();
-        static bool prebuilt();
-
-        static fs::path source_path();
-        static fs::path include_path();
-        static fs::path lib_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
     };
 
     class libloot : public basic_task<libloot> {
@@ -462,6 +430,7 @@ namespace mob::tasks {
         void build_and_install_prebuilt();
         void build_and_install_from_source();
 
+        void prepare_dependencies();
         void package();
         void install_pip();
         void copy_files();

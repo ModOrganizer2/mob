@@ -1,45 +1,7 @@
 #pragma once
 
 #include "../utility.h"
-
-// T to std::string converters
-//
-// those are kept in this namespace so they don't leak all over the place;
-// they're used directly by context::do_log() below
-
-namespace mob::details {
-
-    class mob::url;
-
-    template <class T, class = void>
-    struct converter {
-        static const T& convert(const T& t) { return t; }
-    };
-
-    template <>
-    struct converter<std::wstring> {
-        static std::string convert(const std::wstring& s);
-    };
-
-    template <>
-    struct converter<fs::path> {
-        static std::string convert(const fs::path& s);
-    };
-
-    template <>
-    struct converter<url> {
-        static std::string convert(const url& u);
-    };
-
-    template <class T>
-    struct converter<T, std::enable_if_t<std::is_enum_v<T>>> {
-        static std::string convert(T e)
-        {
-            return std::to_string(static_cast<std::underlying_type_t<T>>(e));
-        }
-    };
-
-}  // namespace mob::details
+#include "./formatters.h"
 
 namespace mob {
 
@@ -57,7 +19,7 @@ namespace mob {
     // in places where there is no context available, there's a global one can that
     // be retrieved with gcx() for logging
     //
-    // all log functions will use fmt::format() internally, so they can be used
+    // all log functions will use std::format() internally, so they can be used
     // like:
     //
     //    cx.log(context::generic, "eat more {}", "potatoes");
@@ -161,7 +123,7 @@ namespace mob {
         // logs a formatted string with the dump level
         //
         template <class... Args>
-        void dump(reason r, const char* f, Args&&... args) const
+        void dump(reason r, std::format_string<Args...> f, Args&&... args) const
         {
             do_log(false, r, level::dump, f, std::forward<Args>(args)...);
         }
@@ -169,7 +131,7 @@ namespace mob {
         // logs a formatted string with the trace level
         //
         template <class... Args>
-        void trace(reason r, const char* f, Args&&... args) const
+        void trace(reason r, std::format_string<Args...> f, Args&&... args) const
         {
             do_log(false, r, level::trace, f, std::forward<Args>(args)...);
         }
@@ -177,7 +139,7 @@ namespace mob {
         // logs a formatted string with the debug level
         //
         template <class... Args>
-        void debug(reason r, const char* f, Args&&... args) const
+        void debug(reason r, std::format_string<Args...> f, Args&&... args) const
         {
             do_log(false, r, level::debug, f, std::forward<Args>(args)...);
         }
@@ -185,7 +147,7 @@ namespace mob {
         // logs a formatted string with the info level
         //
         template <class... Args>
-        void info(reason r, const char* f, Args&&... args) const
+        void info(reason r, std::format_string<Args...> f, Args&&... args) const
         {
             do_log(false, r, level::info, f, std::forward<Args>(args)...);
         }
@@ -193,7 +155,7 @@ namespace mob {
         // logs a formatted string with the warning level
         //
         template <class... Args>
-        void warning(reason r, const char* f, Args&&... args) const
+        void warning(reason r, std::format_string<Args...> f, Args&&... args) const
         {
             do_log(false, r, level::warning, f, std::forward<Args>(args)...);
         }
@@ -201,7 +163,7 @@ namespace mob {
         // logs a formatted string with the error level
         //
         template <class... Args>
-        void error(reason r, const char* f, Args&&... args) const
+        void error(reason r, std::format_string<Args...> f, Args&&... args) const
         {
             do_log(false, r, level::error, f, std::forward<Args>(args)...);
         }
@@ -211,7 +173,8 @@ namespace mob {
         // tasks
         //
         template <class... Args>
-        [[noreturn]] void bail_out(reason r, const char* f, Args&&... args) const
+        [[noreturn]] void bail_out(reason r, std::format_string<Args...> f,
+                                   Args&&... args) const
         {
             do_log(true, r, level::error, f, std::forward<Args>(args)...);
         }
@@ -227,7 +190,8 @@ namespace mob {
         // bailed exception after logging
         //
         template <class... Args>
-        void do_log(bool bail, reason r, level lv, const char* f, Args&&... args) const
+        void do_log(bool bail, reason r, level lv, std::format_string<Args...> f,
+                    Args&&... args) const
         {
             // discard log if it's not enabled and it's not bailing out
             if (!bail && !enabled(lv))
@@ -235,9 +199,7 @@ namespace mob {
 
             try {
                 // formatting string
-                const std::string s =
-                    fmt::format(f, details::converter<std::decay_t<Args>>::convert(
-                                       std::forward<Args>(args))...);
+                const std::string s = std::format(f, std::forward<Args>(args)...);
 
                 do_log_impl(bail, r, lv, s);
             }
@@ -253,7 +215,7 @@ namespace mob {
                 // a ghetto conversion and hope it gives enough info
                 std::wstring s;
 
-                const char* p = f;
+                const char* p = f.get().data();
                 while (*p) {
                     s += (wchar_t)*p;
                     ++p;

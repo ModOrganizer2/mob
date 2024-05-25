@@ -211,7 +211,6 @@ namespace mob::tasks {
                              .def("DEPENDENCIES_DIR", conf().path().build())
                              .def("BOOST_ROOT", boost::source_path())
                              .def("BOOST_LIBRARYDIR", boost::lib_path(arch::x64))
-                             .def("FMT_ROOT", fmt::source_path())
                              .def("SPDLOG_ROOT", spdlog::source_path())
                              .def("LOOT_PATH", libloot::source_path())
                              .def("LZ4_ROOT", lz4::source_path())

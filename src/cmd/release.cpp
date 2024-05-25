@@ -367,7 +367,7 @@ namespace mob {
         }
 
         const auto q =
-            fmt::format("prefix {} already exists, delete?", path_to_utf8(prefix));
+            std::format("prefix {} already exists, delete?", path_to_utf8(prefix));
 
         if (ask_yes_no(q, yn::no) != yn::yes)
             return false;
@@ -489,7 +489,7 @@ namespace mob {
         const auto* lcp = static_cast<LANGANDCODEPAGE*>(value_pointer);
 
         const auto sub_block =
-            fmt::format(L"\\StringFileInfo\\{:04x}{:04x}\\FileVersion", lcp->wLanguage,
+            std::format(L"\\StringFileInfo\\{:04x}{:04x}\\FileVersion", lcp->wLanguage,
                         lcp->wCodePage);
 
         ret = VerQueryValueW(buffer.get(), sub_block.c_str(), &value_pointer,

@@ -48,6 +48,7 @@
 #include <atomic>
 #include <charconv>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -69,7 +70,6 @@
 
 #include <clipp.h>
 #include <curl/curl.h>
-#include <fmt/format.h>
 #include <nlohmann/json.hpp>
 
 #pragma warning(pop)

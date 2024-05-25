@@ -326,7 +326,7 @@ namespace mob {
 
         // check known installation paths for a bunch of versions
         for (int v : {5, 6, 7, 8}) {
-            const fs::path inno_dir = fmt::format("Inno Setup {}", v);
+            const fs::path inno_dir = std::format("Inno Setup {}", v);
 
             // check for both architectures
             for (fs::path pf : {conf().path().pf_x86(), conf().path().pf_x64()}) {
