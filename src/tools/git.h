@@ -2,6 +2,11 @@
 
 namespace mob {
 
+    namespace details {
+        using git_url_pattern_format_string =
+            std::format_string<std::string const&, std::string const&>;
+    }
+
     // wrapper around git commands used by the git tool below or various `mob git`
     // commands
     //
@@ -102,10 +107,11 @@ namespace mob {
         //               set_origin_and_upstream_remotes() because the "origin"
         //               remote might not exist at that point
         //
-        void add_remote(const std::string& remote_name, const std::string& org,
-                        const std::string& key, bool push_default,
-                        const std::string& url_pattern = {},
-                        const std::string& git_file    = {});
+        void add_remote(
+            const std::string& remote_name, const std::string& org,
+            const std::string& key, bool push_default,
+            std::optional<details::git_url_pattern_format_string> url_pattern = {},
+            std::optional<std::string> git_file                               = {});
 
         // renames remote `from` to `to`
         //

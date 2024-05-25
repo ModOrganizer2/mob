@@ -116,13 +116,13 @@ namespace mob {
                 if (!task)
                     return 1;
 
-                u8cout << "checking out pr " << pr.number << " "
-                       << "in " << task->name() << "\n";
+                u8cout << "checking out pr " << pr.number << " " << "in "
+                       << task->name() << "\n";
 
                 git_wrap g(task->source_path());
 
                 g.fetch(task->git_url().string(),
-                        fmt::format("pull/{}/head", pr.number));
+                        std::format("pull/{}/head", pr.number));
 
                 g.checkout("FETCH_HEAD");
             }
@@ -208,13 +208,10 @@ namespace mob {
     {
         nlohmann::json json;
 
-        constexpr auto* pattern =
-            "https://api.github.com/search/issues?per_page=100&q="
-            "is:pr+org:{org:}+author:{author:}+is:open+head:{branch:}";
+        constexpr auto* pattern = "https://api.github.com/search/issues?per_page=100&q="
+                                  "is:pr+org:{0:}+author:{1:}+is:open+head:{2:}";
 
-        const auto search_url =
-            fmt::format(pattern, fmt::arg("org", org), fmt::arg("author", author),
-                        fmt::arg("branch", branch));
+        const auto search_url = std::format(pattern, org, author, branch);
 
         u8cout << "search url is " << search_url << "\n";
 
@@ -275,7 +272,7 @@ namespace mob {
             return {};
         }
 
-        const url u(fmt::format("https://api.github.com/repos/{}/{}/pulls/{}",
+        const url u(std::format("https://api.github.com/repos/{}/{}/pulls/{}",
                                 task->org(), task->repo(), pr));
 
         curl_downloader dl;

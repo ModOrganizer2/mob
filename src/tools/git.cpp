@@ -27,14 +27,11 @@ namespace mob::details {
     // returns a github url for the given org and git file
     //
     std::string make_url(const std::string& org, const std::string& git_file,
-                         const std::string& url_pattern)
+                         std::optional<git_url_pattern_format_string> url_pattern)
     {
-        const std::string default_github_url_pattern = "git@github.com:{}/{}";
-
-        const std::string pattern =
-            url_pattern.empty() ? default_github_url_pattern : url_pattern;
-
-        return fmt::format(pattern, org, git_file);
+        return std::format(
+            url_pattern.value_or(git_url_pattern_format_string{"git@github.com:{}/{}"}),
+            org, git_file);
     }
 
     // creates a basic git process, used by all the functions below
@@ -412,14 +409,13 @@ namespace mob {
         return (run(details::has_remote(root_, name)) == 0);
     }
 
-    void git_wrap::add_remote(const std::string& remote_name,
-                              const std::string& username, const std::string& key,
-                              bool push_default, const std::string& url_pattern,
-                              const std::string& opt_git_file)
+    void git_wrap::add_remote(
+        const std::string& remote_name, const std::string& username,
+        const std::string& key, bool push_default,
+        std::optional<details::git_url_pattern_format_string> url_pattern,
+        std::optional<std::string> opt_git_file)
     {
-        auto gf = opt_git_file;
-        if (gf.empty())
-            gf = git_file();
+        auto gf = opt_git_file.value_or(git_file());
 
         if (!has_remote(remote_name)) {
             run(details::add_remote(root_, remote_name,

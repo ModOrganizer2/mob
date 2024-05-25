@@ -29,7 +29,6 @@ namespace mob {
         add_task<parallel_tasks>()
             .add_task<sevenz>()
             .add_task<zlib>()
-            .add_task<fmt>()
             .add_task<gtest>()
             .add_task<libbsarch>()
             .add_task<libloot>()

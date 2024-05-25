@@ -10,11 +10,11 @@
 namespace mob {
 
     template <class... Args>
-    void ini_error(const ini_data& ini, std::size_t line, std::string_view f,
+    void ini_error(const ini_data& ini, std::size_t line, std::format_string<Args...> f,
                    Args&&... args)
     {
         gcx().bail_out(context::conf, "{}:{}: {}", path_to_utf8(ini.path), (line + 1),
-                       fmt::format(f, std::forward<Args>(args)...));
+                       std::format(f, std::forward<Args>(args)...));
     }
 
     ini_data::kv_map& ini_data::get_section(std::string_view name)

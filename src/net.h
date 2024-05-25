@@ -115,3 +115,12 @@ namespace mob {
     };
 
 }  // namespace mob
+
+template <>
+struct std::formatter<mob::url, char> : std::formatter<std::string, char> {
+    template <class FmtContext>
+    FmtContext::iterator format(mob::url const& u, FmtContext& ctx) const
+    {
+        return std::formatter<std::string, char>::format(u.string(), ctx);
+    }
+};

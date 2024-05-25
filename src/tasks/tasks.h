@@ -90,20 +90,6 @@ namespace mob::tasks {
         void do_fetch() override;
     };
 
-    class fmt : public basic_task<fmt> {
-    public:
-        fmt();
-
-        static std::string version();
-        static bool prebuilt();
-        static fs::path source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-    };
-
     class gtest : public basic_task<gtest> {
     public:
         gtest();

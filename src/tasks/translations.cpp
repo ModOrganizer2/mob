@@ -135,7 +135,7 @@ namespace mob::tasks {
 
         if (dir_cs.size() != 2) {
             warnings_.push_back(
-                ::fmt::format("bad directory name '{}'; skipping", dir_name));
+                ::std::format("bad directory name '{}'; skipping", dir_name));
 
             return {};
         }
@@ -143,7 +143,7 @@ namespace mob::tasks {
         const auto project_name = trim_copy(dir_cs[1]);
         if (project_name.empty()) {
             warnings_.push_back(
-                ::fmt::format("bad directory name '{}', skipping", dir_name));
+                ::std::format("bad directory name '{}', skipping", dir_name));
 
             return {};
         }
@@ -162,7 +162,7 @@ namespace mob::tasks {
             // there should only be .ts files in there
             if (path.extension() != ".ts") {
                 warnings_.push_back(
-                    ::fmt::format("{} is not a .ts file", path_to_utf8(path)));
+                    ::std::format("{} is not a .ts file", path_to_utf8(path)));
 
                 continue;
             }
@@ -204,7 +204,7 @@ namespace mob::tasks {
                 if (!warned_.contains(gamebryo_ts)) {
                     warned_.insert(gamebryo_ts);
 
-                    warnings_.push_back(::fmt::format(
+                    warnings_.push_back(::std::format(
                         "{} is a gamebryo plugin but there is no '{}'; the "
                         ".qm file will be missing some translations (will "
                         "only warn once)",
@@ -223,7 +223,7 @@ namespace mob::tasks {
 
         if (!t) {
             warnings_.push_back(
-                ::fmt::format("directory '{}' was parsed as project '{}', but there's "
+                ::std::format("directory '{}' was parsed as project '{}', but there's "
                               "no task with this name",
                               dir, project));
 
