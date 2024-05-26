@@ -116,8 +116,8 @@ namespace mob {
                 if (!task)
                     return 1;
 
-                u8cout << "checking out pr " << pr.number << " " << "in "
-                       << task->name() << "\n";
+                u8cout << "checking out pr " << pr.number << " "
+                       << "in " << task->name() << "\n";
 
                 git_wrap g(task->source_path());
 
