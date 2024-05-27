@@ -90,8 +90,8 @@ aqt install-qt --outputdir "C:\Qt" windows desktop 6.7.0 win64_msvc2019_64 -m qt
 ```powershell
 mkdir C:\dev
 cd C:\dev
-bootstrap.bat
 git clone https://github.com/ModOrganizer2/mob
+./bootstrap.ps1
 mob -d C:\dev\modorganizer build
 ```
 - Once `mob` is finished, everything will be in `C:\dev\modorganizer`. Mod Organizer can be run from `install\bin\ModOrganizer.exe`. The Visual Studio solution for Mod Organizer itself is `build\modorganizer_super\modorganizer\vsbuild\organizer.sln`.
