@@ -52,11 +52,11 @@
 #### Using aqt
 - Open a terminal with administrative rights, and run
 ```powershell
-aqt install-qt --outputdir "C:\Qt" windows desktop 6.5.0 win64_msvc2019_64 -m qtwebengine qtimageformats qtpositioning qtserialport qtwebchannel qtwebsockets
+aqt install-qt --outputdir "C:\Qt" windows desktop 6.7.0 win64_msvc2019_64 -m qtwebengine qtimageformats qtpositioning qtserialport qtwebchannel qtwebsockets
 ```
 
 ### Qt - Manual installation
-- Install Qt 6.5.0 ([Installer](https://download.qt.io/official_releases/online_installers/qt-unified-windows-x64-online.exe)) and select these components:
+- Install Qt 6.7.0 ([Installer](https://download.qt.io/official_releases/online_installers/qt-unified-windows-x64-online.exe)) and select these components:
   - MSVC 2019 64-bit
   - Additional Libraries:
     - Qt WebEngine (display nexus pages)
@@ -91,6 +91,7 @@ aqt install-qt --outputdir "C:\Qt" windows desktop 6.5.0 win64_msvc2019_64 -m qt
 mkdir C:\dev
 cd C:\dev
 git clone https://github.com/ModOrganizer2/mob
+./bootstrap.ps1
 mob -d C:\dev\modorganizer build
 ```
 - Once `mob` is finished, everything will be in `C:\dev\modorganizer`. Mod Organizer can be run from `install\bin\ModOrganizer.exe`. The Visual Studio solution for Mod Organizer itself is `build\modorganizer_super\modorganizer\vsbuild\organizer.sln`.
