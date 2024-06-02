@@ -646,21 +646,10 @@ namespace mob::tasks {
         void do_build_and_install() override;
 
     private:
-        void fetch_prebuilt();
         void fetch_from_source();
-        void build_and_install_prebuilt();
         void build_and_install_from_source();
 
-        void download_from_appveyor(arch a);
-        void copy_prebuilt(arch a);
-
         msbuild create_msbuild_tool(arch a, msbuild::ops o = msbuild::build) const;
-
-        std::vector<std::shared_ptr<downloader>>
-        create_appveyor_downloaders(arch a,
-                                    downloader::ops o = downloader::download) const;
-
-        std::string prebuilt_directory_name(arch a) const;
     };
 
     class zlib : public basic_task<zlib> {
