@@ -22,7 +22,7 @@ namespace mob::tasks {
 
     bool usvfs::prebuilt()
     {
-        return conf().prebuilt().get<bool>("usvfs");
+        return false;
     }
 
     fs::path usvfs::source_path()
@@ -32,68 +32,29 @@ namespace mob::tasks {
 
     void usvfs::do_clean(clean c)
     {
-        if (prebuilt()) {
-            if (is_set(c, clean::redownload)) {
-                // the `downloader` class knows how to delete its own files, so
-                // create the same downloaders and ask them to clean
+        // delete the whole directory
+        if (is_set(c, clean::reclone)) {
+            git_wrap::delete_directory(cx(), source_path());
 
-                const auto x86_dls =
-                    create_appveyor_downloaders(arch::x86, downloader::clean);
-
-                const auto x64_dls =
-                    create_appveyor_downloaders(arch::x64, downloader::clean);
-
-                for (auto dl : x86_dls)
-                    run_tool(*dl);
-
-                for (auto dl : x64_dls)
-                    run_tool(*dl);
-            }
+            // nothing more to do
+            return;
         }
-        else {
-            // delete the whole directory
-            if (is_set(c, clean::reclone)) {
-                git_wrap::delete_directory(cx(), source_path());
 
-                // nothing more to do
-                return;
-            }
-
-            if (is_set(c, clean::rebuild)) {
-                // msbuild clean
-                run_tool(create_msbuild_tool(arch::x86, msbuild::clean));
-                run_tool(create_msbuild_tool(arch::x64, msbuild::clean));
-            }
+        if (is_set(c, clean::rebuild)) {
+            // msbuild clean
+            run_tool(create_msbuild_tool(arch::x86, msbuild::clean));
+            run_tool(create_msbuild_tool(arch::x64, msbuild::clean));
         }
     }
 
     void usvfs::do_fetch()
     {
-        if (prebuilt())
-            fetch_prebuilt();
-        else
-            fetch_from_source();
+        fetch_from_source();
     }
 
     void usvfs::do_build_and_install()
     {
-        if (prebuilt())
-            build_and_install_prebuilt();
-        else
-            build_and_install_from_source();
-    }
-
-    void usvfs::fetch_prebuilt()
-    {
-        fetch_from_source();
-        download_from_appveyor(arch::x64);
-        download_from_appveyor(arch::x86);
-    }
-
-    void usvfs::build_and_install_prebuilt()
-    {
-        copy_prebuilt(arch::x86);
-        copy_prebuilt(arch::x64);
+        build_and_install_from_source();
     }
 
     void usvfs::fetch_from_source()
@@ -108,41 +69,6 @@ namespace mob::tasks {
     {
         run_tool(create_msbuild_tool(arch::x86));
         run_tool(create_msbuild_tool(arch::x64));
-    }
-
-    void usvfs::download_from_appveyor(arch a)
-    {
-        // create all downloaders, run them in parallel
-
-        parallel_functions v;
-
-        for (auto dl : create_appveyor_downloaders(a))
-            v.emplace_back("usvfs", [this, dl] {
-                run_tool(*dl);
-            });
-
-        parallel(v);
-    }
-
-    void usvfs::copy_prebuilt(arch a)
-    {
-        const auto path = conf().path();
-        const auto src  = path.build() / prebuilt_directory_name(a);
-
-        // dlls and exes to install/bin/
-        op::copy_glob_to_dir_if_better(cx(), src / "*.dll", path.install_bin(),
-                                       op::copy_files);
-
-        op::copy_glob_to_dir_if_better(cx(), src / "*.exe", path.install_bin(),
-                                       op::copy_files);
-
-        // pdbs
-        op::copy_glob_to_dir_if_better(cx(), src / "*.pdb", path.install_pdbs(),
-                                       op::copy_files);
-
-        // libs
-        op::copy_glob_to_dir_if_better(cx(), src / "*.lib", path.install_libs(),
-                                       op::copy_files);
     }
 
     msbuild usvfs::create_msbuild_tool(arch a, msbuild::ops o) const
@@ -169,66 +95,6 @@ namespace mob::tasks {
                 .env(env::vs(a)
                          .prepend_path(python::build_path())
                          .set("BOOST_PATH", path_to_utf8(boost::source_path()))));
-    }
-
-    std::vector<std::shared_ptr<downloader>>
-    usvfs::create_appveyor_downloaders(arch a, downloader::ops o) const
-    {
-        std::string arch_s;
-
-        switch (a) {
-        case arch::x86:
-            arch_s = "x86";
-            break;
-
-        case arch::x64:
-            arch_s = "x64";
-            break;
-
-        case arch::dont_care:
-        default:
-            cx().bail_out(context::generic, "bad arch");
-        }
-
-        // returns an appveyor downloader for the given filename that outputs into
-        // build/usvfs_bin[_32]/
-        auto make_dl = [&](std::string filename) {
-            const auto u          = make_appveyor_artifact_url(a, "usvfs", filename);
-            const std::string dir = prebuilt_directory_name(a);
-
-            auto dl = std::make_shared<downloader>(o);
-
-            dl->url(u);
-            dl->file(conf().path().build() / dir / u.filename());
-
-            return dl;
-        };
-
-        std::vector<std::shared_ptr<downloader>> v;
-
-        // five downloaders for the pdbs, dlls, libs and exes
-        v.push_back(make_dl("lib/usvfs_" + arch_s + ".pdb"));
-        v.push_back(make_dl("lib/usvfs_" + arch_s + ".dll"));
-        v.push_back(make_dl("lib/usvfs_" + arch_s + ".lib"));
-        v.push_back(make_dl("bin/usvfs_proxy_" + arch_s + ".exe"));
-        v.push_back(make_dl("bin/usvfs_proxy_" + arch_s + ".pdb"));
-
-        return v;
-    }
-
-    std::string usvfs::prebuilt_directory_name(arch a) const
-    {
-        switch (a) {
-        case arch::x86:
-            return "usvfs_bin_32";
-
-        case arch::x64:
-            return "usvfs_bin";
-
-        case arch::dont_care:
-        default:
-            cx().bail_out(context::generic, "bad arch");
-        }
     }
 
 }  // namespace mob::tasks
