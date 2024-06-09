@@ -97,6 +97,8 @@ namespace mob::tasks {
         static std::string version();
         static bool prebuilt();
         static fs::path source_path();
+        static fs::path build_path(arch arch                 = arch::x64,
+                                   const std::string& config = "Release");
 
     protected:
         void do_clean(clean c) override;

@@ -220,7 +220,7 @@ namespace mob::tasks {
                              .def("SEVENZ_ROOT", sevenz::source_path())
                              .def("LIBBSARCH_ROOT", libbsarch::source_path())
                              .def("BOOST_DI_ROOT", boost_di::source_path())
-                             .def("GTEST_ROOT", gtest::source_path())
+                             .def("GTEST_ROOT", gtest::build_path())
                              .def("OPENSSL_ROOT_DIR", openssl::source_path())
                              .root(root));
     }
