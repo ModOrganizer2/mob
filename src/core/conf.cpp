@@ -184,6 +184,40 @@ namespace mob::details {
         g_tasks[task_name][key] = std::move(value);
     }
 
+    // check if the two given string are equals case-insensitive
+    //
+    bool case_insensitive_equals(std::string_view lhs, std::string_view rhs)
+    {
+        // _strcmpi does not have a n-overload, and since string_view is not
+        // necessarily null-terminated, _strmcpi cannot be safely used
+        return std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs),
+                          std::end(rhs), [](auto&& c1, auto&& c2) {
+                              return ::tolower(c1) == ::tolower(c2);
+                          });
+    }
+
+    // read a CMake constant from the configuration
+    //
+    template <typename T>
+    T parse_cmake_value(std::string_view section, std::string_view key,
+                        std::string_view value,
+                        std::unordered_map<T, std::string_view> const& values)
+    {
+        for (const auto& [value_c, value_s] : values) {
+            if (case_insensitive_equals(value_s, value)) {
+                return value_c;
+            }
+        }
+
+        // build a string containing allowed value for logging
+        std::vector<std::string_view> values_s;
+        for (const auto& [value_c, value_s] : values) {
+            values_s.push_back(value_s);
+        }
+        gcx().bail_out(context::conf, "bad value '{}' for {}/{} (expected one of {})",
+                       value, section, key, join(values_s, ", ", std::string{}));
+    }
+
 }  // namespace mob::details
 
 namespace mob {
@@ -666,6 +700,34 @@ namespace mob {
         return details::g_dry;
     }
 
+    // use appropriate case for the below constants since we will be using them in
+    // to_string, although most of cmake and msbuild is case-insensitive so it will
+    // not matter much in the end
+
+    static std::unordered_map<conf_cmake::constant, std::string_view> constant_values{
+        {conf_cmake::always, "ALWAYS"},
+        {conf_cmake::lazy, "LAZY"},
+        {conf_cmake::never, "NEVER"}};
+
+    std::string conf_cmake::to_string(constant c)
+    {
+        return std::string{constant_values.at(c)};
+    }
+
+    conf_cmake::conf_cmake() : conf_section("cmake") {}
+
+    conf_cmake::constant conf_cmake::install_message() const
+    {
+        return details::parse_cmake_value(
+            name(), "install_message", details::get_string(name(), "install_message"),
+            constant_values);
+    }
+
+    std::string conf_cmake::host() const
+    {
+        return details::get_string(name(), "host");
+    }
+
     conf_task::conf_task(std::vector<std::string> names) : names_(std::move(names)) {}
 
     std::string conf_task::get(std::string_view key) const
@@ -678,45 +740,16 @@ namespace mob {
         return details::get_bool_for_task(names_, key);
     }
 
-    bool conf_cmake::cmake_constant::is_equivalent(std::string_view other) const
+    mob::config conf_task::configuration() const
     {
-        // _strcmpi does not have a n-overload, and since string_view is not
-        // necessarily null-terminated, _strmcpi cannot be safely used
-        return std::equal(std::begin(value_), std::end(value_), std::begin(other),
-                          std::end(other), [](auto&& c1, auto&& c2) {
-                              return ::tolower(c1) == ::tolower(c2);
-                          });
-    }
-
-    conf_cmake::conf_cmake() : conf_section("cmake") {}
-
-    const conf_cmake::cmake_constant conf_cmake::ALWAYS{"always"};
-    const conf_cmake::cmake_constant conf_cmake::LAZY{"lazy"};
-    const conf_cmake::cmake_constant conf_cmake::NEVER{"never"};
-
-    conf_cmake::cmake_constant conf_cmake::install_message() const
-    {
-        return read_cmake_constant("install_message", {ALWAYS, LAZY, NEVER});
-    }
-
-    std::string conf_cmake::host() const
-    {
-        return details::get_string(name(), "host");
-    }
-
-    conf_cmake::cmake_constant
-    conf_cmake::read_cmake_constant(std::string_view key,
-                                    std::vector<cmake_constant> const& allowed) const
-    {
-        const auto value = details::get_string(name(), key);
-        for (const auto& constant : allowed) {
-            if (constant.is_equivalent(value)) {
-                return constant;
-            }
-        }
-
-        gcx().bail_out(context::conf, "bad value '{}' for {}/{} (expected one of {})",
-                       value, name(), key, join(allowed, ", ", std::string{}));
+        static std::unordered_map<mob::config, std::string_view> configuration_values{
+            {mob::config::release, "Release"},
+            {mob::config::debug, "Debug"},
+            {mob::config::relwithdebinfo, "RelWithDebInfo"}};
+        return details::parse_cmake_value(
+            names_[0], "configuration",
+            details::get_string_for_task(names_, "configuration"),
+            configuration_values);
     }
 
     conf_tools::conf_tools() : conf_section("tools") {}

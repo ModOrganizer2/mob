@@ -46,6 +46,8 @@ namespace mob {
         def = x64
     };
 
+    enum class config { debug, relwithdebinfo, release };
+
     class url;
 
     // returns a url for a prebuilt binary having the given filename; prebuilts are

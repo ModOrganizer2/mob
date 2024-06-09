@@ -68,7 +68,7 @@ aqt install-qt --outputdir "C:\Qt" windows desktop 6.7.0 win64_msvc2019_64 -m qt
   - Optional:
     - Qt Source Files
     - Qt Debug Files
-  
+
 ### Visual Studio
 - Install Visual Studio 2022 ([Installer](https://visualstudio.microsoft.com/thank-you-downloading-visual-studio/?sku=Community&channel=Release&version=VS2022&source=VSLandingPage&cid=2030&passive=false))
   - Desktop development with C++
@@ -141,9 +141,10 @@ Inside the INI file are `[sections]` and `key = value` pairs. The `[task]` secti
 ### `[task]`
 Options for individual tasks. Can be `[task_name:task]`, where `task_name` is the name of a task (see `mob list`) , `super` for all MO tasks or a glob like `installer_*`.
 
-| Option      | Type   | Description |
-| ---         | ---    | ---         |
-| `enabled`   | bool   | Whether this task is enabled. Disabled tasks are never built. When specifying task names with `mob build task1 task2...`, all tasks except those given are turned off. |
+| Option          | Type   | Description |
+| ---             | ---    | ---         |
+| `enabled`       | bool   | Whether this task is enabled. Disabled tasks are never built. When specifying task names with `mob build task1 task2...`, all tasks except those given are turned off. |
+| `configuration` | enum   | Which configuration to build, should be one of Debug, Release or RelWithDebInfo with RelWithDebInfo being the default.|
 
 #### Common git options
 Unless otherwise stated, applies to any task that is a git repo.

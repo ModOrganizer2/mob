@@ -129,7 +129,7 @@ namespace mob {
                      .binary(binary())
                      .arg("-DCMAKE_BUILD_TYPE=Release")
                      .arg("-DCMAKE_INSTALL_MESSAGE=" +
-                          conf().cmake().install_message().value())
+                          conf_cmake::to_string(conf().cmake().install_message()))
                      .arg("--log-level=ERROR")
                      .arg("--no-warn-unused-cli");
 

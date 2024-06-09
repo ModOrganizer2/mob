@@ -1,6 +1,8 @@
 #pragma once
 
+#include "../core/conf.h"
 #include "../core/env.h"
+#include "cmake.h"
 
 namespace mob {
 
@@ -14,11 +16,17 @@ namespace mob {
         //
         static fs::path binary();
 
-        enum flags_t { noflags = 0x00, single_job = 0x01, allow_failure = 0x02 };
+        // retrieve the name of the configuration for the given config
+        //
+        static std::string configuration_name(config c);
+
+        enum class flags_t { noflags = 0x00, single_job = 0x01, allow_failure = 0x02 };
+        using enum flags_t;
 
         // what run() should do
         //
-        enum ops { build = 1, clean };
+        enum class ops { build = 1, clean };
+        using enum ops;
 
         msbuild(ops o = build);
 
@@ -36,7 +44,7 @@ namespace mob {
 
         // sets "-property:Configuration=s"
         //
-        msbuild& config(const std::string& s);
+        msbuild& configuration(config config);
 
         // sets "-property:Platform=s"; if not set, uses architecture() to figure
         // it out
@@ -69,7 +77,7 @@ namespace mob {
         fs::path sln_;
         std::vector<std::string> targets_;
         std::vector<std::string> props_;
-        std::string config_;
+        config config_;
         std::string platform_;
         arch arch_;
         flags_t flags_;

@@ -5,8 +5,7 @@ namespace mob::tasks {
 
     namespace {
 
-        cmake create_cmake_tool(arch a, const std::string& config,
-                                cmake::ops o = cmake::generate)
+        cmake create_cmake_tool(arch a, config config, cmake::ops o = cmake::generate)
         {
             return std::move(cmake(o)
                                  .generator(cmake::vs)
@@ -17,12 +16,12 @@ namespace mob::tasks {
                                  .root(gtest::source_path()));
         }
 
-        msbuild create_msbuild_tool(arch a, std::string const& config,
+        msbuild create_msbuild_tool(arch a, config config,
                                     msbuild::ops o = msbuild::build)
         {
             const fs::path build_path = create_cmake_tool(a, config).build_path();
 
-            return std::move(msbuild(o).architecture(a).config(config).solution(
+            return std::move(msbuild(o).architecture(a).configuration(config).solution(
                 build_path / "INSTALL.vcxproj"));
         }
 
@@ -45,9 +44,10 @@ namespace mob::tasks {
         return conf().path().build() / "googletest";
     }
 
-    fs::path gtest::build_path(arch a, const std::string& c)
+    fs::path gtest::build_path(arch a, config c)
     {
-        return source_path() / "build" / (a == arch::x64 ? "x64" : "Win32") / c;
+        return source_path() / "build" / (a == arch::x64 ? "x64" : "Win32") /
+               msbuild::configuration_name(c);
     }
 
     void gtest::do_clean(clean c)
@@ -58,15 +58,15 @@ namespace mob::tasks {
         }
 
         if (is_set(c, clean::reconfigure)) {
-            run_tool(create_cmake_tool(arch::x86, "Release", cmake::clean));
-            run_tool(create_cmake_tool(arch::x64, "Release", cmake::clean));
+            run_tool(create_cmake_tool(arch::x86, config::release, cmake::clean));
+            run_tool(create_cmake_tool(arch::x64, config::release, cmake::clean));
         }
 
         if (is_set(c, clean::rebuild)) {
-            run_tool(create_msbuild_tool(arch::x86, "Release", msbuild::clean));
-            run_tool(create_msbuild_tool(arch::x86, "Debug", msbuild::clean));
-            run_tool(create_msbuild_tool(arch::x64, "Release", msbuild::clean));
-            run_tool(create_msbuild_tool(arch::x64, "Debug", msbuild::clean));
+            run_tool(create_msbuild_tool(arch::x86, config::release, msbuild::clean));
+            run_tool(create_msbuild_tool(arch::x86, config::debug, msbuild::clean));
+            run_tool(create_msbuild_tool(arch::x64, config::release, msbuild::clean));
+            run_tool(create_msbuild_tool(arch::x64, config::debug, msbuild::clean));
         }
     }
 
@@ -85,19 +85,19 @@ namespace mob::tasks {
 
         parallel({{"gtest64",
                    [&] {
-                       run_tool(create_cmake_tool(arch::x64, "Release"));
-                       run_tool(create_msbuild_tool(arch::x64, "Release"));
+                       run_tool(create_cmake_tool(arch::x64, config::release));
+                       run_tool(create_msbuild_tool(arch::x64, config::release));
 
-                       run_tool(create_cmake_tool(arch::x64, "Debug"));
-                       run_tool(create_msbuild_tool(arch::x64, "Debug"));
+                       run_tool(create_cmake_tool(arch::x64, config::debug));
+                       run_tool(create_msbuild_tool(arch::x64, config::debug));
                    }},
 
                   {"gtest32", [&] {
-                       run_tool(create_cmake_tool(arch::x86, "Release"));
-                       run_tool(create_msbuild_tool(arch::x86, "Release"));
+                       run_tool(create_cmake_tool(arch::x86, config::release));
+                       run_tool(create_msbuild_tool(arch::x86, config::release));
 
-                       run_tool(create_cmake_tool(arch::x86, "Debug"));
-                       run_tool(create_msbuild_tool(arch::x86, "Debug"));
+                       run_tool(create_cmake_tool(arch::x86, config::debug));
+                       run_tool(create_msbuild_tool(arch::x86, config::debug));
                    }}});
     }
 
