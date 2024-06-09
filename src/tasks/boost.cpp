@@ -231,8 +231,9 @@ namespace mob::tasks {
         // static link, static runtime, x64
         do_b2(components, "static", "static", arch::x64);
 
-        // static link, static runtime, x86, required by usvfs 32-bit
+        // static link, static/shared runtime, x86, required by usvfs 32-bit
         do_b2(components, "static", "static", arch::x86);
+        do_b2(components, "static", "shared", arch::x86);
 
         // static link, shared runtime, x64
         do_b2(components, "static", "shared", arch::x64);
