@@ -218,23 +218,27 @@ namespace mob::tasks {
             bootstrap();
         }
 
-        // some libraries only need some variants, avoid building the unnecessary
-        // ones
+        // we do not need all variants of all components but since people should
+        // usually be using the pre-built, we can build everything without losing too
+        // much time and it is much easier to deal when mixing
+        //
+        // note: filesystem is only required by USVFS I think, so maybe think about
+        // removing it if we switch to std::filesystem in USVFS
+        //
+        clipp::arg_list components{"thread", "date_time", "filesystem", "locale",
+                                   "program_options"};
 
         // static link, static runtime, x64
-        do_b2({"thread", "date_time", "filesystem", "locale", "program_options"},
-              "static", "static", arch::x64);
+        do_b2(components, "static", "static", arch::x64);
 
         // static link, static runtime, x86, required by usvfs 32-bit
-        do_b2({"thread", "date_time", "filesystem", "locale"}, "static", "static",
-              arch::x86);
+        do_b2(components, "static", "static", arch::x86);
 
         // static link, shared runtime, x64
-        do_b2({"thread", "date_time", "locale", "program_options"}, "static", "shared",
-              arch::x64);
+        do_b2(components, "static", "shared", arch::x64);
 
         // shared link, shared runtime, x64
-        do_b2({"thread", "date_time", "atomic"}, "shared", "shared", arch::x64);
+        do_b2(components, "shared", "shared", arch::x64);
     }
 
     void boost::do_b2(const std::vector<std::string>& components,
