@@ -211,7 +211,9 @@ namespace mob {
         conf_paths();
 
 #define VALUE(NAME)                                                                    \
-    fs::path NAME() const {return get(#NAME);                                          \
+    fs::path NAME() const                                                              \
+    {                                                                                  \
+        return get(#NAME);                                                             \
     }
 
         VALUE(third_party);
