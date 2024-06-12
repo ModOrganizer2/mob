@@ -703,6 +703,10 @@ namespace mob {
         pip& version(const std::string& s);
         pip& file(const fs::path& p);
 
+        // do not install dependencies for the package
+        //
+        pip& no_dependencies();
+
     protected:
         // runs pip
         //
@@ -716,6 +720,9 @@ namespace mob {
         std::string package_;
         std::string version_;
         fs::path file_;
+
+        // no depndencies
+        bool no_deps_;
 
         // runs `-m ensurepip`, then upgrades pip
         //
