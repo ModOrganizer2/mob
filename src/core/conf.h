@@ -11,6 +11,18 @@ namespace mob::details {
     //
     std::string get_string(std::string_view section, std::string_view key);
 
+    // convert a string to the given type
+    template <class T>
+    T string_to(std::string_view value);
+
+    config string_to_config(std::string_view value);
+
+    template <>
+    inline config string_to<config>(std::string_view value)
+    {
+        return string_to_config(value);
+    }
+
     // calls get_string(), converts to bool
     //
     bool get_bool(std::string_view section, std::string_view key);
@@ -50,7 +62,14 @@ namespace mob {
     public:
         DefaultType get(std::string_view key) const
         {
-            return details::get_string(name_, key);
+            const auto value = details::get_string(name_, key);
+
+            if constexpr (std::is_convertible_v<std::string, DefaultType>) {
+                return value;
+            }
+            else {
+                return details::string_to<DefaultType>(value);
+            }
         }
 
         // undefined
@@ -197,6 +216,13 @@ namespace mob {
         conf_versions();
     };
 
+    // options in [build-types]
+    //
+    class conf_build_types : public conf_section<config> {
+    public:
+        conf_build_types();
+    };
+
     // options in [prebuilt]
     //
     class conf_prebuilt : public conf_section<std::string> {
@@ -211,9 +237,7 @@ namespace mob {
         conf_paths();
 
 #define VALUE(NAME)                                                                    \
-    fs::path NAME() const                                                              \
-    {                                                                                  \
-        return get(#NAME);                                                             \
+    fs::path NAME() const {return get(#NAME);                                          \
     }
 
         VALUE(third_party);
@@ -261,6 +285,7 @@ namespace mob {
         conf_transifex transifex();
         conf_prebuilt prebuilt();
         conf_versions version();
+        conf_build_types build_types();
         conf_paths path();
 
         // opens the log file, creates the directory if needed

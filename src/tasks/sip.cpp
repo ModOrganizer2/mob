@@ -62,14 +62,14 @@ namespace mob::tasks {
         return conf().path().build() / ("sip-" + version());
     }
 
-    fs::path sip::sip_module_exe()
+    process sip::sip_module_process()
     {
-        return python::scripts_path() / "sip-module.exe";
+        return process().binary(python::scripts_path() / "sip-module.exe");
     }
 
-    fs::path sip::sip_install_exe()
+    process sip::sip_install_process()
     {
-        return python::scripts_path() / "sip-install.exe";
+        return process().binary(python::scripts_path() / "sip-install.exe");
     }
 
     fs::path sip::module_source_path()
@@ -140,7 +140,15 @@ namespace mob::tasks {
 
     void sip::build()
     {
-        run_tool(pip(pip::install).file(source_path()));
+        if (python::build_type() == config::debug) {
+            // if Python is build in debug mode, fall back to old setup.py because pip
+            // install seems to generated broken script wrapper that point to a
+            // non-existing python.exe instead of python_d.exe
+            run_tool(mob::python().root(source_path()).arg("setup.py").arg("install"));
+        }
+        else {
+            run_tool(pip(pip::install).file(source_path()));
+        }
     }
 
     void sip::convert_script_file_to_acp(const std::string& filename)
@@ -184,8 +192,7 @@ namespace mob::tasks {
     {
         // generate sip.h, will be copied to python's include directory, used
         // by plugin_python
-        run_tool(process_runner(process()
-                                    .binary(sip_module_exe())
+        run_tool(process_runner(sip_module_process()
                                     .chcp(65001)
                                     .stdout_encoding(encodings::acp)
                                     .stderr_encoding(encodings::acp)

@@ -86,6 +86,11 @@ namespace mob::tasks {
         return source_path() / "build";
     }
 
+    config pyqt::build_type()
+    {
+        return conf().build_types().get("pyqt");
+    }
+
     std::string pyqt::pyqt_sip_module_name()
     {
         return "PyQt6.sip";
@@ -210,29 +215,28 @@ namespace mob::tasks {
             // here instead
             op::delete_directory(cx(), source_path() / "build", op::optional);
 
+            auto p = sip::sip_install_process()
+                         .arg("--confirm-license")
+                         .arg("--verbose", process::log_trace)
+                         .arg("--pep484-pyi")
+                         .arg("--link-full-dll")
+                         .arg("--build-dir", build_path())
+                         .cwd(source_path())
+                         .env(pyqt_env);
+
+            if (build_type() == config::debug) {
+                p.arg("--debug");
+            }
+
             // build modules
-            run_tool(process_runner(process()
-                                        .binary(sip::sip_install_exe())
-                                        .arg("--confirm-license")
-                                        .arg("--verbose", process::log_trace)
-                                        .arg("--pep484-pyi")
-                                        .arg("--link-full-dll")
-                                        .arg("--build-dir", build_path())
-                                        //			.arg("--enable",
-                                        //"pylupdate")  // these are not in modules so
-                                        // they .arg("--enable", "pyrcc")      // don't
-                                        // get copied below
-                                        // .args(zip(repeat("--enable"), modules()))
-                                        .cwd(source_path())
-                                        .env(pyqt_env)));
+            run_tool(process_runner(p));
 
             // done, create the bypass file
             built_bypass.create();
         }
 
         // generate the PyQt6_sip-XX.tar.gz file
-        run_tool(process_runner(process()
-                                    .binary(sip::sip_module_exe())
+        run_tool(process_runner(sip::sip_module_process()
                                     .arg("--sdist")
                                     .arg(pyqt_sip_module_name())
                                     .cwd(conf().path().cache())
@@ -267,13 +271,17 @@ namespace mob::tasks {
         // python-XX/PCBuild/amd64, those are needed by PyQt6 when building several
         // projects
 
-        op::copy_file_to_dir_if_better(cx(), qt::bin_path() / "Qt6Core.dll",
-                                       python::build_path(),
-                                       op::unsafe);  // source file is outside prefix
+        const std::vector<std::string> dlls{"Qt6Core", "Qt6Xml"};
 
-        op::copy_file_to_dir_if_better(cx(), qt::bin_path() / "Qt6Xml.dll",
-                                       python::build_path(),
-                                       op::unsafe);  // source file is outside prefix
+        for (auto dll : dlls) {
+            if (build_type() == config::debug) {
+                dll += "d";
+            }
+            dll += ".dll";
+            op::copy_file_to_dir_if_better(
+                cx(), qt::bin_path() / dll, python::build_path(),
+                op::unsafe);  // source file is outside prefix
+        }
 
         // installation of PyQt6 python files (.pyd, etc.) is done
         // by the python plugin directly

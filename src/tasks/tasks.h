@@ -124,6 +124,7 @@ namespace mob::tasks {
         libbsarch();
 
         static std::string version();
+        static config build_type();
         static bool prebuilt();
         static fs::path source_path();
 
@@ -362,6 +363,7 @@ namespace mob::tasks {
 
         static fs::path source_path();
         static fs::path build_path();
+        static config build_type();
 
         // "PyQt5.sip", used both in pyqt and sip
         //
@@ -420,6 +422,10 @@ namespace mob::tasks {
         // build/python-XX/Lib/site-packages
         //
         static fs::path site_packages_path();
+
+        // configuration to build
+        //
+        static config build_type();
 
     protected:
         void do_clean(clean c) override;
@@ -480,8 +486,8 @@ namespace mob::tasks {
         static bool prebuilt();
 
         static fs::path source_path();
-        static fs::path sip_module_exe();
-        static fs::path sip_install_exe();
+        static process sip_module_process();
+        static process sip_install_process();
         static fs::path module_source_path();
 
     protected:

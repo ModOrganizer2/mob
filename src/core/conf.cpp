@@ -14,6 +14,11 @@ namespace mob::details {
     using key_value_map = std::map<std::string, std::string, std::less<>>;
     using section_map   = std::map<std::string, key_value_map, std::less<>>;
 
+    static std::unordered_map<mob::config, std::string_view> s_configuration_values{
+        {mob::config::release, "Release"},
+        {mob::config::debug, "Debug"},
+        {mob::config::relwithdebinfo, "RelWithDebInfo"}};
+
     // holds all the options not related to tasks (global, tools, paths, etc.)
     static section_map g_conf;
 
@@ -26,6 +31,18 @@ namespace mob::details {
     static int g_output_log_level = 3;
     static int g_file_log_level   = 5;
     static bool g_dry             = false;
+
+    // check if the two given string are equals case-insensitive
+    //
+    bool case_insensitive_equals(std::string_view lhs, std::string_view rhs)
+    {
+        // _strcmpi does not have a n-overload, and since string_view is not
+        // necessarily null-terminated, _strmcpi cannot be safely used
+        return std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs),
+                          std::end(rhs), [](auto&& c1, auto&& c2) {
+                              return ::tolower(c1) == ::tolower(c2);
+                          });
+    }
 
     bool bool_from_string(std::string_view s)
     {
@@ -83,6 +100,17 @@ namespace mob::details {
             gcx().bail_out(context::conf, "no key '{}' [{}]", key, section);
 
         kitor->second = value;
+    }
+
+    config string_to_config(std::string_view value)
+    {
+        for (const auto& [c, v] : s_configuration_values) {
+            if (case_insensitive_equals(value, v)) {
+                return c;
+            }
+        }
+
+        gcx().bail_out(context::conf, "invalid configuration '{}'", value);
     }
 
     // sets the given option, adds it if it doesn't exist; used when setting options
@@ -182,18 +210,6 @@ namespace mob::details {
                              std::string value)
     {
         g_tasks[task_name][key] = std::move(value);
-    }
-
-    // check if the two given string are equals case-insensitive
-    //
-    bool case_insensitive_equals(std::string_view lhs, std::string_view rhs)
-    {
-        // _strcmpi does not have a n-overload, and since string_view is not
-        // necessarily null-terminated, _strmcpi cannot be safely used
-        return std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs),
-                          std::end(rhs), [](auto&& c1, auto&& c2) {
-                              return ::tolower(c1) == ::tolower(c2);
-                          });
     }
 
     // read a CMake constant from the configuration
@@ -678,6 +694,11 @@ namespace mob {
         return {};
     }
 
+    conf_build_types conf::build_types()
+    {
+        return {};
+    }
+
     conf_paths conf::path()
     {
         return {};
@@ -742,14 +763,10 @@ namespace mob {
 
     mob::config conf_task::configuration() const
     {
-        static std::unordered_map<mob::config, std::string_view> configuration_values{
-            {mob::config::release, "Release"},
-            {mob::config::debug, "Debug"},
-            {mob::config::relwithdebinfo, "RelWithDebInfo"}};
         return details::parse_cmake_value(
             names_[0], "configuration",
             details::get_string_for_task(names_, "configuration"),
-            configuration_values);
+            details::s_configuration_values);
     }
 
     conf_tools::conf_tools() : conf_section("tools") {}
@@ -757,6 +774,8 @@ namespace mob {
     conf_transifex::conf_transifex() : conf_section("transifex") {}
 
     conf_versions::conf_versions() : conf_section("versions") {}
+
+    conf_build_types::conf_build_types() : conf_section("build-types") {}
 
     conf_prebuilt::conf_prebuilt() : conf_section("prebuilt") {}
 
