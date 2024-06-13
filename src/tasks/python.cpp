@@ -30,7 +30,9 @@ namespace mob::tasks {
 
         url prebuilt_url()
         {
-            return make_prebuilt_url("python-prebuilt-" + version_without_v() + ".7z");
+            return make_prebuilt_url(
+                "python-prebuilt-" + version_without_v() +
+                (python::build_type() == config::debug ? "-debug" : "") + ".7z");
         }
 
         fs::path solution_file()

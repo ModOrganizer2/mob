@@ -47,7 +47,9 @@ namespace mob::tasks {
 
         url prebuilt_url()
         {
-            return make_prebuilt_url("PyQt6_gpl-prebuilt-" + pyqt::version() + ".7z");
+            return make_prebuilt_url(
+                "PyQt6_gpl-prebuilt-" + pyqt::version() +
+                (pyqt::build_type() == config::debug ? "-debug" : "") + ".7z");
         }
 
         // file created by sip-module.exe
