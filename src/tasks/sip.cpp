@@ -144,6 +144,7 @@ namespace mob::tasks {
             // if Python is build in debug mode, fall back to old setup.py because pip
             // install seems to generated broken script wrapper that point to a
             // non-existing python.exe instead of python_d.exe
+            run_tool(pip(pip::install).package("setuptools"));
             run_tool(mob::python().root(source_path()).arg("setup.py").arg("install"));
         }
         else {
