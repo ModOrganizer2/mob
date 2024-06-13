@@ -244,7 +244,9 @@ namespace mob::tasks {
                          .env(pyqt_env);
 
             if (build_type() == config::debug) {
-                p.arg("--debug");
+                p.arg("--debug")
+                    // the distinfo generation currently fails with debug mode
+                    .arg("--no-distinfo");
             }
 
             // build modules
@@ -272,9 +274,30 @@ namespace mob::tasks {
             cx().trace(context::bypass, "pyqt already installed");
         }
         else {
-            // run `pip install` on the generated PyQt6_sip-XX.tar.gz file
-            run_tool(
-                pip(pip::install).file(conf().path().cache() / sip_install_file()));
+            if (python::build_type() == config::debug) {
+
+                const auto pyqt_sip_folder = source_path() / "PyQt6_sip" /
+                                             ("pyqt6_sip-" + sip::version_for_pyqt());
+
+                // in debug, we need to do stuff manually because pip does not work
+                // as expected
+                run_tool(extractor()
+                             .file(conf().path().cache() / sip_install_file())
+                             .output(pyqt_sip_folder.parent_path()));
+
+                run_tool(mob::python()
+                             .root(pyqt_sip_folder)
+                             .arg("setup.py")
+                             .arg("build")
+                             .arg("--debug"));
+
+                run_tool(pip(pip::install).file(pyqt_sip_folder));
+            }
+            else {
+                // run `pip install` on the generated PyQt6_sip-XX.tar.gz file
+                run_tool(
+                    pip(pip::install).file(conf().path().cache() / sip_install_file()));
+            }
 
             // done, create the bypass file
             installed_bypass.create();
