@@ -62,14 +62,14 @@ namespace mob::tasks {
         return conf().path().build() / ("sip-" + version());
     }
 
-    process sip::sip_module_process()
+    fs::path sip::sip_module_exe()
     {
-        return process().binary(python::scripts_path() / "sip-module.exe");
+        return python::scripts_path() / "sip-module.exe";
     }
 
-    process sip::sip_install_process()
+    fs::path sip::sip_install_exe()
     {
-        return process().binary(python::scripts_path() / "sip-install.exe");
+        return python::scripts_path() / "sip-install.exe";
     }
 
     fs::path sip::module_source_path()
@@ -193,7 +193,8 @@ namespace mob::tasks {
     {
         // generate sip.h, will be copied to python's include directory, used
         // by plugin_python
-        run_tool(process_runner(sip_module_process()
+        run_tool(process_runner(process()
+                                    .binary(sip_module_exe())
                                     .chcp(65001)
                                     .stdout_encoding(encodings::acp)
                                     .stderr_encoding(encodings::acp)

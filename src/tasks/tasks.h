@@ -486,8 +486,8 @@ namespace mob::tasks {
         static bool prebuilt();
 
         static fs::path source_path();
-        static process sip_module_process();
-        static process sip_install_process();
+        static fs::path sip_module_exe();
+        static fs::path sip_install_exe();
         static fs::path module_source_path();
 
     protected:

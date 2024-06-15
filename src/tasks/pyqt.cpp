@@ -234,30 +234,29 @@ namespace mob::tasks {
             // here instead
             op::delete_directory(cx(), source_path() / "build", op::optional);
 
-            auto p = sip::sip_install_process()
-                         .arg("--confirm-license")
-                         .arg("--verbose", process::log_trace)
-                         .arg("--pep484-pyi")
-                         .arg("--link-full-dll")
-                         .arg("--build-dir", build_path())
-                         .cwd(source_path())
-                         .env(pyqt_env);
-
-            if (build_type() == config::debug) {
-                p.arg("--debug")
-                    // the distinfo generation currently fails with debug mode
-                    .arg("--no-distinfo");
-            }
-
             // build modules
-            run_tool(process_runner(p));
+            run_tool(process_runner(process()
+                                        .binary(sip::sip_install_exe())
+                                        .arg("--confirm-license")
+                                        .arg("--verbose", process::log_trace)
+                                        .arg("--pep484-pyi")
+                                        .arg("--link-full-dll")
+                                        .arg("--build-dir", build_path())
+                                        //			.arg("--enable",
+                                        //"pylupdate")  // these are not in modules so
+                                        // they .arg("--enable", "pyrcc")      // don't
+                                        // get copied below
+                                        // .args(zip(repeat("--enable"), modules()))
+                                        .cwd(source_path())
+                                        .env(pyqt_env)));
 
             // done, create the bypass file
             built_bypass.create();
         }
 
         // generate the PyQt6_sip-XX.tar.gz file
-        run_tool(process_runner(sip::sip_module_process()
+        run_tool(process_runner(process()
+                                    .binary(sip::sip_module_exe())
                                     .arg("--sdist")
                                     .arg(pyqt_sip_module_name())
                                     .cwd(conf().path().cache())
