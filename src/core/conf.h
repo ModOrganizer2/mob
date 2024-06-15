@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../utility.h"
+
 // these shouldn't be called directly, they're used by some of the template
 // below
 //
@@ -8,6 +10,18 @@ namespace mob::details {
     // returns an option named `key` from the given `section`
     //
     std::string get_string(std::string_view section, std::string_view key);
+
+    // convert a string to the given type
+    template <class T>
+    T string_to(std::string_view value);
+
+    config string_to_config(std::string_view value);
+
+    template <>
+    inline config string_to<config>(std::string_view value)
+    {
+        return string_to_config(value);
+    }
 
     // calls get_string(), converts to bool
     //
@@ -48,7 +62,14 @@ namespace mob {
     public:
         DefaultType get(std::string_view key) const
         {
-            return details::get_string(name_, key);
+            const auto value = details::get_string(name_, key);
+
+            if constexpr (std::is_convertible_v<std::string, DefaultType>) {
+                return value;
+            }
+            else {
+                return details::string_to<DefaultType>(value);
+            }
         }
 
         // undefined
@@ -102,6 +123,29 @@ namespace mob {
         bool build() const { return get<bool>("build_task"); }
     };
 
+    // options in [cmake]
+    //
+    class conf_cmake : conf_section<std::string> {
+    public:
+        enum class constant { always, lazy, never };
+        using enum constant;
+
+        static std::string to_string(constant m);
+
+        conf_cmake();
+
+        // specify the value for CMAKE_INSTALL_MESSAGE
+        //
+        constant install_message() const;
+
+        // specify the toolset host configuration, if any, this is equivalent
+        // to -T host=XXX on the command line
+        //
+        // an empty string means no host configured
+        //
+        std::string host() const;
+    };
+
     // options in [task] or [task_name:task]
     //
     class conf_task {
@@ -141,62 +185,14 @@ namespace mob {
             return get<bool>("remote_push_default_origin");
         }
 
+        // specify the configuration to build
+        //
+        mob::config configuration() const;
+
     private:
         std::vector<std::string> names_;
 
         bool get_bool(std::string_view name) const;
-    };
-
-    // options in [task] or [task_name:task]
-    //
-    class conf_cmake : conf_section<std::string> {
-    public:
-        class cmake_constant {
-            std::string value_;
-
-            // check if the given string is equivalent to this constant
-            //
-            bool is_equivalent(std::string_view other) const;
-
-            friend class conf_cmake;
-
-        public:
-            constexpr cmake_constant(std::string_view value) : value_{value} {}
-            constexpr const auto& value() const { return value_; }
-            constexpr operator const std::string&() const { return value(); }
-
-            friend bool operator==(cmake_constant const& lhs, cmake_constant const& rhs)
-            {
-                return lhs.is_equivalent(rhs.value());
-            }
-            friend bool operator!=(cmake_constant const& lhs, cmake_constant const& rhs)
-            {
-                return !(lhs == rhs);
-            }
-        };
-
-        static const cmake_constant ALWAYS;
-        static const cmake_constant LAZY;
-        static const cmake_constant NEVER;
-
-    public:
-        conf_cmake();
-
-        // specify the value for CMAKE_INSTALL_MESSAGE
-        //
-        cmake_constant install_message() const;
-
-        // specify the toolset host configuration, if any, this is equivalent
-        // to -T host=XXX on the command line
-        //
-        // an empty string means no host configured
-        //
-        std::string host() const;
-
-    private:
-        cmake_constant
-        read_cmake_constant(std::string_view key,
-                            std::vector<cmake_constant> const& allowed) const;
     };
 
     // options in [tools]
@@ -218,6 +214,13 @@ namespace mob {
     class conf_versions : public conf_section<std::string> {
     public:
         conf_versions();
+    };
+
+    // options in [build-types]
+    //
+    class conf_build_types : public conf_section<config> {
+    public:
+        conf_build_types();
     };
 
     // options in [prebuilt]
@@ -284,6 +287,7 @@ namespace mob {
         conf_transifex transifex();
         conf_prebuilt prebuilt();
         conf_versions version();
+        conf_build_types build_types();
         conf_paths path();
 
         // opens the log file, creates the directory if needed

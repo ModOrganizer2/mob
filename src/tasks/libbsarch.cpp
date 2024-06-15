@@ -7,7 +7,9 @@ namespace mob::tasks {
 
         std::string dir_name()
         {
-            return "libbsarch-" + libbsarch::version() + "-release-x64";
+            return "libbsarch-" + libbsarch::version() + "-" +
+                   (libbsarch::build_type() == config::debug ? "debug" : "release") +
+                   "-x64";
         }
 
         url source_url()
@@ -23,6 +25,11 @@ namespace mob::tasks {
     std::string libbsarch::version()
     {
         return conf().version().get("libbsarch");
+    }
+
+    config libbsarch::build_type()
+    {
+        return conf().build_types().get("libbsarch");
     }
 
     bool libbsarch::prebuilt()

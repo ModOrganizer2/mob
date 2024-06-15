@@ -47,7 +47,9 @@ namespace mob::tasks {
 
         url prebuilt_url()
         {
-            return make_prebuilt_url("PyQt6_gpl-prebuilt-" + pyqt::version() + ".7z");
+            return make_prebuilt_url(
+                "PyQt6_gpl-prebuilt-" + pyqt::version() +
+                (pyqt::build_type() == config::debug ? "-debug" : "") + ".7z");
         }
 
         // file created by sip-module.exe
@@ -84,6 +86,11 @@ namespace mob::tasks {
     fs::path pyqt::build_path()
     {
         return source_path() / "build";
+    }
+
+    config pyqt::build_type()
+    {
+        return conf().build_types().get("pyqt");
     }
 
     std::string pyqt::pyqt_sip_module_name()
@@ -166,7 +173,24 @@ namespace mob::tasks {
     void pyqt::build_and_install_from_source()
     {
         // use pip to install the pyqt builder
-        run_tool(pip(pip::install).package("PyQt-builder").version(builder_version()));
+        if (python::build_type() == config::debug) {
+            // PyQt-builder has sip as a dependency, so installing it directly will
+            // replace the sip we have installed manually, but the installed sip will
+            // not work (see comment in sip::build() for details)
+            //
+            // the workaround is to install the dependencies manually (only packaging),
+            // and then use a --no-dependencies install with pip
+            //
+            run_tool(pip(pip::install).package("packaging"));
+            run_tool(pip(pip::install)
+                         .package("PyQt-builder")
+                         .no_dependencies()
+                         .version(builder_version()));
+        }
+        else {
+            run_tool(
+                pip(pip::install).package("PyQt-builder").version(builder_version()));
+        }
 
         // patch for builder.py
         run_tool(patcher()
@@ -249,9 +273,30 @@ namespace mob::tasks {
             cx().trace(context::bypass, "pyqt already installed");
         }
         else {
-            // run `pip install` on the generated PyQt6_sip-XX.tar.gz file
-            run_tool(
-                pip(pip::install).file(conf().path().cache() / sip_install_file()));
+            if (python::build_type() == config::debug) {
+
+                const auto pyqt_sip_folder = source_path() / "PyQt6_sip" /
+                                             ("pyqt6_sip-" + sip::version_for_pyqt());
+
+                // in debug, we need to do stuff manually because pip does not work
+                // as expected
+                run_tool(extractor()
+                             .file(conf().path().cache() / sip_install_file())
+                             .output(pyqt_sip_folder.parent_path()));
+
+                run_tool(mob::python()
+                             .root(pyqt_sip_folder)
+                             .arg("setup.py")
+                             .arg("build")
+                             .arg("--debug"));
+
+                run_tool(pip(pip::install).file(pyqt_sip_folder));
+            }
+            else {
+                // run `pip install` on the generated PyQt6_sip-XX.tar.gz file
+                run_tool(
+                    pip(pip::install).file(conf().path().cache() / sip_install_file()));
+            }
 
             // done, create the bypass file
             installed_bypass.create();
@@ -267,13 +312,17 @@ namespace mob::tasks {
         // python-XX/PCBuild/amd64, those are needed by PyQt6 when building several
         // projects
 
-        op::copy_file_to_dir_if_better(cx(), qt::bin_path() / "Qt6Core.dll",
-                                       python::build_path(),
-                                       op::unsafe);  // source file is outside prefix
+        const std::vector<std::string> dlls{"Qt6Core", "Qt6Xml"};
 
-        op::copy_file_to_dir_if_better(cx(), qt::bin_path() / "Qt6Xml.dll",
-                                       python::build_path(),
-                                       op::unsafe);  // source file is outside prefix
+        for (auto dll : dlls) {
+            if (build_type() == config::debug) {
+                dll += "d";
+            }
+            dll += ".dll";
+            op::copy_file_to_dir_if_better(
+                cx(), qt::bin_path() / dll, python::build_path(),
+                op::unsafe);  // source file is outside prefix
+        }
 
         // installation of PyQt6 python files (.pyd, etc.) is done
         // by the python plugin directly

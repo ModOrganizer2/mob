@@ -49,7 +49,7 @@ namespace mob {
         execute_and_join(p);
     }
 
-    pip::pip(ops op) : basic_process_runner("pip"), op_(op) {}
+    pip::pip(ops op) : basic_process_runner("pip"), op_(op), no_deps_{false} {}
 
     pip& pip::package(const std::string& s)
     {
@@ -66,6 +66,12 @@ namespace mob {
     pip& pip::file(const fs::path& p)
     {
         file_ = p;
+        return *this;
+    }
+
+    pip& pip::no_dependencies()
+    {
+        no_deps_ = true;
         return *this;
     }
 
@@ -141,10 +147,20 @@ namespace mob {
                      .arg("--no-warn-script-location")
                      .arg("--disable-pip-version-check");
 
-        if (!package_.empty())
-            p.arg(package_ + "==" + version_);
+        if (!package_.empty()) {
+            if (version_.empty()) {
+                p.arg(package_);
+            }
+            else {
+                p.arg(package_ + "==" + version_);
+            }
+        }
         else if (!file_.empty())
             p.arg(file_);
+
+        if (no_deps_) {
+            p.arg("--no-dependencies");
+        }
 
         p.env(this_env::get().set("PYTHONUTF8", "1"));
 

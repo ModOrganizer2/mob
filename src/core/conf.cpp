@@ -14,6 +14,11 @@ namespace mob::details {
     using key_value_map = std::map<std::string, std::string, std::less<>>;
     using section_map   = std::map<std::string, key_value_map, std::less<>>;
 
+    static std::unordered_map<mob::config, std::string_view> s_configuration_values{
+        {mob::config::release, "Release"},
+        {mob::config::debug, "Debug"},
+        {mob::config::relwithdebinfo, "RelWithDebInfo"}};
+
     // holds all the options not related to tasks (global, tools, paths, etc.)
     static section_map g_conf;
 
@@ -26,6 +31,18 @@ namespace mob::details {
     static int g_output_log_level = 3;
     static int g_file_log_level   = 5;
     static bool g_dry             = false;
+
+    // check if the two given string are equals case-insensitive
+    //
+    bool case_insensitive_equals(std::string_view lhs, std::string_view rhs)
+    {
+        // _strcmpi does not have a n-overload, and since string_view is not
+        // necessarily null-terminated, _strmcpi cannot be safely used
+        return std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs),
+                          std::end(rhs), [](auto&& c1, auto&& c2) {
+                              return ::tolower(c1) == ::tolower(c2);
+                          });
+    }
 
     bool bool_from_string(std::string_view s)
     {
@@ -83,6 +100,17 @@ namespace mob::details {
             gcx().bail_out(context::conf, "no key '{}' [{}]", key, section);
 
         kitor->second = value;
+    }
+
+    config string_to_config(std::string_view value)
+    {
+        for (const auto& [c, v] : s_configuration_values) {
+            if (case_insensitive_equals(value, v)) {
+                return c;
+            }
+        }
+
+        gcx().bail_out(context::conf, "invalid configuration '{}'", value);
     }
 
     // sets the given option, adds it if it doesn't exist; used when setting options
@@ -182,6 +210,28 @@ namespace mob::details {
                              std::string value)
     {
         g_tasks[task_name][key] = std::move(value);
+    }
+
+    // read a CMake constant from the configuration
+    //
+    template <typename T>
+    T parse_cmake_value(std::string_view section, std::string_view key,
+                        std::string_view value,
+                        std::unordered_map<T, std::string_view> const& values)
+    {
+        for (const auto& [value_c, value_s] : values) {
+            if (case_insensitive_equals(value_s, value)) {
+                return value_c;
+            }
+        }
+
+        // build a string containing allowed value for logging
+        std::vector<std::string_view> values_s;
+        for (const auto& [value_c, value_s] : values) {
+            values_s.push_back(value_s);
+        }
+        gcx().bail_out(context::conf, "bad value '{}' for {}/{} (expected one of {})",
+                       value, section, key, join(values_s, ", ", std::string{}));
     }
 
 }  // namespace mob::details
@@ -644,6 +694,11 @@ namespace mob {
         return {};
     }
 
+    conf_build_types conf::build_types()
+    {
+        return {};
+    }
+
     conf_paths conf::path()
     {
         return {};
@@ -666,6 +721,34 @@ namespace mob {
         return details::g_dry;
     }
 
+    // use appropriate case for the below constants since we will be using them in
+    // to_string, although most of cmake and msbuild is case-insensitive so it will
+    // not matter much in the end
+
+    static std::unordered_map<conf_cmake::constant, std::string_view> constant_values{
+        {conf_cmake::always, "ALWAYS"},
+        {conf_cmake::lazy, "LAZY"},
+        {conf_cmake::never, "NEVER"}};
+
+    std::string conf_cmake::to_string(constant c)
+    {
+        return std::string{constant_values.at(c)};
+    }
+
+    conf_cmake::conf_cmake() : conf_section("cmake") {}
+
+    conf_cmake::constant conf_cmake::install_message() const
+    {
+        return details::parse_cmake_value(
+            name(), "install_message", details::get_string(name(), "install_message"),
+            constant_values);
+    }
+
+    std::string conf_cmake::host() const
+    {
+        return details::get_string(name(), "host");
+    }
+
     conf_task::conf_task(std::vector<std::string> names) : names_(std::move(names)) {}
 
     std::string conf_task::get(std::string_view key) const
@@ -678,45 +761,12 @@ namespace mob {
         return details::get_bool_for_task(names_, key);
     }
 
-    bool conf_cmake::cmake_constant::is_equivalent(std::string_view other) const
+    mob::config conf_task::configuration() const
     {
-        // _strcmpi does not have a n-overload, and since string_view is not
-        // necessarily null-terminated, _strmcpi cannot be safely used
-        return std::equal(std::begin(value_), std::end(value_), std::begin(other),
-                          std::end(other), [](auto&& c1, auto&& c2) {
-                              return ::tolower(c1) == ::tolower(c2);
-                          });
-    }
-
-    conf_cmake::conf_cmake() : conf_section("cmake") {}
-
-    const conf_cmake::cmake_constant conf_cmake::ALWAYS{"always"};
-    const conf_cmake::cmake_constant conf_cmake::LAZY{"lazy"};
-    const conf_cmake::cmake_constant conf_cmake::NEVER{"never"};
-
-    conf_cmake::cmake_constant conf_cmake::install_message() const
-    {
-        return read_cmake_constant("install_message", {ALWAYS, LAZY, NEVER});
-    }
-
-    std::string conf_cmake::host() const
-    {
-        return details::get_string(name(), "host");
-    }
-
-    conf_cmake::cmake_constant
-    conf_cmake::read_cmake_constant(std::string_view key,
-                                    std::vector<cmake_constant> const& allowed) const
-    {
-        const auto value = details::get_string(name(), key);
-        for (const auto& constant : allowed) {
-            if (constant.is_equivalent(value)) {
-                return constant;
-            }
-        }
-
-        gcx().bail_out(context::conf, "bad value '{}' for {}/{} (expected one of {})",
-                       value, name(), key, join(allowed, ", ", std::string{}));
+        return details::parse_cmake_value(
+            names_[0], "configuration",
+            details::get_string_for_task(names_, "configuration"),
+            details::s_configuration_values);
     }
 
     conf_tools::conf_tools() : conf_section("tools") {}
@@ -724,6 +774,8 @@ namespace mob {
     conf_transifex::conf_transifex() : conf_section("transifex") {}
 
     conf_versions::conf_versions() : conf_section("versions") {}
+
+    conf_build_types::conf_build_types() : conf_section("build-types") {}
 
     conf_prebuilt::conf_prebuilt() : conf_section("prebuilt") {}
 

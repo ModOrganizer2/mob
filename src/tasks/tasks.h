@@ -97,6 +97,7 @@ namespace mob::tasks {
         static std::string version();
         static bool prebuilt();
         static fs::path source_path();
+        static fs::path build_path(arch = arch::x64, config = config::release);
 
     protected:
         void do_clean(clean c) override;
@@ -123,6 +124,7 @@ namespace mob::tasks {
         libbsarch();
 
         static std::string version();
+        static config build_type();
         static bool prebuilt();
         static fs::path source_path();
 
@@ -197,7 +199,8 @@ namespace mob::tasks {
         // projects, used internally, but also by the cmake command
         //
         static cmake create_cmake_tool(const fs::path& root,
-                                       cmake::ops o = cmake::generate);
+                                       cmake::ops o  = cmake::generate,
+                                       config config = config::relwithdebinfo);
 
         // flags for some MO projects
         enum flags {
@@ -360,6 +363,7 @@ namespace mob::tasks {
 
         static fs::path source_path();
         static fs::path build_path();
+        static config build_type();
 
         // "PyQt5.sip", used both in pyqt and sip
         //
@@ -418,6 +422,10 @@ namespace mob::tasks {
         // build/python-XX/Lib/site-packages
         //
         static fs::path site_packages_path();
+
+        // configuration to build
+        //
+        static config build_type();
 
     protected:
         void do_clean(clean c) override;
@@ -649,7 +657,8 @@ namespace mob::tasks {
         void fetch_from_source();
         void build_and_install_from_source();
 
-        msbuild create_msbuild_tool(arch a, msbuild::ops o = msbuild::build) const;
+        msbuild create_msbuild_tool(arch, msbuild::ops = msbuild::build,
+                                    config = config::release) const;
     };
 
     class zlib : public basic_task<zlib> {

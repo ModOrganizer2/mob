@@ -14,23 +14,25 @@ namespace mob {
 
         // type of build files generated
         //
-        enum generators {
+        enum class generators {
             // generates build files for visual studio
             vs = 0x01,
 
             // generates build files for jom/nmake
             jom = 0x02
         };
+        using enum generators;
 
         // what run() will do
         //
-        enum ops {
+        enum class ops {
             // generates the build files
             generate = 1,
 
             // cleans the build files so they're regenerated from scratch
             clean
         };
+        using enum ops;
 
         cmake(ops o = generate);
 

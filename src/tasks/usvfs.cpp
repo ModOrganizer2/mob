@@ -42,8 +42,10 @@ namespace mob::tasks {
 
         if (is_set(c, clean::rebuild)) {
             // msbuild clean
-            run_tool(create_msbuild_tool(arch::x86, msbuild::clean));
-            run_tool(create_msbuild_tool(arch::x64, msbuild::clean));
+            run_tool(create_msbuild_tool(arch::x86, msbuild::clean,
+                                         task_conf().configuration()));
+            run_tool(create_msbuild_tool(arch::x64, msbuild::clean,
+                                         task_conf().configuration()));
         }
     }
 
@@ -71,7 +73,7 @@ namespace mob::tasks {
         run_tool(create_msbuild_tool(arch::x64));
     }
 
-    msbuild usvfs::create_msbuild_tool(arch a, msbuild::ops o) const
+    msbuild usvfs::create_msbuild_tool(arch a, msbuild::ops o, config c) const
     {
         // usvfs doesn't use "Win32" for 32-bit, it uses "x86"
         //
@@ -90,6 +92,7 @@ namespace mob::tasks {
         return std::move(
             msbuild(o)
                 .platform(plat)
+                .configuration(c)
                 .targets({"usvfs_proxy"})
                 .solution(source_path() / "vsbuild" / "usvfs.sln")
                 .env(env::vs(a)

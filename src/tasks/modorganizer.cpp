@@ -200,36 +200,40 @@ namespace mob::tasks {
 
     cmake modorganizer::create_cmake_tool(cmake::ops o)
     {
-        return create_cmake_tool(source_path(), o);
+        return create_cmake_tool(source_path(), o, task_conf().configuration());
     }
 
-    cmake modorganizer::create_cmake_tool(const fs::path& root, cmake::ops o)
+    cmake modorganizer::create_cmake_tool(const fs::path& root, cmake::ops o, config c)
     {
-        return std::move(cmake(o)
-                             .generator(cmake::vs)
-                             .def("CMAKE_INSTALL_PREFIX:PATH", conf().path().install())
-                             .def("DEPENDENCIES_DIR", conf().path().build())
-                             .def("BOOST_ROOT", boost::source_path())
-                             .def("BOOST_LIBRARYDIR", boost::lib_path(arch::x64))
-                             .def("SPDLOG_ROOT", spdlog::source_path())
-                             .def("LOOT_PATH", libloot::source_path())
-                             .def("LZ4_ROOT", lz4::source_path())
-                             .def("QT_ROOT", qt::installation_path())
-                             .def("ZLIB_ROOT", zlib::source_path())
-                             .def("PYTHON_ROOT", python::source_path())
-                             .def("SEVENZ_ROOT", sevenz::source_path())
-                             .def("LIBBSARCH_ROOT", libbsarch::source_path())
-                             .def("BOOST_DI_ROOT", boost_di::source_path())
-                             .def("GTEST_ROOT", gtest::source_path())
-                             .def("OPENSSL_ROOT_DIR", openssl::source_path())
-                             .root(root));
+        return std::move(
+            cmake(o)
+                .generator(cmake::vs)
+                .def("CMAKE_INSTALL_PREFIX:PATH", conf().path().install())
+                .def("DEPENDENCIES_DIR", conf().path().build())
+                .def("BOOST_ROOT", boost::source_path())
+                .def("BOOST_LIBRARYDIR", boost::lib_path(arch::x64))
+                .def("SPDLOG_ROOT", spdlog::source_path())
+                .def("LOOT_PATH", libloot::source_path())
+                .def("LZ4_ROOT", lz4::source_path())
+                .def("QT_ROOT", qt::installation_path())
+                .def("ZLIB_ROOT", zlib::source_path())
+                .def("PYTHON_ROOT", python::source_path())
+                .def("SEVENZ_ROOT", sevenz::source_path())
+                .def("LIBBSARCH_ROOT", libbsarch::source_path())
+                .def("BOOST_DI_ROOT", boost_di::source_path())
+                // gtest has no RelWithDebInfo, so simply use Debug/Release
+                .def("GTEST_ROOT",
+                     gtest::build_path(arch::x64, c == config::debug ? config::debug
+                                                                     : config::release))
+                .def("OPENSSL_ROOT_DIR", openssl::source_path())
+                .root(root));
     }
 
     msbuild modorganizer::create_msbuild_tool(msbuild::ops o)
     {
         return std::move(msbuild(o)
                              .solution(project_file_path())
-                             .config("RelWithDebInfo")
+                             .configuration(task_conf().configuration())
                              .architecture(arch::x64));
     }
 

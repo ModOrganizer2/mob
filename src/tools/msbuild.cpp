@@ -7,14 +7,28 @@
 namespace mob {
 
     msbuild::msbuild(ops o)
-        : basic_process_runner("msbuild"), op_(o), config_("Release"), arch_(arch::def),
-          flags_(noflags)
+        : basic_process_runner("msbuild"), op_(o), config_(config::release),
+          arch_(arch::def), flags_(noflags)
     {
     }
 
     fs::path msbuild::binary()
     {
         return conf().tool().get("msbuild");
+    }
+
+    std::string msbuild::configuration_name(config c)
+    {
+        switch (c) {
+        case config::debug:
+            return "Debug";
+        case config::release:
+            return "Release";
+        case config::relwithdebinfo:
+            [[fallthrough]];
+        default:
+            return "RelWithDebInfo";
+        }
     }
 
     msbuild& msbuild::solution(const fs::path& sln)
@@ -35,9 +49,9 @@ namespace mob {
         return *this;
     }
 
-    msbuild& msbuild::config(const std::string& s)
+    msbuild& msbuild::configuration(config c)
     {
-        config_ = s;
+        config_ = c;
         return *this;
     }
 
@@ -151,7 +165,7 @@ namespace mob {
                 .arg("-property:EnforceProcessCountAcrossBuilds=true");
         }
 
-        p.arg("-property:Configuration=", config_, process::quote)
+        p.arg("-property:Configuration=", configuration_name(config_), process::quote)
             .arg("-property:PlatformToolset=" + toolset)
             .arg("-property:WindowsTargetPlatformVersion=" + vs::sdk())
             .arg("-property:Platform=", platform_property(), process::quote)

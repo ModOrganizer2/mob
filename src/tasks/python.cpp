@@ -30,7 +30,9 @@ namespace mob::tasks {
 
         url prebuilt_url()
         {
-            return make_prebuilt_url("python-prebuilt-" + version_without_v() + ".7z");
+            return make_prebuilt_url(
+                "python-prebuilt-" + version_without_v() +
+                (python::build_type() == config::debug ? "-debug" : "") + ".7z");
         }
 
         fs::path solution_file()
@@ -87,6 +89,11 @@ namespace mob::tasks {
     fs::path python::build_path()
     {
         return source_path() / "PCBuild" / "amd64";
+    }
+
+    config python::build_type()
+    {
+        return conf().build_types().get("python");
     }
 
     void python::do_clean(clean c)
@@ -190,16 +197,22 @@ namespace mob::tasks {
 
         const auto bat = source_path() / "python.bat";
 
+        auto p = process()
+                     .binary(bat)
+                     .arg(fs::path("PC/layout"))
+                     .arg("--source", source_path())
+                     .arg("--build", build_path())
+                     .arg("--temp", (build_path() / "pythoncore_temp"))
+                     .arg("--copy", (build_path() / "pythoncore"))
+                     .arg("--preset-embed")
+                     .cwd(source_path());
+
+        if (build_type() == config::debug) {
+            p = p.arg("--debug");
+        }
+
         // package libs into pythonXX.zip
-        run_tool(process_runner(process()
-                                    .binary(bat)
-                                    .arg(fs::path("PC/layout"))
-                                    .arg("--source", source_path())
-                                    .arg("--build", build_path())
-                                    .arg("--temp", (build_path() / "pythoncore_temp"))
-                                    .arg("--copy", (build_path() / "pythoncore"))
-                                    .arg("--preset-embed")
-                                    .cwd(source_path())));
+        run_tool(process_runner(p));
     }
 
     void python::copy_files()
@@ -210,7 +223,9 @@ namespace mob::tasks {
 
         // pdbs
         op::copy_file_to_dir_if_better(
-            cx(), build_path() / ("python" + version_for_dll() + ".pdb"),
+            cx(),
+            build_path() / ("python" + version_for_dll() +
+                            (build_type() == config::debug ? "_d" : "") + ".pdb"),
             conf().path().install_pdbs());
 
         // dlls and python libraries are installed by the python plugin
@@ -229,6 +244,7 @@ namespace mob::tasks {
                 .solution(solution_file())
                 .targets({"python", "pythonw", "python3dll", "select", "pyexpat",
                           "unicodedata", "_queue", "_bz2", "_ssl", "_overlapped"})
+                .configuration(build_type())
                 .properties(
                     {"bz2Dir=" + path_to_utf8(bzip2::source_path()),
                      "zlibDir=" + path_to_utf8(zlib::source_path()),
@@ -238,7 +254,8 @@ namespace mob::tasks {
 
     fs::path python::python_exe()
     {
-        return build_path() / "python.exe";
+        return build_path() /
+               (build_type() == config::debug ? "python_d.exe" : "python.exe");
     }
 
     fs::path python::include_path()
