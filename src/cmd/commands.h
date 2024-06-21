@@ -382,7 +382,8 @@ namespace mob {
     private:
         std::string gen_;
         std::string cmd_;
-        bool x64_ = true;
+        bool x64_   = true;
+        bool debug_ = false;
         std::string prefix_;
         std::string path_;
     };

@@ -33,12 +33,17 @@ namespace mob {
             (clipp::option("--install-prefix") & clipp::value("PATH") >> prefix_) %
                 "sets CMAKE_INSTALL_PREFIX [default: empty]",
 
+            (clipp::option("-d", "--debug").set(debug_, true)) %
+                "whether to configure for debug mode [default: false]",
+
             (clipp::value("PATH") >> path_) % "path from which to run `cmake`");
     }
 
     int cmake_command::do_run()
     {
-        auto t = tasks::modorganizer::create_cmake_tool(fs::path(utf8_to_utf16(path_)));
+        auto t = tasks::modorganizer::create_cmake_tool(
+            fs::path(utf8_to_utf16(path_)), mob::cmake::generate,
+            debug_ ? config::debug : config::relwithdebinfo);
 
         t.generator(gen_);
         t.cmd(cmd_);
