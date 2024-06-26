@@ -226,6 +226,7 @@ namespace mob::tasks {
                      gtest::build_path(arch::x64, c == config::debug ? config::debug
                                                                      : config::release))
                 .def("OPENSSL_ROOT_DIR", openssl::source_path())
+                .def("DDS_ROOT", dds::source_path())
                 .root(root));
     }
 

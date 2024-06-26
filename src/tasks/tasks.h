@@ -77,6 +77,18 @@ namespace mob::tasks {
         void do_fetch() override;
     };
 
+    class dds : public basic_task<dds> {
+    public:
+        dds();
+
+        static bool prebuilt();
+        static fs::path source_path();
+
+    protected:
+        void do_clean(clean c) override;
+        void do_fetch() override;
+    };
+
     class explorerpp : public basic_task<explorerpp> {
     public:
         explorerpp();
