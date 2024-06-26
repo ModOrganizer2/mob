@@ -33,7 +33,8 @@ namespace mob {
             .add_task<libbsarch>()
             .add_task<libloot>()
             .add_task<openssl>()
-            .add_task<bzip2>();
+            .add_task<bzip2>()
+            .add_task<dds>();
 
         add_task<parallel_tasks>()
             .add_task<tasks::python>()
