@@ -79,7 +79,7 @@ namespace mob::tasks {
 
     void sevenz::build()
     {
-        build_loop(cx(), [&](bool mp) {
+        build_loop(cx(), [&]([[maybe_unused]] bool mp) {
             const int exit_code = run_tool(nmake()
                                                .path(module_to_build())
                                                .def("CPU=x64")

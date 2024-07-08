@@ -40,6 +40,11 @@ namespace mob::tasks {
             return;
         }
 
+        if (is_set(c, clean::reconfigure)) {
+            run_tool(create_cmake_tool(arch::x64));
+            run_tool(create_cmake_tool(arch::x86));
+        }
+
         if (is_set(c, clean::rebuild)) {
             // msbuild clean
             run_tool(create_msbuild_tool(arch::x86, msbuild::clean,
@@ -69,35 +74,28 @@ namespace mob::tasks {
 
     void usvfs::build_and_install_from_source()
     {
-        run_tool(create_msbuild_tool(arch::x86));
+        run_tool(create_cmake_tool(arch::x64));
+        run_tool(create_cmake_tool(arch::x86));
         run_tool(create_msbuild_tool(arch::x64));
+        run_tool(create_msbuild_tool(arch::x86));
+    }
+
+    cmake usvfs::create_cmake_tool(arch a, cmake::ops o) const
+    {
+        return std::move(
+            cmake(o)
+                .root(source_path())
+                .def("CMAKE_INSTALL_PREFIX:PATH", conf().path().install())
+                .generator(cmake::vs)
+                .preset(a == arch::x64 ? "vs2022-windows-x64" : "vs2022-windows-x86")
+                .arg("-DBUILD_TESTING=OFF"));
     }
 
     msbuild usvfs::create_msbuild_tool(arch a, msbuild::ops o, config c) const
     {
-        // usvfs doesn't use "Win32" for 32-bit, it uses "x86"
-        //
-        // note that usvfs_proxy has a custom build step in Release that runs
-        // usvfs/vsbuild/stage_helper.cmd, which copies everything into
-        // install/
-
-        const std::string plat = (a == arch::x64 ? "x64" : "x86");
-
-        // udis requires python in its custom build step, so make sure it's on the
-        // path
-        //
-        // BOOST_PATH is in the env because external_dependencies.props will
-        // use it if it exists or reverts to a hardcoded path which might not be using
-        // the same version as mob if it wasn't updated
-        return std::move(
-            msbuild(o)
-                .platform(plat)
-                .configuration(c)
-                .targets({"usvfs_proxy"})
-                .solution(source_path() / "vsbuild" / "usvfs.sln")
-                .env(env::vs(a)
-                         .prepend_path(python::build_path())
-                         .set("BOOST_PATH", path_to_utf8(boost::source_path()))));
+        const std::string vsbuild = (a == arch::x64 ? "vsbuild64" : "vsbuild32");
+        return std::move(msbuild(o).architecture(a).configuration(c).solution(
+            source_path() / vsbuild / "usvfs.sln"));
     }
 
 }  // namespace mob::tasks

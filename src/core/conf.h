@@ -9,7 +9,8 @@ namespace mob::details {
 
     // returns an option named `key` from the given `section`
     //
-    std::string get_string(std::string_view section, std::string_view key);
+    std::string get_string(std::string_view section, std::string_view key,
+                           std::optional<std::string> default_ = {});
 
     // convert a string to the given type
     template <class T>
@@ -25,11 +26,13 @@ namespace mob::details {
 
     // calls get_string(), converts to bool
     //
-    bool get_bool(std::string_view section, std::string_view key);
+    bool get_bool(std::string_view section, std::string_view key,
+                  std::optional<bool> default_ = {});
 
     // calls get_string(), converts to in
     //
-    int get_int(std::string_view section, std::string_view key);
+    int get_int(std::string_view section, std::string_view key,
+                std::optional<int> default_ = {});
 
     // sets the given option, bails out if the option doesn't exist
     //
@@ -60,9 +63,17 @@ namespace mob {
     template <class DefaultType>
     class conf_section {
     public:
-        DefaultType get(std::string_view key) const
+        DefaultType get(std::string_view key,
+                        std::optional<DefaultType> default_ = {}) const
         {
-            const auto value = details::get_string(name_, key);
+            const auto value = [=] {
+                if constexpr (std::is_same_v<DefaultType, std::string>) {
+                    return details::get_string(name_, key, default_);
+                }
+                else {
+                    return details::get_string(name_, key);
+                }
+            }();
 
             if constexpr (std::is_convertible_v<std::string, DefaultType>) {
                 return value;
@@ -74,18 +85,18 @@ namespace mob {
 
         // undefined
         template <class T>
-        T get(std::string_view key) const;
+        T get(std::string_view key, std::optional<T> default_ = {}) const;
 
         template <>
-        bool get<bool>(std::string_view key) const
+        bool get<bool>(std::string_view key, std::optional<bool> default_) const
         {
-            return details::get_bool(name_, key);
+            return details::get_bool(name_, key, default_);
         }
 
         template <>
-        int get<int>(std::string_view key) const
+        int get<int>(std::string_view key, std::optional<int> default_) const
         {
-            return details::get_int(name_, key);
+            return details::get_int(name_, key, default_);
         }
 
         void set(std::string_view key, std::string_view value)
@@ -223,6 +234,13 @@ namespace mob {
         conf_build_types();
     };
 
+    // options in [translations]
+    //
+    class conf_translations : public conf_section<std::string> {
+    public:
+        conf_translations();
+    };
+
     // options in [prebuilt]
     //
     class conf_prebuilt : public conf_section<std::string> {
@@ -257,13 +275,13 @@ namespace mob {
 
         VALUE(install_dlls);
         VALUE(install_loot);
-        VALUE(install_plugins);
+        VALUE(install_extensions);
         VALUE(install_stylesheets);
         VALUE(install_licenses);
         VALUE(install_pythoncore);
-        VALUE(install_translations);
 
         VALUE(vs);
+        VALUE(vcpkg);
         VALUE(qt_install);
         VALUE(qt_bin);
         VALUE(qt_translations);
@@ -285,6 +303,7 @@ namespace mob {
         conf_cmake cmake();
         conf_tools tool();
         conf_transifex transifex();
+        conf_translations translation();
         conf_prebuilt prebuilt();
         conf_versions version();
         conf_build_types build_types();

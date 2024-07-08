@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "../core/env.h"
+#include "../utility/string.h"
 #include "../utility/threading.h"
+#include "nlohmann/json.hpp"
 #include "task_manager.h"
 #include "tasks.h"
 
@@ -125,9 +127,6 @@ namespace mob::tasks {
         // walks all the .ts files in the project, creates a `lang` object for
         // each
         //
-        // each project directory is named "mod-organizer-2.project_name", so this
-        // splits on the dot to get the project name, checks if it's a gamebryo
-        // plugin, and adds the gamebryo .ts file as well if necessary
 
         // splitting
         const auto dir_name = path_to_utf8(dir.filename());
@@ -150,7 +149,6 @@ namespace mob::tasks {
 
         // project
         project p(project_name);
-        const bool gamebryo = is_gamebryo_plugin(dir_name, project_name);
 
         // for each file
         for (auto f : fs::directory_iterator(dir)) {
@@ -168,14 +166,14 @@ namespace mob::tasks {
             }
 
             // add a new `lang` object for it
-            p.langs.push_back(create_lang(gamebryo, project_name, f.path()));
+            p.langs.push_back(create_lang(project_name, f.path()));
         }
 
         return p;
     }
 
     translations::projects::lang
-    translations::projects::create_lang(bool gamebryo, const std::string& project_name,
+    translations::projects::create_lang(const std::string& project_name,
                                         const fs::path& main_ts_file)
     {
         lang lg(path_to_utf8(main_ts_file.stem()));
@@ -183,62 +181,7 @@ namespace mob::tasks {
         // every lang has the .ts file from the project, gamebryo plugins have more
         lg.ts_files.push_back(main_ts_file);
 
-        if (gamebryo) {
-            // this is a gamebryo plugin, so it needs the gamebryo .ts file as well,
-            // find it
-
-            // the .ts files for gamebryo are in mod-organizer-2.game_gamebryo/
-            const fs::path gamebryo_dir =
-                conf().transifex().get("project") + "." + "game_gamebryo";
-
-            // the .ts file has the same name, it's just "lang.ts"
-            const auto gamebryo_ts = root_ / gamebryo_dir / main_ts_file.filename();
-
-            if (fs::exists(gamebryo_ts)) {
-                // found, add it
-                lg.ts_files.push_back(gamebryo_ts);
-            }
-            else {
-                // not found, that means the plugin was translated into a language,
-                // but the gamebryo project wasn't; warn once
-                if (!warned_.contains(gamebryo_ts)) {
-                    warned_.insert(gamebryo_ts);
-
-                    warnings_.push_back(::std::format(
-                        "{} is a gamebryo plugin but there is no '{}'; the "
-                        ".qm file will be missing some translations (will "
-                        "only warn once)",
-                        project_name, path_to_utf8(gamebryo_ts)));
-                }
-            }
-        }
-
         return lg;
-    }
-
-    bool translations::projects::is_gamebryo_plugin(const std::string& dir,
-                                                    const std::string& project)
-    {
-        const auto* t = task_manager::instance().find_one(project);
-
-        if (!t) {
-            warnings_.push_back(
-                ::std::format("directory '{}' was parsed as project '{}', but there's "
-                              "no task with this name",
-                              dir, project));
-
-            return false;
-        }
-
-        // gamebryo plugins are all `modorganizer` tasks
-        const auto* mo_task = static_cast<const modorganizer*>(t);
-        if (!mo_task) {
-            // not an mo task, can't be a gamebryo plugin
-            return false;
-        }
-
-        // check the flag
-        return mo_task->is_gamebryo_plugin();
     }
 
     translations::translations() : task("translations") {}
@@ -256,8 +199,8 @@ namespace mob::tasks {
 
         // remove the .qm files in the translations/ directory
         if (is_set(c, clean::rebuild)) {
-            op::delete_file_glob(cx(), conf().path().install_translations() / "*.qm",
-                                 op::optional);
+            op::delete_file_glob_recurse(cx(), conf().path().install_extensions(),
+                                         "*.qm", op::optional);
         }
     }
 
@@ -310,44 +253,122 @@ namespace mob::tasks {
         }
     }
 
+    void generate_translations_metadata(
+        std::filesystem::path const& path,
+        std::vector<mob::tasks::translations::projects::lang> const& languages)
+    {
+        using json = nlohmann::ordered_json;
+
+        json metadata;
+        {
+            std::ifstream ifs(path);
+            metadata = json::parse(ifs);
+        }
+
+        // fix version
+        json translations;
+        for (auto&& lang : languages) {
+            std::vector<std::string> files;
+            files.push_back("translations/" + lang.name + "/*.qm");
+            json jsonlang;
+            jsonlang["files"]       = files;
+            translations[lang.name] = jsonlang;
+        }
+        metadata["content"]["translations"] = translations;
+
+        std::ofstream ofs(path);
+        ofs << metadata.dump(2);
+    }
+
     void translations::do_build_and_install()
     {
         // 1) build the list of projects, languages and .ts files
         // 2) run `lrelease` for every language in every project
         // 3) copy builtin qt translations
 
-        const auto root = source_path() / "translations";
-        const auto dest = conf().path().install_translations();
+        const auto root       = source_path() / "translations";
+        const auto extensions = conf().path().install_extensions();
         const projects ps(root);
 
-        op::create_directories(cx(), dest);
+        op::create_directories(cx(), extensions / "mo2-translations");
 
         // log all the warnings added while walking the projects
         for (auto&& w : ps.warnings())
             cx().warning(context::generic, "{}", w);
+
+        std::map<std::string, fs::path::string_type> project_to_extension;
+
+        // go through the list of extensions and find the matching projects
+        for (auto& p : fs::directory_iterator(extensions)) {
+            if (!fs::is_directory(p))
+                continue;
+
+            const auto name =
+                mob::replace_all(p.path().filename().string(), "mo2-", "");
+
+            project_to_extension[name] = p.path().filename();
+            project_to_extension[mob::replace_all(name, "-", "_")] =
+                p.path().filename();
+
+            const auto s_projects =
+                conf().translation().get(p.path().filename().string(), "");
+            if (!s_projects.empty()) {
+                const auto extension_projects = mob::split(s_projects, " ");
+                for (const auto& project : extension_projects) {
+                    project_to_extension[project] = p.path().filename();
+                }
+            }
+        }
 
         // run `lrelease` in a thread pool
         parallel_functions v;
 
         // for each project
         for (auto& p : ps.get()) {
+            if (!project_to_extension.contains(p.name)) {
+                cx().warning(context::generic,
+                             "found project {} but no matching extension", p.name);
+                continue;
+            }
+
+            const auto base = extensions / project_to_extension[p.name];
+
+            if (!fs::exists(base)) {
+                cx().warning(context::generic,
+                             "found project {} for extension {} extension is not built",
+                             p.name, project_to_extension[p.name]);
+                continue;
+            }
+
+            const auto dest = base / "translations";
+            op::create_directories(cx(), dest);
+
             // for each language
             for (auto& lg : p.langs) {
+                op::create_directories(cx(), dest / lg.name);
                 // add a functor that will run lrelease
-                v.push_back(
-                    {lg.name + "." + p.name, [&] {
-                         // run release for the given project name and list of .ts files
-                         run_tool(
-                             lrelease().project(p.name).sources(lg.ts_files).out(dest));
-                     }});
+                v.push_back({lg.name + "." + p.name, [=] {
+                                 // run release for the given project name and list of
+                                 // .ts files
+                                 run_tool(lrelease()
+                                              .project(p.name)
+                                              .sources(lg.ts_files)
+                                              .out(dest / lg.name));
+                             }});
             }
         }
 
         // run all the functors in parallel
         parallel(v);
 
-        if (auto p = ps.find("organizer"))
-            copy_builtin_qt_translations(*p, dest);
+        if (auto p = ps.find("organizer")) {
+            // the empty metadata for mo2-translations is copied from modorganizer and
+            // then filled here
+            generate_translations_metadata(
+                extensions / "mo2-translations" / "metadata.json", p->langs);
+            copy_builtin_qt_translations(*p, extensions / "mo2-translations" /
+                                                 "translations");
+        }
         else
             cx().bail_out(context::generic, "organizer project not found");
     }
@@ -366,7 +387,8 @@ namespace mob::tasks {
             if (!fs::exists(src))
                 return false;
 
-            op::copy_file_to_dir_if_better(cx(), src, dest, op::unsafe);
+            op::create_directories(cx(), dest / lang);
+            op::copy_file_to_dir_if_better(cx(), src, dest / lang, op::unsafe);
             return true;
         };
 

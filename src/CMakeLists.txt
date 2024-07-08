@@ -4,7 +4,7 @@ file(GLOB_RECURSE source_files *.cpp)
 file(GLOB_RECURSE header_files *.h)
 
 add_executable(mob ${source_files} ${header_files})
-set_target_properties(mob PROPERTIES CXX_STANDARD 20)
+set_target_properties(mob PROPERTIES CXX_STANDARD 23)
 
 target_compile_definitions(mob PUBLIC NOMINMAX)
 target_compile_options(mob PUBLIC "/MT")
