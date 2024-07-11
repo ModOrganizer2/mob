@@ -702,6 +702,7 @@ namespace mob {
         pip& package(const std::string& s);
         pip& version(const std::string& s);
         pip& file(const fs::path& p);
+        pip& index(const std::string& s);
 
         // do not install dependencies for the package
         //
@@ -720,6 +721,7 @@ namespace mob {
         std::string package_;
         std::string version_;
         fs::path file_;
+        std::string index_;
 
         // no depndencies
         bool no_deps_;

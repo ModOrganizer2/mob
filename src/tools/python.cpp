@@ -69,6 +69,12 @@ namespace mob {
         return *this;
     }
 
+    pip& pip::index(const std::string& s)
+    {
+        index_ = s;
+        return *this;
+    }
+
     pip& pip::no_dependencies()
     {
         no_deps_ = true;
@@ -147,6 +153,10 @@ namespace mob {
                      .arg("--no-warn-script-location")
                      .arg("--disable-pip-version-check");
 
+        if (!index_.empty()) {
+            p.arg("-i", index_).arg("--extra-index-url", "https://pypi.org/simple")
+        }
+
         if (!package_.empty()) {
             if (version_.empty()) {
                 p.arg(package_);
@@ -169,19 +179,26 @@ namespace mob {
 
     void pip::do_download()
     {
-        execute_and_join(process()
-                             .binary(tasks::python::python_exe())
-                             .chcp(65001)
-                             .stdout_encoding(encodings::utf8)
-                             .stderr_encoding(encodings::utf8)
-                             .arg("-X", "utf8")
-                             .arg("-m", "pip")
-                             .arg("download")
-                             .arg("--no-binary=:all:")
-                             .arg("--no-deps")
-                             .arg("-d", conf().path().cache())
-                             .arg(package_ + "==" + version_)
-                             .env(this_env::get().set("PYTHONUTF8", "1")));
+        auto p = process()
+                     .binary(tasks::python::python_exe())
+                     .chcp(65001)
+                     .stdout_encoding(encodings::utf8)
+                     .stderr_encoding(encodings::utf8)
+                     .arg("-X", "utf8")
+                     .arg("-m", "pip")
+                     .arg("download");
+
+        if (!index_.empty()) {
+            p.arg("-i", index_).arg("--extra-index-url", "https://pypi.org/simple")
+        }
+
+        p.arg("--no-binary=:all:")
+            .arg("--no-deps")
+            .arg("-d", conf().path().cache())
+            .arg(package_ + "==" + version_)
+            .env(this_env::get().set("PYTHONUTF8", "1"));
+
+        execute_and_join(p);
     }
 
 }  // namespace mob

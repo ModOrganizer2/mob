@@ -173,7 +173,8 @@ namespace mob::tasks {
     void pyqt::build_and_install_from_source()
     {
         // use pip to install the pyqt builder
-        if (python::build_type() == config::debug) {
+        if (python::build_type() == config::debug ||
+            builder_version().find("dev") != std::string::npos) {
             // PyQt-builder has sip as a dependency, so installing it directly will
             // replace the sip we have installed manually, but the installed sip will
             // not work (see comment in sip::build() for details)
@@ -184,6 +185,7 @@ namespace mob::tasks {
             run_tool(pip(pip::install).package("packaging"));
             run_tool(pip(pip::install)
                          .package("PyQt-builder")
+                         .index("https://www.riverbankcomputing.com/pypi/simple")
                          .no_dependencies()
                          .version(builder_version()));
         }

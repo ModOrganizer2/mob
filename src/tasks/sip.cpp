@@ -116,7 +116,10 @@ namespace mob::tasks {
         }
         else {
             // download
-            run_tool(pip(pip::download).package("sip").version(version()));
+            run_tool(pip(pip::download)
+                         .package("sip")
+                         .index("https://www.riverbankcomputing.com/pypi/simple")
+                         .version(version()));
         }
 
         // extract
