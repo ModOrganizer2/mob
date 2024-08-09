@@ -259,11 +259,23 @@ namespace mob::tasks {
     {
         using json = nlohmann::ordered_json;
 
-        json metadata;
-        {
-            std::ifstream ifs(path);
-            metadata = json::parse(ifs);
-        }
+        json metadata = json::parse(R"(
+{
+  "id": "mo2-translations",
+  "name": "Translations for ModOrganizer2",
+  "version": "1.0.0",
+  "description": "Multi-language translations for ModOrganizer2 itself.",
+  "author": {
+    "name": "Mod Organizer 2",
+    "homepage": "https://www.modorganizer.org/"
+  },
+  "icon": "translations.png",
+  "type": "translation",
+  "content": {
+    "translations": {}
+  }
+}
+)");
 
         // fix version
         json translations;
@@ -334,9 +346,10 @@ namespace mob::tasks {
             const auto base = extensions / project_to_extension[p.name];
 
             if (!fs::exists(base)) {
-                cx().warning(context::generic,
-                             "found project {} for extension {} extension is not built",
-                             p.name, project_to_extension[p.name]);
+                cx().warning(
+                    context::generic,
+                    "found project {} for extension {} but extension is not built",
+                    p.name, project_to_extension[p.name]);
                 continue;
             }
 
@@ -362,15 +375,17 @@ namespace mob::tasks {
         parallel(v);
 
         if (auto p = ps.find("organizer")) {
-            // the empty metadata for mo2-translations is copied from modorganizer and
-            // then filled here
-            generate_translations_metadata(
-                extensions / "mo2-translations" / "metadata.json", p->langs);
+            // copy Qt builting translation, icon and generate metadata
             copy_builtin_qt_translations(*p, extensions / "mo2-translations" /
                                                  "translations");
+            op::copy_file_to_file_if_better(
+                cx(), conf().path().icons() / "translations.png",
+                extensions / "mo2-translations" / "translations.png", op::unsafe);
+            generate_translations_metadata(
+                extensions / "mo2-translations" / "metadata.json", p->langs);
         }
         else
-            cx().bail_out(context::generic, "organizer project not found");
+            cx().warning(context::generic, "organizer project not found");
     }
 
     void translations::copy_builtin_qt_translations(const projects::project& p,

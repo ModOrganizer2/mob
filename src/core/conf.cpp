@@ -518,6 +518,7 @@ namespace mob {
         set_path_if_empty("vcpkg", find_vcpkg);  // set after vs as it will use the VS
         set_path_if_empty("qt_install", find_qt);
         set_path_if_empty("temp_dir", find_temp_dir);
+        set_path_if_empty("icons", find_in_root("icons"));
         set_path_if_empty("patches", find_in_root("patches"));
         set_path_if_empty("licenses", find_in_root("licenses"));
         set_path_if_empty("qt_bin", qt::installation_path() / "bin");

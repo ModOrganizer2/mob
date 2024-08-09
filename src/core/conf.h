@@ -263,6 +263,7 @@ namespace mob {
         VALUE(third_party);
         VALUE(prefix);
         VALUE(cache);
+        VALUE(icons);
         VALUE(patches);
         VALUE(licenses);
         VALUE(build);
