@@ -3,6 +3,15 @@
 
 namespace mob::tasks {
 
+    // build CMAKE_PREFIX_PATH for MO2 tasks
+    //
+    std::string cmake_prefix_path()
+    {
+        return conf().path().qt_install().string() + ";" +
+               (modorganizer::super_path() / "cmake_common").string() + ";" +
+               (conf().path().install() / "lib" / "cmake").string();
+    }
+
     // given a vector of names (some projects have more than one, see add_tasks() in
     // main.cpp), this prepends the simplified name to the vector and returns it
     //
@@ -59,18 +68,18 @@ namespace mob::tasks {
         g.init_repo();
     }
 
-    modorganizer::modorganizer(std::string long_name, flags f)
-        : modorganizer(std::vector<std::string>{long_name}, f)
+    modorganizer::modorganizer(std::string long_name)
+        : modorganizer(std::vector<std::string>{long_name})
     {
     }
 
-    modorganizer::modorganizer(std::vector<const char*> names, flags f)
-        : modorganizer(std::vector<std::string>(names.begin(), names.end()), f)
+    modorganizer::modorganizer(std::vector<const char*> names)
+        : modorganizer(std::vector<std::string>(names.begin(), names.end()))
     {
     }
 
-    modorganizer::modorganizer(std::vector<std::string> names, flags f)
-        : task(make_names(names)), repo_(names[0]), flags_(f)
+    modorganizer::modorganizer(std::vector<std::string> names)
+        : task(make_names(names)), repo_(names[0])
     {
         if (names.size() > 1) {
             project_ = names[1];
@@ -80,34 +89,15 @@ namespace mob::tasks {
         }
     }
 
-    bool modorganizer::is_gamebryo_plugin() const
-    {
-        return is_set(flags_, gamebryo);
-    }
-
-    bool modorganizer::is_nuget_plugin() const
-    {
-        return is_set(flags_, nuget);
-    }
-
     fs::path modorganizer::source_path() const
     {
         // something like build/modorganizer_super/uibase
         return super_path() / name();
     }
 
-    fs::path modorganizer::project_file_path() const
-    {
-        // ask cmake for the build path it would use
-        const auto build_path = create_cmake_tool(source_path()).build_path();
-
-        // use the INSTALL project
-        return build_path / (project_ + ".sln");
-    }
-
     fs::path modorganizer::super_path()
     {
-        return conf().path().build() / "modorganizer_super";
+        return conf().path().build();
     }
 
     url modorganizer::git_url() const
@@ -137,11 +127,7 @@ namespace mob::tasks {
 
         // cmake clean
         if (is_set(c, clean::reconfigure))
-            run_tool(create_cmake_tool(cmake::clean));
-
-        // msbuild clean
-        if (is_set(c, clean::rebuild))
-            run_tool(create_msbuild_tool(msbuild::clean));
+            run_tool(cmake(cmake::clean).root(source_path()));
     }
 
     void modorganizer::do_fetch()
@@ -165,7 +151,7 @@ namespace mob::tasks {
 
     void modorganizer::do_build_and_install()
     {
-        // adds a git submodule in modorganizer_super for this project; note that
+        // adds a git submodule in build for this project; note that
         // git_submodule_adder runs a thread because adding submodules is slow, but
         // can happen while stuff is building
         git_submodule_adder::instance().queue(
@@ -177,65 +163,42 @@ namespace mob::tasks {
 
         // not all modorganizer projects need to actually be built, such as
         // cmake_common, so don't try if there's no cmake file
-        if (!fs::exists(source_path() / "CMakeLists.txt")) {
+        if (!exists(source_path() / "CMakeLists.txt")) {
             cx().trace(context::generic, "{} has no CMakeLists.txt, not building",
                        repo_);
 
             return;
         }
 
+        // if there is a CMakeLists.txt, there must be a CMakePresets.json otherwise
+        // we cannot build
+        if (!exists(source_path() / "CMakePresets.json")) {
+            gcx().bail_out(context::generic,
+                           "{} has no CMakePresets.txt, aborting build", repo_);
+        }
+
         // run cmake
-        run_tool(create_cmake_tool());
+        run_tool(cmake(cmake::generate)
+                     .generator(cmake::vs)
+                     .def("CMAKE_INSTALL_PREFIX:PATH", conf().path().install())
+                     .def("CMAKE_PREFIX_PATH", cmake_prefix_path())
+                     .preset("vs2022-windows")
+                     .root(source_path()));
 
-        // run restore for nuget
-        //
-        // until https://gitlab.kitware.com/cmake/cmake/-/issues/20646 is resolved,
-        // we need a manual way of running the msbuild -t:restore
-        if (is_nuget_plugin())
-            run_tool(create_msbuild_tool().targets({"restore"}));
+        // run cmake --build with default target
+        // TODO: handle rebuild by adding `--clean-first`
+        // TODO: have a way to specify the `--parallel` value - 16 is useful to build
+        // game_bethesda that has 15 games, so 15 projects
+        run_tool(cmake(cmake::build)
+                     .root(source_path())
+                     .arg("--parallel")
+                     .arg("16")
+                     .configuration(mob::config::relwithdebinfo));
 
-        // run msbuild
-        run_tool(create_msbuild_tool());
-    }
-
-    cmake modorganizer::create_cmake_tool(cmake::ops o)
-    {
-        return create_cmake_tool(source_path(), o, task_conf().configuration());
-    }
-
-    cmake modorganizer::create_cmake_tool(const fs::path& root, cmake::ops o, config c)
-    {
-        return std::move(
-            cmake(o)
-                .generator(cmake::vs)
-                .def("CMAKE_INSTALL_PREFIX:PATH", conf().path().install())
-                .def("DEPENDENCIES_DIR", conf().path().build())
-                .def("BOOST_ROOT", boost::source_path())
-                .def("BOOST_LIBRARYDIR", boost::lib_path(arch::x64))
-                .def("SPDLOG_ROOT", spdlog::source_path())
-                .def("LOOT_PATH", libloot::source_path())
-                .def("LZ4_ROOT", lz4::source_path())
-                .def("QT_ROOT", qt::installation_path())
-                .def("ZLIB_ROOT", zlib::source_path())
-                .def("PYTHON_ROOT", python::source_path())
-                .def("SEVENZ_ROOT", sevenz::source_path())
-                .def("LIBBSARCH_ROOT", libbsarch::source_path())
-                .def("BOOST_DI_ROOT", boost_di::source_path())
-                // gtest has no RelWithDebInfo, so simply use Debug/Release
-                .def("GTEST_ROOT",
-                     gtest::build_path(arch::x64, c == config::debug ? config::debug
-                                                                     : config::release))
-                .def("OPENSSL_ROOT_DIR", openssl::source_path())
-                .def("DIRECTXTEX_ROOT", directxtex::source_path())
-                .root(root));
-    }
-
-    msbuild modorganizer::create_msbuild_tool(msbuild::ops o)
-    {
-        return std::move(msbuild(o)
-                             .solution(project_file_path())
-                             .configuration(task_conf().configuration())
-                             .architecture(arch::x64));
+        // run cmake --install
+        run_tool(cmake(cmake::install)
+                     .root(source_path())
+                     .configuration(mob::config::relwithdebinfo));
     }
 
 }  // namespace mob::tasks

@@ -33,6 +33,11 @@ namespace mob {
     //
     fs::path find_vs();
 
+    // returns the absolute path to VCPKG root directory to be used as VCPKG_ROOT when
+    // building
+    //
+    fs::path find_vcpkg();
+
     // returns the absolute path to Qt's root directory, the one that contains
     // bin, include, etc.; bails if not found
     //
