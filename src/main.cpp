@@ -95,6 +95,8 @@ namespace mob {
 
         add_task<parallel_tasks>()
             .add_task<stylesheets>()
+            .add_task<licenses>()
+            .add_task<explorerpp>()
             .add_task<mo>({"modorganizer-tool_configurator", "pycfg"})
             .add_task<mo>("modorganizer-fnistool")
             .add_task<mo>("modorganizer-basic_games")
@@ -105,7 +107,6 @@ namespace mob {
             .add_task<mo>({"modorganizer", "organizer"});
 
         // other tasks
-        add_task<stylesheets>();
         add_task<translations>();
         add_task<installer>();
     }
