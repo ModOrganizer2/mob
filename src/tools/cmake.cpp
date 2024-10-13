@@ -4,8 +4,23 @@
 
 namespace mob {
 
+    namespace {
+        std::string config_to_string(config c)
+        {
+            switch (c) {
+            case config::debug:
+                return "Debug";
+            case config::release:
+                return "Release";
+            case config::relwithdebinfo:
+                return "RelWithDebInfo";
+            }
+            gcx().bail_out(context::generic, "unknow configuration type {}", c);
+        }
+    }  // namespace
+
     cmake::cmake(ops o)
-        : basic_process_runner("cmake"), op_(o), gen_(jom), arch_(arch::def)
+        : basic_process_runner("cmake"), op_(o), gen_(vs), arch_(arch::def)
     {
     }
 
@@ -62,6 +77,12 @@ namespace mob {
         return *this;
     }
 
+    cmake& cmake::preset(const std::string& s)
+    {
+        preset_ = s;
+        return *this;
+    }
+
     cmake& cmake::arg(std::string s)
     {
         std::replace(s.begin(), s.end(), '\\', '/');
@@ -72,6 +93,24 @@ namespace mob {
     cmake& cmake::architecture(arch a)
     {
         arch_ = a;
+        return *this;
+    }
+
+    cmake& cmake::targets(const std::string& target)
+    {
+        targets_ = {target};
+        return *this;
+    }
+
+    cmake& cmake::targets(const std::vector<std::string>& targets)
+    {
+        targets_ = targets;
+        return *this;
+    }
+
+    cmake& cmake::configuration(mob::config config)
+    {
+        config_ = config;
         return *this;
     }
 
@@ -110,6 +149,16 @@ namespace mob {
             break;
         }
 
+        case build: {
+            do_build();
+            break;
+        }
+
+        case install: {
+            do_install();
+            break;
+        }
+
         default: {
             cx().bail_out(context::generic, "bad cmake op {}", op_);
         }
@@ -126,25 +175,16 @@ namespace mob {
         auto p = process()
                      .stdout_encoding(encodings::utf8)
                      .stderr_encoding(encodings::utf8)
-                     .binary(binary())
-                     .arg("-DCMAKE_BUILD_TYPE=Release")
-                     .arg("-DCMAKE_INSTALL_MESSAGE=" +
-                          conf_cmake::to_string(conf().cmake().install_message()))
-                     .arg("--log-level=ERROR")
-                     .arg("--no-warn-unused-cli");
+                     .binary(binary());
 
-        if (genstring_.empty()) {
-            // there's always a generator name, but some generators don't need
-            // an architecture flag, like jom, so get_arch() might return an empty
-            // string
-            p.arg("-G", "\"" + g.name + "\"")
-                .arg(g.get_arch(arch_))
-                .arg(g.get_host(conf().cmake().host()));
+        if (!preset_.empty()) {
+            p = p.arg("--preset").arg(preset_);
         }
-        else {
-            // verbatim generator string
-            p.arg("-G", "\"" + genstring_ + "\"");
-        }
+
+        p = p.arg("-DCMAKE_INSTALL_MESSAGE=" +
+                  conf_cmake::to_string(conf().cmake().install_message()))
+                .arg("--log-level=ERROR")
+                .arg("--no-warn-unused-cli");
 
         // prefix
         if (!prefix_.empty())
@@ -152,15 +192,64 @@ namespace mob {
 
         p.args(args_);
 
-        // `..` by default, overriden by cmd()
-        if (cmd_.empty())
-            p.arg("..");
-        else
-            p.arg(cmd_);
+        if (preset_.empty()) {
 
-        p.env(env::vs(arch_).set("CXXFLAGS", "/wd4566")).cwd(build_path());
+            if (genstring_.empty()) {
+                // there's always a generator name, but some generators don't need
+                // an architecture flag, like jom, so get_arch() might return an empty
+                // string
+                p.arg("-G", "\"" + g.name + "\"")
+                    .arg(g.get_arch(arch_))
+                    .arg(g.get_host(conf().cmake().host()));
+            }
+            else {
+                // verbatim generator string
+                p.arg("-G", "\"" + genstring_ + "\"");
+            }
+
+            // `..` by default, overriden by cmd()
+            if (cmd_.empty())
+                p.arg("..");
+            else
+                p.arg(cmd_);
+        }
+
+        p.env(env::vs(arch_)
+                  .set("CXXFLAGS", "/wd4566")
+                  .set("VCPKG_ROOT", absolute(conf().path().vcpkg()).string()))
+            .cwd(preset_.empty() ? build_path() : root_);
 
         execute_and_join(p);
+    }
+
+    void cmake::do_build()
+    {
+        auto p = process()
+                     .stdout_encoding(encodings::utf8)
+                     .stderr_encoding(encodings::utf8)
+                     .binary(binary())
+                     .arg("--build")
+                     .arg(build_path())
+                     .arg("--config")
+                     .arg(config_to_string(config_));
+
+        for (auto& target : targets_) {
+            p = p.arg("--target").arg(target);
+        }
+
+        execute_and_join(p);
+    }
+
+    void cmake::do_install()
+    {
+        execute_and_join(process()
+                             .stdout_encoding(encodings::utf8)
+                             .stderr_encoding(encodings::utf8)
+                             .binary(binary())
+                             .arg("--install")
+                             .arg(build_path())
+                             .arg("--config")
+                             .arg(config_to_string(config_)));
     }
 
     void cmake::do_clean()

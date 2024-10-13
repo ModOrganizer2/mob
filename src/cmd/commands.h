@@ -367,27 +367,6 @@ namespace mob {
         std::vector<fs::path> get_repos() const;
     };
 
-    // runs cmake in a directory with the same parameters as `build` would
-    //
-    class cmake_command : public command {
-    public:
-        cmake_command();
-        meta_t meta() const override;
-
-    protected:
-        clipp::group do_group() override;
-        int do_run() override;
-        std::string do_doc() override;
-
-    private:
-        std::string gen_;
-        std::string cmd_;
-        bool x64_   = true;
-        bool debug_ = false;
-        std::string prefix_;
-        std::string path_;
-    };
-
     // lists the inis found by mob
     //
     class inis_command : public command {

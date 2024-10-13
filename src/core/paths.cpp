@@ -254,6 +254,24 @@ namespace mob {
         }
     }
 
+    fs::path find_vcpkg()
+    {
+        const auto env_path = this_env::get().get("VCPKG_ROOT");
+
+        if (!env_path.empty()) {
+            return fs::absolute(env_path);
+        }
+
+        const auto vs_path       = conf().path().vs();
+        const auto vcpkg_vs_path = vs_path / "VC" / "vcpkg";
+        if (!exists(vcpkg_vs_path)) {
+            gcx().bail_out(context::conf, "vcpkg is not part of VS installation at {}",
+                           vs_path);
+        }
+
+        return vcpkg_vs_path;
+    }
+
     fs::path find_qt()
     {
         // check from the ini first

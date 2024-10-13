@@ -125,9 +125,6 @@ namespace mob::tasks {
         // walks all the .ts files in the project, creates a `lang` object for
         // each
         //
-        // each project directory is named "mod-organizer-2.project_name", so this
-        // splits on the dot to get the project name, checks if it's a gamebryo
-        // plugin, and adds the gamebryo .ts file as well if necessary
 
         // splitting
         const auto dir_name = path_to_utf8(dir.filename());
@@ -150,7 +147,6 @@ namespace mob::tasks {
 
         // project
         project p(project_name);
-        const bool gamebryo = is_gamebryo_plugin(dir_name, project_name);
 
         // for each file
         for (auto f : fs::directory_iterator(dir)) {
@@ -168,14 +164,14 @@ namespace mob::tasks {
             }
 
             // add a new `lang` object for it
-            p.langs.push_back(create_lang(gamebryo, project_name, f.path()));
+            p.langs.push_back(create_lang(project_name, f.path()));
         }
 
         return p;
     }
 
     translations::projects::lang
-    translations::projects::create_lang(bool gamebryo, const std::string& project_name,
+    translations::projects::create_lang(const std::string& project_name,
                                         const fs::path& main_ts_file)
     {
         lang lg(path_to_utf8(main_ts_file.stem()));
@@ -183,62 +179,7 @@ namespace mob::tasks {
         // every lang has the .ts file from the project, gamebryo plugins have more
         lg.ts_files.push_back(main_ts_file);
 
-        if (gamebryo) {
-            // this is a gamebryo plugin, so it needs the gamebryo .ts file as well,
-            // find it
-
-            // the .ts files for gamebryo are in mod-organizer-2.game_gamebryo/
-            const fs::path gamebryo_dir =
-                conf().transifex().get("project") + "." + "game_gamebryo";
-
-            // the .ts file has the same name, it's just "lang.ts"
-            const auto gamebryo_ts = root_ / gamebryo_dir / main_ts_file.filename();
-
-            if (fs::exists(gamebryo_ts)) {
-                // found, add it
-                lg.ts_files.push_back(gamebryo_ts);
-            }
-            else {
-                // not found, that means the plugin was translated into a language,
-                // but the gamebryo project wasn't; warn once
-                if (!warned_.contains(gamebryo_ts)) {
-                    warned_.insert(gamebryo_ts);
-
-                    warnings_.push_back(::std::format(
-                        "{} is a gamebryo plugin but there is no '{}'; the "
-                        ".qm file will be missing some translations (will "
-                        "only warn once)",
-                        project_name, path_to_utf8(gamebryo_ts)));
-                }
-            }
-        }
-
         return lg;
-    }
-
-    bool translations::projects::is_gamebryo_plugin(const std::string& dir,
-                                                    const std::string& project)
-    {
-        const auto* t = task_manager::instance().find_one(project);
-
-        if (!t) {
-            warnings_.push_back(
-                ::std::format("directory '{}' was parsed as project '{}', but there's "
-                              "no task with this name",
-                              dir, project));
-
-            return false;
-        }
-
-        // gamebryo plugins are all `modorganizer` tasks
-        const auto* mo_task = static_cast<const modorganizer*>(t);
-        if (!mo_task) {
-            // not an mo task, can't be a gamebryo plugin
-            return false;
-        }
-
-        // check the flag
-        return mo_task->is_gamebryo_plugin();
     }
 
     translations::translations() : task("translations") {}

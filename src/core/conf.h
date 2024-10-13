@@ -264,6 +264,7 @@ namespace mob {
         VALUE(install_translations);
 
         VALUE(vs);
+        VALUE(vcpkg);
         VALUE(qt_install);
         VALUE(qt_bin);
         VALUE(qt_translations);
