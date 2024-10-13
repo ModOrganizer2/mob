@@ -72,13 +72,13 @@ namespace mob {
             .add_task<mo>("modorganizer-bsatk")
             .add_task<mo>("modorganizer-nxmhandler")
             .add_task<mo>("modorganizer-helper")
-            .add_task<mo>({"modorganizer-bsapacker", "bsa_packer"})
-            .add_task<mo>("modorganizer-preview_bsa")
             .add_task<mo>("modorganizer-game_bethesda");
 
         add_task<parallel_tasks>()
+            .add_task<mo>({"modorganizer-bsapacker", "bsa_packer"})
             .add_task<mo>({"modorganizer-tool_inieditor", "inieditor"})
             .add_task<mo>({"modorganizer-tool_inibakery", "inibakery"})
+            .add_task<mo>("modorganizer-preview_bsa")
             .add_task<mo>("modorganizer-preview_base")
             .add_task<mo>("modorganizer-diagnose_basic")
             .add_task<mo>("modorganizer-check_fnis")
