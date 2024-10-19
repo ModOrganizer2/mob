@@ -205,6 +205,10 @@ namespace mob::tasks {
     //
     class modorganizer : public task {
     public:
+        // build CMAKE_PREFIX_PATH for MO2 tasks
+        //
+        static std::string cmake_prefix_path();
+
         // path of the root modorganizer_super directory
         //
         static fs::path super_path();

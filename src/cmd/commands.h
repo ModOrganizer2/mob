@@ -406,4 +406,20 @@ namespace mob {
         void do_build();
     };
 
+    // print CMake configuration variables
+    //
+    class cmake_config_command : public command {
+    public:
+        cmake_config_command();
+        meta_t meta() const override;
+
+    protected:
+        clipp::group do_group() override;
+        int do_run() override;
+        std::string do_doc() override;
+
+        enum class variable { prefix_path, install_prefix };
+        variable var_;
+    };
+
 }  // namespace mob

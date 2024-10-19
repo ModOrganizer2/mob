@@ -129,7 +129,8 @@ namespace mob {
             std::make_unique<release_command>(),
             std::make_unique<git_command>(),
             std::make_unique<inis_command>(),
-            std::make_unique<tx_command>()};
+            std::make_unique<tx_command>(),
+            std::make_unique<cmake_config_command>()};
 
         // commands are shown in the help
         help->set_commands(commands);
