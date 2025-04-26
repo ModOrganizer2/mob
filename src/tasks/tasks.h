@@ -25,6 +25,7 @@ namespace mob::tasks {
         static bool prebuilt();
 
         static fs::path source_path();
+        static fs::path cmake_path(arch a);
         static fs::path lib_path(arch a);
         static fs::path root_lib_path(arch a);
 
