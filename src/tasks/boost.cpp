@@ -67,7 +67,7 @@ namespace mob::tasks {
 
         url source_url()
         {
-            return "https://boostorg.jfrog.io/artifactory/main/release/" +
+            return "https://archives.boost.io/release/" +
                    boost_version_no_tags() + "/source/" +
                    boost_version_all_underscores() + ".7z";
         }
