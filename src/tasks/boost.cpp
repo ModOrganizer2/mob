@@ -80,9 +80,8 @@ namespace mob::tasks {
 
         url source_url()
         {
-            return "https://archives.boost.io/release/" +
-                   boost_version_no_tags() + "/source/" +
-                   boost_version_all_underscores() + ".7z";
+            return "https://archives.boost.io/release/" + boost_version_no_tags() +
+                   "/source/" + boost_version_all_underscores() + ".7z";
         }
 
         fs::path b2_exe()
