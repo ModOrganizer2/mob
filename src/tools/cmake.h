@@ -29,6 +29,12 @@ namespace mob {
             // generates the build files
             generate = 1,
 
+            // build
+            build,
+
+            // install
+            install,
+
             // cleans the build files so they're regenerated from scratch
             clean
         };
@@ -54,6 +60,15 @@ namespace mob {
         //
         cmake& root(const fs::path& p);
 
+        // set the targets for build
+        //
+        cmake& targets(const std::string& target);
+        cmake& targets(const std::vector<std::string>& target);
+
+        // set the configuration to build or install
+        //
+        cmake& configuration(mob::config config);
+
         // overrides the directory in which cmake will write build files
         //
         // by default, this is a directory inside what was given in root() with a
@@ -74,6 +89,10 @@ namespace mob {
         cmake& def(const std::string& name, const std::string& value);
         cmake& def(const std::string& name, const fs::path& p);
         cmake& def(const std::string& name, const char* s);
+
+        // set a preset to run with cmake --preset
+        //
+        cmake& preset(const std::string& s);
 
         // adds an arbitrary argument, passed verbatim
         //
@@ -146,6 +165,9 @@ namespace mob {
         // what run() does
         ops op_;
 
+        // preset to run
+        std::string preset_;
+
         // directory where CMakeLists.txt is
         fs::path root_;
 
@@ -155,6 +177,12 @@ namespace mob {
 
         // passed as -DCMAKE_INSTALL_PREFIX
         fs::path prefix_;
+
+        // targets
+        std::vector<std::string> targets_;
+
+        // configuration
+        mob::config config_{mob::config::relwithdebinfo};
 
         // passed verbatim
         std::vector<std::string> args_;
@@ -175,6 +203,8 @@ namespace mob {
         // runs cmake
         //
         void do_generate();
+        void do_build();
+        void do_install();
 
         // returns a list of generators handled by this tool, same ones as in the
         // `generators` enum on top

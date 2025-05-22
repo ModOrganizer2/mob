@@ -672,6 +672,7 @@ namespace mob::tasks {
         void fetch_from_source();
         void build_and_install_from_source();
 
+        cmake create_cmake_tool(arch, cmake::ops = cmake::generate) const;
         msbuild create_msbuild_tool(arch, msbuild::ops = msbuild::build,
                                     config = config::release) const;
     };
