@@ -413,6 +413,7 @@ namespace mob {
 
         cx().info(context::generic, "build and install");
         do_build_and_install();
+        cx().info(context::generic, "done");
     }
 
     void task::check_bailed()

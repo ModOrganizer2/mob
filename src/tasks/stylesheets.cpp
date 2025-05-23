@@ -77,7 +77,7 @@ namespace mob::tasks {
     fs::path stylesheets::release_build_path(const release& r) const
     {
         // something like build/paper-mono-v2.1
-        return conf().path().build() / (r.repo + "-" + r.version);
+        return conf().path().build() / "stylesheets" / (r.repo + "-" + r.version);
     }
 
     downloader stylesheets::make_downloader_tool(const release& r,
