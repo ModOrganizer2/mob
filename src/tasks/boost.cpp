@@ -18,6 +18,19 @@ namespace mob::tasks {
             return s;
         }
 
+        std::string boost_version_dash()
+        {
+            const auto v = boost::parsed_version();
+
+            // boost_1_72[_0[_b1_rc1]]
+            std::string s = "Boost-" + v.major + "." + v.minor;
+
+            if (v.patch != "")
+                s += "." + v.patch;
+
+            return s;
+        }
+
         std::string boost_version_no_tags_underscores()
         {
             return replace_all(boost_version_no_tags(), ".", "_");
@@ -67,9 +80,8 @@ namespace mob::tasks {
 
         url source_url()
         {
-            return "https://boostorg.jfrog.io/artifactory/main/release/" +
-                   boost_version_no_tags() + "/source/" +
-                   boost_version_all_underscores() + ".7z";
+            return "https://archives.boost.io/release/" + boost_version_no_tags() +
+                   "/source/" + boost_version_all_underscores() + ".7z";
         }
 
         fs::path b2_exe()
@@ -100,6 +112,11 @@ namespace mob::tasks {
     {
         // ex: build/boost_1_74_0
         return conf().path().build() / ("boost_" + boost_version_no_tags_underscores());
+    }
+
+    fs::path boost::cmake_path(arch a)
+    {
+        return lib_path(a) / "cmake" / boost_version_dash();
     }
 
     fs::path boost::lib_path(arch a)
