@@ -87,6 +87,7 @@ namespace mob {
             .add_task<mo>("modorganizer-game_fallout4", mo::gamebryo)
             .add_task<mo>("modorganizer-game_fallout4vr", mo::gamebryo)
             .add_task<mo>("modorganizer-game_fallout76", mo::gamebryo)
+            .add_task<mo>("modorganizer-game_fallout4london", mo::gamebryo)
             .add_task<mo>("modorganizer-game_falloutnv", mo::gamebryo)
             .add_task<mo>("modorganizer-game_morrowind", mo::gamebryo)
             .add_task<mo>("modorganizer-game_skyrim", mo::gamebryo)
