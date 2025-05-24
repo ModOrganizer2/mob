@@ -52,11 +52,11 @@ mob -d c:\somewhere build
 #### Using aqt
 - Open a terminal with administrative rights, and run
 ```powershell
-aqt install-qt --outputdir "C:\Qt" windows desktop 6.7.1 win64_msvc2019_64 -m qtwebengine qtimageformats qtpositioning qtserialport qtwebchannel qtwebsockets
+aqt install-qt --outputdir "C:\Qt" windows desktop 6.7.3 win64_msvc2019_64 -m qtwebengine qtimageformats qtpositioning qtserialport qtwebchannel qtwebsockets
 ```
 
 ### Qt - Manual installation
-- Install Qt 6.7.1 ([Installer](https://download.qt.io/official_releases/online_installers/qt-unified-windows-x64-online.exe)) and select these components:
+- Install Qt 6.7.3 ([Installer](https://download.qt.io/official_releases/online_installers/qt-unified-windows-x64-online.exe)) and select these components:
   - MSVC 2019 64-bit
   - Additional Libraries:
     - Qt WebEngine (display nexus pages)
