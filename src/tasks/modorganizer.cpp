@@ -191,13 +191,13 @@ namespace mob::tasks {
                      .root(source_path())
                      .arg("--parallel")
                      .arg("16")
-                     .configuration(mob::config::relwithdebinfo));
+                     .configuration(task_conf().configuration()));
 
         // run cmake --install
         run_tool(cmake(cmake::build)
                      .root(source_path())
                      .targets("INSTALL")
-                     .configuration(mob::config::relwithdebinfo));
+                     .configuration(task_conf().configuration()));
     }
 
 }  // namespace mob::tasks
