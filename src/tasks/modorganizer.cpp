@@ -180,6 +180,7 @@ namespace mob::tasks {
                      .generator(cmake::vs)
                      .def("CMAKE_INSTALL_PREFIX:PATH", conf().path().install())
                      .def("CMAKE_PREFIX_PATH", cmake_prefix_path())
+                     .configuration_types({task_conf().configuration()})
                      .preset("vs2022-windows")
                      .root(source_path()));
 
