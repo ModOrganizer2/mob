@@ -44,9 +44,19 @@ namespace mob {
         u8cout << "making src archive " << path_to_utf8(out) << "\n";
 
         const std::vector<std::string> ignore = {"\\..+",  // dot files
-                                                 ".*\\.log", ".*\\.tlog", ".*\\.dll",
-                                                 ".*\\.exe", ".*\\.lib",  ".*\\.obj",
-                                                 ".*\\.ts",  ".*\\.aps",  "vsbuild"};
+                                                 "explorer\\+\\+",
+                                                 "stylesheets",
+                                                 "transifex-translations"
+                                                 ".*\\.log",
+                                                 ".*\\.tlog",
+                                                 ".*\\.dll",
+                                                 ".*\\.exe",
+                                                 ".*\\.lib",
+                                                 ".*\\.obj",
+                                                 ".*\\.ts",
+                                                 ".*\\.aps",
+                                                 "(bin|lib)",
+                                                 "vsbuild(32|64)?"};
 
         const std::vector<std::regex> ignore_re(ignore.begin(), ignore.end());
 
