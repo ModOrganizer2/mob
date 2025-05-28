@@ -73,16 +73,6 @@ namespace mob {
             return gcx();
     }
 
-    fs::path perl::binary()
-    {
-        return conf().tool().get("perl");
-    }
-
-    fs::path nasm::binary()
-    {
-        return conf().tool().get("nasm");
-    }
-
     fs::path qt::installation_path()
     {
         return conf().path().qt_install();
@@ -199,19 +189,6 @@ namespace mob {
             return {};
 
         return trim_copy(p.stdout_string());
-    }
-
-    nuget::nuget(fs::path sln) : basic_process_runner("nuget"), sln_(std::move(sln)) {}
-
-    fs::path nuget::binary()
-    {
-        return conf().tool().get("nuget");
-    }
-
-    void nuget::do_run()
-    {
-        execute_and_join(process().binary(binary()).arg("restore").arg(sln_).cwd(
-            sln_.parent_path()));
     }
 
     transifex::transifex(ops o)

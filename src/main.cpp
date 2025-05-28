@@ -24,36 +24,6 @@ namespace mob {
         // mob doesn't have a concept of task dependencies, just task ordering, so
         // if a task depends on another, it has to be earlier in the order
 
-        // third-party tasks
-
-        // add_task<parallel_tasks>()
-        //     .add_task<sevenz>()
-        //     .add_task<zlib>()
-        //     .add_task<gtest>()
-        //     .add_task<libbsarch>()
-        //     .add_task<libloot>()
-        //     .add_task<openssl>()
-        //     .add_task<bzip2>()
-        //     .add_task<directxtex>();
-
-        // add_task<parallel_tasks>()
-        //     .add_task<tasks::python>()
-        //     .add_task<lz4>()
-        //     .add_task<spdlog>();
-
-        // add_task<parallel_tasks>()
-        //     .add_task<boost>()
-        //     .add_task<boost_di>()
-        //     .add_task<sip>();
-
-        // add_task<parallel_tasks>()
-        //     .add_task<pyqt>()
-        //     .add_task<pybind11>()
-        //     .add_task<usvfs>()
-        //     .add_task<stylesheets>()
-        //     .add_task<licenses>()
-        //     .add_task<explorerpp>();
-
         // super tasks
 
         using mo = modorganizer;
