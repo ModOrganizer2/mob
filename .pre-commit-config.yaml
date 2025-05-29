@@ -1,0 +1,25 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '^(third-party|licenses)/.*$'
+      - id: end-of-file-fixer
+        exclude: '^(third-party|licenses)/.*$'
+      - id: check-merge-conflict
+        exclude: '^(third-party|licenses)/.*$'
+      - id: check-case-conflict
+        exclude: '^(third-party|licenses)/.*$'
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v19.1.5
+    hooks:
+    - id: clang-format
+      'types_or': [c++, c]
+      exclude: '^third-party/.*$'
+
+ci:
+  autofix_commit_msg: "[pre-commit.ci] Auto fixes from pre-commit.com hooks."
+  autofix_prs: true
+  autoupdate_commit_msg: "[pre-commit.ci] Pre-commit autoupdate."
+  autoupdate_schedule: quarterly
+  submodules: false
