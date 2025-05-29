@@ -69,6 +69,9 @@ namespace mob {
         //
         cmake& configuration(mob::config config);
 
+        // set the configuration types available when generating
+        cmake& configuration_types(const std::vector<mob::config>& configs);
+
         // overrides the directory in which cmake will write build files
         //
         // by default, this is a directory inside what was given in root() with a
@@ -183,6 +186,9 @@ namespace mob {
 
         // configuration
         mob::config config_{mob::config::relwithdebinfo};
+
+        // configuration types
+        std::vector<mob::config> config_types_;
 
         // passed verbatim
         std::vector<std::string> args_;

@@ -36,9 +36,21 @@ namespace mob::tasks {
     {
         const std::string repo = "modorganizer-Installer";
 
+        // find the best suitable branch
+        const auto fallback = task_conf().mo_fallback_branch();
+        auto branch         = task_conf().mo_branch();
+        if (!fallback.empty() &&
+            !git_wrap::remote_branch_exists(make_git_url(task_conf().mo_org(), repo),
+                                            branch)) {
+            cx().warning(context::generic,
+                         "{} has no remote {} branch, switching to {}", repo, branch,
+                         fallback);
+            branch = fallback;
+        }
+
         run_tool(make_git()
                      .url(make_git_url(task_conf().mo_org(), repo))
-                     .branch(task_conf().mo_branch())
+                     .branch(branch)
                      .root(source_path()));
     }
 

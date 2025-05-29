@@ -281,7 +281,6 @@ namespace mob {
         void make_bin();
         void make_pdbs();
         void make_src();
-        void make_uibase();
         void make_installer();
 
     protected:
@@ -297,7 +296,6 @@ namespace mob {
         bool bin_       = true;
         bool src_       = true;
         bool pdbs_      = true;
-        bool uibase_    = true;
         bool installer_ = false;
         std::string utf8out_;
         fs::path out_;
@@ -404,6 +402,22 @@ namespace mob {
 
         void do_get();
         void do_build();
+    };
+
+    // print CMake configuration variables
+    //
+    class cmake_config_command : public command {
+    public:
+        cmake_config_command();
+        meta_t meta() const override;
+
+    protected:
+        clipp::group do_group() override;
+        int do_run() override;
+        std::string do_doc() override;
+
+        enum class variable { prefix_path, install_prefix };
+        variable var_;
     };
 
 }  // namespace mob

@@ -50,16 +50,6 @@ namespace mob {
 
     class url;
 
-    // returns a url for a prebuilt binary having the given filename; prebuilts are
-    // hosted on github, in the umbrella repo
-    //
-    url make_prebuilt_url(const std::string& filename);
-
-    // returns a url for an appveyor artifact; this is used by usvfs for prebuilts
-    //
-    url make_appveyor_artifact_url(arch a, const std::string& project,
-                                   const std::string& filename);
-
     // returns "mob x.y"
     //
     std::string mob_version();

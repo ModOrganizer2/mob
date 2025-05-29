@@ -114,6 +114,12 @@ namespace mob {
         return *this;
     }
 
+    cmake& cmake::configuration_types(const std::vector<mob::config>& configs)
+    {
+        config_types_ = configs;
+        return *this;
+    }
+
     cmake& cmake::cmd(const std::string& s)
     {
         cmd_ = s;
@@ -179,6 +185,16 @@ namespace mob {
 
         if (!preset_.empty()) {
             p = p.arg("--preset").arg(preset_);
+        }
+
+        if (!config_types_.empty()) {
+            std::string types;
+            for (const auto& c : config_types_) {
+                if (!types.empty())
+                    types += ";";
+                types += config_to_string(c);
+            }
+            p = p.arg("-DCMAKE_CONFIGURATION_TYPES=" + types);
         }
 
         p = p.arg("-DCMAKE_INSTALL_MESSAGE=" +

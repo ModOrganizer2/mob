@@ -23,37 +23,6 @@ namespace mob {
         //
         // mob doesn't have a concept of task dependencies, just task ordering, so
         // if a task depends on another, it has to be earlier in the order
-
-        // third-party tasks
-
-        // add_task<parallel_tasks>()
-        //     .add_task<sevenz>()
-        //     .add_task<zlib>()
-        //     .add_task<gtest>()
-        //     .add_task<libbsarch>()
-        //     .add_task<libloot>()
-        //     .add_task<openssl>()
-        //     .add_task<bzip2>()
-        //     .add_task<directxtex>();
-
-        // add_task<parallel_tasks>()
-        //     .add_task<tasks::python>()
-        //     .add_task<lz4>()
-        //     .add_task<spdlog>();
-
-        // add_task<parallel_tasks>()
-        //     .add_task<boost>()
-        //     .add_task<boost_di>()
-        //     .add_task<sip>();
-
-        // add_task<parallel_tasks>()
-        //     .add_task<pyqt>()
-        //     .add_task<pybind11>()
-        //     .add_task<usvfs>()
-        //     .add_task<stylesheets>()
-        //     .add_task<licenses>()
-        //     .add_task<explorerpp>();
-
         // super tasks
 
         using mo = modorganizer;
@@ -93,6 +62,9 @@ namespace mob {
             .add_task<mo>("modorganizer-plugin_python");
 
         add_task<parallel_tasks>()
+            .add_task<stylesheets>()
+            .add_task<licenses>()
+            .add_task<explorerpp>()
             .add_task<mo>({"modorganizer-tool_configurator", "pycfg"})
             .add_task<mo>("modorganizer-fnistool")
             .add_task<mo>("modorganizer-basic_games")
@@ -103,7 +75,6 @@ namespace mob {
             .add_task<mo>({"modorganizer", "organizer"});
 
         // other tasks
-
         add_task<translations>();
         add_task<installer>();
     }
@@ -126,7 +97,8 @@ namespace mob {
             std::make_unique<release_command>(),
             std::make_unique<git_command>(),
             std::make_unique<inis_command>(),
-            std::make_unique<tx_command>()};
+            std::make_unique<tx_command>(),
+            std::make_unique<cmake_config_command>()};
 
         // commands are shown in the help
         help->set_commands(commands);
@@ -143,7 +115,7 @@ namespace mob {
         for (auto& c : commands)
             all_groups.push_back(c->group());
 
-            // vs reports a no-op on the left side of the command, which is incorrect
+        // vs reports a no-op on the left side of the command, which is incorrect
 #pragma warning(suppress : 4548)
         auto cli = (all_groups, command::common_options_group());
         auto pr  = clipp::parse(args, cli);

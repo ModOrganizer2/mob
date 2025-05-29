@@ -391,13 +391,6 @@ namespace mob {
 
         do_fetch();
         check_interrupted();
-
-        // auto patching if the task has a source path
-        if (!get_source_path().empty()) {
-            cx().debug(context::generic, "patching");
-
-            run_tool(patcher().task(name(), get_prebuilt()).root(get_source_path()));
-        }
     }
 
     void task::build_and_install()

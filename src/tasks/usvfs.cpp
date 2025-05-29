@@ -76,8 +76,10 @@ namespace mob::tasks {
     {
         run_tool(create_cmake_tool(arch::x64));
         run_tool(create_cmake_tool(arch::x86));
-        run_tool(create_msbuild_tool(arch::x64));
-        run_tool(create_msbuild_tool(arch::x86));
+        run_tool(create_msbuild_tool(arch::x64, msbuild::build,
+                                     task_conf().configuration()));
+        run_tool(create_msbuild_tool(arch::x86, msbuild::build,
+                                     task_conf().configuration()));
     }
 
     cmake usvfs::create_cmake_tool(arch a, cmake::ops o) const

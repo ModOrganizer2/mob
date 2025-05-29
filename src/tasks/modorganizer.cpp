@@ -3,15 +3,6 @@
 
 namespace mob::tasks {
 
-    // build CMAKE_PREFIX_PATH for MO2 tasks
-    //
-    std::string cmake_prefix_path()
-    {
-        return conf().path().qt_install().string() + ";" +
-               (modorganizer::super_path() / "cmake_common").string() + ";" +
-               (conf().path().install() / "lib" / "cmake").string();
-    }
-
     // given a vector of names (some projects have more than one, see add_tasks() in
     // main.cpp), this prepends the simplified name to the vector and returns it
     //
@@ -87,6 +78,13 @@ namespace mob::tasks {
         else {
             project_ = make_names(names)[0];
         }
+    }
+
+    std::string modorganizer::cmake_prefix_path()
+    {
+        return conf().path().qt_install().string() + ";" +
+               (modorganizer::super_path() / "cmake_common").string() + ";" +
+               (conf().path().install() / "lib" / "cmake").string();
     }
 
     fs::path modorganizer::source_path() const
@@ -182,6 +180,7 @@ namespace mob::tasks {
                      .generator(cmake::vs)
                      .def("CMAKE_INSTALL_PREFIX:PATH", conf().path().install())
                      .def("CMAKE_PREFIX_PATH", cmake_prefix_path())
+                     .configuration_types({task_conf().configuration()})
                      .preset("vs2022-windows")
                      .root(source_path()));
 
@@ -193,12 +192,13 @@ namespace mob::tasks {
                      .root(source_path())
                      .arg("--parallel")
                      .arg("16")
-                     .configuration(mob::config::relwithdebinfo));
+                     .configuration(task_conf().configuration()));
 
         // run cmake --install
-        run_tool(cmake(cmake::install)
+        run_tool(cmake(cmake::build)
                      .root(source_path())
-                     .configuration(mob::config::relwithdebinfo));
+                     .targets("INSTALL")
+                     .configuration(task_conf().configuration()));
     }
 
 }  // namespace mob::tasks

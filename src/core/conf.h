@@ -264,7 +264,6 @@ namespace mob {
         VALUE(prefix);
         VALUE(cache);
         VALUE(icons);
-        VALUE(patches);
         VALUE(licenses);
         VALUE(build);
 
@@ -275,11 +274,10 @@ namespace mob {
         VALUE(install_pdbs);
 
         VALUE(install_dlls);
-        VALUE(install_loot);
         VALUE(install_extensions);
         VALUE(install_stylesheets);
         VALUE(install_licenses);
-        VALUE(install_pythoncore);
+        VALUE(install_translations);
 
         VALUE(vs);
         VALUE(vcpkg);
