@@ -11,87 +11,6 @@ namespace mob::tasks {
 
     // single header for all the tasks, not worth having a header per task
 
-    class boost : public basic_task<boost> {
-    public:
-        struct version_info {
-            std::string major, minor, patch, rest;
-        };
-
-        boost();
-
-        static version_info parsed_version();
-        static std::string version();
-        static std::string version_vs();
-        static bool prebuilt();
-
-        static fs::path source_path();
-        static fs::path cmake_path(arch a);
-        static fs::path lib_path(arch a);
-        static fs::path root_lib_path(arch a);
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-
-    private:
-        void fetch_prebuilt();
-        void build_and_install_prebuilt();
-
-        void fetch_from_source();
-        void build_and_install_from_source();
-        void write_config_jam();
-
-        void bootstrap();
-
-        void do_b2(const std::vector<std::string>& components, const std::string& link,
-                   const std::string& runtime_link, arch a);
-    };
-
-    // needed by bsapacker
-    //
-    class boost_di : public basic_task<boost_di> {
-    public:
-        boost_di();
-
-        static std::string version();
-        static bool prebuilt();
-        static fs::path source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-    };
-
-    // needed by python
-    //
-    class bzip2 : public basic_task<bzip2> {
-    public:
-        bzip2();
-
-        static std::string version();
-        static bool prebuilt();
-        static fs::path source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-    };
-
-    class directxtex : public basic_task<directxtex> {
-    public:
-        directxtex();
-
-        static std::string version();
-        static bool prebuilt();
-        static fs::path source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-    };
-
     class explorerpp : public basic_task<explorerpp> {
     public:
         explorerpp();
@@ -103,21 +22,6 @@ namespace mob::tasks {
     protected:
         void do_clean(clean c) override;
         void do_fetch() override;
-    };
-
-    class gtest : public basic_task<gtest> {
-    public:
-        gtest();
-
-        static std::string version();
-        static bool prebuilt();
-        static fs::path source_path();
-        static fs::path build_path(arch = arch::x64, config = config::release);
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
     };
 
     class installer : public basic_task<installer> {
@@ -134,67 +38,12 @@ namespace mob::tasks {
         void do_build_and_install() override;
     };
 
-    class libbsarch : public basic_task<libbsarch> {
-    public:
-        libbsarch();
-
-        static std::string version();
-        static config build_type();
-        static bool prebuilt();
-        static fs::path source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-    };
-
-    class libloot : public basic_task<libloot> {
-    public:
-        libloot();
-
-        static std::string version();
-        static std::string hash();
-        static std::string branch();
-
-        static bool prebuilt();
-        static fs::path source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-    };
-
     class licenses : public task {
     public:
         licenses();
 
     protected:
         void do_build_and_install() override;
-    };
-
-    class lz4 : public basic_task<lz4> {
-    public:
-        lz4();
-
-        static std::string version();
-        static bool prebuilt();
-        static fs::path source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-
-    private:
-        void fetch_prebuilt();
-        void build_and_install_prebuilt();
-
-        void fetch_from_source();
-        void build_and_install_from_source();
-
-        msbuild create_msbuild_tool(msbuild::ops o = msbuild::build);
     };
 
     // a task for all modorganizer projects except for the installer, which is
@@ -206,6 +55,10 @@ namespace mob::tasks {
     //
     class modorganizer : public task {
     public:
+        // build CMAKE_PREFIX_PATH for MO2 tasks
+        //
+        static std::string cmake_prefix_path();
+
         // path of the root modorganizer_super directory
         //
         static fs::path super_path();
@@ -217,34 +70,13 @@ namespace mob::tasks {
                                        cmake::ops o  = cmake::generate,
                                        config config = config::relwithdebinfo);
 
-        // flags for some MO projects
-        enum flags {
-            noflags = 0x00,
-
-            // gamebryo project, used by the translations task because these
-            // projects have multiple .ts files that have to be merged
-            gamebryo = 0x01,
-
-            // project that uses nuget, cmake doesn't support those right now, so
-            // `msbuild -t:restore` has to be run manually
-            nuget = 0x02,
-        };
-
         // some mo tasks have more than one name, mostly because the transifex slugs
         // are different than the names on github; the std::string and const char*
         // overloads are because they're constructed from initializer lists and it's
         // more convenient that way
-        modorganizer(std::string name, flags f = noflags);
-        modorganizer(std::vector<std::string> names, flags f = noflags);
-        modorganizer(std::vector<const char*> names, flags f = noflags);
-
-        // whether this project has the gamebryo flag on
-        //
-        bool is_gamebryo_plugin() const;
-
-        // whether this project has the nuget flag on
-        //
-        bool is_nuget_plugin() const;
+        modorganizer(std::string name);
+        modorganizer(std::vector<std::string> names);
+        modorganizer(std::vector<const char*> names);
 
         // url to the git repo
         //
@@ -272,261 +104,6 @@ namespace mob::tasks {
     private:
         std::string repo_;
         std::string project_;
-        flags flags_;
-
-        // creates the cmake tool for this MO project
-        //
-        cmake create_cmake_tool(cmake::ops o = cmake::generate);
-
-        // creates the msbuild tool for this MO project
-        //
-        msbuild create_msbuild_tool(msbuild::ops o = msbuild::build);
-
-        // this is the file targeted by the msbuild tool
-        //
-        // it's not actually the .sln file because the cmake files have historically
-        // been inconsistent in what the main project in the solution is and whether
-        // the INSTALL project was enabled or not, so just building the .sln itself
-        // might not actually build everything
-        //
-        // by targeting the INSTALL project directly, everything will always be
-        // built correctly, regardless of how the solution file is generated
-        //
-        fs::path project_file_path() const;
-    };
-
-    class ncc : public basic_task<ncc> {
-    public:
-        ncc();
-
-        static std::string version();
-        static bool prebuilt();
-        static fs::path source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-
-    private:
-        msbuild create_msbuild_tool(msbuild::ops o);
-    };
-
-    class nmm : public basic_task<nmm> {
-    public:
-        nmm();
-
-        static std::string version();
-        static bool prebuilt();
-        static fs::path source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-
-    private:
-        msbuild create_msbuild_tool(msbuild::ops o     = msbuild::build,
-                                    msbuild::flags_t f = msbuild::noflags);
-    };
-
-    class openssl : public basic_task<openssl> {
-    public:
-        struct version_info {
-            std::string major, minor, patch;
-        };
-
-        openssl();
-
-        static version_info parsed_version();
-        static std::string version();
-        static bool prebuilt();
-
-        static fs::path source_path();
-        static fs::path include_path();
-        static fs::path build_path();
-        static fs::path bin_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-
-    private:
-        void fetch_prebuilt();
-        void fetch_from_source();
-        void build_and_install_prebuilt();
-        void build_and_install_from_source();
-
-        void configure();
-        void install_engines();
-        void copy_files();
-        void copy_dlls_to(const fs::path& dir);
-        void copy_pdbs_to(const fs::path& dir);
-    };
-
-    // when building from source, builds both pyqt5 and pyqt5-sip; when using the
-    // prebuilt, the downloaded zip contains both
-    //
-    class pyqt : public basic_task<pyqt> {
-    public:
-        pyqt();
-
-        static std::string version();
-        static std::string builder_version();
-        static bool prebuilt();
-
-        static fs::path source_path();
-        static fs::path build_path();
-        static config build_type();
-
-        // "PyQt5.sip", used both in pyqt and sip
-        //
-        static std::string pyqt_sip_module_name();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-
-    private:
-        void fetch_prebuilt();
-        void fetch_from_source();
-        void build_and_install_prebuilt();
-        void build_and_install_from_source();
-
-        void sip_build();
-        void install_sip_file();
-        void copy_files();
-    };
-
-    class python : public basic_task<python> {
-    public:
-        struct version_info {
-            std::string major;
-            std::string minor;
-            std::string patch;
-        };
-
-        python();
-
-        static std::string version();
-        static bool prebuilt();
-        static version_info parsed_version();
-
-        // build/python-XX
-        //
-        static fs::path source_path();
-
-        // build/python-XX/PCBuild/amd64
-        //
-        static fs::path build_path();
-
-        // build/python-XX/PCBuild/amd64/python.exe
-        //
-        static fs::path python_exe();
-
-        // build/python-XX/Include
-        //
-        static fs::path include_path();
-
-        // build/python-XX/Scripts
-        //
-        static fs::path scripts_path();
-
-        // build/python-XX/Lib/site-packages
-        //
-        static fs::path site_packages_path();
-
-        // configuration to build
-        //
-        static config build_type();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-
-    private:
-        void fetch_prebuilt();
-        void fetch_from_source();
-        void build_and_install_prebuilt();
-        void build_and_install_from_source();
-
-        void prepare_dependencies();
-        void package();
-        void install_pip();
-        void copy_files();
-
-        msbuild create_msbuild_tool(msbuild::ops o = msbuild::build);
-    };
-
-    class pybind11 : public basic_task<pybind11> {
-    public:
-        pybind11();
-
-        static bool prebuilt();
-        static std::string version();
-        static fs::path source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-    };
-
-    class sevenz : public basic_task<sevenz> {
-    public:
-        sevenz();
-
-        static std::string version();
-        static bool prebuilt();
-        static fs::path source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-
-    private:
-        void build();
-    };
-
-    class sip : public basic_task<sip> {
-    public:
-        sip();
-
-        static std::string version();
-        static std::string version_for_pyqt();
-        static bool prebuilt();
-
-        static fs::path source_path();
-        static fs::path sip_module_exe();
-        static fs::path sip_install_exe();
-        static fs::path module_source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-
-    private:
-        void build();
-        void generate_header();
-        void convert_script_file_to_acp(const std::string& filename);
-    };
-
-    class spdlog : public basic_task<spdlog> {
-    public:
-        spdlog();
-
-        static std::string version();
-        static bool prebuilt();
-        static fs::path source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
     };
 
     class stylesheets : public task {
@@ -624,11 +201,6 @@ namespace mob::tasks {
             // duplicate warnings
             std::set<fs::path> warned_;
 
-            // whether the given project name is a gamebryo task, `dir` is just for
-            // logging
-            //
-            bool is_gamebryo_plugin(const std::string& dir, const std::string& project);
-
             // parses the directory name, walks all the .ts files, returns a project
             // object for them
             //
@@ -637,7 +209,7 @@ namespace mob::tasks {
             // returns a lang object that contains at least the given main_ts_file,
             // but might contain more if it's a gamebryo plugin
             //
-            lang create_lang(bool gamebryo, const std::string& project_name,
+            lang create_lang(const std::string& project_name,
                              const fs::path& main_ts_file);
         };
 
@@ -675,24 +247,6 @@ namespace mob::tasks {
         cmake create_cmake_tool(arch, cmake::ops = cmake::generate) const;
         msbuild create_msbuild_tool(arch, msbuild::ops = msbuild::build,
                                     config = config::release) const;
-    };
-
-    class zlib : public basic_task<zlib> {
-    public:
-        zlib();
-
-        static std::string version();
-        static bool prebuilt();
-        static fs::path source_path();
-
-    protected:
-        void do_clean(clean c) override;
-        void do_fetch() override;
-        void do_build_and_install() override;
-
-    private:
-        cmake create_cmake_tool(cmake::ops o = cmake::generate);
-        msbuild create_msbuild_tool(msbuild::ops o = msbuild::build);
     };
 
 }  // namespace mob::tasks
