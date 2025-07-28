@@ -65,6 +65,11 @@ namespace mob::op {
     //
     void delete_file_glob(const context& cx, const fs::path& glob, flags f = noflags);
 
+    // deletes all files matching the glob in the given directory and its subdirectories
+    //
+    void delete_file_glob_recurse(const context& cx, const fs::path& directory,
+                                  const fs::path& glob, flags f = noflags);
+
     // removes the readonly flag for all files in `dir`, recursive
     //
     void remove_readonly(const context& cx, const fs::path& dir, flags f = noflags);
