@@ -51,6 +51,21 @@ installing Qt extremely quick and painless, and doesn't require a login.
 Check the [documentation](https://aqtinstall.readthedocs.io/en/latest/installation.html)
 to install **aqt** itself.
 
+> [!IMPORTANT]
+> As of version 3.3.0, **aqt** is unable to install Qt version 6.7.3 on the
+> `win64_msvc2022_64` target architecture due to a non-standard download URL (see:
+> miurahr/aqtinstall#919). The [Holt59/aqtinstall fork](https://github.com/Holt59/aqtinstall)
+> provides a workaround for this issue and can be installed using the following command
+> (requires Python 3.9 or above):
+> ```powershell
+> pip install git+https://github.com/Holt59/aqtinstall.git#egg=aqtinstall
+> ```
+> If you already installed **aqt** before, you first need to uninstall it before
+> installing the fork:
+> ```powershell
+> pip uninstall aqtinstall
+> ```
+
 When using **aqt**, you can choose which modules to install but we recommend installing
 all of them in case of changes.
 
@@ -99,7 +114,7 @@ aqt install-qt --outputdir "C:\Qt" windows desktop ${QT_VERSION} win64_msvc2022_
 mkdir C:\dev
 cd C:\dev
 
-# close this repository
+# clone this repository
 git clone https://github.com/ModOrganizer2/mob
 
 # build mob itself - this will create mob.exe in the current directory
@@ -118,7 +133,7 @@ The Visual Studio solution for Mod Organizer itself is `build\modorganizer_super
 `mob` has two ways of setting options: from INI files, the `MOBINI` environment
 variable, or from the command line.
 
-### OVerride options using INI files
+### Override options using INI files
 
 `mob` builds a list of available INI files in order of priority. Higher numbers
 override lower numbers:
