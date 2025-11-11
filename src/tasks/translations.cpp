@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "../core/env.h"
+#include "../utility/string.h"
 #include "../utility/threading.h"
+#include "nlohmann/json.hpp"
 #include "task_manager.h"
 #include "tasks.h"
 
@@ -197,8 +199,8 @@ namespace mob::tasks {
 
         // remove the .qm files in the translations/ directory
         if (is_set(c, clean::rebuild)) {
-            op::delete_file_glob(cx(), conf().path().install_translations() / "*.qm",
-                                 op::optional);
+            op::delete_file_glob_recurse(cx(), conf().path().install_extensions(),
+                                         "*.qm", op::optional);
         }
     }
 
@@ -251,46 +253,139 @@ namespace mob::tasks {
         }
     }
 
+    void generate_translations_metadata(
+        std::filesystem::path const& path,
+        std::vector<mob::tasks::translations::projects::lang> const& languages)
+    {
+        using json = nlohmann::ordered_json;
+
+        json metadata = json::parse(R"(
+{
+  "id": "mo2-translations",
+  "name": "Translations for ModOrganizer2",
+  "version": "1.0.0",
+  "description": "Multi-language translations for ModOrganizer2 itself.",
+  "author": {
+    "name": "Mod Organizer 2",
+    "homepage": "https://www.modorganizer.org/"
+  },
+  "icon": "translations.png",
+  "type": "translation",
+  "content": {
+    "translations": {}
+  }
+}
+)");
+
+        // fix version
+        json translations;
+        for (auto&& lang : languages) {
+            std::vector<std::string> files;
+            files.push_back("translations/" + lang.name + "/*.qm");
+            json jsonlang;
+            jsonlang["files"]       = files;
+            translations[lang.name] = jsonlang;
+        }
+        metadata["content"]["translations"] = translations;
+
+        std::ofstream ofs(path);
+        ofs << metadata.dump(2);
+    }
+
     void translations::do_build_and_install()
     {
         // 1) build the list of projects, languages and .ts files
         // 2) run `lrelease` for every language in every project
         // 3) copy builtin qt translations
 
-        const auto root = source_path() / "translations";
-        const auto dest = conf().path().install_translations();
+        const auto root       = source_path() / "translations";
+        const auto extensions = conf().path().install_extensions();
         const projects ps(root);
 
-        op::create_directories(cx(), dest);
+        op::create_directories(cx(), extensions / "mo2-translations");
 
         // log all the warnings added while walking the projects
         for (auto&& w : ps.warnings())
             cx().warning(context::generic, "{}", w);
+
+        std::map<std::string, fs::path::string_type> project_to_extension;
+
+        // go through the list of extensions and find the matching projects
+        for (auto& p : fs::directory_iterator(extensions)) {
+            if (!fs::is_directory(p))
+                continue;
+
+            const auto name =
+                mob::replace_all(p.path().filename().string(), "mo2-", "");
+
+            project_to_extension[name] = p.path().filename();
+            project_to_extension[mob::replace_all(name, "-", "_")] =
+                p.path().filename();
+
+            const auto s_projects =
+                conf().translation().get(p.path().filename().string(), "");
+            if (!s_projects.empty()) {
+                const auto extension_projects = mob::split(s_projects, " ");
+                for (const auto& project : extension_projects) {
+                    project_to_extension[project] = p.path().filename();
+                }
+            }
+        }
 
         // run `lrelease` in a thread pool
         parallel_functions v;
 
         // for each project
         for (auto& p : ps.get()) {
+            if (!project_to_extension.contains(p.name)) {
+                cx().warning(context::generic,
+                             "found project {} but no matching extension", p.name);
+                continue;
+            }
+
+            const auto base = extensions / project_to_extension[p.name];
+
+            if (!fs::exists(base)) {
+                cx().warning(
+                    context::generic,
+                    "found project {} for extension {} but extension is not built",
+                    p.name, project_to_extension[p.name]);
+                continue;
+            }
+
+            const auto dest = base / "translations";
+            op::create_directories(cx(), dest);
+
             // for each language
             for (auto& lg : p.langs) {
+                op::create_directories(cx(), dest / lg.name);
                 // add a functor that will run lrelease
-                v.push_back(
-                    {lg.name + "." + p.name, [&] {
-                         // run release for the given project name and list of .ts files
-                         run_tool(
-                             lrelease().project(p.name).sources(lg.ts_files).out(dest));
-                     }});
+                v.push_back({lg.name + "." + p.name, [=] {
+                                 // run release for the given project name and list of
+                                 // .ts files
+                                 run_tool(lrelease()
+                                              .project(p.name)
+                                              .sources(lg.ts_files)
+                                              .out(dest / lg.name));
+                             }});
             }
         }
 
         // run all the functors in parallel
         parallel(v);
 
-        if (auto p = ps.find("organizer"))
-            copy_builtin_qt_translations(*p, dest);
+        if (auto p = ps.find("organizer")) {
+            // copy Qt builting translation, icon and generate metadata
+            copy_builtin_qt_translations(*p, extensions / "mo2-translations" /
+                                                 "translations");
+            op::copy_file_to_file_if_better(
+                cx(), conf().path().icons() / "translations.png",
+                extensions / "mo2-translations" / "translations.png", op::unsafe);
+            generate_translations_metadata(
+                extensions / "mo2-translations" / "metadata.json", p->langs);
+        }
         else
-            cx().bail_out(context::generic, "organizer project not found");
+            cx().warning(context::generic, "organizer project not found");
     }
 
     void translations::copy_builtin_qt_translations(const projects::project& p,
@@ -307,7 +402,8 @@ namespace mob::tasks {
             if (!fs::exists(src))
                 return false;
 
-            op::copy_file_to_dir_if_better(cx(), src, dest, op::unsafe);
+            op::create_directories(cx(), dest / lang);
+            op::copy_file_to_dir_if_better(cx(), src, dest / lang, op::unsafe);
             return true;
         };
 
