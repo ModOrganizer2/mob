@@ -13,7 +13,7 @@ if (!$root) {
 
 $output = if ($Verbose) { "Out-Default" } else { "Out-Null" }
 
-cmake -B $root/build -G "Visual Studio 17 2022" $root | & $output
+cmake -B $root/build -G "Visual Studio 18 2026" $root | & $output
 
 $installationPath = & $root\third-party\bin\vswhere.exe -products * -nologo -prerelease -latest -property installationPath
 if (! $?) {
@@ -27,7 +27,7 @@ if (! $installationPath) {
 }
 
 $opts = ""
-$opts += " $root\build\mob.sln"
+$opts += " $root\build\mob.slnx"
 $opts += " -m"
 $opts += " -p:Configuration=${Config}"
 $opts += " -noLogo"
