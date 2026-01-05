@@ -17,7 +17,8 @@ cmake --preset vcpkg --log-level=$logLevel
 
 if ($Verbose) {
     cmake --build --preset $Config --verbose
-} else {
+}
+else {
     cmake --build --preset $Config
 }
 
