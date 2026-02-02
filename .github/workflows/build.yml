@@ -2,9 +2,12 @@ name: Build Mob
 
 on:
   push:
-    branches: master
+    branches: [master]
   pull_request:
     types: [opened, synchronize, reopened]
+
+env:
+  VCPKG_BINARY_SOURCES: ${{ vars.AZ_BLOB_VCPKG_URL != '' && format('clear;x-azblob,{0},{1},readwrite', vars.AZ_BLOB_VCPKG_URL, secrets.AZ_BLOB_SAS) || '' }}
 
 jobs:
   build:
@@ -13,4 +16,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Mob
         shell: pwsh
-        run: ./bootstrap.ps1 -Verbose
+        run: |
+          $env:VCPKG_ROOT = $env:VCPKG_INSTALLATION_ROOT
+          ./bootstrap.ps1 -Verbose

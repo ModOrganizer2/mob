@@ -1,3 +1,5 @@
+#pragma once
+
 // global warnings
 #pragma warning(disable : 4464)  // relative include path
 #pragma warning(disable : 4820)  // padding added
@@ -62,10 +64,12 @@
 #include <thread>
 #include <vector>
 
-#include <Shlobj.h>
+#include <windows.h>
+
+#include <dbghelp.h>
 #include <fcntl.h>
-#include <imagehlp.h>
 #include <io.h>
+#include <shlobj.h>
 #include <shlwapi.h>
 
 #include <clipp.h>

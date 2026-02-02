@@ -11,40 +11,15 @@ if (!$root) {
     $root = "."
 }
 
-$output = if ($Verbose) { "Out-Default" } else { "Out-Null" }
+$logLevel = if ($Verbose) { "STATUS" } else { "ERROR" }
 
-cmake -B $root/build -G "Visual Studio 17 2022" $root | & $output
+cmake --preset vcpkg --log-level=$logLevel
 
-$installationPath = & $root\third-party\bin\vswhere.exe -products * -nologo -prerelease -latest -property installationPath
-if (! $?) {
-    Write-Error "vswhere returned $LastExitCode"
-    exit $LastExitCode
+if ($Verbose) {
+    cmake --build --preset $Config --verbose
+} else {
+    cmake --build --preset $Config
 }
-
-if (! $installationPath) {
-    Write-Error "Empty installation path"
-    exit 1
-}
-
-$opts = ""
-$opts += " $root\build\mob.sln"
-$opts += " -m"
-$opts += " -p:Configuration=${Config}"
-$opts += " -noLogo"
-$opts += " -p:UseMultiToolTask=true"
-$opts += " -p:EnforceProcessCountAcrossBuilds=true"
-
-if (!$Verbose) {
-    $opts += " -clp:ErrorsOnly;Verbosity=minimal"
-}
-
-$vsDevCmd = "$installationPath\Common7\Tools\VsDevCmd.bat"
-if (!(Test-Path "$vsDevCmd")) {
-    Write-Error "VdDevCmd.bat not found at $vsDevCmd"
-    exit 1
-}
-
-& "${env:COMSPEC}" /c "`"$vsDevCmd`" -no_logo -arch=amd64 -host_arch=amd64 && msbuild $opts"
 
 if (! $?) {
     Write-Error "Build failed"

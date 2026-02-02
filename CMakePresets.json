@@ -1,0 +1,46 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "vcpkg",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
+        "CMAKE_CONFIGURATION_TYPES": "Debug;Release;RelWithDebInfo"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "Base",
+      "hidden": true,
+      "nativeToolOptions": [
+        "-m",
+        "-noLogo",
+        "-p:UseMultiToolTask=true",
+        "-p:EnforceProcessCountAcrossBuilds=true"
+      ]
+    },
+    {
+      "name": "Debug",
+      "configurePreset": "vcpkg",
+      "inherits": "Base",
+      "configuration": "Debug"
+    },
+    {
+      "name": "Release",
+      "configurePreset": "vcpkg",
+      "inherits": "Base",
+      "configuration": "Release"
+    },
+    {
+      "name": "RelWithDebInfo",
+      "configurePreset": "vcpkg",
+      "inherits": "Base",
+      "configuration": "RelWithDebInfo"
+    }
+  ]
+}
