@@ -116,6 +116,30 @@ namespace mob::op {
         }
     }
 
+    void delete_file_glob_recurse(const context& cx, const fs::path& directory,
+                                  const fs::path& glob, flags f)
+    {
+        cx.trace(context::fs, "deleting glob {}", glob);
+
+        const auto native = glob.native();
+
+        if (!fs::exists(directory))
+            return;
+
+        for (auto&& e : fs::recursive_directory_iterator(directory)) {
+            const auto p    = e.path();
+            const auto name = p.filename().native();
+
+            if (!PathMatchSpecW(name.c_str(), native.c_str())) {
+                cx.trace(context::fs, "{} did not match {}; skipping", name, glob);
+
+                continue;
+            }
+
+            delete_file(cx, p, f);
+        }
+    }
+
     void remove_readonly(const context& cx, const fs::path& dir, flags f)
     {
         cx.trace(context::fs, "removing read-only from {}", dir);

@@ -51,24 +51,32 @@ namespace mob::details {
 
     // returns a string from conf, bails out if it doesn't exist
     //
-    std::string get_string(std::string_view section, std::string_view key)
+    std::string get_string(std::string_view section, std::string_view key,
+                           std::optional<std::string> default_)
     {
         auto sitor = g_conf.find(section);
         if (sitor == g_conf.end())
             gcx().bail_out(context::conf, "[{}] doesn't exist", section);
 
         auto kitor = sitor->second.find(key);
-        if (kitor == sitor->second.end())
-            gcx().bail_out(context::conf, "no key '{}' in [{}]", key, section);
+        if (kitor == sitor->second.end()) {
+            if (!default_.has_value()) {
+                gcx().bail_out(context::conf, "no key '{}' in [{}]", key, section);
+            }
+            return *default_;
+        }
 
         return kitor->second;
     }
 
     // calls get_string(), converts to int
     //
-    int get_int(std::string_view section, std::string_view key)
+    int get_int(std::string_view section, std::string_view key,
+                std::optional<int> default_)
     {
-        const auto s = get_string(section, key);
+        const auto s = get_string(section, key, default_.transform([](auto v) {
+            return std::to_string(v);
+        }));
 
         try {
             return std::stoi(s);
@@ -80,9 +88,12 @@ namespace mob::details {
 
     // calls get_string(), converts to bool
     //
-    bool get_bool(std::string_view section, std::string_view key)
+    bool get_bool(std::string_view section, std::string_view key,
+                  std::optional<bool> default_)
     {
-        const auto s = get_string(section, key);
+        const auto s = get_string(section, key, default_.transform([](auto v) {
+            return v ? "true" : "false";
+        }));
         return bool_from_string(s);
     }
 
@@ -428,13 +439,8 @@ namespace mob {
 
                 MOB_ASSERT(!tasks.empty());
 
-                for (auto& t : tasks) {
-                    if (t->name() != task &&
-                        details::find_string_for_task(t->name(), key)) {
-                        continue;
-                    }
+                for (auto& t : tasks)
                     details::set_string_for_task(t->name(), key, value);
-                }
             }
             else {
                 // global task option
@@ -512,6 +518,7 @@ namespace mob {
         set_path_if_empty("vcpkg", find_vcpkg);  // set after vs as it will use the VS
         set_path_if_empty("qt_install", find_qt);
         set_path_if_empty("temp_dir", find_temp_dir);
+        set_path_if_empty("icons", find_in_root("icons"));
         set_path_if_empty("licenses", find_in_root("licenses"));
         set_path_if_empty("qt_bin", qt::installation_path() / "bin");
         set_path_if_empty("qt_translations", qt::installation_path() / "translations");
@@ -537,6 +544,7 @@ namespace mob {
         resolve_path("install_licenses", p.install_bin(), "licenses");
         resolve_path("install_stylesheets", p.install_bin(), "stylesheets");
         resolve_path("install_translations", p.install_bin(), "translations");
+        resolve_path("install_extensions", p.install_bin(), "extensions");
 
         // finally, resolve the tools that are unlikely to be in PATH; all the
         // other tools (7z, jom, patch, etc.) are assumed to be in PATH (which
@@ -682,6 +690,11 @@ namespace mob {
         return {};
     }
 
+    conf_translations conf::translation()
+    {
+        return {};
+    }
+
     conf_versions conf::version()
     {
         return {};
@@ -769,6 +782,8 @@ namespace mob {
     conf_versions::conf_versions() : conf_section("versions") {}
 
     conf_build_types::conf_build_types() : conf_section("build-types") {}
+
+    conf_translations::conf_translations() : conf_section("translations") {}
 
     conf_prebuilt::conf_prebuilt() : conf_section("prebuilt") {}
 
