@@ -13,13 +13,13 @@ if (!$root) {
 
 $logLevel = if ($Verbose) { "STATUS" } else { "ERROR" }
 
-cmake --preset vcpkg --log-level=$logLevel
+cmake --preset vs2026-windows --log-level=$logLevel
 
 if ($Verbose) {
-    cmake --build --preset $Config --verbose
+    cmake --build --preset vs2026-windows --config $Config --verbose
 }
 else {
-    cmake --build --preset $Config
+    cmake --build --preset vs2026-windows --config $Config
 }
 
 if (! $?) {
