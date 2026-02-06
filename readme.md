@@ -33,6 +33,7 @@ check the [ModOrganizer2 Wiki](https://github.com/ModOrganizer2/modorganizer/wik
 ```powershell
 git clone https://github.com/ModOrganizer2/mob
 cd mob
+$env:VCPKG_ROOT = "C:\path\to\vcpkg"
 ./bootstrap
 mob -d c:\somewhere build
 ```
@@ -108,6 +109,20 @@ aqt install-qt --outputdir "C:\Qt" windows desktop ${QT_VERSION} win64_msvc2022_
     - Git for Windows (Skip if you have this already installed outside of the VS installer)
     - CMake tools for Windows (Skip if you have this already installed outside of the VS installer)
 
+### vcpkg
+
+`mob` now uses **vcpkg** to manage its third-party dependencies (like libcurl).
+
+1. **Install vcpkg**: If you don't have it, follow the [official instructions](https://learn.microsoft.com/en-us/vcpkg/get_started/get-started).
+2. **Set Environment Variable**: `mob` requires the `VCPKG_ROOT` environment variable to locate the toolchain.
+
+   ```powershell
+    $env:VCPKG_ROOT = "C:\path\to\vcpkg"
+    $env:PATH = "$env:VCPKG_ROOT;$env:PATH"
+   ```
+
+3. **Static Triplet**: `mob` builds with the `x64-windows-static-md` triplet by default to ensure a standalone executable. The `bootstrap.ps1` script handles this automatically if `VCPKG_ROOT` is set.
+
 ## Setting up MOB
 
 ```powershell
@@ -116,6 +131,9 @@ cd C:\dev
 
 # clone this repository
 git clone https://github.com/ModOrganizer2/mob
+
+# set vcpkg path, or use `vcpkg integrate install` instead
+$env:VCPKG_ROOT = "C:\path\to\your\vcpkg"
 
 # build mob itself - this will create mob.exe in the current directory
 ./bootstrap.ps1

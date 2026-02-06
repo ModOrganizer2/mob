@@ -236,7 +236,7 @@ namespace mob {
 
         for (auto&& item : json["items"]) {
             // ex: https://api.github.com/repos/ModOrganizer2/modorganizer-Installer
-            const std::string url = item["repository_url"];
+            const std::string url = item["repository_url"].get<std::string>();
 
             const auto last_slash = url.find_last_of("/");
             if (last_slash == std::string::npos) {
@@ -246,7 +246,7 @@ namespace mob {
 
             const auto repo = url.substr(last_slash + 1);
 
-            pr_info info = {repo, author, branch, item["title"],
+            pr_info info = {repo, author, branch, item["title"].get<std::string>(),
                             std::to_string(item["number"].get<int>())};
 
             if (!repos.emplace(repo, info).second) {
@@ -287,9 +287,10 @@ namespace mob {
         const auto output = dl.steal_output();
         json              = nlohmann::json::parse(output);
 
-        const std::string repo   = json["head"]["repo"]["name"];
-        const std::string author = json["head"]["repo"]["user"]["login"];
-        const std::string branch = json["head"]["ref"];
+        const std::string repo = json["head"]["repo"]["name"].get<std::string>();
+        const std::string author =
+            json["head"]["repo"]["user"]["login"].get<std::string>();
+        const std::string branch = json["head"]["ref"].get<std::string>();
 
         return {repo, author, branch};
     }

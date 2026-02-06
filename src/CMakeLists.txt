@@ -1,22 +1,18 @@
-cmake_minimum_required(VERSION 3.16)
-
-file(GLOB_RECURSE source_files *.cpp)
-file(GLOB_RECURSE header_files *.h)
+file(GLOB_RECURSE source_files CONFIGURE_DEPENDS "*.cpp")
+file(GLOB_RECURSE header_files CONFIGURE_DEPENDS "*.h")
 
 add_executable(mob ${source_files} ${header_files})
-set_target_properties(mob PROPERTIES CXX_STANDARD 20)
 
-target_compile_definitions(mob PUBLIC NOMINMAX)
-target_compile_options(mob PUBLIC "/MT")
-target_include_directories(mob PUBLIC ${CMAKE_SOURCE_DIR}/third-party/include)
-target_link_libraries(mob PUBLIC
-    wsock32 ws2_32 crypt32 wldap32 dbghelp shlwapi version
-    optimized ${CMAKE_SOURCE_DIR}/third-party/lib/libcurl.lib
-    debug ${CMAKE_SOURCE_DIR}/third-party/lib/libcurl-d.lib
-    optimized ${CMAKE_SOURCE_DIR}/third-party/lib/zlib.lib
-    debug ${CMAKE_SOURCE_DIR}/third-party/lib/zlibd.lib)
+target_compile_features(mob PRIVATE cxx_std_20)
 
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}
-    PREFIX src
-    FILES ${source_files} ${header_files})
-set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT mob)
+target_compile_definitions(
+  mob PRIVATE _WIN32_WINNT=0x0A00 NTDDI_VERSION=0x0A000007 WIN32_LEAN_AND_MEAN
+              NOMINMAX NOCOMM)
+
+target_link_libraries(mob PRIVATE clipp::clipp nlohmann_json::nlohmann_json
+                                  CURL::libcurl dbghelp shlwapi version)
+
+source_group(
+  TREE ${CMAKE_CURRENT_SOURCE_DIR}
+  PREFIX src
+  FILES ${source_files} ${header_files})
