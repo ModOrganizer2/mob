@@ -78,7 +78,7 @@ aqt install-qt --outputdir "C:\Qt" windows desktop ${QT_VERSION} win64_msvc2022_
 
 #### Manual installation
 
-- Install Qt  ([Installer](https://download.qt.io/official_releases/online_installers/qt-unified-windows-x64-online.exe)) and select these components:
+- Install Qt  ([Installer](https://download.qt.io/official_releases/online_installers/qt-online-installer-windows-x64-online.exe)) and select these components:
   - MSVC 2022 64-bit
   - Additional Libraries:
     - Qt WebEngine (display nexus pages)
