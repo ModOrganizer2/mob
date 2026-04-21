@@ -53,7 +53,7 @@ Check the [documentation](https://aqtinstall.readthedocs.io/en/latest/installati
 to install **aqt** itself.
 
 > [!IMPORTANT]
-> As of version 3.3.0, **aqt** is unable to install Qt version 6.7.3 on the
+> As of version 3.3.0, **aqt** is unable to install Qt version 6.11.0 on the
 > `win64_msvc2022_64` target architecture due to a non-standard download URL (see:
 > miurahr/aqtinstall#919). The [Holt59/aqtinstall fork](https://github.com/Holt59/aqtinstall)
 > provides a workaround for this issue and can be installed using the following command
@@ -87,6 +87,7 @@ aqt install-qt --outputdir "C:\Qt" windows desktop ${QT_VERSION} win64_msvc2022_
     - Qt Serial Port (required by Qt Core)
     - Qt WebChannel (required by QtWebEngine)
     - Qt WebSockets (Nexus api/download)
+    - Qt TaskTree (required by Qt Core)
   - Optional:
     - Qt Source Files
     - Qt Debug Files
@@ -272,7 +273,7 @@ The versions for all the tasks.
 The only path that's required is `prefix`, which is where `mob` will put everything. Within this directory will be `build/`, `downloads/` and `install/`. Everything else is derived from it.
 
 If `mob` is unable to find the Qt installation directory, it can be specified in `qt_install`. This directory should contain `bin/`, `include/`, etc.
-It's typically something like `C:\Qt\6.7.3\msvc2022_64\`. The other path `qt_bin` will be derived from it, it's just `$qt_install/bin/`.
+It's typically something like `C:\Qt\6.11.0\msvc2022_64\`. The other path `qt_bin` will be derived from it, it's just `$qt_install/bin/`.
 
 ## Command line
 
