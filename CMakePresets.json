@@ -2,8 +2,8 @@
   "version": 6,
   "configurePresets": [
     {
-      "name": "vcpkg",
-      "generator": "Visual Studio 17 2022",
+      "name": "vs2026-windows",
+      "generator": "Visual Studio 18 2026",
       "architecture": "x64",
       "binaryDir": "${sourceDir}/build/",
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
@@ -15,32 +15,14 @@
   ],
   "buildPresets": [
     {
-      "name": "Base",
-      "hidden": true,
+      "name": "vs2026-windows",
+      "configurePreset": "vs2026-windows",
       "nativeToolOptions": [
         "-m",
         "-noLogo",
         "-p:UseMultiToolTask=true",
         "-p:EnforceProcessCountAcrossBuilds=true"
       ]
-    },
-    {
-      "name": "Debug",
-      "configurePreset": "vcpkg",
-      "inherits": "Base",
-      "configuration": "Debug"
-    },
-    {
-      "name": "Release",
-      "configurePreset": "vcpkg",
-      "inherits": "Base",
-      "configuration": "Release"
-    },
-    {
-      "name": "RelWithDebInfo",
-      "configurePreset": "vcpkg",
-      "inherits": "Base",
-      "configuration": "RelWithDebInfo"
     }
   ]
 }
