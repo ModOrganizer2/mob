@@ -3,7 +3,7 @@
   License for use and distribution
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-  7-Zip Copyright (C) 1999-2025 Igor Pavlov.
+  7-Zip Copyright (C) 1999-2026 Igor Pavlov.
 
   The licenses for files are:
 
@@ -12,10 +12,10 @@
     - C/ZstdDec.c: the "BSD 3-clause License"
     - C/Xxh64.c: the "BSD 2-clause License"
     - Some files are "public domain" files, if "public domain" status is stated in source file.
-    - the "GNU LGPL" for all other files. If there is no license information in
+    - the "GNU LGPL" for all other files. If there is no license information in 
        some source file, that file is under the "GNU LGPL".
 
-  The "GNU LGPL" with "unRAR license restriction" means that you must follow both
+  The "GNU LGPL" with "unRAR license restriction" means that you must follow both 
   "GNU LGPL" rules and "unRAR license restriction" rules.
 
 
@@ -35,7 +35,7 @@ GNU LGPL information
     Lesser General Public License for more details.
 
     You should have received a copy of the GNU Lesser General Public
-    License along with this library; if not,
+    License along with this library; if not, 
     you can get a copy of the GNU Lesser General Public License from
     http://www.gnu.org/
 
@@ -58,7 +58,7 @@ BSD 3-clause License in 7-Zip code
 
   Copyright (c) 2015-2016, Apple Inc. All rights reserved.
   Copyright (c) Facebook, Inc. All rights reserved.
-  Copyright (c) 2023-2025 Igor Pavlov.
+  Copyright (c) 2023-2026 Igor Pavlov.
 
 Text of the "BSD 3-clause License"
 ----------------------------------
@@ -102,7 +102,7 @@ BSD 2-clause License in 7-Zip code
   XXH64 code in 7-Zip was derived from the original XXH64 code developed by Yann Collet.
 
   Copyright (c) 2012-2021 Yann Collet.
-  Copyright (c) 2023-2025 Igor Pavlov.
+  Copyright (c) 2023-2026 Igor Pavlov.
 
 Text of the "BSD 2-clause License"
 ----------------------------------
